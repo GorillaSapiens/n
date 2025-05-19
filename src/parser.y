@@ -141,9 +141,29 @@ unmatched_stmt:
   | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' unmatched_stmt
   ;
 
+opt_address:
+    /* empty */
+  | '@' NUMBER
+  ;
+
 decl_stmt:
-    type_name IDENTIFIER ';'
-  | type_name IDENTIFIER ASSIGN expr ';'
+    type_name IDENTIFIER opt_array_dim opt_address ';'
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';'
+  ;
+
+opt_array_dim:
+    /* empty */
+  | '[' expr ']'
+  ;
+
+array_initializer:
+    '{' expr_list '}'
+  ;
+
+expr_list:
+    expr
+  | expr_list ',' expr
   ;
 
 expr_stmt:
@@ -184,6 +204,7 @@ primary_expr:
     IDENTIFIER
   | NUMBER
   | func_call
+  | IDENTIFIER '[' expr ']'
   | '(' expr ')'
   ;
 
@@ -206,4 +227,3 @@ expr_args:
 void yyerror(const char *s) {
     fprintf(stderr, "Error: %s\n", s);
 }
-
