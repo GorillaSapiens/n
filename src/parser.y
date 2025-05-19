@@ -6,7 +6,7 @@ void yyerror(const char *s);
 int yylex(void);
 %}
 
-%token IF ELSE WHILE FOR RETURN INT IDENTIFIER NUMBER
+%token IF ELSE WHILE FOR RETURN INT TYPE IDENTIFIER NUMBER
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 
 %left OR
@@ -20,6 +20,7 @@ int yylex(void);
 %left '+' '-'
 %left '*' '/' '%'
 %right UMINUS
+%right '='  // ⬅ assignment is right-associative and lowest precedence
 
 %%
 
@@ -29,8 +30,13 @@ program:
   ;
 
 program_item:
-    function_decl
-  | statement
+    type_decl
+  | function_decl
+  | top_level_stmt
+  ;
+
+type_decl:
+    TYPE IDENTIFIER '(' NUMBER ')' ';'
   ;
 
 function_decl:
@@ -45,6 +51,21 @@ param_list:
 param_decls:
     INT IDENTIFIER
   | param_decls ',' INT IDENTIFIER
+  ;
+
+top_level_stmt:
+    block
+  | decl_stmt
+  | expr_stmt
+  ;
+
+block:
+    '{' statement_list '}'
+  ;
+
+statement_list:
+    /* empty */
+  | statement_list statement
   ;
 
 statement:
@@ -67,15 +88,6 @@ unmatched_stmt:
   | IF '(' expr ')' matched_stmt ELSE unmatched_stmt
   | WHILE '(' expr ')' unmatched_stmt
   | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' unmatched_stmt
-  ;
-
-block:
-    '{' statement_list '}'
-  ;
-
-statement_list:
-    /* empty */
-  | statement_list statement
   ;
 
 decl_stmt:
@@ -112,12 +124,20 @@ expr:
   | expr '*' expr
   | expr '/' expr
   | expr '%' expr
-  | IDENTIFIER '=' expr
-  | IDENTIFIER '(' arg_list ')'       // function call
+  | IDENTIFIER '=' expr %prec '='     // ⬅ assignment with explicit precedence
   | '-' expr %prec UMINUS
-  | '(' expr ')'
-  | IDENTIFIER
+  | primary_expr
+  ;
+
+primary_expr:
+    IDENTIFIER
   | NUMBER
+  | func_call
+  | '(' expr ')'
+  ;
+
+func_call:
+    IDENTIFIER '(' arg_list ')'
   ;
 
 arg_list:

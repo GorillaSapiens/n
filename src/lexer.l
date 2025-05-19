@@ -4,6 +4,7 @@
 
 %%
 
+"type"     return TYPE;
 "int"      return INT;
 "if"       return IF;
 "else"     return ELSE;

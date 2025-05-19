@@ -60,17 +60,18 @@ extern int yydebug;
     FOR = 261,                     /* FOR  */
     RETURN = 262,                  /* RETURN  */
     INT = 263,                     /* INT  */
-    IDENTIFIER = 264,              /* IDENTIFIER  */
-    NUMBER = 265,                  /* NUMBER  */
-    EQ = 266,                      /* EQ  */
-    NE = 267,                      /* NE  */
-    LE = 268,                      /* LE  */
-    GE = 269,                      /* GE  */
-    LSHIFT = 270,                  /* LSHIFT  */
-    RSHIFT = 271,                  /* RSHIFT  */
-    OR = 272,                      /* OR  */
-    AND = 273,                     /* AND  */
-    UMINUS = 274                   /* UMINUS  */
+    TYPE = 264,                    /* TYPE  */
+    IDENTIFIER = 265,              /* IDENTIFIER  */
+    NUMBER = 266,                  /* NUMBER  */
+    EQ = 267,                      /* EQ  */
+    NE = 268,                      /* NE  */
+    LE = 269,                      /* LE  */
+    GE = 270,                      /* GE  */
+    LSHIFT = 271,                  /* LSHIFT  */
+    RSHIFT = 272,                  /* RSHIFT  */
+    OR = 273,                      /* OR  */
+    AND = 274,                     /* AND  */
+    UMINUS = 275                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
