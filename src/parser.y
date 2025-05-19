@@ -7,6 +7,7 @@ int yylex(void);
 %}
 
 %token IF ELSE WHILE FOR RETURN INT TYPE IDENTIFIER NUMBER
+%token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 
 %left OR
@@ -20,7 +21,7 @@ int yylex(void);
 %left '+' '-'
 %left '*' '/' '%'
 %right UMINUS
-%right '='  // ⬅ assignment is right-associative and lowest precedence
+%right ASSIGN
 
 %%
 
@@ -92,7 +93,7 @@ unmatched_stmt:
 
 decl_stmt:
     INT IDENTIFIER ';'
-  | INT IDENTIFIER '=' expr ';'
+  | INT IDENTIFIER ASSIGN expr ';'
   ;
 
 expr_stmt:
@@ -124,7 +125,7 @@ expr:
   | expr '*' expr
   | expr '/' expr
   | expr '%' expr
-  | IDENTIFIER '=' expr %prec '='     // ⬅ assignment with explicit precedence
+  | IDENTIFIER ASSIGN expr
   | '-' expr %prec UMINUS
   | primary_expr
   ;
