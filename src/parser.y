@@ -39,6 +39,9 @@ int is_typename(const char* id) {
     }
     return 0;
 }
+
+extern int lineno;
+
 %}
 
 %union {
@@ -53,6 +56,7 @@ int is_typename(const char* id) {
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
+%token OPERATOR
 
 %left OR
 %left AND
@@ -89,7 +93,9 @@ type_decl:
   ;
 
 function_decl:
-    type_name IDENTIFIER '(' param_list ')' block
+    type_name IDENTIFIER '(' param_list ')' ';'
+  | type_name IDENTIFIER '(' param_list ')' block
+  | type_name OPERATOR '(' param_list ')' block
   ;
 
 param_list:
@@ -235,5 +241,6 @@ expr_args:
 %%
 
 void yyerror(const char *s) {
-    fprintf(stderr, "Error: %s\n", s);
+    fprintf(stderr, "Line %d: %s\n", lineno, s);
 }
+

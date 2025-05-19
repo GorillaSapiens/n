@@ -7,6 +7,8 @@
 
 // External type recognition
 extern int is_typename(const char*);
+
+int lineno = 1;
 %}
 
 %option noinput nounput
@@ -20,6 +22,12 @@ extern int is_typename(const char*);
 "while"         return WHILE;
 "for"           return FOR;
 "return"        return RETURN;
+
+"operator"[-+*/%=!<>|&^:]+ {
+    yylval.str = strdup(yytext);
+    return OPERATOR;
+}
+
 
 "=="            return EQ;
 "!="            return NE;
@@ -161,7 +169,11 @@ extern int is_typename(const char*);
     return IDENTIFIER;
 }
 
-[ \t\r\n]+      ;   // skip whitespace
+[ \t\r]+                     ;   // skip whitespace
+\n              { lineno++; }
+\/\/[^\n]*                   ;   // skip line comments
+\/\*([^*]|\*+[^*/])*\*+\/    ;   // skip block comments
+
 .               return yytext[0];  // return single-character tokens
 
 %%
