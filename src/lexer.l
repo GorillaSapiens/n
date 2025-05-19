@@ -28,26 +28,38 @@ extern int is_typename(const char*);
 "||"            return OR;
 "&&"            return AND;
 
-[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)?([fFlL])? {
+[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? {
     char* clean = malloc(strlen(yytext) + 1);
     char* dst = clean;
     for (char* src = yytext; *src; ++src) {
         if (*src != '_') *dst++ = *src;
     }
     *dst = '\0';
-    yylval.dval = atof(clean);
+    yylval.dval = strtod(clean, NULL);
     free(clean);
     return FLOAT;
 }
 
-0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+([fFlL])? {
+0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+ {
     char* clean = malloc(strlen(yytext) + 1);
     char* dst = clean;
     for (char* src = yytext; *src; ++src) {
         if (*src != '_') *dst++ = *src;
     }
     *dst = '\0';
-    yylval.dval = atof(clean);
+    yylval.dval = strtod(clean, NULL);
+    free(clean);
+    return FLOAT;
+}
+
+[0-9_]+[eE][+-]?[0-9_]+ {
+    char* clean = malloc(strlen(yytext) + 1);
+    char* dst = clean;
+    for (char* src = yytext; *src; ++src) {
+        if (*src != '_') *dst++ = *src;
+    }
+    *dst = '\0';
+    yylval.dval = strtod(clean, NULL);
     free(clean);
     return FLOAT;
 }
