@@ -28,6 +28,43 @@ extern int is_typename(const char*);
 "||"            return OR;
 "&&"            return AND;
 
+'([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
+    const char* yy = yytext;
+    int val = 0;
+
+    if (yy[1] != '\\') {
+        val = yy[1];
+    } else if (yy[2] == 'x') {
+        val = (int)strtol(yy + 3, NULL, 16);
+    } else if (yy[2] == 'u') {
+        char buf[5] = { yy[3], yy[4], yy[5], yy[6], 0 };
+        val = (int)strtol(buf, NULL, 16);
+    } else {
+        switch (yy[2]) {
+            case 'n': val = '\n'; break;
+            case 'r': val = '\r'; break;
+            case 't': val = '\t'; break;
+            case 'b': val = '\b'; break;
+            case 'f': val = '\f'; break;
+            case 'a': val = '\a'; break;
+            case 'v': val = '\v'; break;
+            case '\\': val = '\\'; break;
+            case '\'': val = '\''; break;
+            case '\"': val = '\"'; break;
+            case '?': val = '\?'; break;
+            default: val = yy[2]; break;
+        }
+    }
+
+    yylval.intval = val;
+    return INTEGER;
+}
+
+\"([^\"\\]|\\.)*\" {
+    yylval.str = strdup(yytext);
+    return STRING;
+}
+
 [0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? {
     char* clean = malloc(strlen(yytext) + 1);
     char* dst = clean;

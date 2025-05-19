@@ -47,7 +47,7 @@ int is_typename(const char* id) {
     int   intval;
 }
 
-%token <str> IDENTIFIER TYPENAME
+%token <str> STRING IDENTIFIER TYPENAME
 %token <intval> INTEGER
 %token <dval> FLOAT
 %token IF ELSE WHILE FOR RETURN TYPE
@@ -199,6 +199,8 @@ expr:
   | expr '%' expr
   | IDENTIFIER ASSIGN expr
   | '-' expr %prec UMINUS
+  | '*' expr %prec UMINUS
+  | '&' expr %prec UMINUS
   | primary_expr
   ;
 

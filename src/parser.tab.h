@@ -54,26 +54,27 @@ extern int yydebug;
     YYEOF = 0,                     /* "end of file"  */
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
-    IDENTIFIER = 258,              /* IDENTIFIER  */
-    TYPENAME = 259,                /* TYPENAME  */
-    INTEGER = 260,                 /* INTEGER  */
-    FLOAT = 261,                   /* FLOAT  */
-    IF = 262,                      /* IF  */
-    ELSE = 263,                    /* ELSE  */
-    WHILE = 264,                   /* WHILE  */
-    FOR = 265,                     /* FOR  */
-    RETURN = 266,                  /* RETURN  */
-    TYPE = 267,                    /* TYPE  */
-    ASSIGN = 268,                  /* ASSIGN  */
-    EQ = 269,                      /* EQ  */
-    NE = 270,                      /* NE  */
-    LE = 271,                      /* LE  */
-    GE = 272,                      /* GE  */
-    LSHIFT = 273,                  /* LSHIFT  */
-    RSHIFT = 274,                  /* RSHIFT  */
-    OR = 275,                      /* OR  */
-    AND = 276,                     /* AND  */
-    UMINUS = 277                   /* UMINUS  */
+    STRING = 258,                  /* STRING  */
+    IDENTIFIER = 259,              /* IDENTIFIER  */
+    TYPENAME = 260,                /* TYPENAME  */
+    INTEGER = 261,                 /* INTEGER  */
+    FLOAT = 262,                   /* FLOAT  */
+    IF = 263,                      /* IF  */
+    ELSE = 264,                    /* ELSE  */
+    WHILE = 265,                   /* WHILE  */
+    FOR = 266,                     /* FOR  */
+    RETURN = 267,                  /* RETURN  */
+    TYPE = 268,                    /* TYPE  */
+    ASSIGN = 269,                  /* ASSIGN  */
+    EQ = 270,                      /* EQ  */
+    NE = 271,                      /* NE  */
+    LE = 272,                      /* LE  */
+    GE = 273,                      /* GE  */
+    LSHIFT = 274,                  /* LSHIFT  */
+    RSHIFT = 275,                  /* RSHIFT  */
+    OR = 276,                      /* OR  */
+    AND = 277,                     /* AND  */
+    UMINUS = 278                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -88,7 +89,7 @@ union YYSTYPE
     double dval;
     int   intval;
 
-#line 92 "parser.tab.h"
+#line 93 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
