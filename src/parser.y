@@ -187,64 +187,106 @@ opt_expr:
   | expr
   ;
 
-expr:
-    expr OR expr
-  | expr AND expr
-  | expr '|' expr
-  | expr '^' expr
-  | expr '&' expr
-  | expr EQ expr
-  | expr NE expr
-  | expr '<' expr
-  | expr '>' expr
-  | expr LE expr
-  | expr GE expr
-  | expr LSHIFT expr
-  | expr RSHIFT expr
-  | expr '+' expr
-  | expr '-' expr
-  | expr '*' expr
-  | expr '/' expr
-  | expr '%' expr
-  | IDENTIFIER ASSIGN expr
-  | '-' expr %prec UMINUS
-  | '*' expr %prec UINDIRECT
-  | '&' lvalue %prec UADDR
-  | INC simple_lvalue %prec UINC
-  | DEC simple_lvalue %prec UDEC
-  | simple_lvalue INC %prec POSTINC
-  | simple_lvalue DEC %prec POSTDEC
-  | primary_expr
+
+expr: assignment_expr ;
+
+assignment_expr:
+    logical_or_expr
+  | assignable ASSIGN assignment_expr
   ;
 
-lvalue:
+assignable:
     IDENTIFIER
-  | IDENTIFIER '[' expr ']'
-  | '*' expr %prec UINDIRECT
+  | postfix_expr '[' expr ']'
+  | '*' unary_expr
   ;
 
-simple_lvalue:
-    IDENTIFIER
-  | IDENTIFIER '[' expr ']'
-  | '*' simple_lvalue %prec UINDIRECT
+logical_or_expr:
+    logical_and_expr
+  | logical_or_expr OR logical_and_expr
+  ;
+
+logical_and_expr:
+    bitwise_or_expr
+  | logical_and_expr AND bitwise_or_expr
+  ;
+
+bitwise_or_expr:
+    bitwise_xor_expr
+  | bitwise_or_expr '|' bitwise_xor_expr
+  ;
+
+bitwise_xor_expr:
+    bitwise_and_expr
+  | bitwise_xor_expr '^' bitwise_and_expr
+  ;
+
+bitwise_and_expr:
+    equality_expr
+  | bitwise_and_expr '&' equality_expr
+  ;
+
+equality_expr:
+    relational_expr
+  | equality_expr EQ relational_expr
+  | equality_expr NE relational_expr
+  ;
+
+relational_expr:
+    shift_expr
+  | relational_expr '<' shift_expr
+  | relational_expr '>' shift_expr
+  | relational_expr LE shift_expr
+  | relational_expr GE shift_expr
+  ;
+
+shift_expr:
+    additive_expr
+  | shift_expr LSHIFT additive_expr
+  | shift_expr RSHIFT additive_expr
+  ;
+
+additive_expr:
+    multiplicative_expr
+  | additive_expr '+' multiplicative_expr
+  | additive_expr '-' multiplicative_expr
+  ;
+
+multiplicative_expr:
+    unary_expr
+  | multiplicative_expr '*' unary_expr
+  | multiplicative_expr '/' unary_expr
+  | multiplicative_expr '%' unary_expr
+  ;
+
+unary_expr:
+    postfix_expr
+  | '-' unary_expr
+  | '&' unary_expr
+  | '*' unary_expr
+  | INC unary_expr
+  | DEC unary_expr
+  ;
+
+postfix_expr:
+    primary_expr
+  | postfix_expr INC
+  | postfix_expr DEC
+  | postfix_expr '[' expr ']'
+  | IDENTIFIER '(' arg_list ')'
   ;
 
 primary_expr:
     IDENTIFIER
   | INTEGER opt_annotation
   | FLOAT opt_annotation
-  | func_call
-  | IDENTIFIER '[' expr ']'
+  | STRING
   | '(' expr ')'
   ;
 
 opt_annotation:
     /* empty */
   | '#' type_name
-  ;
-
-func_call:
-    IDENTIFIER '(' arg_list ')'
   ;
 
 arg_list:
@@ -262,4 +304,5 @@ expr_args:
 void yyerror(const char *s) {
     fprintf(stderr, "Line %d: %s\n", lineno, s);
 }
+
 
