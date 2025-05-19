@@ -9,6 +9,8 @@
 extern int is_typename(const char*);
 %}
 
+%option noinput nounput
+
 %%
 
 ":="            return ASSIGN;

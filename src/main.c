@@ -20,9 +20,9 @@ int main(int argc, char** argv) {
     }
 
     // Register built-in types
-    register_typename("int", 4);
+    register_typename("int", 2);
     register_typename("char", 1);
-    register_typename("void", 0);  // If supported
+    register_typename("void", 0);
 
     printf("Parsing...\n");
     if (yyparse() == 0) {
