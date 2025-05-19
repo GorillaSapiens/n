@@ -6,8 +6,8 @@ TARGET = parser
 
 all: $(TARGET)
 
-$(TARGET): parser.tab.c lex.yy.c
-	$(CC) $(CFLAGS) -o $(TARGET) parser.tab.c lex.yy.c -lfl
+$(TARGET): main.c parser.tab.c lex.yy.c
+	$(CC) $(CFLAGS) -o $(TARGET) main.c parser.tab.c lex.yy.c -lfl
 
 parser.tab.c parser.tab.h: parser.y
 	$(YACC) -d parser.y
