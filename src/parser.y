@@ -6,7 +6,7 @@ void yyerror(const char *s);
 int yylex(void);
 %}
 
-%token IF ELSE WHILE FOR INT IDENTIFIER NUMBER
+%token IF ELSE WHILE FOR RETURN INT IDENTIFIER NUMBER
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 
 %left OR
@@ -29,7 +29,22 @@ program:
   ;
 
 program_item:
-    statement
+    function_decl
+  | statement
+  ;
+
+function_decl:
+    INT IDENTIFIER '(' param_list ')' block
+  ;
+
+param_list:
+    /* empty */
+  | param_decls
+  ;
+
+param_decls:
+    INT IDENTIFIER
+  | param_decls ',' INT IDENTIFIER
   ;
 
 statement:
@@ -44,6 +59,7 @@ matched_stmt:
   | block
   | decl_stmt
   | expr_stmt
+  | RETURN opt_expr ';'
   ;
 
 unmatched_stmt:
@@ -97,10 +113,21 @@ expr:
   | expr '/' expr
   | expr '%' expr
   | IDENTIFIER '=' expr
+  | IDENTIFIER '(' arg_list ')'       // function call
   | '-' expr %prec UMINUS
   | '(' expr ')'
   | IDENTIFIER
   | NUMBER
+  ;
+
+arg_list:
+    /* empty */
+  | expr_args
+  ;
+
+expr_args:
+    expr
+  | expr_args ',' expr
   ;
 
 %%
