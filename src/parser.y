@@ -204,11 +204,16 @@ expr:
 
 primary_expr:
     IDENTIFIER
-  | INTEGER
-  | FLOAT
+  | INTEGER opt_annotation
+  | FLOAT opt_annotation
   | func_call
   | IDENTIFIER '[' expr ']'
   | '(' expr ')'
+  ;
+
+opt_annotation:
+    /* empty */
+  | '#' type_name
   ;
 
 func_call:
