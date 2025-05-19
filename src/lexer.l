@@ -38,6 +38,9 @@ int lineno = 1;
 "||"            return OR;
 "&&"            return AND;
 
+"++"            return INC;
+"--"            return DEC;
+
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
     const char* yy = yytext;
     int val = 0;

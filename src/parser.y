@@ -57,6 +57,7 @@ extern int lineno;
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 %token OPERATOR
+%token INC DEC
 
 %left OR
 %left AND
@@ -69,6 +70,8 @@ extern int lineno;
 %left '+' '-'
 %left '*' '/' '%'
 %right UMINUS
+%right UINC UDEC   // unary (++x, --x)
+%left POSTINC POSTDEC   // post (x++, x--)
 %right ASSIGN
 
 %type <str> type_name
@@ -206,8 +209,24 @@ expr:
   | IDENTIFIER ASSIGN expr
   | '-' expr %prec UMINUS
   | '*' expr %prec UMINUS
-  | '&' expr %prec UMINUS
+  | '&' lvalue %prec UMINUS
+  | INC simple_lvalue %prec UINC
+  | DEC simple_lvalue %prec UDEC
+  | simple_lvalue INC %prec POSTINC
+  | simple_lvalue DEC %prec POSTDEC
   | primary_expr
+  ;
+
+lvalue:
+    IDENTIFIER
+  | IDENTIFIER '[' expr ']'
+  | '*' expr
+  ;
+
+simple_lvalue:
+    IDENTIFIER
+  | IDENTIFIER '[' expr ']'
+  | '*' simple_lvalue
   ;
 
 primary_expr:
