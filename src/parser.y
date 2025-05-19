@@ -69,9 +69,9 @@ extern int lineno;
 %left LSHIFT RSHIFT
 %left '+' '-'
 %left '*' '/' '%'
-%right UMINUS
-%right UINC UDEC   // unary (++x, --x)
+%right UADDR UINDIRECT
 %left POSTINC POSTDEC   // post (x++, x--)
+%right UMINUS UINC UDEC
 %right ASSIGN
 
 %type <str> type_name
@@ -208,8 +208,8 @@ expr:
   | expr '%' expr
   | IDENTIFIER ASSIGN expr
   | '-' expr %prec UMINUS
-  | '*' expr %prec UMINUS
-  | '&' lvalue %prec UMINUS
+  | '*' expr %prec UINDIRECT
+  | '&' lvalue %prec UADDR
   | INC simple_lvalue %prec UINC
   | DEC simple_lvalue %prec UDEC
   | simple_lvalue INC %prec POSTINC
@@ -220,13 +220,13 @@ expr:
 lvalue:
     IDENTIFIER
   | IDENTIFIER '[' expr ']'
-  | '*' expr
+  | '*' expr %prec UINDIRECT
   ;
 
 simple_lvalue:
     IDENTIFIER
   | IDENTIFIER '[' expr ']'
-  | '*' simple_lvalue
+  | '*' simple_lvalue %prec UINDIRECT
   ;
 
 primary_expr:
