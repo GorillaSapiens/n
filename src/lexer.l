@@ -1,34 +1,44 @@
 %{
-#include "parser.tab.h"  // only if you're using yacc/bison and need token definitions
+#include "parser.tab.h"
+#include <string.h>
+#include <stdlib.h>
+
+// External type recognition
+extern int is_typename(const char*);
 %}
 
 %%
 
-":="        return ASSIGN;
-"type"      return TYPE;
-"int"       return INT;
-"if"        return IF;
-"else"      return ELSE;
-"while"     return WHILE;
-"for"       return FOR;
-"return"    return RETURN;
+":="            return ASSIGN;
+"type"          return TYPE;
+"if"            return IF;
+"else"          return ELSE;
+"while"         return WHILE;
+"for"           return FOR;
+"return"        return RETURN;
 
-"=="        return EQ;
-"!="        return NE;
-"<="        return LE;
-">="        return GE;
-"<<"        return LSHIFT;
-">>"        return RSHIFT;
-"||"        return OR;
-"&&"        return AND;
+"=="            return EQ;
+"!="            return NE;
+"<="            return LE;
+">="            return GE;
+"<<"            return LSHIFT;
+">>"            return RSHIFT;
+"||"            return OR;
+"&&"            return AND;
 
-[a-zA-Z_][a-zA-Z0-9_]*  return IDENTIFIER;
-[0-9]+     return NUMBER;
-[ \t\r\n]+ ; // skip whitespace
-.          return yytext[0];
+[0-9]+          { yylval.intval = atoi(yytext); return NUMBER; }
 
+[a-zA-Z_][a-zA-Z0-9_]* {
+                    if (is_typename(yytext)) return TYPENAME;
+                    yylval.str = strdup(yytext);
+                    return IDENTIFIER;
+                 }
 
+[ \t\r\n]+      ;   // skip whitespace
+.               return yytext[0];  // return single-character tokens
 
 %%
 
-int yywrap() { return 1; }
+int yywrap(void) {
+    return 1;
+}

@@ -1,12 +1,54 @@
+/* ---------- parser.y ---------- */
 %{
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+extern int yylex();
 void yyerror(const char *s);
-int yylex(void);
+
+// Type table
+#define MAXTYPES 100
+
+typedef struct {
+    char* name;
+    int size;
+} TypeEntry;
+
+TypeEntry typetable[MAXTYPES];
+int typecount = 0;
+
+void register_typename(const char* id, int size) {
+    for (int i = 0; i < typecount; i++) {
+        if (strcmp(typetable[i].name, id) == 0) {
+            typetable[i].size = size;
+            return;
+        }
+    }
+    if (typecount < MAXTYPES) {
+        typetable[typecount].name = strdup(id);
+        typetable[typecount].size = size;
+        typecount++;
+    }
+}
+
+int is_typename(const char* id) {
+    for (int i = 0; i < typecount; i++) {
+        if (strcmp(typetable[i].name, id) == 0)
+            return 1;
+    }
+    return 0;
+}
 %}
 
-%token IF ELSE WHILE FOR RETURN INT TYPE IDENTIFIER NUMBER
+%union {
+    char* str;
+    int   intval;
+}
+
+%token <str> IDENTIFIER TYPENAME
+%token <intval> NUMBER
+%token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 
@@ -23,6 +65,8 @@ int yylex(void);
 %right UMINUS
 %right ASSIGN
 
+%type <str> type_name
+
 %%
 
 program:
@@ -37,11 +81,13 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '(' NUMBER ')' ';'
+    TYPE IDENTIFIER '(' NUMBER ')' ';' {
+        register_typename($2, $4);
+    }
   ;
 
 function_decl:
-    INT IDENTIFIER '(' param_list ')' block
+    type_name IDENTIFIER '(' param_list ')' block
   ;
 
 param_list:
@@ -50,8 +96,12 @@ param_list:
   ;
 
 param_decls:
-    INT IDENTIFIER
-  | param_decls ',' INT IDENTIFIER
+    type_name IDENTIFIER
+  | param_decls ',' type_name IDENTIFIER
+  ;
+
+type_name:
+    TYPENAME
   ;
 
 top_level_stmt:
@@ -92,8 +142,8 @@ unmatched_stmt:
   ;
 
 decl_stmt:
-    INT IDENTIFIER ';'
-  | INT IDENTIFIER ASSIGN expr ';'
+    type_name IDENTIFIER ';'
+  | type_name IDENTIFIER ASSIGN expr ';'
   ;
 
 expr_stmt:
@@ -156,3 +206,4 @@ expr_args:
 void yyerror(const char *s) {
     fprintf(stderr, "Error: %s\n", s);
 }
+
