@@ -3,6 +3,7 @@
 #include "parser.tab.h"
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 // External type recognition
 extern int is_typename(const char*);
@@ -27,6 +28,30 @@ extern int is_typename(const char*);
 "||"            return OR;
 "&&"            return AND;
 
+0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+([fFlL])? {
+    char* clean = malloc(strlen(yytext) + 1);
+    char* dst = clean;
+    for (char* src = yytext; *src; ++src) {
+        if (*src != '_') *dst++ = *src;
+    }
+    *dst = '\0';
+    yylval.dval = atof(clean);
+    free(clean);
+    return FLOAT;
+}
+
+[0-9_]*\.?[0-9_]+([eE][+-]?[0-9_]+)?([fFlL])? {
+    char* clean = malloc(strlen(yytext) + 1);
+    char* dst = clean;
+    for (char* src = yytext; *src; ++src) {
+        if (*src != '_') *dst++ = *src;
+    }
+    *dst = '\0';
+    yylval.dval = atof(clean);
+    free(clean);
+    return FLOAT;
+}
+
 0[xX][0-9a-fA-F_]+ {
     char* raw = yytext + 2;
     char* clean = malloc(strlen(raw) + 1);
@@ -37,7 +62,7 @@ extern int is_typename(const char*);
     *dst = '\0';
     yylval.intval = (int)strtol(clean, NULL, 16);
     free(clean);
-    return NUMBER;
+    return FLOAT;
 }
 
 0[bB][01_]+ {
@@ -52,12 +77,19 @@ extern int is_typename(const char*);
     }
     free(clean);
     yylval.intval = val;
-    return NUMBER;
+    return FLOAT;
 }
 
 0[0-7_]+ {
-    yylval.intval = (int)strtol(yytext, NULL, 8);
-    return NUMBER;
+    char* clean = strdup(yytext);
+    char* dst = clean;
+    for (char* src = clean; *src; ++src) {
+        if (*src != '_') *dst++ = *src;
+    }
+    *dst = '\0';
+    yylval.intval = (int)strtol(clean, NULL, 8);
+    free(clean);
+    return FLOAT;
 }
 
 [0-9_]+ {
@@ -69,7 +101,7 @@ extern int is_typename(const char*);
     *dst = '\0';
     yylval.intval = atoi(clean);
     free(clean);
-    return NUMBER;
+    return FLOAT;
 }
 
 [a-zA-Z_][a-zA-Z0-9_]* {

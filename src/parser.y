@@ -43,11 +43,13 @@ int is_typename(const char* id) {
 
 %union {
     char* str;
+    double dval;
     int   intval;
 }
 
 %token <str> IDENTIFIER TYPENAME
 %token <intval> NUMBER
+%token <dval> FLOAT
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND

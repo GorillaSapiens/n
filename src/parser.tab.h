@@ -57,22 +57,23 @@ extern int yydebug;
     IDENTIFIER = 258,              /* IDENTIFIER  */
     TYPENAME = 259,                /* TYPENAME  */
     NUMBER = 260,                  /* NUMBER  */
-    IF = 261,                      /* IF  */
-    ELSE = 262,                    /* ELSE  */
-    WHILE = 263,                   /* WHILE  */
-    FOR = 264,                     /* FOR  */
-    RETURN = 265,                  /* RETURN  */
-    TYPE = 266,                    /* TYPE  */
-    ASSIGN = 267,                  /* ASSIGN  */
-    EQ = 268,                      /* EQ  */
-    NE = 269,                      /* NE  */
-    LE = 270,                      /* LE  */
-    GE = 271,                      /* GE  */
-    LSHIFT = 272,                  /* LSHIFT  */
-    RSHIFT = 273,                  /* RSHIFT  */
-    OR = 274,                      /* OR  */
-    AND = 275,                     /* AND  */
-    UMINUS = 276                   /* UMINUS  */
+    FLOAT = 261,                   /* FLOAT  */
+    IF = 262,                      /* IF  */
+    ELSE = 263,                    /* ELSE  */
+    WHILE = 264,                   /* WHILE  */
+    FOR = 265,                     /* FOR  */
+    RETURN = 266,                  /* RETURN  */
+    TYPE = 267,                    /* TYPE  */
+    ASSIGN = 268,                  /* ASSIGN  */
+    EQ = 269,                      /* EQ  */
+    NE = 270,                      /* NE  */
+    LE = 271,                      /* LE  */
+    GE = 272,                      /* GE  */
+    LSHIFT = 273,                  /* LSHIFT  */
+    RSHIFT = 274,                  /* RSHIFT  */
+    OR = 275,                      /* OR  */
+    AND = 276,                     /* AND  */
+    UMINUS = 277                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -84,9 +85,10 @@ union YYSTYPE
 #line 44 "parser.y"
 
     char* str;
+    double dval;
     int   intval;
 
-#line 90 "parser.tab.h"
+#line 92 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;
