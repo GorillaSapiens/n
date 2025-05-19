@@ -56,7 +56,7 @@ extern int yydebug;
     YYUNDEF = 257,                 /* "invalid token"  */
     IDENTIFIER = 258,              /* IDENTIFIER  */
     TYPENAME = 259,                /* TYPENAME  */
-    NUMBER = 260,                  /* NUMBER  */
+    INTEGER = 260,                 /* INTEGER  */
     FLOAT = 261,                   /* FLOAT  */
     IF = 262,                      /* IF  */
     ELSE = 263,                    /* ELSE  */

@@ -48,7 +48,7 @@ int is_typename(const char* id) {
 }
 
 %token <str> IDENTIFIER TYPENAME
-%token <intval> NUMBER
+%token <intval> INTEGER
 %token <dval> FLOAT
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
@@ -83,7 +83,7 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '(' NUMBER ')' ';' {
+    TYPE IDENTIFIER '(' INTEGER ')' ';' {
         register_typename($2, $4);
     }
   ;
@@ -145,7 +145,7 @@ unmatched_stmt:
 
 opt_address:
     /* empty */
-  | '@' NUMBER
+  | '@' INTEGER
   ;
 
 decl_stmt:
@@ -204,7 +204,8 @@ expr:
 
 primary_expr:
     IDENTIFIER
-  | NUMBER
+  | INTEGER
+  | FLOAT
   | func_call
   | IDENTIFIER '[' expr ']'
   | '(' expr ')'

@@ -28,7 +28,7 @@ extern int is_typename(const char*);
 "||"            return OR;
 "&&"            return AND;
 
-0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+([fFlL])? {
+[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)?([fFlL])? {
     char* clean = malloc(strlen(yytext) + 1);
     char* dst = clean;
     for (char* src = yytext; *src; ++src) {
@@ -40,7 +40,7 @@ extern int is_typename(const char*);
     return FLOAT;
 }
 
-[0-9_]*\.?[0-9_]+([eE][+-]?[0-9_]+)?([fFlL])? {
+0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+([fFlL])? {
     char* clean = malloc(strlen(yytext) + 1);
     char* dst = clean;
     for (char* src = yytext; *src; ++src) {
@@ -62,7 +62,7 @@ extern int is_typename(const char*);
     *dst = '\0';
     yylval.intval = (int)strtol(clean, NULL, 16);
     free(clean);
-    return FLOAT;
+    return INTEGER;
 }
 
 0[bB][01_]+ {
@@ -77,7 +77,7 @@ extern int is_typename(const char*);
     }
     free(clean);
     yylval.intval = val;
-    return FLOAT;
+    return INTEGER;
 }
 
 0[0-7_]+ {
@@ -89,7 +89,7 @@ extern int is_typename(const char*);
     *dst = '\0';
     yylval.intval = (int)strtol(clean, NULL, 8);
     free(clean);
-    return FLOAT;
+    return INTEGER;
 }
 
 [0-9_]+ {
@@ -101,7 +101,7 @@ extern int is_typename(const char*);
     *dst = '\0';
     yylval.intval = atoi(clean);
     free(clean);
-    return FLOAT;
+    return INTEGER;
 }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
