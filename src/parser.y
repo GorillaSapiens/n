@@ -6,8 +6,8 @@ void yyerror(const char *s);
 int yylex(void);
 %}
 
-%token IF ELSE IDENTIFIER NUMBER
-%token INT
+%token IF ELSE WHILE FOR INT IDENTIFIER NUMBER
+%token EQ NE LE GE LSHIFT RSHIFT OR AND
 
 %left OR
 %left AND
@@ -24,8 +24,12 @@ int yylex(void);
 %%
 
 program:
-    /* empty */
-  | program statement
+    program_item
+  | program program_item
+  ;
+
+program_item:
+    statement
   ;
 
 statement:
@@ -35,13 +39,18 @@ statement:
 
 matched_stmt:
     IF '(' expr ')' matched_stmt ELSE matched_stmt
-  | other_stmt
+  | WHILE '(' expr ')' matched_stmt
+  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' matched_stmt
   | block
+  | decl_stmt
+  | expr_stmt
   ;
 
 unmatched_stmt:
     IF '(' expr ')' statement
   | IF '(' expr ')' matched_stmt ELSE unmatched_stmt
+  | WHILE '(' expr ')' unmatched_stmt
+  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' unmatched_stmt
   ;
 
 block:
@@ -53,10 +62,19 @@ statement_list:
   | statement_list statement
   ;
 
-other_stmt:
+decl_stmt:
+    INT IDENTIFIER ';'
+  | INT IDENTIFIER '=' expr ';'
+  ;
+
+expr_stmt:
     expr ';'
-  | IDENTIFIER '=' expr ';'
-  | INT IDENTIFIER ';'
+  | ';'
+  ;
+
+opt_expr:
+    /* empty */
+  | expr
   ;
 
 expr:
@@ -78,6 +96,7 @@ expr:
   | expr '*' expr
   | expr '/' expr
   | expr '%' expr
+  | IDENTIFIER '=' expr
   | '-' expr %prec UMINUS
   | '(' expr ')'
   | IDENTIFIER

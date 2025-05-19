@@ -56,18 +56,20 @@ extern int yydebug;
     YYUNDEF = 257,                 /* "invalid token"  */
     IF = 258,                      /* IF  */
     ELSE = 259,                    /* ELSE  */
-    IDENTIFIER = 260,              /* IDENTIFIER  */
-    NUMBER = 261,                  /* NUMBER  */
+    WHILE = 260,                   /* WHILE  */
+    FOR = 261,                     /* FOR  */
     INT = 262,                     /* INT  */
-    OR = 263,                      /* OR  */
-    AND = 264,                     /* AND  */
+    IDENTIFIER = 263,              /* IDENTIFIER  */
+    NUMBER = 264,                  /* NUMBER  */
     EQ = 265,                      /* EQ  */
     NE = 266,                      /* NE  */
     LE = 267,                      /* LE  */
     GE = 268,                      /* GE  */
     LSHIFT = 269,                  /* LSHIFT  */
     RSHIFT = 270,                  /* RSHIFT  */
-    UMINUS = 271                   /* UMINUS  */
+    OR = 271,                      /* OR  */
+    AND = 272,                     /* AND  */
+    UMINUS = 273                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
