@@ -218,6 +218,10 @@ struct_decl:
     struct_fields '}' ';' {
         register_struct($2, $5, 0);
     }
+  | STRUCT TYPENAME '{' {
+        // always fails, but we want the error message
+        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
+    }
   ;
 
 union_decl:
@@ -226,6 +230,10 @@ union_decl:
     }
     struct_fields '}' ';' {
         register_struct($2, $5, 0);
+    }
+  | UNION TYPENAME '{' {
+        // always fails, but we want the error message
+        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
   ;
 
