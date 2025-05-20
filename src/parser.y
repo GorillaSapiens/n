@@ -68,18 +68,20 @@ int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
 }
 
 void print_info(int n) {
+#ifdef YYDEBUG
    char *names[] = { "type", "struct", "union" };
    printf("Registered %s '%s' (size %d):\n",
-      names[type_table[n].kind], type_table[n].name, type_table[n].size);
+         names[type_table[n].kind], type_table[n].name, type_table[n].size);
    if (type_table[n].fields) {
-   for (Field* f = type_table[n].fields->head; f; f = f->next) {
-      printf("  field: %s %s%s\n", f->type,
-            (f->pointer_depth > 0) ? "*" : "", f->name);
-   }
+      for (Field* f = type_table[n].fields->head; f; f = f->next) {
+         printf("  field: %s %s%s\n", f->type,
+               (f->pointer_depth > 0) ? "*" : "", f->name);
+      }
    }
    else {
       printf("  no field table\n");
    }
+#endif
 }
 
 int register_typename(const char* name, int size, FieldList* fields, int kind) {
@@ -204,7 +206,7 @@ program:
 program_item:
     type_decl
   | function_decl
-  | top_level_stmt
+  | decl_stmt
   | struct_decl
   | union_decl
   ;
@@ -298,14 +300,6 @@ param_decls:
 
 type_name:
     TYPENAME
-  ;
-
-top_level_stmt:
-    block
-  | decl_stmt
-  | expr_stmt
-  | GOTO IDENTIFIER ';'
-  | IDENTIFIER ':' statement
   ;
 
 block:

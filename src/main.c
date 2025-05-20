@@ -20,7 +20,9 @@ int main(int argc, char** argv) {
         }
     }
 
+#ifdef YYDEBUG
     yydebug = 1;
+#endif
 
     // Register built-in types
     register_typename_simple("*", 2);

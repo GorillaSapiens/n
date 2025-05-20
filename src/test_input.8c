@@ -22,50 +22,56 @@ Value v := Value { i := 42; };
 Value { f := 3.14; };  // anonymous union literal
 Point { x := -1; y := 2; };  // anonymous struct literal
 
+void main(void) {
 main:
-for (i := 0; i < 10; i := i + 1) {
-    if (i == 5)
-        break main;
-    else
-        continue;
-}
+   for (i := 0; i < 10; i := i + 1) {
+      if (i == 5) {
+         break main;
+      }
+      else {
+         continue;
+      }
+   }
 
-do {
-    // do-while loop with label
-    continue main;
-} while (i < 5);
+   do {
+      // do-while loop with label
+      continue main;
+   } while (i < 5);
 
-switch (i) {
-    case 1:
-    case 2:
-        i := 100;
-        break;
-    default:
-        break;
-}
+   switch (i) {
+      case 1:
+      case 2: 
+i := 100;
+   break;
+      default:
+            break;
+   }
 
 label1:
-while (i < 20) {
-    i := i + 1;
-    if (i % 2 == 0)
-        continue label1;
-    if (i > 15)
-        break label1;
-}
+   while (i < 20) {
+i := i + 1;
+   if (i % 2 == 0) {
+      continue label1;
+   }
+   if (i > 15) {
+      break label1;
+   }
+   }
 
-goto label1;
+   goto label1;
 
-// Function call and assignment
+   // Function call and assignment
 foo := bar(1, 2, 3);
 
-// Flags as standalone tokens (ignored in expr)
+     // Flags as standalone tokens (ignored in expr)
 #debug_flag
 
-// Unary operators
+     // Unary operators
 x := -1;
 y := !x;
 z := ~x;
 
-// Binary and ternary expressions
+   // Binary and ternary expressions
 a := x + y * z - (x >> 2);
 b := x ? y : z;
+}
