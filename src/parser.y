@@ -441,6 +441,8 @@ multiplicative_expr:
 
 unary_expr:
     postfix_expr
+  | '!' unary_expr
+  | '~' unary_expr
   | '-' unary_expr
   | '&' unary_expr
   | '*' unary_expr
