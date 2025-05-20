@@ -305,7 +305,7 @@ top_level_stmt:
   | decl_stmt
   | expr_stmt
   | GOTO IDENTIFIER ';'
-  | IDENTIFIER ':' matched_stmt
+  | IDENTIFIER ':' statement
   ;
 
 block:
@@ -318,33 +318,22 @@ statement_list:
   ;
 
 statement:
-    matched_stmt
-  | unmatched_stmt
-  ;
-
-matched_stmt:
-    IF '(' expr ')' matched_stmt ELSE matched_stmt
-  | WHILE '(' expr ')' matched_stmt
-  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' matched_stmt
-  | BREAK IDENTIFIER ';'
-  | CONTINUE IDENTIFIER ';'
-  | DO matched_stmt WHILE '(' expr ')' ';'
-  | BREAK ';'
-  | CONTINUE ';'
-  | SWITCH '(' expr ')' '{' case_section '}'
-  | block
+    block
   | decl_stmt
   | expr_stmt
   | RETURN opt_expr ';'
   | GOTO IDENTIFIER ';'
-  | IDENTIFIER ':' matched_stmt
-  ;
-
-unmatched_stmt:
-    IF '(' expr ')' statement
-  | IF '(' expr ')' matched_stmt ELSE unmatched_stmt
-  | WHILE '(' expr ')' unmatched_stmt
-  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' unmatched_stmt
+  | BREAK ';'
+  | BREAK IDENTIFIER ';'
+  | CONTINUE ';'
+  | CONTINUE IDENTIFIER ';'
+  | SWITCH '(' expr ')' '{' case_section '}'
+  | IF '(' expr ')' block ELSE block
+  | IF '(' expr ')' block
+  | WHILE '(' expr ')' block
+  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' block
+  | DO block WHILE '(' expr ')' ';'
+  | IDENTIFIER ':' statement
   ;
 
 opt_address:

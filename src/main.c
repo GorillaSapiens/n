@@ -8,6 +8,7 @@ extern void register_typename_simple(const char* name, int size);
 
 // Optional: reference to input file
 extern FILE* yyin;
+extern int yydebug;
 
 int main(int argc, char** argv) {
     // Optional: read from file
@@ -18,6 +19,8 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
+
+    yydebug = 1;
 
     // Register built-in types
     register_typename_simple("*", 2);
