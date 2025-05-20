@@ -85,7 +85,10 @@ char yyline[4096];
 ">>="           return RSHIFT_ASSIGN;
 
 
-#[A-Za-z0-9_]+(:[A-Za-z0-9_]+)?  return FLAG;
+#[A-Za-z0-9_]+(:[A-Za-z0-9_]+)? {
+    yylval.str = strdup(yytext);
+    return FLAG;
+}
 
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
     const char* yy = yytext;

@@ -71,9 +71,14 @@ void print_info(int n) {
    char *names[] = { "type", "struct", "union" };
    printf("Registered %s '%s' (size %d):\n",
       names[type_table[n].kind], type_table[n].name, type_table[n].size);
+   if (type_table[n].fields) {
    for (Field* f = type_table[n].fields->head; f; f = f->next) {
       printf("  field: %s %s%s\n", f->type,
             (f->pointer_depth > 0) ? "*" : "", f->name);
+   }
+   }
+   else {
+      printf("  no field table\n");
    }
 }
 
