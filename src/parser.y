@@ -178,9 +178,7 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %type <fieldlist> struct_fields
 %type <field> struct_field
 %type <intval> opt_pointer
-
 %%
-
 program:
     program_item
   | program program_item
@@ -465,6 +463,7 @@ primary_expr:
   | INTEGER opt_annotation
   | FLOAT opt_annotation
   | STRING
+  | struct_literal
   | '(' expr ')'
   ;
 
@@ -483,12 +482,22 @@ expr_args:
   | expr_args ',' expr
   ;
 
-%%
+struct_literal:
+    TYPENAME '{' struct_inits '}'
+  ;
 
+struct_inits:
+    struct_inits ',' struct_init
+  | struct_init
+  ;
+
+struct_init:
+    IDENTIFIER ASSIGN expr
+  ;
+%%
 extern char* yytext;
 
 void yyerror(const char *s) {
     fprintf(stderr, "Syntax error at line %d:%d %s (near '%s')\n", yylineno, yycolumn, s, yytext);
     fprintf(stderr, "%.*s\n", yycolumn, yyline);
 }
-
