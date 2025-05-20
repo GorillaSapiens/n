@@ -8,10 +8,10 @@
 // External type recognition
 extern int is_typename(const char*);
 
-int lineno = 1;
 %}
 
 %option noinput nounput
+%option yylineno
 
 %%
 
@@ -169,13 +169,12 @@ int lineno = 1;
 }
 
 [a-zA-Z_][a-zA-Z0-9_]* {
-    if (is_typename(yytext)) return TYPENAME;
     yylval.str = strdup(yytext);
+    if (is_typename(yytext)) return TYPENAME;
     return IDENTIFIER;
 }
 
-[ \t\r]+                     ;   // skip whitespace
-\n              { lineno++; }
+[ \t\r\n]+                   ;   // skip whitespace
 \/\/[^\n]*                   ;   // skip line comments
 \/\*([^*]|\*+[^*/])*\*+\/    ;   // skip block comments
 

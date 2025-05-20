@@ -1,7 +1,8 @@
 LEX = flex
 YACC = bison
 CC = gcc
-CFLAGS = -Wall -O2
+#CFLAGS = -Wall -O2
+CFLAGS = -Wall -g
 TARGET = 8c
 
 all: $(TARGET)

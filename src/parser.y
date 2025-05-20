@@ -4,8 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "mprintf.h"
+
 extern int yylex();
 void yyerror(const char *s);
+
+extern int yylineno;
 
 /////
 
@@ -34,14 +38,14 @@ static int type_count = 0;
 
 int register_typename(const char* name, int size) {
     if (strcmp(name, "*") == 0 && size <= 0) {
-        fprintf(stderr, "Error: pointer type '*' must have a positive size\n");
+        yyerror(mprintf("Error: pointer type '*' must have a positive size on line %d", yylineno));
         return -1;
     }
 
     for (int i = 0; i < type_count; i++) {
         if (strcmp(type_table[i].name, name) == 0) {
             if (type_table[i].size != -1) {
-                fprintf(stderr, "Error: type '%s' already defined\n", name);
+                yyerror(mprintf("Error: Type '%s' already defined on line %d", name, yylineno));
                 return -1;
             }
             else {
@@ -59,7 +63,7 @@ int register_typename(const char* name, int size) {
         return 0;
     }
     else {
-        fprintf(stderr, "Error: type table full.\n");
+        yyerror(mprintf("Error: type table full on line %d.", yylineno));
         return -1;
     }
     // unreachable
@@ -128,10 +132,6 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
     }
 }
 
-/////
-
-extern int lineno;
-
 %}
 
 %union {
@@ -198,6 +198,10 @@ type_decl:
     }
   | TYPE '*' '(' INTEGER ')' {
         if (register_typename("*", $4) < 0) YYABORT;
+    }
+  | TYPE TYPENAME '(' INTEGER ')' {
+        // always fails, but we want the error message
+        if (register_typename($2, $4) < 0) YYABORT;
     }
   ;
 
@@ -469,7 +473,6 @@ expr_args:
 
 %%
 
-extern int yylineno;
 extern char* yytext;
 
 void yyerror(const char *s) {
