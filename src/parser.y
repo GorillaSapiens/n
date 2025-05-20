@@ -7,6 +7,8 @@
 extern int yylex();
 void yyerror(const char *s);
 
+/////
+
 // Type table
 #define MAXTYPES 100
 
@@ -40,6 +42,35 @@ int is_typename(const char* id) {
     return 0;
 }
 
+void declare_typename(const char* name) {
+    // Add to type table without fields yet
+    printf("Declared typename: %s\n", name);
+    register_typename(name, -1);
+}
+
+/////
+
+typedef struct Field {
+    char* name;
+    char* type;
+    int pointer_depth;
+    struct Field* next;
+} Field;
+
+typedef struct FieldList {
+    Field* head;
+    Field* tail;
+} FieldList;
+
+void register_struct(const char* name, FieldList* fields, int is_union) {
+    printf("Registering %s '%s'\n", is_union ? "union" : "struct", name);
+    for (Field* f = fields->head; f; f = f->next) {
+        printf("  field: %s %s%s\n", f->type, (f->pointer_depth > 0) ? "*" : "", f->name);
+    }
+}
+
+/////
+
 extern int lineno;
 
 %}
@@ -48,6 +79,9 @@ extern int lineno;
     char* str;
     double dval;
     int   intval;
+
+    struct FieldList* fieldlist;
+    struct Field* field;
 }
 
 %token <str> STRING IDENTIFIER TYPENAME
@@ -58,6 +92,7 @@ extern int lineno;
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 %token OPERATOR
 %token INC DEC
+%token STRUCT UNION
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
@@ -79,6 +114,9 @@ extern int lineno;
 %right ASSIGN
 
 %type <str> type_name
+%type <fieldlist> struct_fields
+%type <field> struct_field
+%type <intval> opt_pointer
 
 %%
 
@@ -91,6 +129,8 @@ program_item:
     type_decl
   | function_decl
   | top_level_stmt
+  | struct_decl
+  | union_decl
   ;
 
 type_decl:
@@ -104,6 +144,56 @@ function_decl:
   | type_name IDENTIFIER '(' param_list ')' block
   | type_name OPERATOR '(' param_list ')' block
   ;
+
+struct_decl:
+    STRUCT IDENTIFIER '{' {
+        declare_typename($2);  // Add early to type table
+    }
+    struct_fields '}' ';' {
+        register_struct($2, $5, 0);
+    }
+  ;
+
+union_decl:
+    UNION IDENTIFIER '{' {
+        declare_typename($2);  // Add early to type table
+    }
+    struct_fields '}' ';' {
+        register_struct($2, $5, 0);
+    }
+  ;
+
+
+struct_fields:
+    struct_fields ',' struct_field {
+        $$ = $1;
+        $1->tail->next = $3;
+        $1->tail = $3;
+    }
+  | struct_field {
+        $$ = malloc(sizeof(FieldList));
+        $$->head = $$->tail = $1;
+    }
+  ;
+
+struct_field:
+    type_name opt_pointer IDENTIFIER {
+        Field* f = malloc(sizeof(Field));
+        f->type = strdup($1);
+        f->pointer_depth = $2;
+        f->name = $3;
+        f->next = NULL;
+        $$ = f;
+    }
+  ;
+
+opt_pointer:
+    /* empty */ { $$ = 0; }
+  | '*' opt_pointer { $$ = $2 + 1; }
+  ;
+
+
+
 
 param_list:
     /* empty */
@@ -317,8 +407,10 @@ expr_args:
 
 %%
 
-void yyerror(const char *s) {
-    fprintf(stderr, "Line %d: %s\n", lineno, s);
-}
+extern int yylineno;
+extern char* yytext;
 
+void yyerror(const char *s) {
+    fprintf(stderr, "Syntax error at line %d: %s (near '%s')\n", yylineno, s, yytext);
+}
 

@@ -22,6 +22,8 @@ int lineno = 1;
 "while"         return WHILE;
 "for"           return FOR;
 "return"        return RETURN;
+"struct"        return STRUCT;
+"union"         return UNION;
 
 "operator"[-+*/%=!<>|&^:]+ {
     yylval.str = strdup(yytext);
