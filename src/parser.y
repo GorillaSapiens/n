@@ -154,6 +154,7 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %token OPERATOR
 %token INC DEC ARROW
 %token STRUCT UNION
+%token FLAG
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN

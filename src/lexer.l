@@ -73,6 +73,20 @@ char yyline[4096];
 
 "->"            return ARROW;
 
+"+="            return ADD_ASSIGN;
+"-="            return SUB_ASSIGN;
+"*="            return MUL_ASSIGN;
+"/="            return DIV_ASSIGN;
+"%="            return MOD_ASSIGN;
+"&="            return AND_ASSIGN;
+"|="            return OR_ASSIGN;
+"^="            return XOR_ASSIGN;
+"<<="           return LSHIFT_ASSIGN;
+">>="           return RSHIFT_ASSIGN;
+
+
+#[A-Za-z0-9_]+(:[A-Za-z0-9_]+)?  return FLAG;
+
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
     const char* yy = yytext;
     int val = 0;
@@ -207,18 +221,6 @@ char yyline[4096];
 [ \t\r\n]+                   ;   // skip whitespace
 \/\/[^\n]*                   ;   // skip line comments
 \/\*([^*]|\*+[^*/])*\*+\/    ;   // skip block comments
-
-
-"+="    return ADD_ASSIGN;
-"-="    return SUB_ASSIGN;
-"*="    return MUL_ASSIGN;
-"/="    return DIV_ASSIGN;
-"%="    return MOD_ASSIGN;
-"&="    return AND_ASSIGN;
-"|="    return OR_ASSIGN;
-"^="    return XOR_ASSIGN;
-"<<="   return LSHIFT_ASSIGN;
-">>="   return RSHIFT_ASSIGN;
 
 .               return yytext[0];  // return single-character tokens
 
