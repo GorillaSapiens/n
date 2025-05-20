@@ -32,16 +32,22 @@ typedef struct TypeInfo {
 static TypeInfo type_table[MAX_TYPES];
 static int type_count = 0;
 
-void register_typename(const char* name, int size) {
+int register_typename(const char* name, int size) {
     if (strcmp(name, "*") == 0 && size <= 0) {
         fprintf(stderr, "Error: pointer type '*' must have a positive size\n");
-        return;
+        return -1;
     }
 
     for (int i = 0; i < type_count; i++) {
         if (strcmp(type_table[i].name, name) == 0) {
-            type_table[i].size = size;
-            return;
+            if (type_table[i].size != -1) {
+                fprintf(stderr, "Error: type '%s' already defined\n", name);
+                return -1;
+            }
+            else {
+                type_table[i].size = size;
+                return 0;
+            }
         }
     }
     if (type_count < MAX_TYPES) {
@@ -50,7 +56,13 @@ void register_typename(const char* name, int size) {
         type_table[type_count].is_union = 0;
         type_table[type_count].fields = NULL;
         type_count++;
+        return 0;
     }
+    else {
+        fprintf(stderr, "Error: type table full.\n");
+        return -1;
+    }
+    // unreachable
 }
 
 int is_typename(const char* name) {
@@ -60,10 +72,10 @@ int is_typename(const char* name) {
     return 0;
 }
 
-void declare_typename(const char* name) {
+int declare_typename(const char* name) {
     // Add to type table without fields yet
     printf("Declared typename: %s\n", name);
-    register_typename(name, -1);
+    return register_typename(name, -1);
 }
 
 int get_type_size(const char* type) {
@@ -182,10 +194,10 @@ program_item:
 
 type_decl:
     TYPE IDENTIFIER '(' INTEGER ')' {
-        register_typename($2, $4);
+        if (register_typename($2, $4) < 0) YYABORT;
     }
   | TYPE '*' '(' INTEGER ')' {
-        register_typename("*", $4);
+        if (register_typename("*", $4) < 0) YYABORT;
     }
   ;
 
@@ -197,7 +209,7 @@ function_decl:
 
 struct_decl:
     STRUCT IDENTIFIER '{' {
-        declare_typename($2);  // Add early to type table
+        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
         register_struct($2, $5, 0);
@@ -206,7 +218,7 @@ struct_decl:
 
 union_decl:
     UNION IDENTIFIER '{' {
-        declare_typename($2);  // Add early to type table
+        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
         register_struct($2, $5, 0);
