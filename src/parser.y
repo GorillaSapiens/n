@@ -290,7 +290,6 @@ top_level_stmt:
   | expr_stmt
   | GOTO IDENTIFIER ';'
   | IDENTIFIER ':' matched_stmt
-  | SWITCH '(' expr ')' '{' case_blocks '}'
   ;
 
 block:
@@ -315,10 +314,9 @@ matched_stmt:
   | decl_stmt
   | expr_stmt
   | RETURN opt_expr ';'
-  ;
   | GOTO IDENTIFIER ';'
   | IDENTIFIER ':' matched_stmt
-  | SWITCH '(' expr ')' '{' case_blocks '}'
+  ;
 
 unmatched_stmt:
     IF '(' expr ')' statement
@@ -502,16 +500,8 @@ struct_init:
     IDENTIFIER ASSIGN expr
   ;
 
-case_blocks:
-    case_blocks case_block
-  | case_block
-  ;
-
-case_block:
-    CASE expr ':' statement_list
-  | DEFAULT ':' statement_list
-  ;
 %%
+
 extern char* yytext;
 
 void yyerror(const char *s) {
