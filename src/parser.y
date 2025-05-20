@@ -194,8 +194,10 @@ opt_expr:
 
 expr: assignment_expr ;
 
+
 assignment_expr:
     logical_or_expr
+  | logical_or_expr '?' expr ':' assignment_expr
   | assignable ASSIGN assignment_expr
   | assignable ADD_ASSIGN assignment_expr
   | assignable SUB_ASSIGN assignment_expr
