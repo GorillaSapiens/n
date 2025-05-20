@@ -26,14 +26,14 @@ typedef struct FieldList {
     Field* tail;
 } FieldList;
 
-#define TSU_TYPE   0
-#define TSU_STRUCT 1
-#define TSU_UNION  2
+#define KIND_TYPE   0
+#define KIND_STRUCT 1
+#define KIND_UNION  2
 
 typedef struct TypeInfo {
     const char* name;
     int size;
-    int tsu; // 0 for type, 1 for struct, 2 for union
+    int kind; // 0 for type, 1 for struct, 2 for union
     FieldList* fields;
 } TypeInfo;
 
@@ -70,25 +70,25 @@ int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
 void print_info(int n) {
    char *names[] = { "type", "struct", "union" };
    printf("Registered %s '%s' (size %d):\n",
-      names[type_table[n].tsu], type_table[n].name, type_table[n].size);
+      names[type_table[n].kind], type_table[n].name, type_table[n].size);
    for (Field* f = type_table[n].fields->head; f; f = f->next) {
       printf("  field: %s %s%s\n", f->type,
             (f->pointer_depth > 0) ? "*" : "", f->name);
    }
 }
 
-int register_typename(const char* name, int size, FieldList* fields, int tsu) {
+int register_typename(const char* name, int size, FieldList* fields, int kind) {
    if (strcmp(name, "*") == 0 && size <= 0) {
       yyerror("pointer type '*' must have a size > 0");
       return -1;
    }
 
-   if (tsu != TSU_TYPE) { // struct or union, calculate sizes
+   if (kind != KIND_TYPE) { // struct or union, calculate sizes
       size = 0;
       for (Field* f = fields->head; f; f = f->next) {
          int field_size = get_type_size_with_pointer(f->type, f->pointer_depth);
          if (f->pointer_depth > 0) field_size = sizeof(void*);
-         if (tsu == TSU_UNION) {
+         if (kind == KIND_UNION) {
             if (field_size > size) size = field_size;
          } else {
             size += field_size;
@@ -105,7 +105,7 @@ int register_typename(const char* name, int size, FieldList* fields, int tsu) {
       else {
          type_table[n].size = size;
          type_table[n].fields = fields;
-         type_table[n].tsu = tsu;
+         type_table[n].kind = kind;
          print_info(n);
          return 0;
       }
@@ -114,7 +114,7 @@ int register_typename(const char* name, int size, FieldList* fields, int tsu) {
       type_table[type_count].name = strdup(name);
       type_table[type_count].size = size;
       type_table[type_count].fields = fields;
-      type_table[type_count].tsu = tsu;
+      type_table[type_count].kind = kind;
 
       print_info(type_count);
 
@@ -129,11 +129,11 @@ int register_typename(const char* name, int size, FieldList* fields, int tsu) {
 }
 
 int register_typename_simple(const char* name, int size) {
-   return register_typename(name, size, NULL, TSU_TYPE);
+   return register_typename(name, size, NULL, KIND_TYPE);
 }
 
 int declare_typename(const char* name) {
-    // Add to type table without fields or tsu yet
+    // Add to type table without fields or kind yet
     return register_typename(name, -1, NULL, 0);
 }
 
@@ -204,14 +204,14 @@ program_item:
 
 type_decl:
     TYPE IDENTIFIER '{' INTEGER opt_flags '}' {
-        if (register_typename($2, $4, $5, TSU_TYPE) < 0) YYABORT;
+        if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
     }
   | TYPE '*' '{' INTEGER '}' {
-        if (register_typename("*", $4, NULL, TSU_TYPE) < 0) YYABORT;
+        if (register_typename("*", $4, NULL, KIND_TYPE) < 0) YYABORT;
     }
   | TYPE TYPENAME '{' INTEGER opt_flags '}' {
         // always fails, but we want the error message
-        if (register_typename($2, $4, $5, TSU_TYPE) < 0) YYABORT;
+        if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
     }
   ;
 
@@ -226,7 +226,7 @@ struct_decl:
         if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_typename($2, 0, $5, TSU_STRUCT);
+        register_typename($2, 0, $5, KIND_STRUCT);
     }
   | STRUCT TYPENAME '{' {
         // always fails, but we want the error message
@@ -239,7 +239,7 @@ union_decl:
         if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_typename($2, 0, $5, TSU_UNION);
+        register_typename($2, 0, $5, KIND_UNION);
     }
   | UNION TYPENAME '{' {
         // always fails, but we want the error message
