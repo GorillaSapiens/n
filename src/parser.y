@@ -193,13 +193,13 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '(' INTEGER ')' {
+    TYPE IDENTIFIER '{' INTEGER '}' {
         if (register_typename($2, $4) < 0) YYABORT;
     }
-  | TYPE '*' '(' INTEGER ')' {
+  | TYPE '*' '{' INTEGER '}' {
         if (register_typename("*", $4) < 0) YYABORT;
     }
-  | TYPE TYPENAME '(' INTEGER ')' {
+  | TYPE TYPENAME '{' INTEGER '}' {
         // always fails, but we want the error message
         if (register_typename($2, $4) < 0) YYABORT;
     }
@@ -461,17 +461,10 @@ postfix_expr:
   ;
 
 primary_expr:
-    IDENTIFIER
-  | INTEGER opt_annotation
-  | FLOAT opt_annotation
+    IDENTIFIER  | INTEGER  | FLOAT
   | STRING
   | struct_literal
   | '(' expr ')'
-  ;
-
-opt_annotation:
-    /* empty */
-  | '#' type_name
   ;
 
 arg_list:
@@ -486,6 +479,11 @@ expr_args:
 
 struct_literal:
     TYPENAME '{' struct_inits ';' '}'
+  | TYPENAME '{' FLOAT '}'
+  | TYPENAME '{' '-' FLOAT '}'
+  | TYPENAME '{' INTEGER '}'
+  | TYPENAME '{' '-' INTEGER '}'
+  | TYPENAME '{' STRING '}'
   ;
 
 struct_inits:
