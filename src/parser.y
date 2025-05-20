@@ -178,6 +178,7 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %type <fieldlist> struct_fields
 %type <field> struct_field
 %type <intval> opt_pointer
+%token GOTO SWITCH CASE DEFAULT
 %%
 program:
     program_item
@@ -287,6 +288,9 @@ top_level_stmt:
     block
   | decl_stmt
   | expr_stmt
+  | GOTO IDENTIFIER ';'
+  | IDENTIFIER ':' matched_stmt
+  | SWITCH '(' expr ')' '{' case_blocks '}'
   ;
 
 block:
@@ -312,6 +316,9 @@ matched_stmt:
   | expr_stmt
   | RETURN opt_expr ';'
   ;
+  | GOTO IDENTIFIER ';'
+  | IDENTIFIER ':' matched_stmt
+  | SWITCH '(' expr ')' '{' case_blocks '}'
 
 unmatched_stmt:
     IF '(' expr ')' statement
@@ -493,6 +500,16 @@ struct_inits:
 
 struct_init:
     IDENTIFIER ASSIGN expr
+  ;
+
+case_blocks:
+    case_blocks case_block
+  | case_block
+  ;
+
+case_block:
+    CASE expr ':' statement_list
+  | DEFAULT ':' statement_list
   ;
 %%
 extern char* yytext;
