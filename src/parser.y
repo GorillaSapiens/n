@@ -452,12 +452,8 @@ unary_expr:
 
 postfix_expr:
     primary_expr
-  | postfix_expr '.' IDENTIFIER {
-        // $$ = make_field_access_node($1, $3, /* is_arrow = 0 */);
-    }
-  | postfix_expr ARROW IDENTIFIER {
-        // $$ = make_field_access_node($1, $3, /* is_arrow = 1 */);
-    }
+  | postfix_expr '.' IDENTIFIER
+  | postfix_expr ARROW IDENTIFIER
   | postfix_expr INC
   | postfix_expr DEC
   | postfix_expr '[' expr ']'
