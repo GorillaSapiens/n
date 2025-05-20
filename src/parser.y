@@ -10,6 +10,8 @@ extern int yylex();
 void yyerror(const char *s);
 
 extern int yylineno;
+extern int yycolumn;
+extern char *yyline;
 
 /////
 
@@ -38,14 +40,14 @@ static int type_count = 0;
 
 int register_typename(const char* name, int size) {
     if (strcmp(name, "*") == 0 && size <= 0) {
-        yyerror(mprintf("Error: pointer type '*' must have a positive size on line %d", yylineno));
+        yyerror(mprintf("Error: pointer type '*' must have a positive size at %d:%d", yylineno, yycolumn));
         return -1;
     }
 
     for (int i = 0; i < type_count; i++) {
         if (strcmp(type_table[i].name, name) == 0) {
             if (type_table[i].size != -1) {
-                yyerror(mprintf("Error: Type '%s' already defined on line %d", name, yylineno));
+                yyerror(mprintf("Error: type/struct/union '%s' already defined at %d:%d", name, yylineno, yycolumn));
                 return -1;
             }
             else {
@@ -63,7 +65,7 @@ int register_typename(const char* name, int size) {
         return 0;
     }
     else {
-        yyerror(mprintf("Error: type table full on line %d.", yylineno));
+        yyerror(mprintf("Error: type table full at %d:%d", yylineno, yycolumn));
         return -1;
     }
     // unreachable
@@ -484,6 +486,7 @@ expr_args:
 extern char* yytext;
 
 void yyerror(const char *s) {
-    fprintf(stderr, "Syntax error at line %d: %s (near '%s')\n", yylineno, s, yytext);
+    fprintf(stderr, "Syntax error at line %d:%d %s (near '%s')\n", yylineno, yycolumn, s, yytext);
+    fprintf(stderr, "%.*s\n", yycolumn, yyline);
 }
 

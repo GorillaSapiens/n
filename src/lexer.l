@@ -8,10 +8,29 @@
 // External type recognition
 extern int is_typename(const char*);
 
+int yycolumn = 0;
+extern int yylineno;
+char yyline[4096];
+
+#define YY_INPUT(buf, result, max_size)         \
+    do {                                        \
+        result = fread(buf, 1, max_size, yyin); \
+        for (int i = 0; i < result; i++) {      \
+            char c = buf[i];                    \
+            if (c == '\n') {                    \
+                yylineno++;                     \
+                yycolumn = 0;                   \
+                yyline[0] = 0;                  \
+            } else {                            \
+                yyline[yycolumn++] = c;         \
+                yyline[yycolumn] = 0;           \
+            }                                   \
+        }                                       \
+    } while (0)
+
 %}
 
 %option noinput nounput
-%option yylineno
 
 %%
 
