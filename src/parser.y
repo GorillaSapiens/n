@@ -3,11 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "mprintf.h"
+#include <stdarg.h>
 
 extern int yylex();
-void yyerror(const char *s);
+void yyerror(const char *fmt, ...);
 
 extern int yylineno;
 extern int yycolumn;
@@ -27,10 +26,14 @@ typedef struct FieldList {
     Field* tail;
 } FieldList;
 
+#define TSU_TYPE   0
+#define TSU_STRUCT 1
+#define TSU_UNION  2
+
 typedef struct TypeInfo {
     const char* name;
     int size;
-    int is_union;
+    int tsu; // 0 for type, 1 for struct, 2 for union
     FieldList* fields;
 } TypeInfo;
 
@@ -38,58 +41,19 @@ typedef struct TypeInfo {
 static TypeInfo type_table[MAX_TYPES];
 static int type_count = 0;
 
-int register_typename(const char* name, int size) {
-    if (strcmp(name, "*") == 0 && size <= 0) {
-        yyerror(mprintf("Error: pointer type '*' must have a positive size at %d:%d", yylineno, yycolumn));
-        return -1;
-    }
-
-    for (int i = 0; i < type_count; i++) {
-        if (strcmp(type_table[i].name, name) == 0) {
-            if (type_table[i].size != -1) {
-                yyerror(mprintf("Error: type/struct/union '%s' already defined at %d:%d", name, yylineno, yycolumn));
-                return -1;
-            }
-            else {
-                type_table[i].size = size;
-                return 0;
-            }
-        }
-    }
-    if (type_count < MAX_TYPES) {
-        type_table[type_count].name = strdup(name);
-        type_table[type_count].size = size;
-        type_table[type_count].is_union = 0;
-        type_table[type_count].fields = NULL;
-        type_count++;
-        return 0;
-    }
-    else {
-        yyerror(mprintf("Error: type table full at %d:%d", yylineno, yycolumn));
-        return -1;
-    }
-    // unreachable
-}
-
-int is_typename(const char* name) {
-    for (int i = 0; i < type_count; i++) {
-        if (strcmp(type_table[i].name, name) == 0) return 1;
-    }
-    return 0;
-}
-
-int declare_typename(const char* name) {
-    // Add to type table without fields yet
-    printf("Declared typename: %s\n", name);
-    return register_typename(name, -1);
+int find_typename(const char* name) {
+   for (int i = 0; i < type_count; i++) {
+      if (strcmp(type_table[i].name, name) == 0) return i;
+   }
+   return -1;
 }
 
 int get_type_size(const char* type) {
-    for (int i = 0; i < type_count; i++) {
-        if (strcmp(type_table[i].name, type) == 0)
-            return type_table[i].size;
-    }
-    return -1; // unknown type
+   int n = find_typename(type);
+   if (n != -1) {
+      return type_table[n].size;
+   }
+   return -1; // unknown type
 }
 
 int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
@@ -97,41 +61,80 @@ int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
 
     int ptr_size = get_type_size("*");
     if (ptr_size < 0) {
-        fprintf(stderr, "Error: pointer type '*' not registered\n");
+        yyerror("pointer type '*' not registered");
         return -1;
     }
     return ptr_size;
 }
 
-void register_struct(const char* name, FieldList* fields, int is_union) {
-    int size = 0;
-    for (Field* f = fields->head; f; f = f->next) {
-        int field_size = get_type_size_with_pointer(f->type, f->pointer_depth);
-        if (f->pointer_depth > 0) field_size = sizeof(void*);
-        if (is_union) {
+void print_info(int n) {
+   char *names[] = { "type", "struct", "union" };
+   printf("Registered %s '%s' (size %d):\n",
+      names[type_table[n].tsu], type_table[n].name, type_table[n].size);
+   for (Field* f = type_table[n].fields->head; f; f = f->next) {
+      printf("  field: %s %s%s\n", f->type,
+            (f->pointer_depth > 0) ? "*" : "", f->name);
+   }
+}
+
+int register_typename(const char* name, int size, FieldList* fields, int tsu) {
+   if (strcmp(name, "*") == 0 && size <= 0) {
+      yyerror("pointer type '*' must have a size > 0");
+      return -1;
+   }
+
+   if (tsu != TSU_TYPE) { // struct or union, calculate sizes
+      size = 0;
+      for (Field* f = fields->head; f; f = f->next) {
+         int field_size = get_type_size_with_pointer(f->type, f->pointer_depth);
+         if (f->pointer_depth > 0) field_size = sizeof(void*);
+         if (tsu == TSU_UNION) {
             if (field_size > size) size = field_size;
-        } else {
+         } else {
             size += field_size;
-        }
-    }
+         }
+      }
+   }
 
-    // Update typename entry with actual size
-    register_typename(name, size);
+   int n = find_typename(name);
+   if (n != -1) {
+      if (type_table[n].size != -1) {
+         yyerror("type/struct/union '%s' already defined");
+         return -1;
+      }
+      else {
+         type_table[n].size = size;
+         type_table[n].fields = fields;
+         type_table[n].tsu = tsu;
+         print_info(n);
+         return 0;
+      }
+   }
+   else if (type_count < MAX_TYPES) {
+      type_table[type_count].name = strdup(name);
+      type_table[type_count].size = size;
+      type_table[type_count].fields = fields;
+      type_table[type_count].tsu = tsu;
 
-    // Update field list for this struct/union
-    for (int i = 0; i < type_count; i++) {
-        if (strcmp(type_table[i].name, name) == 0) {
-            type_table[i].fields = fields;
-            type_table[i].is_union = is_union;
-            break;
-        }
-    }
+      print_info(type_count);
 
-    printf("Registered %s '%s' (size %d):\n", is_union ? "union" : "struct", name, size);
-    for (Field* f = fields->head; f; f = f->next) {
-        printf("  field: %s %s%s\n", f->type,
-               (f->pointer_depth > 0) ? "*" : "", f->name);
-    }
+      type_count++;
+      return 0;
+   }
+   else {
+      yyerror("type table full");
+      return -1;
+   }
+   // unreachable
+}
+
+int register_typename_simple(const char* name, int size) {
+   return register_typename(name, size, NULL, TSU_TYPE);
+}
+
+int declare_typename(const char* name) {
+    // Add to type table without fields or tsu yet
+    return register_typename(name, -1, NULL, 0);
 }
 
 %}
@@ -145,7 +148,7 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
     struct Field* field;
 }
 
-%token <str> STRING IDENTIFIER TYPENAME
+%token <str> STRING IDENTIFIER TYPENAME FLAG
 %token <intval> INTEGER
 %token <dval> FLOAT
 %token IF ELSE WHILE FOR RETURN TYPE
@@ -154,7 +157,6 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %token OPERATOR
 %token INC DEC ARROW
 %token STRUCT UNION
-%token FLAG
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
@@ -178,6 +180,9 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %type <str> type_name
 %type <fieldlist> struct_fields
 %type <field> struct_field
+%type <fieldlist> opt_flags
+%type <fieldlist> flag_list
+%type <field> flag
 %type <intval> opt_pointer
 %token GOTO SWITCH CASE DEFAULT
 %token BREAK
@@ -198,15 +203,15 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '{' INTEGER '}' {
-        if (register_typename($2, $4) < 0) YYABORT;
+    TYPE IDENTIFIER '{' INTEGER opt_flags '}' {
+        if (register_typename($2, $4, $5, TSU_TYPE) < 0) YYABORT;
     }
   | TYPE '*' '{' INTEGER '}' {
-        if (register_typename("*", $4) < 0) YYABORT;
+        if (register_typename("*", $4, NULL, TSU_TYPE) < 0) YYABORT;
     }
-  | TYPE TYPENAME '{' INTEGER '}' {
+  | TYPE TYPENAME '{' INTEGER opt_flags '}' {
         // always fails, but we want the error message
-        if (register_typename($2, $4) < 0) YYABORT;
+        if (register_typename($2, $4, $5, TSU_TYPE) < 0) YYABORT;
     }
   ;
 
@@ -221,7 +226,7 @@ struct_decl:
         if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_struct($2, $5, 0);
+        register_typename($2, 0, $5, TSU_STRUCT);
     }
   | STRUCT TYPENAME '{' {
         // always fails, but we want the error message
@@ -234,7 +239,7 @@ union_decl:
         if (declare_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_struct($2, $5, 0);
+        register_typename($2, 0, $5, TSU_UNION);
     }
   | UNION TYPENAME '{' {
         // always fails, but we want the error message
@@ -519,10 +524,53 @@ case_block:
     CASE expr ':' statement_list
   | DEFAULT ':' statement_list
   ;
+
+opt_flags:
+    flag_list   { $$ = $1; }
+  | /* empty */ { $$ = NULL; }
+  ;
+
+flag_list:
+    flag_list flag {
+        $$ = $1;
+        $1->tail->next = $2;
+        $1->tail = $2;
+    }
+  | flag {
+        $$ = malloc(sizeof(FieldList));
+        $$->head = $$->tail = $1;
+    }
+  ;
+
+flag:
+    FLAG {
+        Field* f = malloc(sizeof(Field));
+        f->type = NULL;
+        f->pointer_depth = 0;
+        f->name = $1;
+        f->next = NULL;
+        $$ = f;
+    }
+  ;
 %%
 extern char* yytext;
 
-void yyerror(const char *s) {
-    fprintf(stderr, "Syntax error at line %d:%d %s (near '%s')\n", yylineno, yycolumn, s, yytext);
-    fprintf(stderr, "%.*s\n", yycolumn, yyline);
+void yyerror(const char *fmt, ...) {
+   va_list ap;
+   va_start(ap, fmt);
+   int size = 1 + vsnprintf(NULL, 0, fmt, ap);
+   va_end(ap);
+
+   char *str = (char *) malloc(sizeof(char) * size);
+
+   va_start(ap, fmt);
+   vsnprintf(str, size, fmt, ap);
+   va_end(ap);
+
+   fprintf(stderr, "Error at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
+   fprintf(stderr, "   %s\n", str);
+   if (yycolumn > 0) {
+      fprintf(stderr, "   %.*s\n", yycolumn, yyline);
+   }
+   free(str);
 }

@@ -6,7 +6,7 @@
 #include <ctype.h>
 
 // External type recognition
-extern int is_typename(const char*);
+extern int find_typename(const char*);
 
 int yycolumn = 0;
 extern int yylineno;
@@ -214,7 +214,7 @@ char yyline[4096];
 
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
-    if (is_typename(yytext)) return TYPENAME;
+    if (find_typename(yytext) != -1) return TYPENAME;
     return IDENTIFIER;
 }
 
