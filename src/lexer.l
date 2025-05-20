@@ -39,10 +39,19 @@ char yyline[4096];
 "if"            return IF;
 "else"          return ELSE;
 "while"         return WHILE;
+"do"            return DO;
 "for"           return FOR;
 "return"        return RETURN;
+
+"break"         return BREAK;
+"continue"      return CONTINUE;
+
 "struct"        return STRUCT;
 "union"         return UNION;
+
+"case"          return CASE;
+"switch"        return SWITCH;
+"default"       return DEFAULT;
 
 "operator"[-+*/%=!<>|&^:]+ {
     yylval.str = strdup(yytext);

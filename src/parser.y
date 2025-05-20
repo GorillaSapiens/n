@@ -179,6 +179,9 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %type <field> struct_field
 %type <intval> opt_pointer
 %token GOTO SWITCH CASE DEFAULT
+%token BREAK
+%token CONTINUE
+%token DO
 %%
 program:
     program_item
@@ -310,6 +313,8 @@ matched_stmt:
     IF '(' expr ')' matched_stmt ELSE matched_stmt
   | WHILE '(' expr ')' matched_stmt
   | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' matched_stmt
+  | BREAK ';'
+  | CONTINUE ';'
   | SWITCH '(' expr ')' '{' case_section '}'
   | block
   | decl_stmt
@@ -510,9 +515,7 @@ case_block:
     CASE expr ':' statement_list
   | DEFAULT ':' statement_list
   ;
-
 %%
-
 extern char* yytext;
 
 void yyerror(const char *s) {
