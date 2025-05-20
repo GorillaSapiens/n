@@ -5,6 +5,7 @@
 
 type uint8 { 1 #byte #packed };
 //type * { 2 };
+type float { 2 #byte #packed };
 
 struct Point {
     int x;
@@ -28,7 +29,7 @@ for (i := 0; i < 10; i := i + 1) {
     else
         continue;
 }
-
+;
 do {
     // do-while loop with label
     continue main;

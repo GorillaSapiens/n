@@ -61,7 +61,7 @@ int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
 
     int ptr_size = get_type_size("*");
     if (ptr_size < 0) {
-        yyerror("pointer type '*' not registered");
+        yyerror("pointer type '*' not registered @%d:%d", yyline, yycolumn);
         return -1;
     }
     return ptr_size;
@@ -84,7 +84,7 @@ void print_info(int n) {
 
 int register_typename(const char* name, int size, FieldList* fields, int kind) {
    if (strcmp(name, "*") == 0 && size <= 0) {
-      yyerror("pointer type '*' must have a size > 0");
+      yyerror("pointer type '*' must have a size > 0 @%d:%d", yylineno, yycolumn);
       return -1;
    }
 
@@ -104,7 +104,7 @@ int register_typename(const char* name, int size, FieldList* fields, int kind) {
    int n = find_typename(name);
    if (n != -1) {
       if (type_table[n].size != -1) {
-         yyerror("type/struct/union '%s' already defined");
+         yyerror("type/struct/union '%s' already defined @%d:%d", yylineno, yycolumn);
          return -1;
       }
       else {
@@ -127,7 +127,7 @@ int register_typename(const char* name, int size, FieldList* fields, int kind) {
       return 0;
    }
    else {
-      yyerror("type table full");
+      yyerror("type table full @%d:%d", yylineno, yycolumn);
       return -1;
    }
    // unreachable
@@ -193,6 +193,8 @@ int declare_typename(const char* name) {
 %token BREAK
 %token CONTINUE
 %token DO
+
+%define parse.error verbose
 %%
 program:
     program_item
@@ -254,10 +256,10 @@ union_decl:
 
 
 struct_fields:
-    struct_fields ';' struct_field {
+    struct_fields struct_field {
         $$ = $1;
-        $1->tail->next = $3;
-        $1->tail = $3;
+        $1->tail->next = $2;
+        $1->tail = $2;
     }
   | struct_field {
         $$ = malloc(sizeof(FieldList));
@@ -266,7 +268,7 @@ struct_fields:
   ;
 
 struct_field:
-    type_name opt_pointer IDENTIFIER {
+    type_name opt_pointer IDENTIFIER ';' {
         Field* f = malloc(sizeof(Field));
         f->type = strdup($1);
         f->pointer_depth = $2;
