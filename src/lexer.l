@@ -33,6 +33,7 @@ extern YYLTYPE yylloc;
 "while"         return WHILE;
 "do"            return DO;
 "for"           return FOR;
+"goto"          return GOTO;
 "return"        return RETURN;
 
 "break"         return BREAK;
@@ -77,7 +78,7 @@ extern YYLTYPE yylloc;
 ">>="           return RSHIFT_ASSIGN;
 
 
-#[A-Za-z0-9_]+(:[A-Za-z0-9_]+)? {
+\$[A-Za-z0-9_]+(:[A-Za-z0-9_]+)? {
     yylval.str = strdup(yytext);
     return FLAG;
 }
@@ -222,6 +223,8 @@ extern YYLTYPE yylloc;
         else { yycolumn++; }
     }
 }
+
+^#[^\n]*        ; // ignore preprocessor noise (for now.  bwahahahaha!)
 
 .               return yytext[0]; // return single-character tokens
 

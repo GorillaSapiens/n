@@ -7,6 +7,7 @@
 
 extern int yylex();
 void yyerror(const char *fmt, ...);
+void yywarn(const char *fmt, ...);
 
 extern int yylineno;
 extern int yycolumn;
@@ -104,8 +105,15 @@ int register_typename(const char* name, int size, FieldList* fields, int kind) {
 
    int n = find_typename(name);
    if (n != -1) {
-      if (type_table[n].size != -1) {
-         yyerror("type/struct/union '%s' already defined @%d:%d", yylineno, yycolumn);
+      if (type_table[n].size == size && type_table[n].kind == kind) {
+         // already defined and of same size, ignore
+         // TODO FIX do we need to compare fields too ???
+         // let's warn
+         yywarn("type/struct/union '%s' multiply defined @%d:%d", name, yylineno, yycolumn);
+         return 0;
+      }
+      else if (type_table[n].size != -1) {
+         yyerror("type/struct/union '%s' already defined @%d:%d", name, yylineno, yycolumn);
          return -1;
       }
       else {
@@ -212,13 +220,13 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '{' INTEGER opt_flags '}' {
+    TYPE IDENTIFIER '{' INTEGER opt_flags '}' ';' {
         if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
     }
-  | TYPE '*' '{' INTEGER '}' {
+  | TYPE '*' '{' INTEGER '}' ';' {
         if (register_typename("*", $4, NULL, KIND_TYPE) < 0) YYABORT;
     }
-  | TYPE TYPENAME '{' INTEGER opt_flags '}' {
+  | TYPE TYPENAME '{' INTEGER opt_flags '}' ';' {
         // always fails, but we want the error message
         if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
     }
@@ -295,11 +303,13 @@ param_list:
 
 param_decls:
     type_name IDENTIFIER
+  | type_name { if (get_type_size($1) > 0) { yywarn("missing param name"); } }
+  | param_decls ',' type_name { if (get_type_size($3) > 0) { yywarn("missing param name"); } }
   | param_decls ',' type_name IDENTIFIER
   ;
 
 type_name:
-    TYPENAME
+    TYPENAME { $$ = $1; }
   ;
 
 block:
@@ -558,6 +568,23 @@ void yyerror(const char *fmt, ...) {
    va_end(ap);
 
    fprintf(stderr, "Error at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
+   fprintf(stderr, "   %s\n", str);
+   free(str);
+}
+
+void yywarn(const char *fmt, ...) {
+   va_list ap;
+   va_start(ap, fmt);
+   int size = 1 + vsnprintf(NULL, 0, fmt, ap);
+   va_end(ap);
+
+   char *str = (char *) malloc(sizeof(char) * size);
+
+   va_start(ap, fmt);
+   vsnprintf(str, size, fmt, ap);
+   va_end(ap);
+
+   fprintf(stderr, "Warning at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
    fprintf(stderr, "   %s\n", str);
    free(str);
 }

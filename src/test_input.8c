@@ -3,9 +3,9 @@
 /* Block comment over
    multiple lines */
 
-type uint8 { 1 #byte #packed };
-//type * { 2 };
-type float { 2 #byte #packed };
+type uint8 { 1 $byte $packed };
+type * { 2 };
+type float { 2 $byte $packed };
 
 struct Point {
     int x;
@@ -19,8 +19,9 @@ union Value {
 
 Point origin := Point { x := 0; y := 0; };
 Value v := Value { i := 42; };
-Value { f := 3.14; };  // anonymous union literal
-Point { x := -1; y := 2; };  // anonymous struct literal
+
+void froom(Point) {
+}
 
 void main(void) {
 main:
@@ -49,29 +50,31 @@ i := 100;
 
 label1:
    while (i < 20) {
-i := i + 1;
-   if (i % 2 == 0) {
-      continue label1;
-   }
-   if (i > 15) {
-      break label1;
-   }
+      i := i + 1;
+      if (i % 2 == 0) {
+         continue label1;
+      }
+      if (i > 15) {
+         break label1;
+      }
    }
 
    goto label1;
 
    // Function call and assignment
-foo := bar(1, 2, 3);
+   foo := bar(1, 2, 3);
 
-     // Flags as standalone tokens (ignored in expr)
-#debug_flag
+     // it came from the preprocessor!!!
+#whateverman
 
      // Unary operators
-x := -1;
-y := !x;
-z := ~x;
+   x := -1;
+   y := !x;
+   z := ~x;
 
    // Binary and ternary expressions
-a := x + y * z - (x >> 2);
-b := x ? y : z;
+   a := x + y * z - (x >> 2);
+   b := x ? y : z;
+
+   return 5;
 }
