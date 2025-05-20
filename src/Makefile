@@ -2,7 +2,7 @@ LEX = flex
 YACC = bison
 CC = gcc
 CFLAGS = -Wall -O2
-TARGET = parser
+TARGET = 8c
 
 all: $(TARGET)
 
