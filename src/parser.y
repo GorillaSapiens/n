@@ -313,6 +313,9 @@ matched_stmt:
     IF '(' expr ')' matched_stmt ELSE matched_stmt
   | WHILE '(' expr ')' matched_stmt
   | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' matched_stmt
+  | BREAK IDENTIFIER ';'
+  | CONTINUE IDENTIFIER ';'
+  | DO matched_stmt WHILE '(' expr ')' ';'
   | BREAK ';'
   | CONTINUE ';'
   | SWITCH '(' expr ')' '{' case_section '}'
