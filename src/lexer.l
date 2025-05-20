@@ -177,6 +177,18 @@ int lineno = 1;
 \/\/[^\n]*                   ;   // skip line comments
 \/\*([^*]|\*+[^*/])*\*+\/    ;   // skip block comments
 
+
+"+="    return ADD_ASSIGN;
+"-="    return SUB_ASSIGN;
+"*="    return MUL_ASSIGN;
+"/="    return DIV_ASSIGN;
+"%="    return MOD_ASSIGN;
+"&="    return AND_ASSIGN;
+"|="    return OR_ASSIGN;
+"^="    return XOR_ASSIGN;
+"<<="   return LSHIFT_ASSIGN;
+">>="   return RSHIFT_ASSIGN;
+
 .               return yytext[0];  // return single-character tokens
 
 %%

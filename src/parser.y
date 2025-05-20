@@ -59,6 +59,10 @@ extern int lineno;
 %token OPERATOR
 %token INC DEC
 
+%token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
+%token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
+
+
 %left OR
 %left AND
 %left '|'
@@ -193,6 +197,16 @@ expr: assignment_expr ;
 assignment_expr:
     logical_or_expr
   | assignable ASSIGN assignment_expr
+  | assignable ADD_ASSIGN assignment_expr
+  | assignable SUB_ASSIGN assignment_expr
+  | assignable MUL_ASSIGN assignment_expr
+  | assignable DIV_ASSIGN assignment_expr
+  | assignable MOD_ASSIGN assignment_expr
+  | assignable AND_ASSIGN assignment_expr
+  | assignable OR_ASSIGN assignment_expr
+  | assignable XOR_ASSIGN assignment_expr
+  | assignable LSHIFT_ASSIGN assignment_expr
+  | assignable RSHIFT_ASSIGN assignment_expr
   ;
 
 assignable:
