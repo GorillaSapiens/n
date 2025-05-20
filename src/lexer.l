@@ -62,6 +62,8 @@ char yyline[4096];
 "++"            return INC;
 "--"            return DEC;
 
+"->"            return ARROW;
+
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
     const char* yy = yytext;
     int val = 0;

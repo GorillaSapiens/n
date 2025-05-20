@@ -152,7 +152,7 @@ void register_struct(const char* name, FieldList* fields, int is_union) {
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
 %token OPERATOR
-%token INC DEC
+%token INC DEC ARROW
 %token STRUCT UNION
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
@@ -452,6 +452,12 @@ unary_expr:
 
 postfix_expr:
     primary_expr
+  | postfix_expr '.' IDENTIFIER {
+        // $$ = make_field_access_node($1, $3, /* is_arrow = 0 */);
+    }
+  | postfix_expr ARROW IDENTIFIER {
+        // $$ = make_field_access_node($1, $3, /* is_arrow = 1 */);
+    }
   | postfix_expr INC
   | postfix_expr DEC
   | postfix_expr '[' expr ']'
