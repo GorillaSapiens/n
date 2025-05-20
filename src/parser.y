@@ -9,47 +9,6 @@ void yyerror(const char *s);
 
 /////
 
-// Type table
-#define MAXTYPES 100
-
-typedef struct {
-    char* name;
-    int size;
-} TypeEntry;
-
-TypeEntry typetable[MAXTYPES];
-int typecount = 0;
-
-void register_typename(const char* id, int size) {
-    for (int i = 0; i < typecount; i++) {
-        if (strcmp(typetable[i].name, id) == 0) {
-            typetable[i].size = size;
-            return;
-        }
-    }
-    if (typecount < MAXTYPES) {
-        typetable[typecount].name = strdup(id);
-        typetable[typecount].size = size;
-        typecount++;
-    }
-}
-
-int is_typename(const char* id) {
-    for (int i = 0; i < typecount; i++) {
-        if (strcmp(typetable[i].name, id) == 0)
-            return 1;
-    }
-    return 0;
-}
-
-void declare_typename(const char* name) {
-    // Add to type table without fields yet
-    printf("Declared typename: %s\n", name);
-    register_typename(name, -1);
-}
-
-/////
-
 typedef struct Field {
     char* name;
     char* type;
@@ -62,10 +21,98 @@ typedef struct FieldList {
     Field* tail;
 } FieldList;
 
+typedef struct TypeInfo {
+    const char* name;
+    int size;
+    int is_union;
+    FieldList* fields;
+} TypeInfo;
+
+#define MAX_TYPES 1024
+static TypeInfo type_table[MAX_TYPES];
+static int type_count = 0;
+
+void register_typename(const char* name, int size) {
+    if (strcmp(name, "*") == 0 && size <= 0) {
+        fprintf(stderr, "Error: pointer type '*' must have a positive size\n");
+        return;
+    }
+
+    for (int i = 0; i < type_count; i++) {
+        if (strcmp(type_table[i].name, name) == 0) {
+            type_table[i].size = size;
+            return;
+        }
+    }
+    if (type_count < MAX_TYPES) {
+        type_table[type_count].name = strdup(name);
+        type_table[type_count].size = size;
+        type_table[type_count].is_union = 0;
+        type_table[type_count].fields = NULL;
+        type_count++;
+    }
+}
+
+int is_typename(const char* name) {
+    for (int i = 0; i < type_count; i++) {
+        if (strcmp(type_table[i].name, name) == 0) return 1;
+    }
+    return 0;
+}
+
+void declare_typename(const char* name) {
+    // Add to type table without fields yet
+    printf("Declared typename: %s\n", name);
+    register_typename(name, -1);
+}
+
+int get_type_size(const char* type) {
+    for (int i = 0; i < type_count; i++) {
+        if (strcmp(type_table[i].name, type) == 0)
+            return type_table[i].size;
+    }
+    return -1; // unknown type
+}
+
+int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
+    if (pointer_depth == 0) return get_type_size(base_type);
+
+    int ptr_size = get_type_size("*");
+    if (ptr_size < 0) {
+        fprintf(stderr, "Error: pointer type '*' not registered\n");
+        return -1;
+    }
+    return ptr_size;
+}
+
 void register_struct(const char* name, FieldList* fields, int is_union) {
-    printf("Registering %s '%s'\n", is_union ? "union" : "struct", name);
+    int size = 0;
     for (Field* f = fields->head; f; f = f->next) {
-        printf("  field: %s %s%s\n", f->type, (f->pointer_depth > 0) ? "*" : "", f->name);
+        int field_size = get_type_size_with_pointer(f->type, f->pointer_depth);
+        if (f->pointer_depth > 0) field_size = sizeof(void*);
+        if (is_union) {
+            if (field_size > size) size = field_size;
+        } else {
+            size += field_size;
+        }
+    }
+
+    // Update typename entry with actual size
+    register_typename(name, size);
+
+    // Update field list for this struct/union
+    for (int i = 0; i < type_count; i++) {
+        if (strcmp(type_table[i].name, name) == 0) {
+            type_table[i].fields = fields;
+            type_table[i].is_union = is_union;
+            break;
+        }
+    }
+
+    printf("Registered %s '%s' (size %d):\n", is_union ? "union" : "struct", name, size);
+    for (Field* f = fields->head; f; f = f->next) {
+        printf("  field: %s %s%s\n", f->type,
+               (f->pointer_depth > 0) ? "*" : "", f->name);
     }
 }
 
@@ -134,8 +181,11 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '(' INTEGER ')' ';' {
+    TYPE IDENTIFIER '(' INTEGER ')' {
         register_typename($2, $4);
+    }
+  | TYPE '*' '(' INTEGER ')' {
+        register_typename("*", $4);
     }
   ;
 
