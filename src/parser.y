@@ -310,6 +310,7 @@ matched_stmt:
     IF '(' expr ')' matched_stmt ELSE matched_stmt
   | WHILE '(' expr ')' matched_stmt
   | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' matched_stmt
+  | SWITCH '(' expr ')' '{' case_section '}'
   | block
   | decl_stmt
   | expr_stmt
@@ -498,6 +499,16 @@ struct_inits:
 
 struct_init:
     IDENTIFIER ASSIGN expr
+  ;
+
+case_section:
+    case_section case_block
+  | case_block
+  ;
+
+case_block:
+    CASE expr ':' statement_list
+  | DEFAULT ':' statement_list
   ;
 
 %%
