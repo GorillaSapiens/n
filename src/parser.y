@@ -239,7 +239,7 @@ union_decl:
 
 
 struct_fields:
-    struct_fields ',' struct_field {
+    struct_fields ';' struct_field {
         $$ = $1;
         $1->tail->next = $3;
         $1->tail = $3;
@@ -483,11 +483,11 @@ expr_args:
   ;
 
 struct_literal:
-    TYPENAME '{' struct_inits '}'
+    TYPENAME '{' struct_inits ';' '}'
   ;
 
 struct_inits:
-    struct_inits ',' struct_init
+    struct_inits ';' struct_init
   | struct_init
   ;
 
