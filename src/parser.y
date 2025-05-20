@@ -10,7 +10,6 @@ void yyerror(const char *fmt, ...);
 
 extern int yylineno;
 extern int yycolumn;
-extern char *yyline;
 
 /////
 
@@ -61,7 +60,7 @@ int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
 
     int ptr_size = get_type_size("*");
     if (ptr_size < 0) {
-        yyerror("pointer type '*' not registered @%d:%d", yyline, yycolumn);
+        yyerror("pointer type '*' not registered @%d:%d", yylineno, yycolumn);
         return -1;
     }
     return ptr_size;
@@ -197,6 +196,7 @@ int declare_typename(const char* name) {
 %token DO
 
 %define parse.error verbose
+%locations
 %%
 program:
     program_item
@@ -559,8 +559,5 @@ void yyerror(const char *fmt, ...) {
 
    fprintf(stderr, "Error at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
    fprintf(stderr, "   %s\n", str);
-   if (yycolumn > 0) {
-      fprintf(stderr, "   %.*s\n", yycolumn, yyline);
-   }
    free(str);
 }

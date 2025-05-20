@@ -10,23 +10,15 @@ extern int find_typename(const char*);
 
 int yycolumn = 0;
 extern int yylineno;
-char yyline[4096];
 
-#define YY_INPUT(buf, result, max_size)         \
-    do {                                        \
-        result = fread(buf, 1, max_size, yyin); \
-        for (int i = 0; i < result; i++) {      \
-            char c = buf[i];                    \
-            if (c == '\n') {                    \
-                yylineno++;                     \
-                yycolumn = 0;                   \
-                yyline[0] = 0;                  \
-            } else {                            \
-                yyline[yycolumn++] = c;         \
-                yyline[yycolumn] = 0;           \
-            }                                   \
-        }                                       \
-    } while (0)
+extern YYLTYPE yylloc;
+
+#define YY_USER_ACTION \
+    yylloc.first_line = yylineno; \
+    yylloc.first_column = yycolumn; \
+    yylloc.last_line = yylineno; \
+    yycolumn += yyleng; \
+    yylloc.last_column = yycolumn;
 
 %}
 
@@ -221,11 +213,17 @@ char yyline[4096];
     return IDENTIFIER;
 }
 
-[ \t\r\n]+                   ;   // skip whitespace
-\/\/[^\n]*                   ;   // skip line comments
-\/\*([^*]|\*+[^*/])*\*+\/    ;   // skip block comments
+[ \t\r]+                  ;   // skip whitespace
+[\n]                      { yylineno++; yycolumn = 0; } 
+\/\/[^\n]*                ;   // skip line comments
+\/\*([^*]|\*+[^*/])*\*+\/ {
+    for (char *p = yytext; *p; p++) {
+        if (*p == '\n') { yylineno++; yycolumn = 0; }
+        else { yycolumn++; }
+    }
+}
 
-.               return yytext[0];  // return single-character tokens
+.               return yytext[0]; // return single-character tokens
 
 %%
 
