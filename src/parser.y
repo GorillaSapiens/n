@@ -112,7 +112,7 @@ void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
     if (!node) return;
 
     // Draw the branch
-    printf("%s%s%s ", prefix,
+    printf("%s%s%s", prefix,
            is_last ? "└──" : "├──",
            node->name);
 
@@ -127,10 +127,16 @@ void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
     }
     printf("\n");
 
-    // New prefix for children
-    char new_prefix[256];
-    snprintf(new_prefix, sizeof(new_prefix), "%s%s",
-             prefix, is_last ? "    " : "│   ");
+    // Only build new prefix if there are children
+    char new_prefix[256] = "";
+    if (prefix[0] != '\0') {
+        snprintf(new_prefix, sizeof(new_prefix), "%s%s",
+                 prefix, is_last ? "    " : "│   ");
+    } else {
+        // At the root node (no inherited prefix)
+        snprintf(new_prefix, sizeof(new_prefix), "%s",
+                 is_last ? "    " : "│   ");
+    }
 
     for (int i = 0; i < node->count; ++i) {
         dump_ast(node->children[i], new_prefix, i == node->count - 1);
@@ -141,7 +147,7 @@ ASTNode *root = NULL;
 
 void parse_dump(void) {
    if (root) {
-      dump_ast(root, "", 0);
+      dump_ast(root, "", 1);
    }
 }
 
