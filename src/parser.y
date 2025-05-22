@@ -519,31 +519,32 @@ primary_expr:
   ;
 
 arg_list:
-    /* empty */
-  | expr_args
+    /* empty */  { $$ = make_empty_leaf(); }
+  | expr_args    { $$ = $1; }
   ;
 
 expr_args:
-    expr
-  | expr_args ',' expr
+    expr                       { $$ = MAKE_NODE($1); }
+  | expr_args ',' expr         { $$ = MAKE_NODE($1, $3); }
   ;
 
+
 struct_literal:
-    TYPENAME '{' struct_inits ';' '}'
-  | TYPENAME '{' FLOAT '}'
-  | TYPENAME '{' '-' FLOAT '}'
-  | TYPENAME '{' INTEGER '}'
-  | TYPENAME '{' '-' INTEGER '}'
-  | TYPENAME '{' STRING '}'
+    TYPENAME '{' struct_inits ';' '}' { $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
+  | TYPENAME '{' FLOAT '}'            { $$ = MAKE_NODE(make_identifier_leaf($1), make_float_leaf($3)); }
+  | TYPENAME '{' '-' FLOAT '}'        { $$ = MAKE_NODE(make_identifier_leaf($1), make_float_leaf(-$4)); }
+  | TYPENAME '{' INTEGER '}'          { $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf($3)); }
+  | TYPENAME '{' '-' INTEGER '}'      { $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf(-$4)); }
+  | TYPENAME '{' STRING '}'           { $$ = MAKE_NODE(make_identifier_leaf($1), make_string_leaf($3)); }
   ;
 
 struct_inits:
-    struct_inits ';' struct_init
-  | struct_init
+    struct_inits ';' struct_init { $$ = MAKE_NODE($1, $3); }
+  | struct_init                  { $$ = MAKE_NODE($1); }
   ;
 
 struct_init:
-    IDENTIFIER ASSIGN expr
+    IDENTIFIER ASSIGN expr { $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
   ;
 
 case_section:
@@ -562,15 +563,12 @@ opt_flags:
   ;
 
 flag_list:
-    flag_list flag {
-    }
-  | flag {
-    }
+    flag_list flag { }
+  | flag { }
   ;
 
 flag:
-    FLAG {
-    }
+    FLAG { }
   ;
 %%
 extern char* yytext;
