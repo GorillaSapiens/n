@@ -14,141 +14,29 @@ extern int yycolumn;
 
 /////
 
-typedef struct Field {
-    char* name;
-    char* type;
-    int pointer_depth;
-    struct Field* next;
-} Field;
-
-typedef struct FieldList {
-    Field* head;
-    Field* tail;
-} FieldList;
-
-#define KIND_TYPE   0
-#define KIND_STRUCT 1
-#define KIND_UNION  2
-
-typedef struct TypeInfo {
-    const char* name;
-    int size;
-    int kind; // 0 for type, 1 for struct, 2 for union
-    FieldList* fields;
-} TypeInfo;
-
 #define MAX_TYPES 1024
-static TypeInfo type_table[MAX_TYPES];
+static char *type_names[MAX_TYPES];
 static int type_count = 0;
 
 int find_typename(const char* name) {
    for (int i = 0; i < type_count; i++) {
-      if (strcmp(type_table[i].name, name) == 0) return i;
+      if (strcmp(type_names[i], name) == 0) return i;
    }
    return -1;
 }
 
-int get_type_size(const char* type) {
-   int n = find_typename(type);
-   if (n != -1) {
-      return type_table[n].size;
-   }
-   return -1; // unknown type
-}
-
-int get_type_size_with_pointer(const char* base_type, int pointer_depth) {
-    if (pointer_depth == 0) return get_type_size(base_type);
-
-    int ptr_size = get_type_size("*");
-    if (ptr_size < 0) {
-        yyerror("pointer type '*' not registered @%d:%d", yylineno, yycolumn);
-        return -1;
-    }
-    return ptr_size;
-}
-
-void print_info(int n) {
-#ifdef YYDEBUG
-   char *names[] = { "type", "struct", "union" };
-   printf("Registered %s '%s' (size %d):\n",
-         names[type_table[n].kind], type_table[n].name, type_table[n].size);
-   if (type_table[n].fields) {
-      for (Field* f = type_table[n].fields->head; f; f = f->next) {
-         printf("  field: %s %s%s\n", f->type,
-               (f->pointer_depth > 0) ? "*" : "", f->name);
-      }
-   }
-   else {
-      printf("  no field table\n");
-   }
-#endif
-}
-
-int register_typename(const char* name, int size, FieldList* fields, int kind) {
-   if (strcmp(name, "*") == 0 && size <= 0) {
-      yyerror("pointer type '*' must have a size > 0 @%d:%d", yylineno, yycolumn);
-      return -1;
-   }
-
-   if (kind != KIND_TYPE) { // struct or union, calculate sizes
-      size = 0;
-      for (Field* f = fields->head; f; f = f->next) {
-         int field_size = get_type_size_with_pointer(f->type, f->pointer_depth);
-         if (f->pointer_depth > 0) field_size = sizeof(void*);
-         if (kind == KIND_UNION) {
-            if (field_size > size) size = field_size;
-         } else {
-            size += field_size;
-         }
-      }
-   }
-
-   int n = find_typename(name);
-   if (n != -1) {
-      if (type_table[n].size == size && type_table[n].kind == kind) {
-         // already defined and of same size, ignore
-         // TODO FIX do we need to compare fields too ???
-         // let's warn
-         yywarn("type/struct/union '%s' multiply defined @%d:%d", name, yylineno, yycolumn);
-         return 0;
-      }
-      else if (type_table[n].size != -1) {
-         yyerror("type/struct/union '%s' already defined @%d:%d", name, yylineno, yycolumn);
-         return -1;
+int register_typename(const char* name) {
+   // allows duplicates, errors come on the second pass
+   if (find_typename(name) == -1) {
+      if (type_count < MAX_TYPES) {
+         type_names[type_count++] = strdup(name);
       }
       else {
-         type_table[n].size = size;
-         type_table[n].fields = fields;
-         type_table[n].kind = kind;
-         print_info(n);
-         return 0;
+         yyerror("type table full @%d:%d", yylineno, yycolumn);
+         return -1;
       }
    }
-   else if (type_count < MAX_TYPES) {
-      type_table[type_count].name = strdup(name);
-      type_table[type_count].size = size;
-      type_table[type_count].fields = fields;
-      type_table[type_count].kind = kind;
-
-      print_info(type_count);
-
-      type_count++;
-      return 0;
-   }
-   else {
-      yyerror("type table full @%d:%d", yylineno, yycolumn);
-      return -1;
-   }
-   // unreachable
-}
-
-int register_typename_simple(const char* name, int size) {
-   return register_typename(name, size, NULL, KIND_TYPE);
-}
-
-int declare_typename(const char* name) {
-    // Add to type table without fields or kind yet
-    return register_typename(name, -1, NULL, 0);
+   return 0;
 }
 
 enum ASTKind {
@@ -185,9 +73,9 @@ ASTNode *make_node(const char *name, ...) {
    va_end(ap);
    return ret;
 }
-#define MAKE_NODE(...) make_node(yysymbol_name(YYSYMBOL), __VA_ARGS__, NULL)
+#define MAKE_NODE(...) make_node(yysymbol_name(yytoken), __VA_ARGS__, NULL)
 
-ASTNode *make_int_leaf(const char *name, unsigned long long intval) {
+ASTNode *make_int_leaf(unsigned long long intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "int";
    ret->kind = AST_INT;
@@ -195,7 +83,7 @@ ASTNode *make_int_leaf(const char *name, unsigned long long intval) {
    return ret;
 }
 
-ASTNode *make_str_leaf(const char *name, char *strval) {
+ASTNode *make_str_leaf(char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
    ret->kind = AST_STRING;
@@ -203,7 +91,7 @@ ASTNode *make_str_leaf(const char *name, char *strval) {
    return ret;
 }
 
-ASTNode *make_d_leaf(const char *name, double dval) {
+ASTNode *make_d_leaf(double dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
    ret->kind = AST_FLOAT;
@@ -211,30 +99,65 @@ ASTNode *make_d_leaf(const char *name, double dval) {
    return ret;
 }
 
+void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
+    if (!node) return;
+
+    // Draw the branch
+    printf("%s%s%s ", prefix,
+           is_last ? "└──" : "├──",
+           node->name);
+
+    // Add leaf value if applicable
+    switch (node->kind) {
+        case AST_INT: printf(" %llu", node->intval); break;
+        case AST_FLOAT: printf(" %f", node->dval); break;
+        case AST_STRING: printf(" \"%s\"", node->strval); break;
+        default: break;
+    }
+    printf("\n");
+
+    // New prefix for children
+    char new_prefix[256];
+    snprintf(new_prefix, sizeof(new_prefix), "%s%s",
+             prefix, is_last ? "    " : "│   ");
+
+    for (int i = 0; i < node->count; ++i) {
+        dump_ast(node->children[i], new_prefix, i == node->count - 1);
+    }
+}
+
+ASTNode *root = NULL;
+
+void parse_dump(void) {
+   if (root) {
+      dump_ast(root, "", 0);
+   }
+}
+
 %}
 
 %union {
-    char* str;
-    double dval;
-    int   intval;
-
-    struct FieldList* fieldlist;
-    struct Field* field;
+    char    *str;
+    double   dval;
+    int      intval;
+    ASTNode *node;
 }
 
-%token <str> STRING IDENTIFIER TYPENAME FLAG
+%token <str> STRING IDENTIFIER TYPENAME FLAG OPERATOR
 %token <intval> INTEGER
 %token <dval> FLOAT
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
-%token OPERATOR
 %token INC DEC ARROW
 %token STRUCT UNION
+%token GOTO SWITCH CASE DEFAULT
+%token BREAK
+%token CONTINUE
+%token DO
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
-
 
 %left OR
 %left AND
@@ -251,110 +174,107 @@ ASTNode *make_d_leaf(const char *name, double dval) {
 %right UMINUS UINC UDEC
 %right ASSIGN
 
-%type <str> type_name
-%type <fieldlist> struct_fields
-%type <field> struct_field
-%type <fieldlist> opt_flags
-%type <fieldlist> flag_list
-%type <field> flag
-%type <intval> opt_pointer
-%token GOTO SWITCH CASE DEFAULT
-%token BREAK
-%token CONTINUE
-%token DO
+%type <node> additive_expr arg_list array_initializer assignable assignment_expr
+%type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
+%type <node> case_block case_section
+%type <node> decl_stmt
+%type <node> equality_expr expr expr_args expr_list expr_stmt
+%type <node> flag flag_list function_decl
+%type <node> logical_and_expr logical_or_expr
+%type <node> multiplicative_expr
+%type <node> opt_address opt_array_dim opt_expr opt_flags opt_pointer
+%type <node> param_decls param_list postfix_expr primary_expr program program_item
+%type <node> relational_expr
+%type <node> shift_expr statement statement_list struct_decl struct_field
+%type <node> struct_fields struct_init struct_inits struct_literal
+%type <node> type_decl
+%type <node> type_name
+%type <node> unary_expr
+%type <node> union_decl
 
 %define parse.error verbose
 %locations
+
 %%
 program:
-    program_item
-  | program program_item
+    program_item         { root = $$ = MAKE_NODE($1); }
+  | program program_item { root = $$ = MAKE_NODE($1, $2); }
   ;
 
 program_item:
-    type_decl
-  | function_decl
-  | decl_stmt
-  | struct_decl
-  | union_decl
+    type_decl     { $$ = $1; }
+  | function_decl { $$ = $1; }
+  | decl_stmt     { $$ = $1; }
+  | struct_decl   { $$ = $1; }
+  | union_decl    { $$ = $1; }
   ;
 
 type_decl:
     TYPE IDENTIFIER '{' INTEGER opt_flags '}' ';' {
-        if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
+        if (register_typename($2) < 0) YYABORT;
+        $$ = MAKE_NODE(make_str_leaf($2), make_int_leaf($4), $5);
     }
-  | TYPE '*' '{' INTEGER '}' ';' {
-        if (register_typename("*", $4, NULL, KIND_TYPE) < 0) YYABORT;
+  | TYPE '*' '{' INTEGER opt_flags '}' ';' {
+        if (register_typename("*") < 0) YYABORT;
+        $$ = MAKE_NODE(make_str_leaf("*"), make_int_leaf($4), $5);
     }
   | TYPE TYPENAME '{' INTEGER opt_flags '}' ';' {
         // always fails, but we want the error message
-        if (register_typename($2, $4, $5, KIND_TYPE) < 0) YYABORT;
+        if (register_typename($2) < 0) YYABORT;
+        $$ = MAKE_NODE(make_str_leaf($2), make_int_leaf($4), $5); // TODO FIX is this needed?
     }
   ;
 
 function_decl:
-    type_name IDENTIFIER '(' param_list ')' ';'
-  | type_name IDENTIFIER '(' param_list ')' block
-  | type_name OPERATOR '(' param_list ')' block
+    type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($1, make_str_leaf($2), $4); }
+  | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, make_str_leaf($2), $4, $6); }
+  | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, make_str_leaf($2), $4, $6); }
   ;
 
 struct_decl:
     STRUCT IDENTIFIER '{' {
-        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
+        if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_typename($2, 0, $5, KIND_STRUCT);
+        register_typename($2);
+        $$ = MAKE_NODE(make_str_leaf($2), $5);
     }
   | STRUCT TYPENAME '{' {
         // always fails, but we want the error message
-        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
+        if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
   ;
 
 union_decl:
     UNION IDENTIFIER '{' {
-        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
+        if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
     struct_fields '}' ';' {
-        register_typename($2, 0, $5, KIND_UNION);
+        register_typename($2);
+        $$ = MAKE_NODE(make_str_leaf($2), $5);
     }
   | UNION TYPENAME '{' {
         // always fails, but we want the error message
-        if (declare_typename($2) < 0) YYABORT;  // Add early to type table
+        if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
   ;
 
-
 struct_fields:
     struct_fields struct_field {
-        $$ = $1;
-        $1->tail->next = $2;
-        $1->tail = $2;
     }
   | struct_field {
-        $$ = malloc(sizeof(FieldList));
-        $$->head = $$->tail = $1;
     }
   ;
 
 struct_field:
     type_name opt_pointer IDENTIFIER ';' {
-        Field* f = malloc(sizeof(Field));
-        f->type = strdup($1);
-        f->pointer_depth = $2;
-        f->name = $3;
-        f->next = NULL;
-        $$ = f;
     }
   ;
 
 opt_pointer:
-    /* empty */ { $$ = 0; }
-  | '*' opt_pointer { $$ = $2 + 1; }
+    /* empty */ { }
+  | '*' opt_pointer {  }
   ;
-
-
-
 
 param_list:
     /* empty */
@@ -363,13 +283,13 @@ param_list:
 
 param_decls:
     type_name IDENTIFIER
-  | type_name { if (get_type_size($1) > 0) { yywarn("missing param name"); } }
-  | param_decls ',' type_name { if (get_type_size($3) > 0) { yywarn("missing param name"); } }
+  | type_name {  }
+  | param_decls ',' type_name { }
   | param_decls ',' type_name IDENTIFIER
   ;
 
 type_name:
-    TYPENAME { $$ = $1; }
+    TYPENAME {  }
   ;
 
 block:
@@ -586,30 +506,19 @@ case_block:
   ;
 
 opt_flags:
-    flag_list   { $$ = $1; }
-  | /* empty */ { $$ = NULL; }
+    flag_list   {  }
+  | /* empty */ {  }
   ;
 
 flag_list:
     flag_list flag {
-        $$ = $1;
-        $1->tail->next = $2;
-        $1->tail = $2;
     }
   | flag {
-        $$ = malloc(sizeof(FieldList));
-        $$->head = $$->tail = $1;
     }
   ;
 
 flag:
     FLAG {
-        Field* f = malloc(sizeof(Field));
-        f->type = NULL;
-        f->pointer_depth = 0;
-        f->name = $1;
-        f->next = NULL;
-        $$ = f;
     }
   ;
 %%

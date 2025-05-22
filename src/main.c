@@ -4,38 +4,38 @@
 
 // Declare from parser.y
 extern int yyparse(void);
-extern void register_typename_simple(const char* name, int size);
+extern void parse_dump(void);
 
 // Optional: reference to input file
 extern FILE* yyin;
 extern int yydebug;
 
 int main(int argc, char** argv) {
-    // Optional: read from file
-    if (argc > 1) {
-        yyin = fopen(argv[1], "r");
-        if (!yyin) {
-            perror(argv[1]);
-            return 1;
-        }
-    }
+   int ret;
+
+   // Optional: read from file
+   if (argc > 1) {
+      yyin = fopen(argv[1], "r");
+      if (!yyin) {
+         perror(argv[1]);
+         return 1;
+      }
+   }
 
 #ifdef YYDEBUG
-    yydebug = 1;
+   yydebug = 1;
 #endif
 
-    // Register built-in types
-    register_typename_simple("*", 2);
-    register_typename_simple("int", 2);
-    register_typename_simple("char", 1);
-    register_typename_simple("void", 0);
+   // TODO register built in type names
 
-    printf("Parsing...\n");
-    if (yyparse() == 0) {
-        printf("Parse successful.\n");
-    } else {
-        printf("Parse failed.\n");
-    }
+   printf("Parsing...\n");
+   ret = yyparse();
+   parse_dump();
+   if (ret == 0) {
+      printf("Parse successful.\n");
+   } else {
+      printf("Parse failed.\n");
+   }
 
-    return 0;
+   return 0;
 }
