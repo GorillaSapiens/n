@@ -141,7 +141,7 @@ ASTNode *root = NULL;
 
 void parse_dump(void) {
    if (root) {
-      dump_ast(root, "", 0);
+      dump_ast(root, "", 1);
    }
 }
 
