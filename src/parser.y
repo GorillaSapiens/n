@@ -80,6 +80,13 @@ ASTNode *make_d_leaf(double dval) {
    return ret;
 }
 
+ASTNode *make_empty_leaf(void) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "empty";
+   ret->kind = AST_EMPTY;
+   return ret;
+}
+
 void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
     if (!node) return;
 
@@ -258,15 +265,15 @@ opt_pointer:
   ;
 
 param_list:
-    /* empty */     { $$ = NULL; }
+    /* empty */     { $$ = make_empty_leaf(); }
   | param_decls     { $$ = $1; }
   ;
 
 param_decls:
     type_name IDENTIFIER                 { $$ = MAKE_NODE($1, make_str_leaf($2)); }
-  | type_name                            { $$ = MAKE_NODE($1, NULL); } // unnamed param
+  | type_name                            { $$ = MAKE_NODE($1, make_empty_leaf()); } // unnamed param
   | param_decls ',' type_name IDENTIFIER { $$ = MAKE_NODE($1, MAKE_NODE($3, make_str_leaf($4))); }
-  | param_decls ',' type_name            { $$ = MAKE_NODE($1, MAKE_NODE($3, NULL)); }
+  | param_decls ',' type_name            { $$ = MAKE_NODE($1, MAKE_NODE($3, make_empty_leaf())); }
 ;
 
 type_name:
@@ -278,8 +285,8 @@ block:
   ;
 
 statement_list:
-    /* empty */              { $$ = NULL; }
-  | statement_list statement { $$ = $1 ? MAKE_NODE($1, $2) : MAKE_NODE($2); }
+    /* empty */              { $$ = make_empty_leaf(); }
+  | statement_list statement { $$ = ($1->kind != AST_EMPTY) ? MAKE_NODE($1, $2) : MAKE_NODE($2); }
   ;
 
 statement:
@@ -307,12 +314,12 @@ goto_stmt:
   ;
 
 break_stmt:
-    BREAK ';'            { $$ = MAKE_NODE(NULL); }
+    BREAK ';'            { $$ = MAKE_NODE(make_empty_leaf()); }
   | BREAK IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
   ;
 
 continue_stmt:
-    CONTINUE ';'            { $$ = MAKE_NODE(NULL); }
+    CONTINUE ';'            { $$ = MAKE_NODE(make_empty_leaf()); }
   | CONTINUE IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
   ;
 
@@ -342,38 +349,39 @@ label_stmt:
   ;
 
 opt_address:
-    /* empty */   { $$ = NULL; }
+    /* empty */   { $$ = make_empty_leaf(); }
   | '@' INTEGER   { $$ = make_int_leaf($2); }
   ;
 
 decl_stmt:
-    type_name IDENTIFIER opt_array_dim opt_address ';'
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';'
+    type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4, $6); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4, $6); }
   ;
 
 opt_array_dim:
-    /* empty */
-  | '[' expr ']'
+    /* empty */  { $$ = make_empty_leaf(); }
+  | '[' expr ']' { $$ = $2; }
   ;
 
 array_initializer:
-    '{' expr_list '}'
+    '{' expr_list '}' { $$ = $2; }
   ;
 
 expr_list:
-    expr
-  | expr_list ',' expr
-  ;
+    expr                        { $$ = MAKE_NODE($1); }
+  | expr_list ',' expr          { $$ = MAKE_NODE($1, $3); }
+;
+
 
 expr_stmt:
-    expr ';'
-  | ';'
+    expr ';' { $$ = $1; }
+  | ';'      { $$ = make_empty_leaf(); }
   ;
 
 opt_expr:
-    /* empty */
-  | expr
+    /* empty */  { $$ = make_empty_leaf(); }
+  | expr         { $$ = $1; }
   ;
 
 

@@ -5,7 +5,8 @@ enum ASTKind {
     AST_GENERIC = 0,
     AST_INT,
     AST_FLOAT,
-    AST_STRING
+    AST_STRING,
+    AST_EMPTY
 };
 
 typedef struct ASTNode {
