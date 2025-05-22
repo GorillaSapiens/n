@@ -151,6 +151,66 @@ int declare_typename(const char* name) {
     return register_typename(name, -1, NULL, 0);
 }
 
+enum ASTKind {
+    AST_GENERIC = 0,
+    AST_INT,
+    AST_FLOAT,
+    AST_STRING
+};
+
+typedef struct ASTNode {
+   const char *name;
+   enum ASTKind kind;
+
+   union {
+      unsigned long long intval;
+      double dval;
+      char *strval;
+   };
+
+   int count;
+   struct ASTNode *children[16];
+} ASTNode;
+
+ASTNode *make_node(const char *name, ...) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = name;
+   va_list ap;
+   va_start(ap, name);
+   ASTNode *child;
+   while ((child = va_arg(ap, ASTNode *)) != NULL) {
+      if (ret->count < 16)
+         ret->children[ret->count++] = child;
+   }
+   va_end(ap);
+   return ret;
+}
+#define MAKE_NODE(...) make_node(yysymbol_name(YYSYMBOL), __VA_ARGS__, NULL)
+
+ASTNode *make_int_leaf(const char *name, unsigned long long intval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "int";
+   ret->kind = AST_INT;
+   ret->intval = intval;
+   return ret;
+}
+
+ASTNode *make_str_leaf(const char *name, char *strval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "str";
+   ret->kind = AST_STRING;
+   ret->strval = strval ? strdup(strval) : NULL;
+   return ret;
+}
+
+ASTNode *make_d_leaf(const char *name, double dval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "float";
+   ret->kind = AST_FLOAT;
+   ret->dval = dval;
+   return ret;
+}
+
 %}
 
 %union {
