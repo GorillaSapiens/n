@@ -1,0 +1,15 @@
+type int32(4);
+
+int foo();  // forward declaration
+
+int main() {
+    return foo();
+}
+
+int foo() {
+    return 42;
+}
+
+int operator+(int a, int b) {
+    return a + b;
+}

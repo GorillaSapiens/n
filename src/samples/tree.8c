@@ -1,0 +1,2 @@
+struct foo { int id };
+struct tree { int id, tree *left, tree *right };
