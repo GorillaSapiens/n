@@ -241,45 +241,42 @@ union_decl:
   ;
 
 struct_fields:
-    struct_fields struct_field {
-    }
-  | struct_field {
-    }
+    struct_field                        { $$ = $1; }
+  | struct_fields struct_field          { $$ = MAKE_NODE($1, $2); }
   ;
 
 struct_field:
-    type_name opt_pointer IDENTIFIER ';' {
-    }
+    type_name opt_pointer IDENTIFIER ';' { $$ = MAKE_NODE($1, $2, make_str_leaf($3)); }
   ;
 
 opt_pointer:
-    /* empty */ { }
-  | '*' opt_pointer {  }
+    /* empty */     { $$ = make_int_leaf(0); }
+  | '*' opt_pointer { $$ = $2; $$->intval++; }
   ;
 
 param_list:
-    /* empty */
-  | param_decls
+    /* empty */     { $$ = NULL; }
+  | param_decls     { $$ = $1; }
   ;
 
 param_decls:
-    type_name IDENTIFIER
-  | type_name {  }
-  | param_decls ',' type_name { }
-  | param_decls ',' type_name IDENTIFIER
-  ;
+    type_name IDENTIFIER                 { $$ = MAKE_NODE($1, make_str_leaf($2)); }
+  | type_name                            { $$ = MAKE_NODE($1, NULL); } // unnamed param
+  | param_decls ',' type_name IDENTIFIER { $$ = MAKE_NODE($1, MAKE_NODE($3, make_str_leaf($4))); }
+  | param_decls ',' type_name            { $$ = MAKE_NODE($1, MAKE_NODE($3, NULL)); }
+;
 
 type_name:
-    TYPENAME {  }
+    TYPENAME { $$ = make_str_leaf($1); }
   ;
 
 block:
-    '{' statement_list '}'
+    '{' statement_list '}' { $$ = $2; }
   ;
 
 statement_list:
-    /* empty */
-  | statement_list statement
+    /* empty */              { $$ = NULL; }
+  | statement_list statement { $$ = $1 ? MAKE_NODE($1, $2) : MAKE_NODE($2); }
   ;
 
 statement:
