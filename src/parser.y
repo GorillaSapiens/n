@@ -548,27 +548,27 @@ struct_init:
   ;
 
 case_section:
-    case_section case_block
-  | case_block
+    case_section case_block { $$ = MAKE_NODE($1, $2); }
+  | case_block              { $$ = MAKE_NODE($1); }
   ;
 
 case_block:
-    CASE expr ':' statement_list
-  | DEFAULT ':' statement_list
+    CASE expr ':' statement_list { $$ = MAKE_NODE($2, $4); }
+  | DEFAULT ':' statement_list   { $$ = MAKE_NODE(make_empty_leaf(), $3); }
   ;
 
 opt_flags:
-    flag_list   {  }
-  | /* empty */ {  }
+    flag_list   { $$ = $1; }
+  | /* empty */ { $$ = make_empty_leaf(); }
   ;
 
 flag_list:
-    flag_list flag { }
-  | flag { }
+    flag_list flag { $$ = MAKE_NODE($1, $2); }
+  | flag           { $$ = MAKE_NODE($1); }
   ;
 
 flag:
-    FLAG { }
+    FLAG { $$ = make_identifier_leaf($1); }
   ;
 %%
 extern char* yytext;
