@@ -5,6 +5,8 @@
 #include <string.h>
 #include <stdarg.h>
 
+#include "ast.h"
+
 extern int yylex();
 void yyerror(const char *fmt, ...);
 void yywarn(const char *fmt, ...);
@@ -38,27 +40,6 @@ int register_typename(const char* name) {
    }
    return 0;
 }
-
-enum ASTKind {
-    AST_GENERIC = 0,
-    AST_INT,
-    AST_FLOAT,
-    AST_STRING
-};
-
-typedef struct ASTNode {
-   const char *name;
-   enum ASTKind kind;
-
-   union {
-      unsigned long long intval;
-      double dval;
-      char *strval;
-   };
-
-   int count;
-   struct ASTNode *children[16];
-} ASTNode;
 
 ASTNode *make_node(const char *name, ...) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
