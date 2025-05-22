@@ -3,9 +3,11 @@
 /* Block comment over
    multiple lines */
 
-type uint8 { 1 $byte $packed };
-type * { 2 };
-type float { 2 $byte $packed };
+type void { 0 };
+type uint8 { 1 $unsigned };
+type * { 2 $endian:little };
+type float { 2 $endian:little};
+type int { 2 $signed $endian:little};
 
 struct Point {
     int x;

@@ -56,7 +56,7 @@ ASTNode *make_node(const char *name, ...) {
    va_end(ap);
    return ret;
 }
-#define MAKE_NODE(...) make_node(yysymbol_name(yytoken), __VA_ARGS__, NULL)
+#define MAKE_NODE(...) make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)
 #define MAKE_NAMED_NODE(name, ...) make_node(name, __VA_ARGS__, NULL)
 
 ASTNode *make_integer_leaf(unsigned long long intval) {
@@ -333,7 +333,7 @@ return_stmt:
   ;
 
 goto_stmt:
-    GOTO IDENTIFIER ';' { $$ = MAKE_NODE($2); }
+    GOTO IDENTIFIER ';' { $$ = MAKE_NODE(make_identifier_leaf($2)); }
   ;
 
 break_stmt:
