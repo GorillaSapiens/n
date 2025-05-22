@@ -173,6 +173,9 @@ void parse_dump(void) {
 %type <node> unary_expr
 %type <node> union_decl
 
+%type <node> return_stmt goto_stmt break_stmt continue_stmt switch_stmt 
+%type <node> if_stmt while_stmt for_stmt do_stmt label_stmt 
+
 %define parse.error verbose
 %locations
 
@@ -280,27 +283,67 @@ statement_list:
   ;
 
 statement:
-    block
-  | decl_stmt
-  | expr_stmt
-  | RETURN opt_expr ';'
-  | GOTO IDENTIFIER ';'
-  | BREAK ';'
-  | BREAK IDENTIFIER ';'
-  | CONTINUE ';'
-  | CONTINUE IDENTIFIER ';'
-  | SWITCH '(' expr ')' '{' case_section '}'
-  | IF '(' expr ')' block ELSE block
-  | IF '(' expr ')' block
-  | WHILE '(' expr ')' block
-  | FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' block
-  | DO block WHILE '(' expr ')' ';'
-  | IDENTIFIER ':' statement
+    block          { $$ = $1; }
+  | decl_stmt      { $$ = $1; }
+  | expr_stmt      { $$ = $1; }
+  | return_stmt    { $$ = $1; }
+  | goto_stmt      { $$ = $1; }
+  | break_stmt     { $$ = $1; }
+  | continue_stmt  { $$ = $1; }
+  | switch_stmt    { $$ = $1; }
+  | if_stmt        { $$ = $1; }
+  | while_stmt     { $$ = $1; }
+  | for_stmt       { $$ = $1; }
+  | do_stmt        { $$ = $1; }
+  | label_stmt     { $$ = $1; }
+  ;
+
+return_stmt:
+    RETURN opt_expr ';' { $$ = MAKE_NODE($2); }
+  ;
+
+goto_stmt:
+    GOTO IDENTIFIER ';' { $$ = MAKE_NODE($2); }
+  ;
+
+break_stmt:
+    BREAK ';'            { $$ = MAKE_NODE(NULL); }
+  | BREAK IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
+  ;
+
+continue_stmt:
+    CONTINUE ';'            { $$ = MAKE_NODE(NULL); }
+  | CONTINUE IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
+  ;
+
+switch_stmt:
+    SWITCH '(' expr ')' '{' case_section '}' { $$ = MAKE_NODE($3,$6); }
+  ;
+
+if_stmt:
+    IF '(' expr ')' block ELSE block { $$ = MAKE_NODE($3, $5, $7); }
+  | IF '(' expr ')' block            { $$ = MAKE_NODE($3, $5); }
+  ;
+
+while_stmt:
+    WHILE '(' expr ')' block { $$ = MAKE_NODE($3, $5); }
+  ;
+
+for_stmt:
+    FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' block { $$ = MAKE_NODE($3, $5, $7, $9); }
+  ;
+
+do_stmt:
+    DO block WHILE '(' expr ')' ';' { $$ = MAKE_NODE($2, $5); }
+  ;
+
+label_stmt:
+    IDENTIFIER ':' statement { $$ = MAKE_NODE(make_str_leaf($1), $3); }
   ;
 
 opt_address:
-    /* empty */
-  | '@' INTEGER
+    /* empty */   { $$ = NULL; }
+  | '@' INTEGER   { $$ = make_int_leaf($2); }
   ;
 
 decl_stmt:
