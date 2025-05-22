@@ -57,18 +57,19 @@ ASTNode *make_node(const char *name, ...) {
    return ret;
 }
 #define MAKE_NODE(...) make_node(yysymbol_name(yytoken), __VA_ARGS__, NULL)
+#define MAKE_NAMED_NODE(name, ...) make_node(name, __VA_ARGS__, NULL)
 
-ASTNode *make_int_leaf(unsigned long long intval) {
+ASTNode *make_integer_leaf(unsigned long long intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "int";
    ret->line = yylineno;
    ret->column = yycolumn;
-   ret->kind = AST_INT;
+   ret->kind = AST_INTEGER;
    ret->intval = intval;
    return ret;
 }
 
-ASTNode *make_str_leaf(char *strval) {
+ASTNode *make_string_leaf(char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
    ret->line = yylineno;
@@ -78,7 +79,17 @@ ASTNode *make_str_leaf(char *strval) {
    return ret;
 }
 
-ASTNode *make_d_leaf(double dval) {
+ASTNode *make_identifier_leaf(char *strval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "identifier";
+   ret->line = yylineno;
+   ret->column = yycolumn;
+   ret->kind = AST_IDENTIFIER;
+   ret->strval = strval ? strdup(strval) : NULL;
+   return ret;
+}
+
+ASTNode *make_float_leaf(double dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
    ret->line = yylineno;
@@ -107,9 +118,11 @@ void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
 
     // Add leaf value if applicable
     switch (node->kind) {
-        case AST_INT: printf(" %llu", node->intval); break;
-        case AST_FLOAT: printf(" %f", node->dval); break;
-        case AST_STRING: printf(" \"%s\"", node->strval); break;
+        case AST_INTEGER:    printf(" %llu", node->intval); break;
+        case AST_FLOAT:      printf(" %f", node->dval); break;
+        case AST_STRING:     printf(" \"%s\"", node->strval); break;
+        case AST_IDENTIFIER: printf(" %s", node->strval); break;
+        case AST_EMPTY:      printf(" <empty>"); break;
         default: break;
     }
     printf("\n");
@@ -172,7 +185,7 @@ void parse_dump(void) {
 %right UMINUS UINC UDEC
 %right ASSIGN
 
-%type <node> additive_expr arg_list array_initializer assignable assignment_expr
+%type <node> additive_expr arg_list array_initializer assignable
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
 %type <node> decl_stmt
@@ -213,23 +226,23 @@ program_item:
 type_decl:
     TYPE IDENTIFIER '{' INTEGER opt_flags '}' ';' {
         if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_str_leaf($2), make_int_leaf($4), $5);
+        $$ = MAKE_NODE(make_identifier_leaf($2), make_integer_leaf($4), $5);
     }
   | TYPE '*' '{' INTEGER opt_flags '}' ';' {
         if (register_typename("*") < 0) YYABORT;
-        $$ = MAKE_NODE(make_str_leaf("*"), make_int_leaf($4), $5);
+        $$ = MAKE_NODE(make_identifier_leaf("*"), make_integer_leaf($4), $5);
     }
   | TYPE TYPENAME '{' INTEGER opt_flags '}' ';' {
         // always fails, but we want the error message
         if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_str_leaf($2), make_int_leaf($4), $5); // TODO FIX is this needed?
+        $$ = MAKE_NODE(make_identifier_leaf($2), make_integer_leaf($4), $5); // TODO FIX is this needed?
     }
   ;
 
 function_decl:
-    type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($1, make_str_leaf($2), $4); }
-  | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, make_str_leaf($2), $4, $6); }
-  | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, make_str_leaf($2), $4, $6); }
+    type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4); }
+  | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
+  | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
   ;
 
 struct_decl:
@@ -238,7 +251,7 @@ struct_decl:
     }
     struct_fields '}' ';' {
         register_typename($2);
-        $$ = MAKE_NODE(make_str_leaf($2), $5);
+        $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | STRUCT TYPENAME '{' {
         // always fails, but we want the error message
@@ -252,7 +265,7 @@ union_decl:
     }
     struct_fields '}' ';' {
         register_typename($2);
-        $$ = MAKE_NODE(make_str_leaf($2), $5);
+        $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | UNION TYPENAME '{' {
         // always fails, but we want the error message
@@ -266,11 +279,11 @@ struct_fields:
   ;
 
 struct_field:
-    type_name opt_pointer IDENTIFIER ';' { $$ = MAKE_NODE($1, $2, make_str_leaf($3)); }
+    type_name opt_pointer IDENTIFIER ';' { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3)); }
   ;
 
 opt_pointer:
-    /* empty */     { $$ = make_int_leaf(0); }
+    /* empty */     { $$ = make_integer_leaf(0); }
   | '*' opt_pointer { $$ = $2; $$->intval++; }
   ;
 
@@ -280,14 +293,14 @@ param_list:
   ;
 
 param_decls:
-    type_name IDENTIFIER                 { $$ = MAKE_NODE($1, make_str_leaf($2)); }
+    type_name IDENTIFIER                 { $$ = MAKE_NODE($1, make_identifier_leaf($2)); }
   | type_name                            { $$ = MAKE_NODE($1, make_empty_leaf()); } // unnamed param
-  | param_decls ',' type_name IDENTIFIER { $$ = MAKE_NODE($1, MAKE_NODE($3, make_str_leaf($4))); }
+  | param_decls ',' type_name IDENTIFIER { $$ = MAKE_NODE($1, MAKE_NODE($3, make_identifier_leaf($4))); }
   | param_decls ',' type_name            { $$ = MAKE_NODE($1, MAKE_NODE($3, make_empty_leaf())); }
 ;
 
 type_name:
-    TYPENAME { $$ = make_str_leaf($1); }
+    TYPENAME { $$ = make_identifier_leaf($1); }
   ;
 
 block:
@@ -325,12 +338,12 @@ goto_stmt:
 
 break_stmt:
     BREAK ';'            { $$ = MAKE_NODE(make_empty_leaf()); }
-  | BREAK IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
+  | BREAK IDENTIFIER ';' { $$ = MAKE_NODE(make_identifier_leaf($2)); }
   ;
 
 continue_stmt:
     CONTINUE ';'            { $$ = MAKE_NODE(make_empty_leaf()); }
-  | CONTINUE IDENTIFIER ';' { $$ = MAKE_NODE(make_str_leaf($2)); }
+  | CONTINUE IDENTIFIER ';' { $$ = MAKE_NODE(make_identifier_leaf($2)); }
   ;
 
 switch_stmt:
@@ -355,18 +368,18 @@ do_stmt:
   ;
 
 label_stmt:
-    IDENTIFIER ':' statement { $$ = MAKE_NODE(make_str_leaf($1), $3); }
+    IDENTIFIER ':' statement { $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
   ;
 
 opt_address:
     /* empty */   { $$ = make_empty_leaf(); }
-  | '@' INTEGER   { $$ = make_int_leaf($2); }
+  | '@' INTEGER   { $$ = make_integer_leaf($2); }
   ;
 
 decl_stmt:
-    type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4, $6); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, make_str_leaf($2), $3, $4, $6); }
+    type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
   ;
 
 opt_array_dim:
@@ -395,115 +408,114 @@ opt_expr:
   ;
 
 
-expr: assignment_expr ;
-
-
-assignment_expr:
-    logical_or_expr
-  | logical_or_expr '?' expr ':' assignment_expr
-  | assignable ASSIGN assignment_expr
-  | assignable ADD_ASSIGN assignment_expr
-  | assignable SUB_ASSIGN assignment_expr
-  | assignable MUL_ASSIGN assignment_expr
-  | assignable DIV_ASSIGN assignment_expr
-  | assignable MOD_ASSIGN assignment_expr
-  | assignable AND_ASSIGN assignment_expr
-  | assignable OR_ASSIGN assignment_expr
-  | assignable XOR_ASSIGN assignment_expr
-  | assignable LSHIFT_ASSIGN assignment_expr
-  | assignable RSHIFT_ASSIGN assignment_expr
+expr:
+    logical_or_expr                    { $$ = MAKE_NODE($1); }
+  | logical_or_expr '?' expr ':' expr  { $$ = MAKE_NODE($1, $3, $5); }
+  | assignable ASSIGN expr             { $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
+  | assignable ADD_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
+  | assignable SUB_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
+  | assignable MUL_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
+  | assignable DIV_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
+  | assignable MOD_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
+  | assignable AND_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
+  | assignable OR_ASSIGN expr          { $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
+  | assignable XOR_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
+  | assignable LSHIFT_ASSIGN expr      { $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
+  | assignable RSHIFT_ASSIGN expr      { $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
   ;
 
 assignable:
-    IDENTIFIER
-  | postfix_expr '[' expr ']'
-  | '*' unary_expr
+    IDENTIFIER                { $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | postfix_expr '[' expr ']' { $$ = MAKE_NODE($1,$3); }
+  | '*' unary_expr            { $$ = MAKE_NODE(make_identifier_leaf("*"), $2); }
   ;
 
 logical_or_expr:
-    logical_and_expr
-  | logical_or_expr OR logical_and_expr
+    logical_and_expr                    { $$ = $1; }
+  | logical_or_expr OR logical_and_expr { $$ = MAKE_NAMED_NODE("||", $1, $3); }
   ;
 
 logical_and_expr:
-    bitwise_or_expr
-  | logical_and_expr AND bitwise_or_expr
+    bitwise_or_expr                       { $$ = $1; }
+  | logical_and_expr AND bitwise_or_expr  { $$ = MAKE_NAMED_NODE("&&", $1, $3); }
   ;
 
 bitwise_or_expr:
-    bitwise_xor_expr
-  | bitwise_or_expr '|' bitwise_xor_expr
+    bitwise_xor_expr                       { $$ = $1; }
+  | bitwise_or_expr '|' bitwise_xor_expr  { $$ = MAKE_NAMED_NODE("|", $1, $3); }
   ;
 
 bitwise_xor_expr:
-    bitwise_and_expr
-  | bitwise_xor_expr '^' bitwise_and_expr
+    bitwise_and_expr                       { $$ = $1; }
+  | bitwise_xor_expr '^' bitwise_and_expr  { $$ = MAKE_NAMED_NODE("^", $1, $3); }
   ;
 
 bitwise_and_expr:
-    equality_expr
-  | bitwise_and_expr '&' equality_expr
+    equality_expr                       { $$ = $1; }
+  | bitwise_and_expr '&' equality_expr  { $$ = MAKE_NAMED_NODE("&", $1, $3); }
   ;
 
 equality_expr:
-    relational_expr
-  | equality_expr EQ relational_expr
-  | equality_expr NE relational_expr
+    relational_expr                       { $$ = $1; }
+  | equality_expr EQ relational_expr      { $$ = MAKE_NAMED_NODE("==", $1, $3); }
+  | equality_expr NE relational_expr      { $$ = MAKE_NAMED_NODE("!=", $1, $3); }
   ;
 
 relational_expr:
-    shift_expr
-  | relational_expr '<' shift_expr
-  | relational_expr '>' shift_expr
-  | relational_expr LE shift_expr
-  | relational_expr GE shift_expr
+    shift_expr                       { $$ = $1; }
+  | relational_expr '<' shift_expr   { $$ = MAKE_NAMED_NODE("<", $1, $3); }
+  | relational_expr '>' shift_expr   { $$ = MAKE_NAMED_NODE(">", $1, $3); }
+  | relational_expr LE shift_expr    { $$ = MAKE_NAMED_NODE("<=", $1, $3); }
+  | relational_expr GE shift_expr    { $$ = MAKE_NAMED_NODE(">=", $1, $3); }
   ;
 
 shift_expr:
-    additive_expr
-  | shift_expr LSHIFT additive_expr
-  | shift_expr RSHIFT additive_expr
+    additive_expr                       { $$ = $1; }
+  | shift_expr LSHIFT additive_expr     { $$ = MAKE_NAMED_NODE("<<", $1, $3); }
+  | shift_expr RSHIFT additive_expr     { $$ = MAKE_NAMED_NODE(">>", $1, $3); }
   ;
 
 additive_expr:
-    multiplicative_expr
-  | additive_expr '+' multiplicative_expr
-  | additive_expr '-' multiplicative_expr
+    multiplicative_expr                       { $$ = $1; }
+  | additive_expr '+' multiplicative_expr     { $$ = MAKE_NAMED_NODE("-", $1, $3); }
+  | additive_expr '-' multiplicative_expr     { $$ = MAKE_NAMED_NODE("+", $1, $3); }
   ;
 
 multiplicative_expr:
-    unary_expr
-  | multiplicative_expr '*' unary_expr
-  | multiplicative_expr '/' unary_expr
-  | multiplicative_expr '%' unary_expr
+    unary_expr                         { $$ = $1; }
+  | multiplicative_expr '*' unary_expr { $$ = MAKE_NAMED_NODE("*", $1, $3); }
+  | multiplicative_expr '/' unary_expr { $$ = MAKE_NAMED_NODE("/", $1, $3); }
+  | multiplicative_expr '%' unary_expr { $$ = MAKE_NAMED_NODE("%", $1, $3); }
   ;
 
 unary_expr:
-    postfix_expr
-  | '!' unary_expr
-  | '~' unary_expr
-  | '-' unary_expr
-  | '&' unary_expr
-  | '*' unary_expr
-  | INC unary_expr
-  | DEC unary_expr
+    postfix_expr   { $$ = $1; }
+  | '!' unary_expr { $$ = MAKE_NAMED_NODE("!", $2); }
+  | '~' unary_expr { $$ = MAKE_NAMED_NODE("~", $2); }
+  | '-' unary_expr { $$ = MAKE_NAMED_NODE("-", $2); }
+  | '&' unary_expr { $$ = MAKE_NAMED_NODE("&", $2); }
+  | '*' unary_expr { $$ = MAKE_NAMED_NODE("*", $2); }
+  | INC unary_expr { $$ = MAKE_NAMED_NODE("pre++", $2); }
+  | DEC unary_expr { $$ = MAKE_NAMED_NODE("pre--", $2); }
   ;
 
 postfix_expr:
-    primary_expr
-  | postfix_expr '.' IDENTIFIER
-  | postfix_expr ARROW IDENTIFIER
-  | postfix_expr INC
-  | postfix_expr DEC
-  | postfix_expr '[' expr ']'
-  | IDENTIFIER '(' arg_list ')'
+    primary_expr                   { $$ = $1; }
+  | postfix_expr '.' IDENTIFIER    { $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
+  | postfix_expr ARROW IDENTIFIER  { $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
+  | postfix_expr INC               { $$ = MAKE_NAMED_NODE("post++", $1); }
+  | postfix_expr DEC               { $$ = MAKE_NAMED_NODE("post--", $1); }
+  | postfix_expr '[' expr ']'      { $$ = MAKE_NAMED_NODE("[]", $1, $3); }
+  | IDENTIFIER '(' arg_list ')'    { $$ = MAKE_NAMED_NODE("()", make_identifier_leaf($1), $3); }
   ;
 
 primary_expr:
-    IDENTIFIER  | INTEGER  | FLOAT
-  | STRING
-  | struct_literal
-  | '(' expr ')'
+    IDENTIFIER     { $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | INTEGER        { $$ = MAKE_NODE(make_integer_leaf($1)); }
+  | FLOAT          { $$ = MAKE_NODE(make_float_leaf($1)); }
+  | STRING         { $$ = MAKE_NODE(make_string_leaf($1)); }
+  | struct_literal { $$ = $1; }
+  | '(' expr ')'   { $$ = $2; }
   ;
 
 arg_list:

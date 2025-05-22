@@ -3,7 +3,8 @@
 
 enum ASTKind {
     AST_GENERIC = 0,
-    AST_INT,
+    AST_IDENTIFIER,
+    AST_INTEGER,
     AST_FLOAT,
     AST_STRING,
     AST_EMPTY
