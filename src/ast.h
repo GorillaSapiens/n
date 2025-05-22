@@ -11,6 +11,7 @@ enum ASTKind {
 
 typedef struct ASTNode {
    const char *name;
+   int line, column;
    enum ASTKind kind;
 
    union {

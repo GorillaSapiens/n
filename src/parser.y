@@ -44,6 +44,8 @@ int register_typename(const char* name) {
 ASTNode *make_node(const char *name, ...) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = name;
+   ret->line = yylineno;
+   ret->column = yycolumn;
    va_list ap;
    va_start(ap, name);
    ASTNode *child;
@@ -59,6 +61,8 @@ ASTNode *make_node(const char *name, ...) {
 ASTNode *make_int_leaf(unsigned long long intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "int";
+   ret->line = yylineno;
+   ret->column = yycolumn;
    ret->kind = AST_INT;
    ret->intval = intval;
    return ret;
@@ -67,6 +71,8 @@ ASTNode *make_int_leaf(unsigned long long intval) {
 ASTNode *make_str_leaf(char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
+   ret->line = yylineno;
+   ret->column = yycolumn;
    ret->kind = AST_STRING;
    ret->strval = strval ? strdup(strval) : NULL;
    return ret;
@@ -75,6 +81,8 @@ ASTNode *make_str_leaf(char *strval) {
 ASTNode *make_d_leaf(double dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
+   ret->line = yylineno;
+   ret->column = yycolumn;
    ret->kind = AST_FLOAT;
    ret->dval = dval;
    return ret;
@@ -83,6 +91,8 @@ ASTNode *make_d_leaf(double dval) {
 ASTNode *make_empty_leaf(void) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "empty";
+   ret->line = yylineno;
+   ret->column = yycolumn;
    ret->kind = AST_EMPTY;
    return ret;
 }
