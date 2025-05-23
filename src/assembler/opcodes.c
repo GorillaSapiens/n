@@ -8,8 +8,8 @@ static struct opcode_entry table[] = {
 unsigned char get_opcode(const char* mnemonic, const char* mode) {
     for (int i = 0; i < 256; i++) {
         if (table[i].mnemonic &&
-            strcmp(table[i].mnemonic, mnemonic) == 0 &&
-            strcmp(table[i].mode, mode) == 0) {
+            strcasecmp(table[i].mnemonic, mnemonic) == 0 &&
+            strcasecmp(table[i].mode, mode) == 0) {
             return table[i].code;
         }
     }
@@ -27,7 +27,7 @@ const struct opcode_entry* get_opcode_info(unsigned char code) {
 
 int is_opcode(const char* name) {
     for (int i = 0; table[i].mnemonic; i++) {
-        if (strcmp(table[i].mnemonic, name) == 0)
+        if (strcasecmp(table[i].mnemonic, name) == 0)
             return 1;
     }
     return 0;

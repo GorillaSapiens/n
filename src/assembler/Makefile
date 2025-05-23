@@ -1,22 +1,25 @@
+CC=gcc
+CFLAGS=-g
+
 all: assembler
 
 assembler: lexer.o parser.o main.o symbols.o opcodes.o
-	$(CC) -o assembler lexer.o parser.o main.o symbols.o opcodes.o -lfl
+	$(CC) $(CFLAGS) -o assembler lexer.o parser.o main.o symbols.o opcodes.o -lfl
 
 lexer.o: lexer.c parser.h
-	$(CC) -c lexer.c
+	$(CC) $(CFLAGS) -c lexer.c
 
 parser.o: parser.c
-	$(CC) -c parser.c
+	$(CC) $(CFLAGS) -c parser.c
 
 main.o: main.c
-	$(CC) -c main.c
+	$(CC) $(CFLAGS) -c main.c
 
 symbols.o: symbols.c symbols.h
-	$(CC) -c symbols.c
+	$(CC) $(CFLAGS) -c symbols.c
 
 opcodes.o: opcodes.c opcodes.h
-	$(CC) -c opcodes.c
+	$(CC) $(CFLAGS) -c opcodes.c
 
 parser.c parser.h: parser.y
 	bison -d -o parser.c parser.y

@@ -22,7 +22,7 @@ int yycolumn = 1;
 
 ;[^\n]*      { yycolumn += yyleng; /* skip comment */ }
 
-"\"([^\"]|\\.)*\"" {
+\"([^\"]|\\.)*\" {
     yylval.str = strdup(yytext + 1);
     yylval.str[strlen(yylval.str) - 1] = '\0';
     yycolumn += yyleng;
@@ -33,8 +33,8 @@ int yycolumn = 1;
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
     yycolumn += yyleng;
-    if (is_opcode(yylval.str)) return OPCODE;
-    else return LABEL;
+    if (is_opcode(yylval.str)) { printf("%s opcode\n", yylval.str); return OPCODE; }
+    else { printf("%s label\n", yylval.str); return LABEL; }
 }
 
 ":"         { yycolumn += yyleng; return COLON; }
