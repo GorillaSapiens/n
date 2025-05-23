@@ -25,12 +25,15 @@ char* current_opcode = NULL;
 %token DOTIMPORT DOTEXPORT DOTINCLUDE DOTPROC DOTENDPROC
 
 %%
+
 program:
     | program line
     ;
 
 line:
       LABEL COLON NEWLINE                { define_label($1, current_address); }
+    | DOTIMPORT import_list NEWLINE      { printf("; importing:\n"); }
+    | DOTEXPORT import_list NEWLINE      { printf("; exporting:\n"); }
     | OPCODE operand NEWLINE             { current_opcode = $1; }
     | OPCODE NEWLINE                     { emit_byte(get_opcode($1, "impl")); }
     | DOTBYTE NUMBER NEWLINE            { emit_byte($2); }
@@ -38,8 +41,6 @@ line:
     | DOTORG NUMBER NEWLINE             { current_address = $2; }
     | DOTASCII STRING NEWLINE           { emit_string($2); }
     | DOTTEXT STRING NEWLINE            { emit_string($2); emit_byte(0); }
-    | DOTIMPORT STRING NEWLINE          { printf("; importing %s\n", $2); }
-    | DOTEXPORT STRING NEWLINE          { printf("; exporting %s\n", $2); }
     | DOTINCLUDE STRING NEWLINE         { printf("; including file %s (not yet implemented)\n", $2); }
     | DOTPROC LABEL NEWLINE             { printf("; begin proc %s\n", $2); }
     | DOTENDPROC NEWLINE                { printf("; end proc\n"); }
@@ -56,5 +57,9 @@ operand:
     | LPAREN NUMBER RPAREN COMMA 'Y'     { emit_byte(get_opcode(current_opcode, "(ind),Y")); emit_byte($2); }
     | LABEL                              { emit_byte(get_opcode(current_opcode, "abs")); emit_word(get_label_address($1)); }
     ;
+
+import_list:
+      LABEL                              { printf("  %s\n", $1); }
+    | import_list COMMA LABEL            { printf("  %s\n", $3); }
 
 %%
