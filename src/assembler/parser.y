@@ -4,12 +4,22 @@
 #include <string.h>
 #include "symbols.h"
 #include "opcodes.h"
+
 extern int yylex();
 extern int yylineno;
 extern int yycolumn;
+extern FILE* yyin;
+extern char* current_file;
+extern int include_depth;
+extern FILE* file_stack[];
+extern char* name_stack[];
+extern int line_stack[];
+extern int col_stack[];
+
 void yyerror(const char *s) {
-    fprintf(stderr, "Syntax error at line %d, column %d: %s\n", yylineno, yycolumn, s);
+    fprintf(stderr, "%s at %s:%d:%d\n", s, current_file ? current_file : "<stdin>", yylineno, yycolumn);
 }
+
 char* current_opcode = NULL;
 %}
 
@@ -24,7 +34,6 @@ char* current_opcode = NULL;
 %token DOTBYTE DOTWORD DOTORG DOTASCII DOTTEXT
 %token DOTIMPORT DOTEXPORT DOTINCLUDE DOTPROC DOTENDPROC
 
-%define parse.error verbose
 %%
 
 program:
@@ -33,16 +42,36 @@ program:
 
 line:
       LABEL COLON NEWLINE                { define_label($1, current_address); }
-    | DOTIMPORT import_list NEWLINE      { printf("; importing:\n"); }
-    | DOTEXPORT import_list NEWLINE      { printf("; exporting:\n"); }
-    | OPCODE { current_opcode = $1; } operand NEWLINE        
+    | OPCODE { current_opcode = $1; } operand NEWLINE
     | OPCODE NEWLINE                     { emit_byte(get_opcode($1, "impl")); }
     | DOTBYTE NUMBER NEWLINE            { emit_byte($2); }
     | DOTWORD NUMBER NEWLINE            { emit_word($2); }
     | DOTORG NUMBER NEWLINE             { current_address = $2; }
     | DOTASCII STRING NEWLINE           { emit_string($2); }
     | DOTTEXT STRING NEWLINE            { emit_string($2); emit_byte(0); }
-    | DOTINCLUDE STRING NEWLINE         { printf("; including file %s (not yet implemented)\n", $2); }
+    | DOTIMPORT import_list NEWLINE     { printf("; importing:\n"); }
+    | DOTEXPORT import_list NEWLINE     { printf("; exporting:\n"); }
+    | DOTINCLUDE STRING NEWLINE {
+        if (include_depth >= 16) {
+            fprintf(stderr, "Include nesting too deep\n");
+            exit(1);
+        }
+        FILE* f = fopen($2, "r");
+        if (!f) {
+            perror($2);
+            exit(1);
+        }
+        file_stack[include_depth] = yyin;
+        name_stack[include_depth] = current_file;
+        line_stack[include_depth] = yylineno;
+        col_stack[include_depth] = yycolumn;
+        include_depth++;
+
+        yyin = f;
+        current_file = $2;
+        yylineno = 1;
+        yycolumn = 1;
+    }
     | DOTPROC LABEL NEWLINE             { printf("; begin proc %s\n", $2); }
     | DOTENDPROC NEWLINE                { printf("; end proc\n"); }
     | NEWLINE
@@ -62,6 +91,5 @@ operand:
 import_list:
       LABEL                              { printf("  %s\n", $1); }
     | import_list COMMA LABEL            { printf("  %s\n", $3); }
-    ;
 
 %%

@@ -3,9 +3,21 @@
 #include "parser.h"
 #include <string.h>
 #include "opcodes.h"
+#include <stdio.h>
 
+#define MAX_INCLUDE_DEPTH 16
+
+FILE* file_stack[MAX_INCLUDE_DEPTH];
+char* name_stack[MAX_INCLUDE_DEPTH];
+int line_stack[MAX_INCLUDE_DEPTH];
+int col_stack[MAX_INCLUDE_DEPTH];
+int include_depth = 0;
+
+FILE* yyin;
+char* current_file = NULL;
 int yycolumn = 1;
 %}
+
 
 %%
 
@@ -22,7 +34,7 @@ int yycolumn = 1;
 
 ;[^\n]*      { yycolumn += yyleng; /* skip comment */ }
 
-\"([^\"]|\\.)*\" {
+"\"([^\"]|\\.)*\"" {
     yylval.str = strdup(yytext + 1);
     yylval.str[strlen(yylval.str) - 1] = '\0';
     yycolumn += yyleng;
@@ -33,8 +45,8 @@ int yycolumn = 1;
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
     yycolumn += yyleng;
-    if (is_opcode(yylval.str)) { printf("%s opcode\n", yylval.str); return OPCODE; }
-    else { printf("%s label\n", yylval.str); return LABEL; }
+    if (is_opcode(yylval.str)) return OPCODE;
+    else return LABEL;
 }
 
 ":"         { yycolumn += yyleng; return COLON; }
@@ -49,5 +61,12 @@ int yycolumn = 1;
 %%
 
 int yywrap(void) {
-    return 1;
+    if (include_depth == 0) return 1;
+    fclose(yyin);
+    include_depth--;
+    yyin = file_stack[include_depth];
+    current_file = name_stack[include_depth];
+    yylineno = line_stack[include_depth];
+    yycolumn = col_stack[include_depth];
+    return 0;
 }
