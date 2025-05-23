@@ -24,6 +24,7 @@ char* current_opcode = NULL;
 %token DOTBYTE DOTWORD DOTORG DOTASCII DOTTEXT
 %token DOTIMPORT DOTEXPORT DOTINCLUDE DOTPROC DOTENDPROC
 
+%define parse.error verbose
 %%
 
 program:
@@ -61,5 +62,6 @@ operand:
 import_list:
       LABEL                              { printf("  %s\n", $1); }
     | import_list COMMA LABEL            { printf("  %s\n", $3); }
+    ;
 
 %%

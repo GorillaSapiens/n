@@ -2,6 +2,7 @@
 %{
 #include "parser.h"
 #include <string.h>
+#include "opcodes.h"
 
 int yycolumn = 1;
 %}
@@ -32,7 +33,8 @@ int yycolumn = 1;
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
     yycolumn += yyleng;
-    return OPCODE;
+    if (is_opcode(yylval.str)) return OPCODE;
+    else return LABEL;
 }
 
 ":"         { yycolumn += yyleng; return COLON; }

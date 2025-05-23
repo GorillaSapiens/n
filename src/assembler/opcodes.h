@@ -7,9 +7,8 @@ struct opcode_entry {
     unsigned char code;
 };
 
-// Returns the opcode value for a given mnemonic and addressing mode
-// Falls back to 0xEA (NOP) if the combination is unknown
 unsigned char get_opcode(const char* mnemonic, const char* mode);
 const struct opcode_entry* get_opcode_info(unsigned char code);
+int is_opcode(const char* name);  // Added for lexer use
 
 #endif

@@ -24,3 +24,12 @@ const struct opcode_entry* get_opcode_info(unsigned char code) {
     }
     return NULL;
 }
+
+int is_opcode(const char* name) {
+    for (int i = 0; table[i].mnemonic; i++) {
+        if (strcmp(table[i].mnemonic, name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
