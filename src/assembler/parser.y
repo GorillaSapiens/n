@@ -5,6 +5,7 @@
 #include "symbols.h"
 #include "opcodes.h"
 
+extern void yyrestart(FILE* input_file);
 extern int yylex();
 extern int yylineno;
 extern int yycolumn;
@@ -68,6 +69,7 @@ line:
         include_depth++;
 
         yyin = f;
+        yyrestart(yyin);
         current_file = $2;
         yylineno = 1;
         yycolumn = 1;

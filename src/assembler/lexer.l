@@ -34,9 +34,10 @@ int yycolumn = 1;
 
 ;[^\n]*      { yycolumn += yyleng; /* skip comment */ }
 
-"\"([^\"]|\\.)*\"" {
+\"([^\"]|\\.)*\" {
     yylval.str = strdup(yytext + 1);
     yylval.str[strlen(yylval.str) - 1] = '\0';
+    printf("STRING '%s'\n", yylval.str);
     yycolumn += yyleng;
     return STRING;
 }
