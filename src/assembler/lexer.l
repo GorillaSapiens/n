@@ -11,7 +11,8 @@
 ".ascii"     { return DOTASCII; }
 ".text"      { return DOTTEXT; }
 
-\"([^\\\"]|\\.)*\" {
+;[^\n]*      { /* skip comment */ }
+"\"([^\"]|\\.)*\"" {
     yylval.str = strdup(yytext + 1);
     yylval.str[strlen(yylval.str) - 1] = '\0';  // remove trailing "
     return STRING;
@@ -28,8 +29,8 @@
 "("         { return LPAREN; }
 ")"         { return RPAREN; }
 "#"         { return HASH; }
-"\\n"       { return NEWLINE; }
-[ \\t]+     { /* skip whitespace */ }
+"\n"        { return NEWLINE; }
+[ \t]+      { /* skip whitespace */ }
 .           { return yytext[0]; }
 
 %%
