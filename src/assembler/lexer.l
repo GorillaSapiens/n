@@ -1,37 +1,48 @@
+%option yylineno
 %{
 #include "parser.h"
 #include <string.h>
+
+int yycolumn = 1;
 %}
 
 %%
 
-".byte"      { return DOTBYTE; }
-".word"      { return DOTWORD; }
-".org"       { return DOTORG; }
-".ascii"     { return DOTASCII; }
-".text"      { return DOTTEXT; }
+".byte"      { yycolumn += yyleng; return DOTBYTE; }
+".word"      { yycolumn += yyleng; return DOTWORD; }
+".org"       { yycolumn += yyleng; return DOTORG; }
+".ascii"     { yycolumn += yyleng; return DOTASCII; }
+".text"      { yycolumn += yyleng; return DOTTEXT; }
+".import"    { yycolumn += yyleng; return DOTIMPORT; }
+".export"    { yycolumn += yyleng; return DOTEXPORT; }
+".include"   { yycolumn += yyleng; return DOTINCLUDE; }
+".proc"      { yycolumn += yyleng; return DOTPROC; }
+".endproc"   { yycolumn += yyleng; return DOTENDPROC; }
 
-;[^\n]*      { /* skip comment */ }
+;[^\n]*      { yycolumn += yyleng; /* skip comment */ }
+
 "\"([^\"]|\\.)*\"" {
     yylval.str = strdup(yytext + 1);
-    yylval.str[strlen(yylval.str) - 1] = '\0';  // remove trailing "
+    yylval.str[strlen(yylval.str) - 1] = '\0';
+    yycolumn += yyleng;
     return STRING;
 }
 
-[0-9]+       { yylval.num = atoi(yytext); return NUMBER; }
+[0-9]+       { yylval.num = atoi(yytext); yycolumn += yyleng; return NUMBER; }
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
+    yycolumn += yyleng;
     return OPCODE;
 }
 
-":"         { return COLON; }
-","         { return COMMA; }
-"("         { return LPAREN; }
-")"         { return RPAREN; }
-"#"         { return HASH; }
-"\n"        { return NEWLINE; }
-[ \t]+      { /* skip whitespace */ }
-.           { return yytext[0]; }
+":"         { yycolumn += yyleng; return COLON; }
+","         { yycolumn += yyleng; return COMMA; }
+"("         { yycolumn += yyleng; return LPAREN; }
+")"         { yycolumn += yyleng; return RPAREN; }
+"#"         { yycolumn += yyleng; return HASH; }
+"\n"        { yycolumn = 1; return NEWLINE; }
+[ \t]+      { yycolumn += yyleng; /* skip whitespace */ }
+.           { yycolumn += yyleng; return yytext[0]; }
 
 %%
 
