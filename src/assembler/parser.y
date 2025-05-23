@@ -35,7 +35,7 @@ line:
       LABEL COLON NEWLINE                { define_label($1, current_address); }
     | DOTIMPORT import_list NEWLINE      { printf("; importing:\n"); }
     | DOTEXPORT import_list NEWLINE      { printf("; exporting:\n"); }
-    | OPCODE operand NEWLINE             { current_opcode = $1; }
+    | OPCODE { current_opcode = $1; } operand NEWLINE        
     | OPCODE NEWLINE                     { emit_byte(get_opcode($1, "impl")); }
     | DOTBYTE NUMBER NEWLINE            { emit_byte($2); }
     | DOTWORD NUMBER NEWLINE            { emit_word($2); }
