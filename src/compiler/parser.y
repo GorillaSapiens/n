@@ -516,10 +516,10 @@ postfix_expr:
   ;
 
 primary_expr:
-    IDENTIFIER     { $$ = MAKE_NODE(make_identifier_leaf($1)); }
-  | INTEGER        { $$ = MAKE_NODE(make_integer_leaf($1)); }
-  | FLOAT          { $$ = MAKE_NODE(make_float_leaf($1)); }
-  | STRING         { $$ = MAKE_NODE(make_string_leaf($1)); }
+    IDENTIFIER     { $$ = make_identifier_leaf($1); }
+  | INTEGER        { $$ = make_integer_leaf($1); }
+  | FLOAT          { $$ = make_float_leaf($1); }
+  | STRING         { $$ = make_string_leaf($1); }
   | struct_literal { $$ = $1; }
   | '(' expr ')'   { $$ = $2; }
   ;
