@@ -7,6 +7,8 @@
 
 #include "ast.h"
 
+extern char *current_filename;
+extern int push_file(const char *filename);
 extern int yylex();
 void yyerror(const char *fmt, ...);
 void yywarn(const char *fmt, ...);
@@ -34,7 +36,7 @@ int register_typename(const char* name) {
          type_names[type_count++] = strdup(name);
       }
       else {
-         yyerror("type table full @%d:%d", yylineno, yycolumn);
+         yyerror("type table full %s:%d.%d", current_filename, yylineno, yycolumn);
          return -1;
       }
    }
@@ -44,6 +46,7 @@ int register_typename(const char* name) {
 ASTNode *make_node(const char *name, ...) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = name;
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    va_list ap;
@@ -62,6 +65,7 @@ ASTNode *make_node(const char *name, ...) {
 ASTNode *make_integer_leaf(unsigned long long intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "int";
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_INTEGER;
@@ -72,6 +76,7 @@ ASTNode *make_integer_leaf(unsigned long long intval) {
 ASTNode *make_string_leaf(char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_STRING;
@@ -82,6 +87,7 @@ ASTNode *make_string_leaf(char *strval) {
 ASTNode *make_identifier_leaf(char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "identifier";
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_IDENTIFIER;
@@ -92,6 +98,7 @@ ASTNode *make_identifier_leaf(char *strval) {
 ASTNode *make_float_leaf(double dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_FLOAT;
@@ -102,6 +109,7 @@ ASTNode *make_float_leaf(double dval) {
 ASTNode *make_empty_leaf(void) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "empty";
+   ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_EMPTY;
@@ -197,6 +205,7 @@ void parse_dump(void) {
 %type <node> decl_stmt
 %type <node> equality_expr expr expr_args expr_list expr_stmt
 %type <node> flag flag_list function_decl
+%type <node> include_stmt
 %type <node> logical_and_expr logical_or_expr
 %type <node> multiplicative_expr
 %type <node> opt_address opt_array_dim opt_expr opt_flags opt_pointer
@@ -215,10 +224,13 @@ void parse_dump(void) {
 %define parse.error verbose
 %locations
 
+
+%token INCLUDE
 %%
+
 program:
-    program_item         { root = $$ = MAKE_NODE($1); }
-  | program program_item { root = $$ = MAKE_NODE($1, $2); }
+    program_item         { if ($1) { root = $$ = MAKE_NODE($1); } }
+  | program program_item { if ($2) { root = $$ = MAKE_NODE($1, $2); } else { $$ = $1; } }
   ;
 
 program_item:
@@ -227,6 +239,7 @@ program_item:
   | decl_stmt     { $$ = $1; }
   | struct_decl   { $$ = $1; }
   | union_decl    { $$ = $1; }
+  | include_stmt  { $$ = NULL; } // process an include line
   ;
 
 type_decl:
@@ -248,6 +261,7 @@ type_decl:
 function_decl:
     type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4); }
   | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
+  | type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4); }
   | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
   ;
 
@@ -576,6 +590,16 @@ flag_list:
 flag:
     FLAG { $$ = make_identifier_leaf($1); }
   ;
+
+include_stmt:
+    INCLUDE STRING {
+        if (push_file($2) != 0) {
+            yyerror("failed to include file: %s", $2);
+            YYABORT;
+        }
+    }
+  ;
+
 %%
 extern char* yytext;
 
@@ -591,7 +615,7 @@ void yyerror(const char *fmt, ...) {
    vsnprintf(str, size, fmt, ap);
    va_end(ap);
 
-   fprintf(stderr, "Error at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
+   fprintf(stderr, "Error at %s:%d.%d (near '%s')\n", current_filename, yylineno, yycolumn, yytext);
    fprintf(stderr, "   %s\n", str);
    free(str);
 }
@@ -608,7 +632,7 @@ void yywarn(const char *fmt, ...) {
    vsnprintf(str, size, fmt, ap);
    va_end(ap);
 
-   fprintf(stderr, "Warning at %d:%d (near '%s')\n", yylineno, yycolumn, yytext);
+   fprintf(stderr, "Warning at %s:%d.%d (near '%s')\n", current_filename, yylineno, yycolumn, yytext);
    fprintf(stderr, "   %s\n", str);
    free(str);
 }

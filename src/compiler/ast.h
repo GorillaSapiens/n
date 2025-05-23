@@ -12,6 +12,7 @@ enum ASTKind {
 
 typedef struct ASTNode {
    const char *name;
+   const char *file;
    int line, column;
    enum ASTKind kind;
 

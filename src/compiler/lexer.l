@@ -1,10 +1,11 @@
 /* ---------- lexer.l ---------- */
 %{
-#include "ast.h"
-#include "parser.tab.h"
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+
+#include "ast.h"
+#include "parser.tab.h"
 
 // External type recognition
 extern int find_typename(const char*);
@@ -21,12 +22,64 @@ extern YYLTYPE yylloc;
     yycolumn += yyleng; \
     yylloc.last_column = yycolumn;
 
+#define MAX_INCLUDE_DEPTH 16
+
+typedef struct FileContext {
+    FILE *file;
+    char *filename;
+    int lineno;
+    int column;
+    YY_BUFFER_STATE buffer;
+} FileContext;
+
+static FileContext file_stack[MAX_INCLUDE_DEPTH];
+static int file_stack_top = -1;
+char *current_filename = "<stdin>";
+
+int push_file(const char *filename) {
+    if (file_stack_top + 1 >= MAX_INCLUDE_DEPTH) {
+        fprintf(stderr, "include nesting too deep\n");
+        return -1;
+    }
+
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        fprintf(stderr, "cannot open include file: %s\n", filename);
+        return -1;
+    }
+
+    file_stack_top++;
+    file_stack[file_stack_top].file = f;
+    file_stack[file_stack_top].filename = strdup(filename);
+    file_stack[file_stack_top].lineno = yylineno;
+    file_stack[file_stack_top].column = yycolumn;
+    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
+
+    YY_BUFFER_STATE new_buffer = yy_create_buffer(f, YY_BUF_SIZE);
+    yy_switch_to_buffer(new_buffer);
+
+    yylineno = 1;
+    yycolumn = 0;
+    current_filename = file_stack[file_stack_top].filename;
+    return 0;
+}
+
+void pop_file() {
+    if (file_stack_top < 0) return;
+    fclose(file_stack[file_stack_top].file);
+    free(file_stack[file_stack_top].filename);
+    yy_delete_buffer(YY_CURRENT_BUFFER);
+    yy_switch_to_buffer(file_stack[file_stack_top].buffer);
+    yylineno = file_stack[file_stack_top].lineno;
+    yycolumn = file_stack[file_stack_top].column;
+    file_stack_top--;
+    current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : "<stdin>";
+}
 %}
 
 %option noinput nounput
 
 %%
-
 ":="            return ASSIGN;
 "type"          return TYPE;
 "if"            return IF;
@@ -47,7 +100,9 @@ extern YYLTYPE yylloc;
 "switch"        return SWITCH;
 "default"       return DEFAULT;
 
-"operator"[-+*/%=!<>|&^:]+ {
+"include"      return INCLUDE;
+
+"operator"[-+*/%=!<>|&^{}?]+ {
     yylval.str = strdup(yytext);
     return OPERATOR;
 }
@@ -117,7 +172,9 @@ extern YYLTYPE yylloc;
 }
 
 \"([^\"\\]|\\.)*\" {
-    yylval.str = strdup(yytext);
+    yylval.str = strdup(yytext + 1);
+    yylval.str[strlen(yylval.str) - 1] = 0;
+    // TODO FIX process backslash escapes somewhere
     return STRING;
 }
 
@@ -216,21 +273,49 @@ extern YYLTYPE yylloc;
 }
 
 [ \t\r]+                  ;   // skip whitespace
-[\n]                      { yylineno++; yycolumn = 0; } 
+[\n]                      { yylineno++; yycolumn = 0;
+    } 
 \/\/[^\n]*                ;   // skip line comments
 \/\*([^*]|\*+[^*/])*\*+\/ {
     for (char *p = yytext; *p; p++) {
-        if (*p == '\n') { yylineno++; yycolumn = 0; }
+        if (*p == '\n') { yylineno++; yycolumn = 0;
+    }
         else { yycolumn++; }
     }
 }
 
 ^#[^\n]*        ; // ignore preprocessor noise (for now.  bwahahahaha!)
 
+
 .               return yytext[0]; // return single-character tokens
 
 %%
 
 int yywrap(void) {
-    return 1;
+    if (file_stack_top >= 0) {
+        pop_file();
+        return 0;  // tell Flex: more input available
+    }
+    return 1;  // tell Flex: we're done
 }
+
+int yyparse_file(const char *filename) {
+    FILE *f = fopen(filename, "r");
+    if (!f) {
+        fprintf(stderr, "cannot open file: %s\n", filename);
+        return 1;
+    }
+
+    YY_BUFFER_STATE buf = yy_create_buffer(f, YY_BUF_SIZE);
+    yy_switch_to_buffer(buf);
+    yylineno = 1;
+    yycolumn = 0;
+    current_filename = (char *)filename;
+
+    int result = yyparse();
+
+    yy_delete_buffer(buf);
+    fclose(f);
+    return result;
+}
+
