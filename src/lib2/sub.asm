@@ -1,4 +1,3 @@
-
 ; sub.asm - Arbitrary-length and fixed-width subtraction routines (unsigned/signed)
 ;
 ; Subtracts ptr2 from ptr1 and stores in ptr3, X bytes.
@@ -12,8 +11,6 @@
 ; Assumes:
 ;   ptr1, ptr2, ptr3 are 2-byte pointers in zero page
 ; Clobbers: A, Y, status flags
-
-.include "zp.inc"
 
 ; Zero page locations assumed
 ptr1     = $00

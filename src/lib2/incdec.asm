@@ -8,8 +8,6 @@
 ;   X    - byte count
 ; Clobbers: A, Y
 
-.include "zp.inc"
-
 ; Zero page location
 ptr1 = $00
 

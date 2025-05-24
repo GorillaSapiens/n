@@ -11,8 +11,6 @@
 ;   ptr1, ptr2, ptr3 are 2-byte pointers in zero page
 ; Clobbers: A, Y, status flags
 
-.include "zp.inc"
-
 ; Zero page locations assumed
 ptr1     = $00
 ptr2     = $02

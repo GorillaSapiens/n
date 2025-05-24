@@ -10,8 +10,6 @@
 ;   X    - byte count
 ; Clobbers: A, X, Y, zero page temp vars
 
-.include "zp.inc"
-
 ptr1      = $00
 ptr2      = $02
 ptr3      = $04

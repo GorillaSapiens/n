@@ -1,6 +1,5 @@
 
 ; shift.asm - Bit shifting routines
-bytecount = $0B
 ;
 ; Implements:
 ; - lsl1: logical shift left by 1
@@ -13,15 +12,13 @@ bytecount = $0B
 ;   X    - byte count
 ; Clobbers: A, Y
 
-.include "zp.inc"
-shift_count = $08
-byte_count  = $09
-bit_count   = $0A
-
-
 ; Zero page addresses
 ptr1 = $00
 ptr2 = $02
+shift_count = $05
+byte_count  = $06
+bit_count   = $07
+bytecount   = $08
 
 .proc lsl1
     ldy #0
