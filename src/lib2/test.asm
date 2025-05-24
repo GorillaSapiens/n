@@ -12,17 +12,24 @@ start:
     lda #>input2
     sta $03
 
-    lda #<result
+    lda #<result_q
     sta $04
-    lda #>result
+    lda #>result_q
     sta $05
 
+    lda #<result_r
+    sta $06
+    lda #>result_r
+    sta $07
+
     ldx #2
-    jsr mul_unsigned
+    jsr div_unsigned
 
 hang:
     jmp hang
 
 input1:  .byte $34, $12     ; 0x1234
-input2:  .byte $78, $56     ; 0x5678
-result:  .byte $ea,$ea,$ea,$ea
+input2:  .byte $05, $00     ; 0x0005
+result_q:  .byte $ea,$ea
+result_r:  .byte $ea,$ea
+

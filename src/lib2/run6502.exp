@@ -5,7 +5,7 @@ spawn py65mon --mpu 6502
 expect "=>"
 send "width 72\r"
 expect "=>"
-send "load mul.bin 0x8000\r"
+send "load foo.bin 0x8000\r"
 expect "=>"
 send "registers pc=0x8000\r"
 interact
