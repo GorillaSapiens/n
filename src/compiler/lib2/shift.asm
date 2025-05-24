@@ -1,5 +1,6 @@
 
 ; shift.asm - Bit shifting routines
+bytecount = $0B
 ;
 ; Implements:
 ; - lsl1: logical shift left by 1
@@ -75,9 +76,9 @@ ptr2 = $02
 
 ; Logical shift left by 8 bits (1 byte)
 .proc lsl8
-    ldy #1
+    stx bytecount
 @loop:
-    cpy X
+    cpy bytecount
     beq @fill
     lda (ptr1), y
     dey
