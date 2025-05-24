@@ -1,4 +1,3 @@
-.export mul_unsigned
 ; mul.asm - Arbitrary-length unsigned multiplication using proper 8x8 shift-and-add
 ;
 ; Multiply *ptr1 * *ptr2 and store into *ptr3.
@@ -26,6 +25,7 @@ size       = $0C
 outer      = $0D
 inner      = $0E
 
+
 .proc mul_unsigned
     stx size             ; Save byte count
 
@@ -34,10 +34,14 @@ inner      = $0E
     sta inner
 
     ldy #0               ; clear the result
+    ldx #0
 clear_ptr3:
     sta (ptr3), y
     iny
-    cpy size
+    sta (ptr3), y
+    iny
+    inx
+    cpx size
     bne clear_ptr3
 
 outer_loop:

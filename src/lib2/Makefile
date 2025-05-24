@@ -5,7 +5,7 @@ all:
 	for each in `ls *.asm`; do ~/cc65/bin/ca65 $$each; done
 
 debug:
-	$(CA65) mul.asm -o mul.o
-	$(CA65) test.asm -o test.o
-	$(LD65) test.o mul.o -C sim.cfg -o mul.bin
+	cat test.asm mul.asm > foo.asm
+	$(CA65) foo.asm -o foo.o
+	$(LD65) foo.o -C sim.cfg -o mul.bin
 	./run6502.exp
