@@ -102,7 +102,7 @@ void pop_file() {
 
 "include"      return INCLUDE;
 
-"operator"[-+*/%=!<>|&^{}?]+ {
+operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
     yylval.str = strdup(yytext);
     return OPERATOR;
 }
