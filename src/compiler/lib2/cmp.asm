@@ -15,7 +15,7 @@
 ; Clobbers: A, Y
 
 .include "zp.inc"
-
+tmp = $0C
 ; Zero page locations assumed
 ptr1     = $00
 ptr2     = $02
@@ -43,8 +43,8 @@ ptr2     = $02
 .proc lt_signed
     ; Signed less-than
     ; Compare MSB for sign difference first
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey                 ; last byte
     lda (ptr1), y
     cmp (ptr2), y
@@ -64,8 +64,8 @@ ptr2     = $02
 
 .proc le_signed
     ; Signed less-than-or-equal
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey                 ; last byte
     lda (ptr1), y
     cmp (ptr2), y
@@ -88,8 +88,8 @@ ptr2     = $02
     ; Compare from most significant byte to least
 @loop:
     dex
-    txa
-    tay
+    stx tmp
+    ldy tmp
     lda (ptr1), y
     cmp (ptr2), y
     bcc @true   ; A < B
@@ -109,8 +109,8 @@ ptr2     = $02
     ; Compare from most significant byte to least
 @loop:
     dex
-    txa
-    tay
+    stx tmp
+    ldy tmp
     lda (ptr1), y
     cmp (ptr2), y
     bcc @true   ; A < B

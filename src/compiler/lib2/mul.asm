@@ -12,7 +12,7 @@
 ; Clobbers: A, X, Y
 
 .include "zp.inc"
-
+tmp = $0C
 ptr1      = $00
 ptr2      = $02
 ptr3      = $04
@@ -35,8 +35,8 @@ outer_loop:
 
     ldx #0              ; Inner index for multiplicand
 inner_loop:
-    txa
-    tay
+    stx tmp
+    ldy tmp
     lda (ptr1), y
     sta multA
 

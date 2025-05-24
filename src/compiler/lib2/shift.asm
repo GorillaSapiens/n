@@ -14,7 +14,7 @@ bytecount = $0B
 ; Clobbers: A, Y
 
 .include "zp.inc"
-
+tmp = $0C
 shift_count = $08
 byte_count  = $09
 bit_count   = $0A
@@ -38,8 +38,8 @@ ptr2 = $02
 .endproc
 
 .proc lsr1
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey
     sec         ; clear carry using SEC followed by ROR
 @loop:
@@ -53,8 +53,8 @@ ptr2 = $02
 .endproc
 
 .proc asr1
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey
     sec
 @loop:
@@ -94,8 +94,8 @@ ptr2 = $02
 
 ; Logical shift right by 8 bits (1 byte)
 .proc lsr8
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey
 @loop:
     cpy #0
@@ -115,8 +115,8 @@ ptr2 = $02
 
 ; Arithmetic shift right by 8 bits (1 byte)
 .proc asr8
-    txa
-    tay
+    stx tmp
+    ldy tmp
     dey
     lda (ptr1), y
     bmi @neg
