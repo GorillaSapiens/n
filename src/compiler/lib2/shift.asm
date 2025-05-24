@@ -8,23 +8,60 @@
 ;
 ; Inputs:
 ;   ptr1 - source
-;   ptr2 - dest
+;   ptr2 - destination
 ;   X    - byte count
 ; Clobbers: A, Y
 
 .include "zp.inc"
 
+; Zero page addresses
+ptr1 = $00
+ptr2 = $02
+
 .proc lsl1
-    ; Shift left 1 bit
+    ldy #0
+    clc
+@loop:
+    lda (ptr1), y
+    rol
+    sta (ptr2), y
+    iny
+    dex
+    bne @loop
     rts
 .endproc
 
 .proc lsr1
-    ; Logical shift right
+    ldy X
+    dey
+    sec         ; clear carry using SEC followed by ROR
+@loop:
+    lda (ptr1), y
+    ror
+    sta (ptr2), y
+    dey
+    cpy #$FF
+    bne @loop
     rts
 .endproc
 
 .proc asr1
-    ; Arithmetic shift right
+    ldy X
+    dey
+    sec
+@loop:
+    lda (ptr1), y
+    ror
+    ; inject sign bit into top byte
+    cpy #0
+    bne @store
+    ; top byte: preserve sign
+    bmi @store
+    and #%01111111
+@store:
+    sta (ptr2), y
+    dey
+    cpy #$FF
+    bne @loop
     rts
 .endproc
