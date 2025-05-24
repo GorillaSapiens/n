@@ -14,6 +14,11 @@
 
 .include "zp.inc"
 
+shift_count = $08
+byte_count  = $09
+bit_count   = $0A
+
+
 ; Zero page addresses
 ptr1 = $00
 ptr2 = $02
@@ -130,6 +135,103 @@ ptr2 = $02
     sta (ptr2), y
     dey
     jmp @loop
+@done:
+    rts
+.endproc
+
+; Logical shift left by N bits (N in A)
+; Uses lsl8 and lsl1
+.proc lslN
+    sta shift_count
+    lda shift_count
+    lsr             ; divide by 2 until quotient = N / 8
+    lsr
+    lsr
+    sta byte_count
+    lda shift_count
+    and #7
+    sta bit_count
+
+    ; Byte shifts
+@byte_loop:
+    lda byte_count
+    beq @bit_shifts
+    jsr lsl8
+    dec byte_count
+    jmp @byte_loop
+
+@bit_shifts:
+    lda bit_count
+    beq @done
+@bit_loop:
+    jsr lsl1
+    dec bit_count
+    bne @bit_loop
+
+@done:
+    rts
+.endproc
+
+; Logical shift right by N bits (N in A)
+; Uses lsr8 and lsr1
+.proc lsrN
+    sta shift_count
+    lda shift_count
+    lsr
+    lsr
+    lsr
+    sta byte_count
+    lda shift_count
+    and #7
+    sta bit_count
+
+@byte_loop:
+    lda byte_count
+    beq @bit_shifts
+    jsr lsr8
+    dec byte_count
+    jmp @byte_loop
+
+@bit_shifts:
+    lda bit_count
+    beq @done
+@bit_loop:
+    jsr lsr1
+    dec bit_count
+    bne @bit_loop
+
+@done:
+    rts
+.endproc
+
+; Arithmetic shift right by N bits (N in A)
+; Uses asr8 and asr1
+.proc asrN
+    sta shift_count
+    lda shift_count
+    lsr
+    lsr
+    lsr
+    sta byte_count
+    lda shift_count
+    and #7
+    sta bit_count
+
+@byte_loop:
+    lda byte_count
+    beq @bit_shifts
+    jsr asr8
+    dec byte_count
+    jmp @byte_loop
+
+@bit_shifts:
+    lda bit_count
+    beq @done
+@bit_loop:
+    jsr asr1
+    dec bit_count
+    bne @bit_loop
+
 @done:
     rts
 .endproc
