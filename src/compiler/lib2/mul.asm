@@ -1,95 +1,115 @@
-; mul.asm - Arbitrary-length unsigned multiplication
+; mul.asm - Arbitrary-length unsigned multiplication using proper 8x8 shift-and-add
 ;
-; Multiply ptr1 * ptr2 and store into ptr3.
+; Multiply *ptr1 * *ptr2 and store into *ptr3.
 ; X = byte count of inputs (result is up to 2X bytes)
 ;
 ; Inputs:
-;   ptr1 - multiplicand
-;   ptr2 - multiplier
-;   ptr3 - result (2X bytes, must be zero-initialized beforehand)
+;   ptr1 - pointer to multiplicand buffer
+;   ptr2 - pointer to multiplier buffer
+;   ptr3 - pointer to result buffer (2X bytes, must be zero-initialized beforehand)
 ;   X    - byte count
-; Clobbers: A, X, Y, temp zero page
+; Clobbers: A, X, Y, zero page temp vars
 
 .include "zp.inc"
 
 ptr1      = $00
 ptr2      = $02
 ptr3      = $04
-byte_a    = $06  ; current multiplicand byte
-byte_b    = $07  ; current multiplier byte
-inner_idx = $08
-outer_idx = $09
-prod_lo   = $0A  ; product LSB
-prod_hi   = $0B  ; product MSB
+byte_b    = $06
+tmp_b     = $07
+a_lo      = $08
+a_hi      = $09
+product_lo = $0A
+product_hi = $0B
+size       = $0C
+outer      = $0D
+inner      = $0E
 
 .proc mul_unsigned
-    stx outer_idx       ; store byte count
-    ldy #0              ; outer loop: index into ptr2 (multiplier)
+    stx size             ; Save byte count
+
+    lda #0               ; zero out inner and outer loop counters
+    sta outer
+    sta inner
+
+    ldy #0               ; clear the result
+clear_ptr3:
+    sta (ptr3), y
+    iny
+    cpy size
+    bne clear_ptr3
 
 outer_loop:
-    cpy outer_idx
-    beq done
+    ldy outer
+    cpy size
+    beq outer_fini
 
-    lda (ptr2), y
-    beq skip_outer
-    sta byte_b          ; multiplier byte
+    lda (ptr2), y          ; initialize b
+    sta byte_b
 
-    ldx #0              ; inner loop: index into ptr1 (multiplicand)
 inner_loop:
-    cpx outer_idx
-    beq end_inner
+    ldy inner
+    cpy size
+    beq inner_fini
 
-    txa
-    tay
-    lda (ptr1), y
-    sta byte_a
-
-    ; 8-bit multiply: byte_a * byte_b → prod_hi:prod_lo
+    lda (ptr1), y          ; initialize a
+    sta a_lo
     lda #0
-    sta prod_lo
-    sta prod_hi
-    ldy #8
-    lda byte_a
+    sta a_hi
 
-multiply_loop:
-    lsr byte_b
-    bcc skip_add
-    clc
-    lda prod_lo
-    adc byte_a
-    sta prod_lo
-    bcc skip_add
-    inc prod_hi
-skip_add:
-    asl byte_a
-    rol prod_hi
-    dey
-    bne multiply_loop
+    sta product_lo         ; initialize product
+    sta product_hi
 
-    ; Add product to result buffer at ptr3[x+y]
-    txa
+    ldx #8                 ; 8x8 multiply begins
+    lda byte_b
+    sta tmp_b
+mult_loop:
+    lsr tmp_b
+    bcc no_add
+
     clc
-    adc outer_idx
+    lda product_lo
+    adc a_lo
+    sta product_lo
+    lda product_hi
+    adc a_hi
+    sta product_hi
+
+no_add:
+    asl a_lo
+    rol a_hi
+
+    dex
+    bne mult_loop
+
+    ; add product to ptr3
+    clc
+    lda inner
+    adc outer
     tay
-
-    lda prod_lo
-    clc
-    adc (ptr3), y
+    clc                ; just to be safe
+    lda (ptr3), y
+    adc product_lo
     sta (ptr3), y
-
     iny
-    lda prod_hi
-    adc (ptr3), y
+    lda (ptr3), y
+    adc product_hi
+    sta (ptr3), y
+    iny
+    lda (ptr3), y
+    adc #0
     sta (ptr3), y
 
-    inx
+    inc inner
     jmp inner_loop
 
-end_inner:
-    iny
-skip_outer:
+inner_fini:
+    lda #0
+    sta inner
+
+    inc outer
     jmp outer_loop
 
-done:
+outer_fini:
     rts
 .endproc
