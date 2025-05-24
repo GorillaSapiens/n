@@ -32,7 +32,8 @@ ptr2 = $02
 .endproc
 
 .proc lsr1
-    ldy X
+    txa
+    tay
     dey
     sec         ; clear carry using SEC followed by ROR
 @loop:
@@ -46,7 +47,8 @@ ptr2 = $02
 .endproc
 
 .proc asr1
-    ldy X
+    txa
+    tay
     dey
     sec
 @loop:
@@ -63,5 +65,71 @@ ptr2 = $02
     dey
     cpy #$FF
     bne @loop
+    rts
+.endproc
+
+; Logical shift left by 8 bits (1 byte)
+.proc lsl8
+    ldy #1
+@loop:
+    cpy X
+    beq @fill
+    lda (ptr1), y
+    dey
+    sta (ptr2), y
+    iny
+    bne @loop
+@fill:
+    lda #0
+    dey
+    sta (ptr2), y
+    rts
+.endproc
+
+; Logical shift right by 8 bits (1 byte)
+.proc lsr8
+    txa
+    tay
+    dey
+@loop:
+    cpy #0
+    beq @fill
+    dey
+    lda (ptr1), y
+    iny
+    sta (ptr2), y
+    dey
+    bne @loop
+@fill:
+    lda #0
+    ldy #0
+    sta (ptr2), y
+    rts
+.endproc
+
+; Arithmetic shift right by 8 bits (1 byte)
+.proc asr8
+    txa
+    tay
+    dey
+    lda (ptr1), y
+    bmi @neg
+    lda #0
+    sta (ptr2), y
+    jmp @copy
+@neg:
+    lda #$FF
+    sta (ptr2), y
+@copy:
+    dey
+@loop:
+    cpy #$FF
+    beq @done
+    lda (ptr1), y
+    iny
+    sta (ptr2), y
+    dey
+    jmp @loop
+@done:
     rts
 .endproc
