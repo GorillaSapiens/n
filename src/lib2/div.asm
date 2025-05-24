@@ -50,9 +50,9 @@ bitloop:
     ldy size
     dey
 shift_div:
-    lda (ptr4), y
+    lda (ptr1), y
     rol a
-    sta (ptr4), y
+    sta (ptr1), y
     dey
     bpl shift_div
 
@@ -60,9 +60,9 @@ shift_div:
     ldy size
     dey
 shift_rem:
-    lda (ptr1), y
+    lda (ptr4), y
     rol a
-    sta (ptr1), y
+    sta (ptr4), y
     dey
     bpl shift_rem
 
