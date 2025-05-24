@@ -1,4 +1,3 @@
-
 ; mul.asm - Arbitrary-length unsigned multiplication
 ;
 ; Multiply ptr1 * ptr2 and store into ptr3.
@@ -7,102 +6,90 @@
 ; Inputs:
 ;   ptr1 - multiplicand
 ;   ptr2 - multiplier
-;   ptr3 - result (2X bytes, zero-cleared beforehand)
+;   ptr3 - result (2X bytes, must be zero-initialized beforehand)
 ;   X    - byte count
-; Clobbers: A, X, Y
+; Clobbers: A, X, Y, temp zero page
 
 .include "zp.inc"
-tmp = $0C
+
 ptr1      = $00
 ptr2      = $02
 ptr3      = $04
-bytecount = $06
-multA     = $07
-multB     = $08
-prod      = $09  ; 2 bytes for result
-carry     = $0B
+byte_a    = $06  ; current multiplicand byte
+byte_b    = $07  ; current multiplier byte
+inner_idx = $08
+outer_idx = $09
+prod_lo   = $0A  ; product LSB
+prod_hi   = $0B  ; product MSB
 
 .proc mul_unsigned
-    stx bytecount       ; Save byte count
-    ldy #0              ; Outer index for multiplier
+    stx outer_idx       ; store byte count
+    ldy #0              ; outer loop: index into ptr2 (multiplier)
+
 outer_loop:
-    ldx bytecount
-    cpx #0
+    cpy outer_idx
     beq done
-    lda (ptr2), y       ; Load multiplier byte
-    beq skip_inner      ; If 0, skip
-    sta multB
 
-    ldx #0              ; Inner index for multiplicand
+    lda (ptr2), y
+    beq skip_outer
+    sta byte_b          ; multiplier byte
+
+    ldx #0              ; inner loop: index into ptr1 (multiplicand)
 inner_loop:
-    stx tmp
-    ldy tmp
+    cpx outer_idx
+    beq end_inner
+
+    txa
+    tay
     lda (ptr1), y
-    sta multA
+    sta byte_a
 
-    ; Multiply A * B via repeated addition (could use table or unrolled later)
-    ldy multB
+    ; 8-bit multiply: byte_a * byte_b → prod_hi:prod_lo
     lda #0
-    sta prod
-    sta prod+1
+    sta prod_lo
+    sta prod_hi
     ldy #8
-    lda multA
-    ldx multB
-    sta prod
-    lda #0
-    sta carry
+    lda byte_a
 
-    ; 8-bit * 8-bit multiply
-    ldx #0
-    ldy #0
-    lda multA
-    sta multA
-    lda multB
-    sta multB
-    clc
-    lda #0
-    sta prod
-    sta prod+1
-    ldx #8
-mul_loop:
-    lsr multB
+multiply_loop:
+    lsr byte_b
     bcc skip_add
-    lda prod
     clc
-    adc multA
-    sta prod
+    lda prod_lo
+    adc byte_a
+    sta prod_lo
     bcc skip_add
-    inc prod+1
+    inc prod_hi
 skip_add:
-    asl multA
-    rol prod+1
-    dex
-    bne mul_loop
+    asl byte_a
+    rol prod_hi
+    dey
+    bne multiply_loop
 
-    ; Add result (prod) to ptr3[offset]
-    lda bytecount
-    sec
-    sbc #1
-    sec
-    sbc #0
-    sta carry           ; offset = x + y
+    ; Add product to result buffer at ptr3[x+y]
+    txa
     clc
-    ldy carry
-    lda (ptr3), y
-    adc prod
+    adc outer_idx
+    tay
+
+    lda prod_lo
+    clc
+    adc (ptr3), y
     sta (ptr3), y
+
     iny
-    lda (ptr3), y
-    adc prod+1
+    lda prod_hi
+    adc (ptr3), y
     sta (ptr3), y
 
     inx
-    cpx bytecount
-    bne inner_loop
-skip_inner:
+    jmp inner_loop
+
+end_inner:
     iny
-    cpy bytecount
-    bne outer_loop
+skip_outer:
+    jmp outer_loop
+
 done:
     rts
 .endproc
