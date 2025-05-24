@@ -1,3 +1,4 @@
+.export mul_unsigned
 ; mul.asm - Arbitrary-length unsigned multiplication using proper 8x8 shift-and-add
 ;
 ; Multiply *ptr1 * *ptr2 and store into *ptr3.

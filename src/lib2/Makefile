@@ -6,5 +6,6 @@ all:
 
 debug:
 	$(CA65) mul.asm -o mul.o
-	$(LD65) mul.o -C sim.cfg -o mul.bin
-
+	$(CA65) test.asm -o test.o
+	$(LD65) test.o mul.o -C sim.cfg -o mul.bin
+	./run6502.exp
