@@ -45,7 +45,7 @@ clear_loop:
     sta tmpX         ; tmpX = bit count = size * 8
 
 bitloop:
-    ; Shift remainder left by 1
+    ; Shift dividend left by 1
     clc
     ldy size
     dey
