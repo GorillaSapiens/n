@@ -1,6 +1,8 @@
 .segment "CODE"
 
 start:
+    cld ; clear decimal mode
+
     ; setup ptr1, ptr2, ptr3 in zero page
     lda #<input1
     sta $00
@@ -28,8 +30,8 @@ start:
 hang:
     jmp hang
 
-input1:  .byte $34, $12     ; 0x1234
-input2:  .byte $05, $00     ; 0x0005
+input1:  .byte $FE, $FF     ; 0x1234
+input2:  .byte $10, $27     ; 0x0007
 result_q:  .byte $ea,$ea
 result_r:  .byte $ea,$ea
 

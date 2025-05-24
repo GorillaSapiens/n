@@ -47,43 +47,48 @@ clear_loop:
 bitloop:
     ; Shift dividend left by 1
     clc
-    ldy size
-    dey
+    ldx size
+    dex
+    ldy #0
 shift_div:
     lda (ptr1), y
     rol a
     sta (ptr1), y
-    dey
+    iny
+    dex
     bpl shift_div
 
     ; Shift next bit from dividend into remainder
-    ldy size
-    dey
+    ldx size
+    dex
+    ldy #0
 shift_rem:
     lda (ptr4), y
     rol a
     sta (ptr4), y
-    dey
+    iny
+    dex
     bpl shift_rem
 
     ; Compare remainder with divisor
     jsr cmp_rem_div
     bcc skip_subtract
 
-    ; remainder -= divisor
-    jsr sub_div_from_rem
-
-    ; Set quotient bit
-    ldy size
-    dey
+    jsr sub_div_from_rem ; remainder -= divisor
+    sec                  ; Set quotient bit
+   
+skip_subtract:
+    ldx size
+    dex
+    ldy #0
 store_qbit:
     lda (ptr3), y
     rol a
     sta (ptr3), y
-    dey
+    iny
+    dex
     bpl store_qbit
 
-skip_subtract:
     dec tmpX
     lda tmpX
     bne bitloop
