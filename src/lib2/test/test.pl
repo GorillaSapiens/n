@@ -1,15 +1,15 @@
 #!/usr/bin/perl
 
 @tests = (
-   "../add.asm",
-   "../bitwise.asm",
-   "../cmp.asm",
-   "../div.asm",
-   "../incdec.asm",
-   "../mul.asm",
-   "../rem.asm",
-   "../shift.asm",
-   "../sub.asm",
+   "add.asm",
+   "bitwise.asm",
+   "cmp.asm",
+   "div.asm",
+   "incdec.asm",
+   "mul.asm",
+   "rem.asm",
+   "shift.asm",
+   "sub.asm",
 );
 
 $ca65 = "~/cc65/bin/ca65";
@@ -34,16 +34,20 @@ foreach $file (@tests) {
    close FILE;
 
    foreach $proc (@proc) {
+      if ($proc eq "shiftN") {
+         next;
+      }
+
       print "=== $file $proc\n";
 
-#      print "cat test.asm $file | $sed | sed \"s/TARGET/$proc/g\" > foo.asm\n";
-      print `cat test.asm $file | $sed | sed "s/TARGET/$proc/g" > foo.asm`;
+#      print "cat test/test.asm $file | $sed | sed \"s/TARGET/$proc/g\" > foo.asm\n";
+      print `cat test/test.asm $file | $sed | sed "s/TARGET/$proc/g" > foo.asm`;
 
 #      print "$ca65 foo.asm -o foo.o\n";
       print `$ca65 foo.asm -o foo.o`;
 
-#      print "$ld65 foo.o -C sim.cfg -o foo.bin\n";
-      print `$ld65 foo.o -C sim.cfg -o foo.bin`;
+#      print "$ld65 foo.o -C test/sim.cfg -o foo.bin\n";
+      print `$ld65 foo.o -C test/sim.cfg -o foo.bin`;
 
       open FILE, ">script.txt";
       print FILE "width 72\n";

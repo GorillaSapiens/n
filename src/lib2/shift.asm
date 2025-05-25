@@ -127,6 +127,12 @@ fini_asr8:
 ; Logical shift left by N bits (N in shift)
 ; Uses lsl8 and lsl1
 .proc shiftN
+    jmp start_shiftN
+trampoline1:
+    jmp (ptr3)
+trampoline8:
+    jmp (ptr4)
+start_shiftN:
     lda shift
     sta n_shift
     and #7
@@ -148,15 +154,11 @@ fini1_shiftN:          ; label
     beq fini2_shiftN   ; label
 loop2_shiftN:          ; label
     ldx size
-    jsr trampoline2
+    jsr trampoline8
     dec n_byte
     bne loop2_shiftN   ; label
 fini2_shiftN:          ; label
     rts
-trampoline1:
-    jmp (ptr3)
-trampoline8:
-    jmp (ptr4)
 .endproc
 
 .proc lslN
