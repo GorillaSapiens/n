@@ -20,6 +20,8 @@ byte_count  = $06
 bit_count   = $07
 bytecount   = $08
 
+fnord ; look for "this is totally broke ass"
+
 .proc lsl1
     ldy #0
     clc
@@ -111,6 +113,7 @@ fill_lsr8:
 
 ; Arithmetic shift right by 8 bits (1 byte)
 .proc asr8
+    rts ; this is totally broke ass
     txa
     tay
     dey
@@ -139,6 +142,7 @@ done_asr8:
 ; Logical shift left by N bits (N in A)
 ; Uses lsl8 and lsl1
 .proc lslN
+    rts ; this is totally broke ass
     sta shift_count
     lda shift_count
     lsr             ; divide by 2 until quotient = N / 8
