@@ -15,12 +15,11 @@
 ; Zero page addresses
 ptr1 = $00
 ptr2 = $02
+size = $04
 shift_count = $05
 byte_count  = $06
 bit_count   = $07
 bytecount   = $08
-
-fnord ; look for "this is totally broke ass"
 
 .proc lsl1
     ldy #0
@@ -112,37 +111,32 @@ fill_lsr8:
 .endproc
 
 ; Arithmetic shift right by 8 bits (1 byte)
+
 .proc asr8
-    rts ; this is totally broke ass
-    txa
-    tay
+    sty size
+    ldy #1
+loop_asr8:
+    lda (ptr1), y
     dey
+    sta (ptr2), y
+    iny
+    iny
+    cpy size
+    bne loop_asr8
+    dey
+    ldx #$FF
     lda (ptr1), y
     bmi neg_asr8
-    lda #0
-    sta (ptr2), y
-    jmp copy_asr8
+    ldx #0
 neg_asr8:
-    lda #$FF
+    txa
     sta (ptr2), y
-copy_asr8:
-    dey
-loop_asr8:
-    cpy #$FF
-    beq done_asr8
-    lda (ptr1), y
-    iny
-    sta (ptr2), y
-    dey
-    jmp loop_asr8
-done_asr8:
     rts
 .endproc
 
 ; Logical shift left by N bits (N in A)
 ; Uses lsl8 and lsl1
 .proc lslN
-    rts ; this is totally broke ass
     sta shift_count
     lda shift_count
     lsr             ; divide by 2 until quotient = N / 8
