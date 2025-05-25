@@ -43,10 +43,10 @@ foreach $file (@tests) {
 #      print "cat test/test.asm $file | $sed | sed \"s/TARGET/$proc/g\" > foo.asm\n";
       print `cat test/test.asm $file | $sed | sed "s/TARGET/$proc/g" > foo.asm`;
 
-#      print "$ca65 foo.asm -o foo.o\n";
+      print "$ca65 foo.asm -o foo.o\n";
       print `$ca65 foo.asm -o foo.o`;
 
-#      print "$ld65 foo.o -C test/sim.cfg -o foo.bin\n";
+      print "$ld65 foo.o -C test/sim.cfg -o foo.bin\n";
       print `$ld65 foo.o -C test/sim.cfg -o foo.bin`;
 
       open FILE, ">script.txt";
@@ -62,9 +62,9 @@ foreach $file (@tests) {
 
       print `py65mon --mpu 6502 < script.txt | grep 802b`;
 
-      #if ($file eq "../incdec.asm") {
-         #exit 0;
-      #}
+#      if ($file eq "cmp.asm") {
+#         exit 0;
+#      }
 #      exit 0;
    }
 }

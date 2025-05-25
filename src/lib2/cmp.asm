@@ -14,7 +14,7 @@
 ;   size - byte count
 ; Clobbers: A, X, Y
 
-,include "nlib.inc"
+.include "nlib.inc"
 
 .proc eq
     ldx size

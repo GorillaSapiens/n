@@ -36,35 +36,27 @@ loop_lsl1:
 .proc lsr1
     ldy size
     dey
-    sec         ; clear carry using SEC followed by ROR
+    clc ; clear carry using SEC followed by ROR
 loop_lsr1:
     lda (ptr1), y
     ror
     sta (ptr2), y
     dey
-    cpy #$FF
-    bne loop_lsr1
+    bmi loop_lsr1
     rts
 .endproc
 
 .proc asr1
     ldy size
     dey
-    sec
+    lda (ptr1), y
+    asl           ; places the high bit in Carry
 loop_asr1:
     lda (ptr1), y
     ror
-    ; inject sign bit into top byte
-    cpy #0
-    bne store_asr1
-    ; top byte: preserve sign
-    bmi store_asr1
-    and #%01111111
-store_asr1:
     sta (ptr2), y
     dey
-    cpy #$FF
-    bne loop_asr1
+    bpl loop_asr1
     rts
 .endproc
 
