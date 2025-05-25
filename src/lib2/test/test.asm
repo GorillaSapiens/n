@@ -14,24 +14,24 @@ start:
     lda #>input2
     sta $03
 
-    lda #<result_q
+    lda #<input3
     sta $04
-    lda #>result_q
+    lda #>input3
     sta $05
 
-    lda #<result_r
+    lda #<input4
     sta $06
-    lda #>result_r
+    lda #>input4
     sta $07
 
     ldx #2
-    jsr div_unsigned
+    jsr TARGET
 
 hang:
     jmp hang
 
-input1:  .byte $FE, $FF     ; 0x1234
-input2:  .byte $10, $27     ; 0x0007
-result_q:  .byte $ea,$ea
-result_r:  .byte $ea,$ea
+input1:  .word $FFFE
+input2:  .word $2710
+input3:  .word $eaea
+input4:  .word $eaea
 
