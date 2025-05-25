@@ -11,33 +11,33 @@
 ; Zero page location
 ptr1 = $00
 
-.proc inc
+.proc incN
     ldy #0
-@loop:
+inc_loop:
     lda (ptr1), y
     clc
     adc #1
     sta (ptr1), y
-    bne @done      ; No carry → done
+    bne inc_done      ; No carry → done
     iny
     dex
-    bne @loop
-@done:
+    bne inc_loop
+inc_done:
     rts
 .endproc
 
-.proc dec
+.proc decN
     ldy #0
-@loop:
+dec_loop:
     lda (ptr1), y
     sec
     sbc #1
     sta (ptr1), y
-    bne @done      ; No borrow → done
+    bne dec_done      ; No borrow → done
     iny
     dex
-    bne @loop
-@done:
+    bne dec_loop
+dec_done:
     rts
 .endproc
 

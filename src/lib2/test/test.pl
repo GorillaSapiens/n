@@ -57,6 +57,10 @@ foreach $file (@tests) {
       close FILE;
 
       print `py65mon --mpu 6502 < script.txt | grep 8029`;
+
+      #if ($file eq "../incdec.asm") {
+         #exit 0;
+      #}
 #      exit 0;
    }
 }
