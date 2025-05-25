@@ -7,26 +7,21 @@
 ;   ptr1 - pointer to multiplicand buffer
 ;   ptr2 - pointer to multiplier buffer
 ;   ptr3 - pointer to result buffer (2X bytes, must be zero-initialized beforehand)
-;   X    - byte count
+;   size - byte count
 ; Clobbers: A, X, Y, zero page temp vars
 
-ptr1      = $00
-ptr2      = $02
-ptr3      = $04
-byte_b    = $06
-tmp_b     = $07
-a_lo      = $08
-a_hi      = $09
-product_lo = $0A
-product_hi = $0B
-size       = $0C
-outer      = $0D
-inner      = $0E
+.include "nlib.inc"
+byte_b    = $08
+tmp_b     = $09
+a_lo      = $0A
+a_hi      = $0B
+product_lo = $0C
+product_hi = $0D
+outer      = $0E
+inner      = $0F
 
 
 .proc mul_unsigned
-    stx size             ; Save byte count
-
     lda #0               ; zero out inner and outer loop counters
     sta outer
     sta inner

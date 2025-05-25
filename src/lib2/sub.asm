@@ -7,17 +7,15 @@
 ;   ptr1 - minuend
 ;   ptr2 - subtrahend
 ;   ptr3 - destination
-;   X    - byte count (in register X)
+;   size - byte count (in register X)
 ; Assumes:
 ;   ptr1, ptr2, ptr3 are 2-byte pointers in zero page
-; Clobbers: A, Y, status flags
+; Clobbers: A, X, Y, status flags
 
-; Zero page locations assumed
-ptr1     = $00
-ptr2     = $02
-ptr3     = $04
+.include "nlib.inc"
 
 .proc sub_unsigned
+    ldx size
     ldy #0            ; Start at byte 0
     sec               ; Set carry before SBC
 @loop:

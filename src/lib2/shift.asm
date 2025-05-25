@@ -9,19 +9,17 @@
 ; Inputs:
 ;   ptr1 - source
 ;   ptr2 - destination
-;   X    - byte count
-; Clobbers: A, Y
+;   size - byte count
+; Clobbers: A, X, Y
 
-; Zero page addresses
-ptr1 = $00
-ptr2 = $02
-size = $04
-shift_count = $05
-byte_count  = $06
-bit_count   = $07
-bytecount   = $08
+.include "nlib.inc"
+n_shift   = $06
+n_byte    = $07
+n_bit     = $08
+bytecount = $09
 
 .proc lsl1
+    ldx size
     ldy #0
     clc
 loop_lsl1:
@@ -35,8 +33,7 @@ loop_lsl1:
 .endproc
 
 .proc lsr1
-    txa
-    tay
+    ldy size
     dey
     sec         ; clear carry using SEC followed by ROR
 loop_lsr1:
@@ -50,8 +47,7 @@ loop_lsr1:
 .endproc
 
 .proc asr1
-    txa
-    tay
+    ldy size
     dey
     sec
 loop_asr1:
@@ -73,126 +69,116 @@ store_asr1:
 
 ; Logical shift left by 8 bits (1 byte)
 .proc lsl8
-    stx bytecount
-loop_lsl8:
-    cpy bytecount
-    beq fill_lsl8
-    lda (ptr1), y
-    dey
-    sta (ptr2), y
-    iny
-    bne loop_lsl8
-fill_lsl8:
+    ldy #0
     lda #0
-    dey
     sta (ptr2), y
+loop_lsl8:
+    lda (ptr1), y
+    iny
+    cpy size
+    beq fini_lsl8
+    sta (ptr2), y
+    jmp loop_lsl8
+fini_lsl8:
     rts
 .endproc
 
 ; Logical shift right by 8 bits (1 byte)
 .proc lsr8
-    txa
-    tay
+    ldy size
     dey
-loop_lsr8:
-    cpy #0
-    beq fill_lsr8
-    dey
-    lda (ptr1), y
-    iny
-    sta (ptr2), y
-    dey
-    bne loop_lsr8
-fill_lsr8:
     lda #0
-    ldy #0
     sta (ptr2), y
+loop_lsr8:
+    lda (ptr1), y
+    dey
+    bmi fini_lsr8
+    sta (ptr2), y
+    jmp loop_lsr8
+fini_lsr8:
     rts
 .endproc
 
 ; Arithmetic shift right by 8 bits (1 byte)
 
 .proc asr8
-    sty size
-    ldy #1
+    ldy size
+    dey
+    lda (ptr1), y
+    rol
+    bcs neg_asr8
+    lda #0
+    sta (ptr2), y
+    jmp loop_asr8
+neg_asr8:
+    lda #$FF
+    sta (ptr2), y
 loop_asr8:
     lda (ptr1), y
     dey
+    bmi fini_asr8
     sta (ptr2), y
-    iny
-    iny
-    cpy size
-    bne loop_asr8
-    dey
-    ldx #$FF
-    lda (ptr1), y
-    bmi neg_asr8
-    ldx #0
-neg_asr8:
-    txa
-    sta (ptr2), y
+    jmp loop_asr8
+fini_asr8:
     rts
 .endproc
 
 ; Logical shift left by N bits (N in A)
 ; Uses lsl8 and lsl1
 .proc lslN
-    sta shift_count
-    lda shift_count
-    lsr             ; divide by 2 until quotient = N / 8
-    lsr
-    lsr
-    sta byte_count
-    lda shift_count
+    sta n_shift
     and #7
-    sta bit_count
-
-    ; Byte shifts
-byte_loop_lslN:
-    lda byte_count
-    beq bit_shifts_lslN
+    sta n_bit
+    lda n_shift
+    lsr
+    lsr
+    lsr
+    sta n_byte
+    lda n_bit
+    beq fini1_lslN   ; label
+loop1_lslN:          ; label
+    ldx size
+    jsr lsl1         ; here
+    dec n_bit
+    bne loop1_lslN   ; label
+fini1_lslN:          ; label
+    lda n_byte
+    beq fini2_lslN   ; label
+loop2_lslN:          ; label
+    ldx size
     jsr lsl8
-    dec byte_count
-    jmp byte_loop_lslN
-
-bit_shifts_lslN:
-    lda bit_count
-    beq done_lslN
-bit_loop_lslN:
-    jsr lsl1
-    dec bit_count
-    bne bit_loop_lslN
-
-done_lslN:
+    dec n_byte
+    bne loop2_lslN   ; label
+fini2_lslN:          ; label
     rts
 .endproc
 
 ; Logical shift right by N bits (N in A)
 ; Uses lsr8 and lsr1
 .proc lsrN
-    sta shift_count
-    lda shift_count
+    sta n_shift
+    lda n_shift
     lsr
     lsr
     lsr
-    sta byte_count
-    lda shift_count
+    sta n_byte
+    lda n_shift
     and #7
-    sta bit_count
+    sta n_bit
 
 byte_loop_lsrN:
-    lda byte_count
+    lda n_byte
     beq bit_shifts_lsrN
     jsr lsr8
-    dec byte_count
+    dec n_byte
     jmp byte_loop_lsrN
 
 bit_shifts_lsrN:
-    lda bit_count
+    lda n_bit
     beq done_lsrN
 bit_loop_lsrN:
     jsr lsr1
-    dec bit_count
+    dec n_bit
     bne bit_loop_lsrN
 
 done_lsrN:
@@ -202,29 +188,29 @@ done_lsrN:
 ; Arithmetic shift right by N bits (N in A)
 ; Uses asr8 and asr1
 .proc asrN
-    sta shift_count
-    lda shift_count
+    sta n_shift
+    lda n_shift
     lsr
     lsr
     lsr
-    sta byte_count
-    lda shift_count
+    sta n_byte
+    lda n_shift
     and #7
-    sta bit_count
+    sta n_bit
 
 byte_loop_asrN:
-    lda byte_count
+    lda n_byte
     beq bit_shifts_asrN
     jsr asr8
-    dec byte_count
+    dec n_byte
     jmp byte_loop_asrN
 
 bit_shifts_asrN:
-    lda bit_count
+    lda n_bit
     beq done_asrN
 bit_loop_asrN:
     jsr asr1
-    dec bit_count
+    dec n_bit
     bne bit_loop_asrN
 
 done_asrN:

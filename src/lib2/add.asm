@@ -6,20 +6,18 @@
 ;   ptr1 - pointer to operand A (low byte at lower address)
 ;   ptr2 - pointer to operand B
 ;   ptr3 - pointer to destination buffer
-;   X    - number of bytes (in X register)
+;   size - number of bytes
 ; Assumes:
 ;   ptr1, ptr2, ptr3 are 2-byte pointers in zero page
-; Clobbers: A, Y, status flags
+; Clobbers: A, X, Y, status flags
 
 ; Zero page locations assumed
-ptr1     = $00
-ptr2     = $02
-ptr3     = $04
+.include "nlib.inc"
 
 .proc add_unsigned
+    ldx size
     ldy #0            ; Start at offset 0
     clc               ; Clear carry flag
-
 @loop:
     lda (ptr1), y     ; Load byte from operand A
     adc (ptr2), y     ; Add byte from operand B with carry
@@ -27,7 +25,6 @@ ptr3     = $04
     iny               ; Next byte
     dex               ; Decrement byte counter
     bne @loop         ; Repeat if not zero
-
     rts
 .endproc
 

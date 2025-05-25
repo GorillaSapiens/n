@@ -50,13 +50,13 @@ foreach $file (@tests) {
       print FILE "load foo.bin 0x8000\n";
       print FILE "registers pc=0x8000\n";
       print FILE "disassemble 8000:8040\n";
-      print FILE "add_breakpoint 8026\n";
-      print FILE "mem 8029:8030\n";
+      print FILE "add_breakpoint 8028\n";
+      print FILE "mem 802b:8032\n";
       print FILE "goto 8000\n";
-      print FILE "mem 8029:8030\n";
+      print FILE "mem 802b:8032\n";
       close FILE;
 
-      print `py65mon --mpu 6502 < script.txt | grep 8029`;
+      print `py65mon --mpu 6502 < script.txt | grep 802b`;
 
       #if ($file eq "../incdec.asm") {
          #exit 0;

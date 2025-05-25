@@ -25,6 +25,7 @@ start:
     sta $07
 
     ldx #2
+    lda #$0C
     jsr TARGET
 
 hang:

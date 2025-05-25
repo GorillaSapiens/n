@@ -5,15 +5,13 @@
 ; Inputs:
 ;   ptr1, ptr2 - input buffers (ptr2 not needed for NOT)
 ;   ptr3 - destination
-;   X    - byte count
+;   size - byte count
 ; Clobbers: A, Y
 
-; Zero page locations assumed
-ptr1     = $00
-ptr2     = $02
-ptr3     = $04
+.include "nlib.inc"
 
 .proc and_bytes
+    ldx size
     ldy #0
 @loop:
     lda (ptr1), y
@@ -26,6 +24,7 @@ ptr3     = $04
 .endproc
 
 .proc or_bytes
+    ldx size
     ldy #0
 @loop:
     lda (ptr1), y
@@ -38,6 +37,7 @@ ptr3     = $04
 .endproc
 
 .proc not_bytes
+    ldx size
     ldy #0
 @loop:
     lda (ptr1), y

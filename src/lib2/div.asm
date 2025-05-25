@@ -8,22 +8,16 @@
 ;   ptr2 - divisor (X bytes)
 ;   ptr3 - quotient (X bytes)
 ;   ptr4 - remainder (X bytes)
-;   X    - byte count
+;   size - byte count
 ; Clobbers: A, X, Y, and zero page temps
 
-ptr1  = $00
-ptr2  = $02
-ptr3  = $04
-ptr4  = $06
-tmpX  = $08
-tmpY  = $09
-carry = $0A
-zero  = $0B
-size  = $0C
+.include "nlib.inc"
+tmpX  = $0A
+tmpY  = $0B
+carry = $0C
+zero  = $0D
 
 .proc div_unsigned
-    stx size
-
     ; Clear quotient and remainder
     ldy #0
 clear_loop:

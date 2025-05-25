@@ -9,9 +9,10 @@
 ; Clobbers: A, Y
 
 ; Zero page location
-ptr1 = $00
+.include "nlib.inc"
 
 .proc incN
+    ldx size
     ldy #0
 inc_loop:
     lda (ptr1), y
@@ -27,6 +28,7 @@ inc_done:
 .endproc
 
 .proc decN
+    ldx size
     ldy #0
 dec_loop:
     lda (ptr1), y
