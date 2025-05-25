@@ -23,13 +23,13 @@ bytecount   = $08
 .proc lsl1
     ldy #0
     clc
-@loop:
+loop_lsl1:
     lda (ptr1), y
     rol
     sta (ptr2), y
     iny
     dex
-    bne @loop
+    bne loop_lsl1
     rts
 .endproc
 
@@ -38,13 +38,13 @@ bytecount   = $08
     tay
     dey
     sec         ; clear carry using SEC followed by ROR
-@loop:
+loop_lsr1:
     lda (ptr1), y
     ror
     sta (ptr2), y
     dey
     cpy #$FF
-    bne @loop
+    bne loop_lsr1
     rts
 .endproc
 
@@ -53,35 +53,35 @@ bytecount   = $08
     tay
     dey
     sec
-@loop:
+loop_asr1:
     lda (ptr1), y
     ror
     ; inject sign bit into top byte
     cpy #0
-    bne @store
+    bne store_asr1
     ; top byte: preserve sign
-    bmi @store
+    bmi store_asr1
     and #%01111111
-@store:
+store_asr1:
     sta (ptr2), y
     dey
     cpy #$FF
-    bne @loop
+    bne loop_asr1
     rts
 .endproc
 
 ; Logical shift left by 8 bits (1 byte)
 .proc lsl8
     stx bytecount
-@loop:
+loop_lsl8:
     cpy bytecount
-    beq @fill
+    beq fill_lsl8
     lda (ptr1), y
     dey
     sta (ptr2), y
     iny
-    bne @loop
-@fill:
+    bne loop_lsl8
+fill_lsl8:
     lda #0
     dey
     sta (ptr2), y
@@ -93,16 +93,16 @@ bytecount   = $08
     txa
     tay
     dey
-@loop:
+loop_lsr8:
     cpy #0
-    beq @fill
+    beq fill_lsr8
     dey
     lda (ptr1), y
     iny
     sta (ptr2), y
     dey
-    bne @loop
-@fill:
+    bne loop_lsr8
+fill_lsr8:
     lda #0
     ldy #0
     sta (ptr2), y
@@ -115,24 +115,24 @@ bytecount   = $08
     tay
     dey
     lda (ptr1), y
-    bmi @neg
+    bmi neg_asr8
     lda #0
     sta (ptr2), y
-    jmp @copy
-@neg:
+    jmp copy_asr8
+neg_asr8:
     lda #$FF
     sta (ptr2), y
-@copy:
+copy_asr8:
     dey
-@loop:
+loop_asr8:
     cpy #$FF
-    beq @done
+    beq done_asr8
     lda (ptr1), y
     iny
     sta (ptr2), y
     dey
-    jmp @loop
-@done:
+    jmp loop_asr8
+done_asr8:
     rts
 .endproc
 
@@ -150,22 +150,22 @@ bytecount   = $08
     sta bit_count
 
     ; Byte shifts
-@byte_loop:
+byte_loop_lslN:
     lda byte_count
-    beq @bit_shifts
+    beq bit_shifts_lslN
     jsr lsl8
     dec byte_count
-    jmp @byte_loop
+    jmp byte_loop_lslN
 
-@bit_shifts:
+bit_shifts_lslN:
     lda bit_count
-    beq @done
-@bit_loop:
+    beq done_lslN
+bit_loop_lslN:
     jsr lsl1
     dec bit_count
-    bne @bit_loop
+    bne bit_loop_lslN
 
-@done:
+done_lslN:
     rts
 .endproc
 
@@ -182,22 +182,22 @@ bytecount   = $08
     and #7
     sta bit_count
 
-@byte_loop:
+byte_loop_lsrN:
     lda byte_count
-    beq @bit_shifts
+    beq bit_shifts_lsrN
     jsr lsr8
     dec byte_count
-    jmp @byte_loop
+    jmp byte_loop_lsrN
 
-@bit_shifts:
+bit_shifts_lsrN:
     lda bit_count
-    beq @done
-@bit_loop:
+    beq done_lsrN
+bit_loop_lsrN:
     jsr lsr1
     dec bit_count
-    bne @bit_loop
+    bne bit_loop_lsrN
 
-@done:
+done_lsrN:
     rts
 .endproc
 
@@ -214,21 +214,21 @@ bytecount   = $08
     and #7
     sta bit_count
 
-@byte_loop:
+byte_loop_asrN:
     lda byte_count
-    beq @bit_shifts
+    beq bit_shifts_asrN
     jsr asr8
     dec byte_count
-    jmp @byte_loop
+    jmp byte_loop_asrN
 
-@bit_shifts:
+bit_shifts_asrN:
     lda bit_count
-    beq @done
-@bit_loop:
+    beq done_asrN
+bit_loop_asrN:
     jsr asr1
     dec bit_count
-    bne @bit_loop
+    bne bit_loop_asrN
 
-@done:
+done_asrN:
     rts
 .endproc
