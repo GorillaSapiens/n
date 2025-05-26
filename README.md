@@ -18,7 +18,7 @@
 
 - **Explicit Types**
   ```c
-  type uint16 { 2 $unsigned $endian:little };
+  type uint16 { $size:2 $unsigned $endian:little };
   ```
 
 - **Variable Declarations with Addresses**
