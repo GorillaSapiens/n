@@ -56,11 +56,12 @@ foreach $file (@tests) {
       print FILE "disassemble 8000:8040\n";
       print FILE "add_breakpoint 8028\n";
       print FILE "mem 802b:8032\n";
+      print FILE "mem 0:1\n";
       print FILE "goto 8000\n";
-      print FILE "mem 802b:8032\n";
+      print FILE "mem 0:1\n";
       close FILE;
 
-      print `py65mon --mpu 6502 < script.txt | grep 802b`;
+      print `py65mon --mpu 6502 < script.txt | grep ^\\,[0-9]`;
 
 #      if ($file eq "cmp.asm") {
 #         exit 0;
