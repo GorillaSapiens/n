@@ -58,15 +58,16 @@ foreach $file (`ls *.asm`) {
          close FILE;
       }
       else {
-         if ($line =~ /jsr/ || $line =~ /jmp/) {
+         if ($line =~ /jsr/ || $line =~ /jmp/ || $line =~ /lda[\s]+#[<>]/ ) {
             $tmp = $line;
             $tmp =~ s/[\x0a\x0d]//g;
             $tmp =~ s/;.*//g;
             $tmp =~ s/jsr//g;
             $tmp =~ s/jmp//g;
+            $tmp =~ s/lda[\s]+#[<>]//g;
             $tmp =~ s/[\s]//g;
 
-            if (!($tmp =~ /[\(\@]/)) {
+            if (!($tmp =~ /[\(\@]/) && $tmp =~ /[a-zA-Z]/) {
                push @import, $tmp;
             }
          }

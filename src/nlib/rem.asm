@@ -5,8 +5,7 @@
 .include "nlib.inc"
 
 .proc rem_unsigned
-    jsr div_unsigned
-    rts
+    jmp div_unsigned
 .endproc
 
 ; rem_signed is very similar to div_signed, with one twist:
