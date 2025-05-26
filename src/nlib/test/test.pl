@@ -40,32 +40,31 @@ foreach $file (@tests) {
 
       print "=== $file $proc\n";
 
-#      print "cat test/test.asm $file | $sed | sed \"s/TARGET/$proc/g\" > foo.asm\n";
-      print `cat test/test.asm $file | $sed | sed "s/TARGET/$proc/g" > foo.asm`;
+#      print "cat test/test.asm | sed \"s/TARGET/$proc/g\" > foo.asm\n";
+      print `cat test/test.asm  | sed "s/TARGET/$proc/g" > foo.asm`;
 
       print "$ca65 foo.asm -o foo.o\n";
       print `$ca65 foo.asm -o foo.o`;
 
-      print "$ld65 foo.o -C test/sim.cfg -o foo.bin\n";
-      print `$ld65 foo.o -C test/sim.cfg -o foo.bin`;
+      print "$ld65 foo.o nlib.a -C test/sim.cfg -o foo.bin\n";
+      print `$ld65 foo.o nlib.a -C test/sim.cfg -o foo.bin`;
 
       open FILE, ">script.txt";
       print FILE "width 72\n";
       print FILE "load foo.bin 0x8000\n";
       print FILE "registers pc=0x8000\n";
       print FILE "disassemble 8000:8040\n";
-      print FILE "add_breakpoint 8028\n";
-      print FILE "mem 802b:8032\n";
-      print FILE "mem 0:1\n";
+      print FILE "add_breakpoint 8036\n";
+      print FILE "mem 8039:804a\n";
       print FILE "goto 8000\n";
-      print FILE "mem 0:1\n";
+      print FILE "mem 8039:804a\n";
       close FILE;
 
-      print `py65mon --mpu 6502 < script.txt | grep ^\\,[0-9]`;
+      print `py65mon --mpu 6502 < script.txt | grep 8039`;
 
 #      if ($file eq "cmp.asm") {
 #         exit 0;
 #      }
-#      exit 0;
+      exit 0;
    }
 }
