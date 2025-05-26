@@ -18,6 +18,10 @@ foreach $file (`ls *.asm`) {
          push @constants, $line;
       }
 
+      if ($line =~ /^[a-zA-Z0-9_]+:/) {
+         print "WARN: $line";
+      }
+
       if ($line =~ /^\.include/) {
          $mode = 1;
       }

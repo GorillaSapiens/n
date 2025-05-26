@@ -28,27 +28,27 @@ inner      = $0F
 
     ldy #0               ; clear the result
     ldx #0
-clear_ptr3:
+@clear_ptr3:
     sta (ptr3), y
     iny
     sta (ptr3), y
     iny
     inx
     cpx size
-    bne clear_ptr3
+    bne @clear_ptr3
 
-outer_loop:
+@outer_loop:
     ldy outer
     cpy size
-    beq outer_fini
+    beq @outer_fini
 
     lda (ptr2), y          ; initialize b
     sta byte_b
 
-inner_loop:
+@inner_loop:
     ldy inner
     cpy size
-    beq inner_fini
+    beq @inner_fini
 
     lda (ptr1), y          ; initialize a
     sta a_lo
@@ -61,9 +61,9 @@ inner_loop:
     ldx #8                 ; 8x8 multiply begins
     lda byte_b
     sta tmp_b
-mult_loop:
+@mult_loop:
     lsr tmp_b
-    bcc no_add
+    bcc @no_add
 
     clc
     lda product_lo
@@ -73,12 +73,12 @@ mult_loop:
     adc a_hi
     sta product_hi
 
-no_add:
+@no_add:
     asl a_lo
     rol a_hi
 
     dex
-    bne mult_loop
+    bne @mult_loop
 
     ; add product to ptr3
     clc
@@ -99,15 +99,15 @@ no_add:
     sta (ptr3), y
 
     inc inner
-    jmp inner_loop
+    jmp @inner_loop
 
-inner_fini:
+@inner_fini:
     lda #0
     sta inner
 
     inc outer
-    jmp outer_loop
+    jmp @outer_loop
 
-outer_fini:
+@outer_fini:
     rts
 .endproc

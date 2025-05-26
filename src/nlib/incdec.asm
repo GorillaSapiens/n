@@ -14,32 +14,32 @@
 .proc incN
     ldx size
     ldy #0
-inc_loop:
+@loop:
     lda (ptr1), y
     clc
     adc #1
     sta (ptr1), y
-    bne inc_done      ; No carry → done
+    bne @done      ; No carry → done
     iny
     dex
-    bne inc_loop
-inc_done:
+    bne @loop
+@done:
     rts
 .endproc
 
 .proc decN
     ldx size
     ldy #0
-dec_loop:
+@loop:
     lda (ptr1), y
     sec
     sbc #1
     sta (ptr1), y
-    bne dec_done      ; No borrow → done
+    bne @done      ; No borrow → done
     iny
     dex
-    bne dec_loop
-dec_done:
+    bne @loop
+@done:
     rts
 .endproc
 
