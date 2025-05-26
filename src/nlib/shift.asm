@@ -23,13 +23,13 @@ bytecount = $0D
     ldx size
     ldy #0
     clc
-loop_lsl1:
+@loop:
     lda (ptr1), y
     rol
     sta (ptr2), y
     iny
     dex
-    bne loop_lsl1
+    bne @loop
     rts
 .endproc
 
@@ -37,12 +37,12 @@ loop_lsl1:
     ldy size
     dey
     clc ; clear carry using SEC followed by ROR
-loop_lsr1:
+@loop:
     lda (ptr1), y
     ror
     sta (ptr2), y
     dey
-    bmi loop_lsr1
+    bmi @loop
     rts
 .endproc
 
@@ -51,12 +51,12 @@ loop_lsr1:
     dey
     lda (ptr1), y
     asl           ; places the high bit in Carry
-loop_asr1:
+@loop:
     lda (ptr1), y
     ror
     sta (ptr2), y
     dey
-    bpl loop_asr1
+    bpl @loop
     rts
 .endproc
 
@@ -65,14 +65,14 @@ loop_asr1:
     ldy #0
     lda #0
     sta (ptr2), y
-loop_lsl8:
+@loop:
     lda (ptr1), y
     iny
     cpy size
-    beq fini_lsl8
+    beq @fini
     sta (ptr2), y
-    jmp loop_lsl8
-fini_lsl8:
+    jmp @loop
+@fini:
     rts
 .endproc
 
@@ -82,13 +82,13 @@ fini_lsl8:
     dey
     lda #0
     sta (ptr2), y
-loop_lsr8:
+@loop:
     lda (ptr1), y
     dey
-    bmi fini_lsr8
+    bmi @fini
     sta (ptr2), y
-    jmp loop_lsr8
-fini_lsr8:
+    jmp @loop
+@fini:
     rts
 .endproc
 
@@ -99,32 +99,32 @@ fini_lsr8:
     dey
     lda (ptr1), y
     rol
-    bcs neg_asr8
+    bcs @neg
     lda #0
     sta (ptr2), y
-    jmp loop_asr8
-neg_asr8:
+    jmp @loop
+@neg:
     lda #$FF
     sta (ptr2), y
-loop_asr8:
+@loop:
     lda (ptr1), y
     dey
-    bmi fini_asr8
+    bmi @fini
     sta (ptr2), y
-    jmp loop_asr8
-fini_asr8:
+    jmp @loop
+@fini:
     rts
 .endproc
 
 ; Logical shift left by N bits (N in shift)
 ; Uses lsl8 and lsl1
 .proc shiftN
-    jmp start_shiftN
-trampoline1:
+    jmp @start
+@trampoline1:
     jmp (ptr3)
-trampoline8:
+@trampoline8:
     jmp (ptr4)
-start_shiftN:
+@start:
     lda shift
     sta n_shift
     and #7
@@ -135,21 +135,21 @@ start_shiftN:
     lsr
     sta n_byte
     lda n_bit
-    beq fini1_shiftN   ; label
-loop1_shiftN:          ; label
+    beq @fini1
+@loop1:
     ldx size
-    jsr trampoline1    ; here
+    jsr @trampoline1
     dec n_bit
-    bne loop1_shiftN   ; label
-fini1_shiftN:          ; label
+    bne @loop1
+@fini1:
     lda n_byte
-    beq fini2_shiftN   ; label
-loop2_shiftN:          ; label
+    beq @fini2
+@loop2:
     ldx size
-    jsr trampoline8
+    jsr @trampoline8
     dec n_byte
-    bne loop2_shiftN   ; label
-fini2_shiftN:          ; label
+    bne @loop2
+@fini2:
     rts
 .endproc
 
