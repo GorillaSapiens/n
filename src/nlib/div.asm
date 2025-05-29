@@ -12,12 +12,12 @@
 ; Clobbers: A, X, Y, and zero page temps
 
 .include "nlib.inc"
-tmpX  = $0A
-tmpY  = $0B
-carry = $0C
-zero  = $0D
+tmpX  = nl_tmp1 ;$0A
+tmpY  = nl_tmp2 ;$0B
+carry = nl_tmp3 ;$0C
+zero  = nl_tmp4 ;$0D
 
-.proc div_unsigned
+.proc _div_unsigned
     ; Clear quotient and remainder
     ldy #0
 @clear_loop:

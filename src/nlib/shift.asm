@@ -14,12 +14,12 @@
 
 .include "nlib.inc"
 ; we use ptr3 and ptr4
-n_shift   = $0A
-n_byte    = $0B
-n_bit     = $0C
-bytecount = $0D
+n_shift   = nl_tmp1 ;$0A
+n_byte    = nl_tmp2 ;$0B
+n_bit     = nl_tmp3 ;$0C
+bytecount = nl_tmp4 ;$0D
 
-.proc lsl1
+.proc _lsl1
     ldx size
     ldy #0
     clc
@@ -33,7 +33,7 @@ bytecount = $0D
     rts
 .endproc
 
-.proc lsr1
+.proc _lsr1
     ldy size
     dey
     clc ; clear carry using SEC followed by ROR
@@ -46,7 +46,7 @@ bytecount = $0D
     rts
 .endproc
 
-.proc asr1
+.proc _asr1
     ldy size
     dey
     lda (ptr1), y
@@ -61,7 +61,7 @@ bytecount = $0D
 .endproc
 
 ; Logical shift left by 8 bits (1 byte)
-.proc lsl8
+.proc _lsl8
     ldy #0
     lda #0
     sta (ptr2), y
@@ -77,7 +77,7 @@ bytecount = $0D
 .endproc
 
 ; Logical shift right by 8 bits (1 byte)
-.proc lsr8
+.proc _lsr8
     ldy size
     dey
     lda #0
@@ -94,7 +94,7 @@ bytecount = $0D
 
 ; Arithmetic shift right by 8 bits (1 byte)
 
-.proc asr8
+.proc _asr8
     ldy size
     dey
     lda (ptr1), y
@@ -118,7 +118,7 @@ bytecount = $0D
 
 ; Logical shift left by N bits (N in shift)
 ; Uses lsl8 and lsl1
-.proc shiftN
+.proc _shiftN
     jmp @start
 @trampoline1:
     jmp (ptr3)
@@ -153,7 +153,7 @@ bytecount = $0D
     rts
 .endproc
 
-.proc lslN
+.proc _lslN
     lda #<lsl1
     sta ptr3
     lda #>lsl1
@@ -164,10 +164,10 @@ bytecount = $0D
     lda #>lsl8
     sta ptr4+1
 
-    jmp shiftN
+    jmp _shiftN
 .endproc
 
-.proc lsrN
+.proc _lsrN
     lda #<lsr1
     sta ptr3
     lda #>lsr1
@@ -178,10 +178,10 @@ bytecount = $0D
     lda #>lsr8
     sta ptr4+1
 
-    jmp shiftN
+    jmp _shiftN
 .endproc
 
-.proc asrN
+.proc _asrN
     lda #<asr1
     sta ptr3
     lda #>asr1
@@ -192,5 +192,5 @@ bytecount = $0D
     lda #>asr8
     sta ptr4+1
 
-    jmp shiftN
+    jmp _shiftN
 .endproc

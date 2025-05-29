@@ -65,6 +65,6 @@ foreach $file (@tests) {
 #      if ($file eq "cmp.asm") {
 #         exit 0;
 #      }
-      exit 0;
+#      exit 0;
    }
 }

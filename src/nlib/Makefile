@@ -3,11 +3,12 @@ LD65=~/cc65/bin/ld65
 AR65=~/cc65/bin/ar65
 
 all:
+	./unbundle.pl
 	for each in `ls split/*.s`; do ~/cc65/bin/ca65 $$each; done
 	$(AR65) a nlib.a split/*.o
 
 clean:
-	rm -f *.o *.bin foo.*
+	rm -f *.o *.bin foo.* split/*
 
 debug:
 	cat test.asm div.asm > foo.asm

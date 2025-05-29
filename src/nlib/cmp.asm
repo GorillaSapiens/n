@@ -16,7 +16,7 @@
 
 .include "nlib.inc"
 
-.proc eq
+.proc _eq
     ldx size
     ldy #0
 @loop:
@@ -35,7 +35,7 @@
     rts
 .endproc
 
-.proc lt_signed
+.proc _lt_signed
     ; Signed less-than
     ; Compare MSB for sign difference first
     ldy size
@@ -58,7 +58,7 @@
     rts
 .endproc
 
-.proc le_signed
+.proc _le_signed
     ; Signed less-than-or-equal
     ldy size
     dey                 ; last byte
@@ -80,7 +80,7 @@
     rts
 .endproc
 
-.proc lt_unsigned
+.proc _lt_unsigned
     ; Unsigned less-than comparison
     ; Compare from most significant byte to least
     ldy size
@@ -102,7 +102,7 @@
     rts
 .endproc
 
-.proc le_unsigned
+.proc _le_unsigned
     ; Unsigned less-than-or-equal comparison
     ; Compare from most significant byte to least
     ldy size

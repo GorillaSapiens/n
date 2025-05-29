@@ -11,7 +11,7 @@
 ; Zero page location
 .include "nlib.inc"
 
-.proc incN
+.proc _incN
     ldx size
     ldy #0
 @loop:
@@ -27,7 +27,7 @@
     rts
 .endproc
 
-.proc decN
+.proc _decN
     ldx size
     ldy #0
 @loop:
@@ -45,7 +45,7 @@
 
 ; Fixed width versions
 
-.proc inc8
+.proc _inc8
     ldy #0
     clc
     lda (ptr1), y
@@ -54,20 +54,7 @@
     rts
 .endproc
 
-.proc inc16
-    ldy #0
-    clc
-    lda (ptr1), y
-    adc #1
-    sta (ptr1), y
-    iny
-    lda (ptr1), y
-    adc #0
-    sta (ptr1), y
-    rts
-.endproc
-
-.proc inc32
+.proc _inc16
     ldy #0
     clc
     lda (ptr1), y
@@ -77,6 +64,19 @@
     lda (ptr1), y
     adc #0
     sta (ptr1), y
+    rts
+.endproc
+
+.proc _inc32
+    ldy #0
+    clc
+    lda (ptr1), y
+    adc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    adc #0
+    sta (ptr1), y
     iny
     lda (ptr1), y
     adc #0
@@ -88,7 +88,7 @@
     rts
 .endproc
 
-.proc dec8
+.proc _dec8
     ldy #0
     sec
     lda (ptr1), y
@@ -97,7 +97,7 @@
     rts
 .endproc
 
-.proc dec16
+.proc _dec16
     ldy #0
     sec
     lda (ptr1), y
@@ -110,7 +110,7 @@
     rts
 .endproc
 
-.proc dec32
+.proc _dec32
     ldy #0
     sec
     lda (ptr1), y

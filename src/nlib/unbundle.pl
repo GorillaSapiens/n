@@ -4,6 +4,11 @@
 `cp nlib.inc split`;
 foreach $file (`ls *.asm`) {
    $file =~ s/[\x0a\x0d]//g;
+
+   if ($file eq "test.asm" || $file eq "foo.asm") {
+      continue;
+   }
+
    print "== $file\n";
    open FILE, $file;
    @file = <FILE>;
@@ -71,9 +76,7 @@ foreach $file (`ls *.asm`) {
                push @import, $tmp;
             }
          }
-
          push @func, $line;
       }
    }
-
 }

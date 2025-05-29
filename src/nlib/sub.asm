@@ -14,7 +14,7 @@
 
 .include "nlib.inc"
 
-.proc sub_unsigned
+.proc _sub_unsigned
     ldx size
     ldy #0            ; Start at byte 0
     sec               ; Set carry before SBC
@@ -30,7 +30,7 @@
 
 ; Fixed-width versions
 
-.proc sub8
+.proc _sub8
     ldy #0
     sec
     lda (ptr1), y
@@ -39,7 +39,7 @@
     rts
 .endproc
 
-.proc sub16
+.proc _sub16
     ldy #0
     sec
     lda (ptr1), y
@@ -52,7 +52,7 @@
     rts
 .endproc
 
-.proc sub32
+.proc _sub32
     ldy #0
     sec
     lda (ptr1), y

@@ -11,17 +11,17 @@
 ; Clobbers: A, X, Y, zero page temp vars
 
 .include "nlib.inc"
-byte_b    = $08
-tmp_b     = $09
-a_lo      = $0A
-a_hi      = $0B
-product_lo = $0C
-product_hi = $0D
-outer      = $0E
-inner      = $0F
+product_lo = nl_ptr4   ;$0C
+product_hi = nl_ptr4+1 ;$0D
+byte_b     = nl_tmp1   ;$08
+tmp_b      = nl_tmp2   ;$09
+a_lo       = nl_tmp3   ;$0A
+a_hi       = nl_tmp4   ;$0B
+outer      = nl_tmp5   ;$0E
+inner      = nl_tmp6   ;$0F
 
 
-.proc mul_unsigned
+.proc _mul_unsigned
     lda #0               ; zero out inner and outer loop counters
     sta outer
     sta inner
