@@ -4,6 +4,7 @@ AR65=~/cc65/bin/ar65
 
 all:
 	./unbundle.pl
+	cp *.s split
 	for each in `ls split/*.s`; do ~/cc65/bin/ca65 $$each; done
 	$(AR65) a nlib.a split/*.o
 
