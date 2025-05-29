@@ -4,10 +4,13 @@ CL65=~/cc65/bin/cl65
 LD65=~/cc65/bin/ld65
 AR65=~/cc65/bin/ar65
 MT=-t sim6502
-SIM65= ~/cc65/bin/sim65 -x 2000000
+#SIM65= ~/cc65/bin/sim65 -x 2000000000
+SIM65= ~/cc65/bin/sim65
 
 
 all:
+	rm -rf split
+	mkdir split
 	./unbundle.pl
 	cp *.s split
 	for each in `ls split/*.s`; do ~/cc65/bin/ca65 $$each; done
