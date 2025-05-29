@@ -113,6 +113,7 @@ void test4(const char *name, void(*fn)(void),
       exit(0);
    }
 }
+
 void addN_tests(void) {
    int i;
    
@@ -141,10 +142,39 @@ void addN_tests(void) {
    printf("addN, n=4 PASS\n");
 }
 
+void subN_tests(void) {
+   int i;
+   
+   for (i = 0; i < 1000; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("subN", subN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("subN, n=1 PASS\n");
+
+   for (i = 0; i < 1000; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("subN", subN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("subN, n=2 PASS\n");
+
+   for (i = 0; i < 1000; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("subN", subN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("subN, n=4 PASS\n");
+}
+
 int main(void) {
    printf("hello, world\n");
 
    addN_tests();
+   subN_tests();
 
    return 0;
 }

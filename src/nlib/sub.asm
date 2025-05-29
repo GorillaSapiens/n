@@ -14,7 +14,7 @@
 
 .include "nlib.inc"
 
-.proc _sub_unsigned
+.proc _subN
     ldx size
     ldy #0            ; Start at byte 0
     sec               ; Set carry before SBC

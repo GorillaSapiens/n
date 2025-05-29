@@ -49,4 +49,4 @@ void shiftN(void);
 void sub16(void);
 void sub32(void);
 void sub8(void);
-void sub_unsigned(void);
+void subN(void);
