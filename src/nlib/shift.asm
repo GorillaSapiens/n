@@ -14,10 +14,10 @@
 
 .include "nlib.inc"
 ; we use ptr3 and ptr4
-n_shift   = nl_tmp1 ;$0A
-n_byte    = nl_tmp2 ;$0B
-n_bit     = nl_tmp3 ;$0C
-bytecount = nl_tmp4 ;$0D
+n_shift   = _nl_tmp1 ;$0A
+n_byte    = _nl_tmp2 ;$0B
+n_bit     = _nl_tmp3 ;$0C
+bytecount = _nl_tmp4 ;$0D
 
 .proc _lsl1
     ldx size
@@ -154,42 +154,42 @@ bytecount = nl_tmp4 ;$0D
 .endproc
 
 .proc _lslN
-    lda #<lsl1
+    lda #<_lsl1
     sta ptr3
-    lda #>lsl1
+    lda #>_lsl1
     sta ptr3+1
 
-    lda #<lsl8
+    lda #<_lsl8
     sta ptr4
-    lda #>lsl8
+    lda #>_lsl8
     sta ptr4+1
 
     jmp _shiftN
 .endproc
 
 .proc _lsrN
-    lda #<lsr1
+    lda #<_lsr1
     sta ptr3
-    lda #>lsr1
+    lda #>_lsr1
     sta ptr3+1
 
-    lda #<lsr8
+    lda #<_lsr8
     sta ptr4
-    lda #>lsr8
+    lda #>_lsr8
     sta ptr4+1
 
     jmp _shiftN
 .endproc
 
 .proc _asrN
-    lda #<asr1
+    lda #<_asr1
     sta ptr3
-    lda #>asr1
+    lda #>_asr1
     sta ptr3+1
 
-    lda #<asr8
+    lda #<_asr8
     sta ptr4
-    lda #>asr8
+    lda #>_asr8
     sta ptr4+1
 
     jmp _shiftN

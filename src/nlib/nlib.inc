@@ -1,11 +1,11 @@
-.globalzp nl_size, nl_shift
-.globalzp nl_ptr1, nl_ptr2, nl_ptr3, nl_ptr4
-.globalzp nl_tmp1, nl_tmp2, nl_tmp3, nl_tmp4, nl_tmp5, nl_tmp6
+.globalzp _nl_size, _nl_shift
+.globalzp _nl_ptr1, _nl_ptr2, _nl_ptr3, _nl_ptr4
+.globalzp _nl_tmp1, _nl_tmp2, _nl_tmp3, _nl_tmp4, _nl_tmp5, _nl_tmp6
 
-size  = nl_size  ; 1 byte
-shift = nl_shift ; 1 byte
-ptr1  = nl_ptr1  ; 2 byte
-ptr2  = nl_ptr2  ; 2 byte
-ptr3  = nl_ptr2  ; 2 byte
-ptr4  = nl_ptr2  ; 2 byte
+size  = _nl_size  ; 1 byte
+shift = _nl_shift ; 1 byte
+ptr1  = _nl_ptr1  ; 2 byte
+ptr2  = _nl_ptr2  ; 2 byte
+ptr3  = _nl_ptr2  ; 2 byte
+ptr4  = _nl_ptr2  ; 2 byte
 

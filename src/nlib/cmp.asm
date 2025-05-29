@@ -54,7 +54,7 @@
     sta shift
     rts
 @compare_unsigned:
-    jsr lt_unsigned
+    jsr _lt_unsigned
     rts
 .endproc
 
@@ -76,7 +76,7 @@
     sta shift
     rts
 @compare_unsigned:
-    jsr le_unsigned
+    jsr _le_unsigned
     rts
 .endproc
 

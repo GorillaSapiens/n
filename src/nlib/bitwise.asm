@@ -9,7 +9,7 @@
 
 .include "nlib.inc"
 
-.proc bit_andN
+.proc _bit_andN
     ldx size
     ldy #0
 @loop:
@@ -22,7 +22,7 @@
     rts
 .endproc
 
-.proc bit_notN
+.proc _bit_notN
     ldx size
     ldy #0
 @loop:
@@ -35,7 +35,7 @@
     rts
 .endproc
 
-.proc bit_orN
+.proc _bit_orN
     ldx size
     ldy #0
 @loop:
@@ -48,7 +48,7 @@
     rts
 .endproc
 
-.proc bit_xorN
+.proc _bit_xorN
     ldx size
     ldy #0
 @loop:

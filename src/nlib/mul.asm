@@ -11,14 +11,14 @@
 ; Clobbers: A, X, Y, zero page temp vars
 
 .include "nlib.inc"
-product_lo = nl_ptr4   ;$0C
-product_hi = nl_ptr4+1 ;$0D
-byte_b     = nl_tmp1   ;$08
-tmp_b      = nl_tmp2   ;$09
-a_lo       = nl_tmp3   ;$0A
-a_hi       = nl_tmp4   ;$0B
-outer      = nl_tmp5   ;$0E
-inner      = nl_tmp6   ;$0F
+product_lo = _nl_ptr4   ;$0C
+product_hi = _nl_ptr4+1 ;$0D
+byte_b     = _nl_tmp1   ;$08
+tmp_b      = _nl_tmp2   ;$09
+a_lo       = _nl_tmp3   ;$0A
+a_hi       = _nl_tmp4   ;$0B
+outer      = _nl_tmp5   ;$0E
+inner      = _nl_tmp6   ;$0F
 
 
 .proc _mul_unsigned

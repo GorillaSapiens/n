@@ -12,7 +12,7 @@
 
 .include "nlib.inc"
 
-.proc addN
+.proc _addN
     ldx size
     ldy #0            ; Start at offset 0
     clc               ; Clear carry flag
@@ -26,7 +26,7 @@
     rts
 .endproc
 
-.proc add8
+.proc _add8
     ldy #0
     clc
     lda (ptr1), y
@@ -35,26 +35,9 @@
     rts
 .endproc
 
-.proc add16
+.proc _add16
     ldy #0
     clc
-    lda (ptr1), y
-    adc (ptr2), y
-    sta (ptr3), y
-    iny
-    lda (ptr1), y
-    adc (ptr2), y
-    sta (ptr3), y
-    rts
-.endproc
-
-.proc add24
-    ldy #0
-    clc
-    lda (ptr1), y
-    adc (ptr2), y
-    sta (ptr3), y
-    iny
     lda (ptr1), y
     adc (ptr2), y
     sta (ptr3), y
@@ -65,7 +48,24 @@
     rts
 .endproc
 
-.proc add32
+.proc _add24
+    ldy #0
+    clc
+    lda (ptr1), y
+    adc (ptr2), y
+    sta (ptr3), y
+    iny
+    lda (ptr1), y
+    adc (ptr2), y
+    sta (ptr3), y
+    iny
+    lda (ptr1), y
+    adc (ptr2), y
+    sta (ptr3), y
+    rts
+.endproc
+
+.proc _add32
     ldy #0
     clc
     lda (ptr1), y
