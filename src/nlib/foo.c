@@ -8,17 +8,17 @@ void test2(void(*fn)(void)) {
    int val3 = 0x9ABC;
    int val4 = 0xDEF0;
 
-   nl_size = 1;
+   nl_size = 2;
    nl_shift = 0;
    nl_ptr1 = &val1;
    nl_ptr2 = &val2;
    nl_ptr3 = &val3;
    nl_ptr4 = &val4;
 
-   printf("before: %02x %02x %04x %04x %04x %04x %04x\n", nl_size, nl_shift,
+   printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n", nl_size, nl_shift,
       val1, val2, val3, val4);
    fn();
-   printf("after : %02x %02x %04x %04x %04x %04x %04x\n", nl_size, nl_shift,
+   printf("after : size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n", nl_size, nl_shift,
       val1, val2, val3, val4);
 }
 
