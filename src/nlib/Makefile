@@ -12,7 +12,7 @@ all:
 	cp *.s split
 	for each in `ls split/*.s`; do ~/cc65/bin/ca65 $$each; done
 	$(AR65) a nlib.a split/*.o
-	$(CL65) $(MT) foo.c split/*.o
+	$(CL65) $(MT) foo.c nlib.a
 	$(SIM65) foo
 
 clean:
