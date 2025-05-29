@@ -43,7 +43,7 @@ void lsr8(void);
 void lsrN(void);
 void lt_signed(void);
 void lt_unsigned(void);
-void mul_unsigned(void);
+void mulN(void);
 void rem_unsigned(void);
 void shiftN(void);
 void sub16(void);

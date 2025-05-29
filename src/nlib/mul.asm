@@ -21,7 +21,7 @@ outer      = _nl_tmp5   ;$0E
 inner      = _nl_tmp6   ;$0F
 
 
-.proc _mul_unsigned
+.proc _mulN
     lda #0               ; zero out inner and outer loop counters
     sta outer
     sta inner
