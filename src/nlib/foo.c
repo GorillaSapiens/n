@@ -3,7 +3,7 @@
 #include "nlib.h"
 
 void test2(void(*fn)(void)) {
-   int val1 = 0x1234;
+   int val1 = 0x12F4;
    int val2 = 0x5678;
    int val3 = 0x9ABC;
    int val4 = 0xDEF0;
