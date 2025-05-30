@@ -30,18 +30,42 @@
 .proc _decN
     ldx size
     ldy #0
-@loop:
-    lda (ptr1), y
     sec
+    lda (ptr1), y
     sbc #1
     sta (ptr1), y
-    bne @done      ; No borrow → done
+    iny
+    dex
+    beq @done
+@loop:
+    lda (ptr1), y
+    sbc #0
+    sta (ptr1), y
+    ;bne @done      ; No borrow → done
     iny
     dex
     bne @loop
 @done:
     rts
 .endproc
+    ldy #0
+    sec
+    lda (ptr1), y
+    sbc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    sbc #0
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    sbc #0
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    sbc #0
+    sta (ptr1), y
+    rts
 
 ; Fixed width versions
 
@@ -59,6 +83,23 @@
     clc
     lda (ptr1), y
     adc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    adc #0
+    sta (ptr1), y
+    rts
+.endproc
+
+.proc _inc24
+    ldy #0
+    clc
+    lda (ptr1), y
+    adc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    adc #0
     sta (ptr1), y
     iny
     lda (ptr1), y
@@ -102,6 +143,23 @@
     sec
     lda (ptr1), y
     sbc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    sbc #0
+    sta (ptr1), y
+    rts
+.endproc
+
+.proc _dec24
+    ldy #0
+    sec
+    lda (ptr1), y
+    sbc #1
+    sta (ptr1), y
+    iny
+    lda (ptr1), y
+    sbc #0
     sta (ptr1), y
     iny
     lda (ptr1), y
