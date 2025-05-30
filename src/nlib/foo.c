@@ -332,12 +332,12 @@ void divN_tests(void) {
       if (v2 != 0) {
          test1("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test1("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("divN, n=1 PASS\n");
@@ -347,12 +347,12 @@ void divN_tests(void) {
       if (v2 != 0) {
          test2("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test2("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("divN, n=2 PASS\n");
@@ -362,12 +362,12 @@ void divN_tests(void) {
       if (v2 != 0) {
          test4("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test4("divN", divN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("divN, n=4 PASS\n");
@@ -381,12 +381,12 @@ void remN_tests(void) {
       if (v2 != 0) {
          test1("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test1("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("remN, n=1 PASS\n");
@@ -396,12 +396,12 @@ void remN_tests(void) {
       if (v2 != 0) {
          test2("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test2("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("remN, n=2 PASS\n");
@@ -411,12 +411,12 @@ void remN_tests(void) {
       if (v2 != 0) {
          test4("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, v1/v2, v1%v2);
+               0, v1, v2, v1/v2, v1%v2);
       }
       else {
          test4("remN", remN,
                0, v1, v2, v3, v4,
-               0,  0, v2, ~0, v1);
+               0, v1, v2, ~0, v1);
       }
    }
    printf("remN, n=4 PASS\n");

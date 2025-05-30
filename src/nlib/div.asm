@@ -4,7 +4,7 @@
 ; Stores quotient in ptr3, remainder in ptr4.
 ;
 ; Inputs:
-;   ptr1 - dividend (X bytes, will be clobbered)
+;   ptr1 - dividend (X bytes)
 ;   ptr2 - divisor (X bytes)
 ;   ptr3 - quotient (X bytes)
 ;   ptr4 - remainder (X bytes)
@@ -13,9 +13,7 @@
 
 .include "nlib.inc"
 tmpX  = _nl_tmp1 ;$0A
-tmpY  = _nl_tmp2 ;$0B
-carry = _nl_tmp3 ;$0C
-zero  = _nl_tmp4 ;$0D
+carry = _nl_tmp2 ;$0B
 
 .proc _divN
     ; Clear quotient and remainder
@@ -50,6 +48,12 @@ zero  = _nl_tmp4 ;$0D
     dex
     bpl @shift_div
 
+    ; save that carry bit so we can restore div
+    bcs @onward
+    ldx #0
+@onward:
+    stx carry
+
     ; Shift next bit from dividend into remainder
     ldx size
     dex
@@ -61,6 +65,13 @@ zero  = _nl_tmp4 ;$0D
     iny
     dex
     bpl @shift_rem
+
+    ; use carry to set the low bit of dividend
+    ldy #0
+    lda carry
+    and #1
+    ora (ptr1),y
+    sta (ptr1),y
 
     ; Compare remainder with divisor
     jsr @cmp_rev_div
