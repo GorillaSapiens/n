@@ -27,7 +27,7 @@ void dec16(void);
 void dec32(void);
 void dec8(void);
 void decN(void);
-void div_unsigned(void);
+void divN(void);
 void eq(void);
 void inc16(void);
 void inc32(void);

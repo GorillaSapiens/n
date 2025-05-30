@@ -271,12 +271,41 @@ void mulN_tests(void) {
 #endif
 }
 
+void divN_tests(void) {
+   int i;
+   
+   for (i = 0; i < 1000; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("divN", divN,
+         0, v1, v2, v3, v4,
+         0,  0, v2, v1/v2, v1%v2);
+   }
+   printf("divN, n=1 PASS\n");
+
+   for (i = 0; i < 1000; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("divN", divN,
+         0, v1, v2, v3, v4,
+         0,  0, v2, v1/v2, v1%v2);
+   }
+   printf("divN, n=2 PASS\n");
+
+   for (i = 0; i < 1000; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("divN", divN,
+         0, v1, v2, v3, v4,
+         0,  0, v2, v1/v2, v1%v2);
+   }
+   printf("divN, n=4 PASS\n");
+}
+
 int main(void) {
    printf("hello, world\n");
 
    addN_tests();
    subN_tests();
    mulN_tests();
+   divN_tests();
 
    return 0;
 }

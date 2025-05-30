@@ -17,7 +17,7 @@ tmpY  = _nl_tmp2 ;$0B
 carry = _nl_tmp3 ;$0C
 zero  = _nl_tmp4 ;$0D
 
-.proc _div_unsigned
+.proc _divN
     ; Clear quotient and remainder
     ldy #0
 @clear_loop:
@@ -110,14 +110,16 @@ zero  = _nl_tmp4 ;$0D
 
 ; Subtract divisor from remainder: ptr4 -= ptr2
 @sub_div_from_rem:
-    ldy size
-    dey
+    ldx size
+    dex
+    ldy #0
     sec
 @sub_loop:
     lda (ptr4), y
     sbc (ptr2), y
     sta (ptr4), y
-    dey
+    iny
+    dex
     bpl @sub_loop
     rts
 
