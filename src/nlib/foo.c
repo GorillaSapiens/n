@@ -3,6 +3,8 @@
 
 #include "nlib.h"
 
+#define LOOPS 10000
+
 long lrand(void) {
    long ret = rand();
    ret <<= 16;
@@ -188,7 +190,7 @@ void test2x4(const char *name, void(*fn)(void),
 void addN_tests(void) {
    int i;
    
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test1("addN", addN,
          0, v1, v2, v3, v4,
@@ -196,7 +198,7 @@ void addN_tests(void) {
    }
    printf("addN, n=1 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test2("addN", addN,
          0, v1, v2, v3, v4,
@@ -204,7 +206,7 @@ void addN_tests(void) {
    }
    printf("addN, n=2 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test4("addN", addN,
          0, v1, v2, v3, v4,
@@ -216,7 +218,7 @@ void addN_tests(void) {
 void subN_tests(void) {
    int i;
    
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test1("subN", subN,
          0, v1, v2, v3, v4,
@@ -224,7 +226,7 @@ void subN_tests(void) {
    }
    printf("subN, n=1 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test2("subN", subN,
          0, v1, v2, v3, v4,
@@ -232,7 +234,7 @@ void subN_tests(void) {
    }
    printf("subN, n=2 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test4("subN", subN,
          0, v1, v2, v3, v4,
@@ -244,7 +246,7 @@ void subN_tests(void) {
 void mulN_tests(void) {
    int i;
    
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test1x2("mulN", mulN,
          0, v1, v2, v3, v4,
@@ -252,7 +254,7 @@ void mulN_tests(void) {
    }
    printf("mulN, n=1 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test2x4("mulN", mulN,
          0, v1, v2, v3, v4,
@@ -261,7 +263,7 @@ void mulN_tests(void) {
    printf("mulN, n=2 PASS\n");
 
 #if 0
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test4x8("mulN", mulN,
          0, v1, v2, v3, v4,
@@ -274,7 +276,7 @@ void mulN_tests(void) {
 void divN_tests(void) {
    int i;
    
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test1("divN", divN,
          0, v1, v2, v3, v4,
@@ -282,7 +284,7 @@ void divN_tests(void) {
    }
    printf("divN, n=1 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
       test2("divN", divN,
          0, v1, v2, v3, v4,
@@ -290,7 +292,7 @@ void divN_tests(void) {
    }
    printf("divN, n=2 PASS\n");
 
-   for (i = 0; i < 1000; i++) {
+   for (i = 0; i < LOOPS; i++) {
       long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test4("divN", divN,
          0, v1, v2, v3, v4,
