@@ -4,8 +4,8 @@
 ; Like div_unsigned, but only produces remainder in ptr4.
 .include "nlib.inc"
 
-.proc _rem_unsigned
-    jmp _div_unsigned
+.proc _remN
+    jmp _divN
 .endproc
 
 ; rem_signed is very similar to div_signed, with one twist:

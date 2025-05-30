@@ -44,7 +44,7 @@ void lsrN(void);
 void lt_signed(void);
 void lt_unsigned(void);
 void mulN(void);
-void rem_unsigned(void);
+void remN(void);
 void shiftN(void);
 void sub16(void);
 void sub32(void);
