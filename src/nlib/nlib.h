@@ -16,6 +16,7 @@ void add24(void);
 void add32(void);
 void add8(void);
 void addN(void);
+
 void asr1(void);
 void asr8(void);
 void asrN(void);
@@ -46,7 +47,9 @@ void lt_unsigned(void);
 void mulN(void);
 void remN(void);
 void shiftN(void);
-void sub16(void);
-void sub32(void);
+
 void sub8(void);
+void sub16(void);
+void sub24(void);
+void sub32(void);
 void subN(void);

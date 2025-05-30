@@ -52,6 +52,23 @@
     rts
 .endproc
 
+.proc _sub24
+    ldy #0
+    sec
+    lda (ptr1), y
+    sbc (ptr2), y
+    sta (ptr3), y
+    iny
+    lda (ptr1), y
+    sbc (ptr2), y
+    sta (ptr3), y
+    iny
+    lda (ptr1), y
+    sbc (ptr2), y
+    sta (ptr3), y
+    rts
+.endproc
+
 .proc _sub32
     ldy #0
     sec

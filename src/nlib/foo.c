@@ -87,10 +87,21 @@ void test3(const char *name, void(*fn)(void),
    unsigned char ashift, long aval1, long aval2, long aval3, long aval4) {
 
    unsigned char shift = bshift;
-   long val1 = bval1;
-   long val2 = bval2;
-   long val3 = bval3;
-   long val4 = bval4;
+   long val1, val2, val3, val4;
+
+   bval1 &= 0xFFFFFF;
+   bval2 &= 0xFFFFFF;
+   bval3 &= 0xFFFFFF;
+   bval4 &= 0xFFFFFF;
+   aval1 &= 0xFFFFFF;
+   aval2 &= 0xFFFFFF;
+   aval3 &= 0xFFFFFF;
+   aval4 &= 0xFFFFFF;
+
+   val1 = bval1;
+   val2 = bval2;
+   val3 = bval3;
+   val4 = bval4;
 
    nl_size = 3;
    nl_shift = bshift;
@@ -103,8 +114,8 @@ void test3(const char *name, void(*fn)(void),
    fn();
 
    if (nl_shift != ashift ||
-         val1 != aval1 || val2 != aval2 ||
-         val3 != aval3 || val4 != aval4) {
+         (val1 & 0xFFFFFF) != aval1 || (val2 & 0xFFFFFF) != aval2 ||
+         (val3 & 0xFFFFFF) != aval3 || (val4 & 0xFFFFFF) != aval4) {
 
       printf("test3 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
@@ -222,6 +233,54 @@ void test2x4(const char *name, void(*fn)(void),
    }
 }
 
+void add8_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("add8", add8,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1+v2, v4);
+   }
+   printf("add8, n=1 PASS\n");
+}
+
+void add16_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("add16", add16,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1+v2, v4);
+   }
+   printf("add16, n=2 PASS\n");
+}
+
+void add24_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("add24", add24,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1+v2, v4);
+   }
+   printf("add24, n=3 PASS\n");
+}
+
+void add32_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("add32", add32,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1+v2, v4);
+   }
+   printf("add32, n=4 PASS\n");
+}
+
 void addN_tests(void) {
    int i;
 
@@ -242,10 +301,10 @@ void addN_tests(void) {
    printf("addN, n=2 PASS\n");
 
    for (i = 0; i < LOOPS; i++) {
-      long v1 = lrand() & 0xFFFFFF, v2 = lrand() & 0xFFFFFF, v3 = 0, v4 = 0;
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test3("addN", addN,
          0, v1, v2, v3, v4,
-         0, v1, v2, (v1+v2) & 0xFFFFFF, v4);
+         0, v1, v2, (v1+v2), v4);
    }
    printf("addN, n=3 PASS\n");
 
@@ -256,6 +315,54 @@ void addN_tests(void) {
          0, v1, v2, v1+v2, v4);
    }
    printf("addN, n=4 PASS\n");
+}
+
+void sub8_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("sub8", sub8,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("sub8, n=1 PASS\n");
+}
+
+void sub16_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("sub16", sub16,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("sub16, n=2 PASS\n");
+}
+
+void sub24_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("sub24", sub24,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("sub24, n=3 PASS\n");
+}
+
+void sub32_tests(void) {
+   int i;
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("sub32", sub32,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1-v2, v4);
+   }
+   printf("sub32, n=4 PASS\n");
 }
 
 void subN_tests(void) {
@@ -278,10 +385,10 @@ void subN_tests(void) {
    printf("subN, n=2 PASS\n");
 
    for (i = 0; i < LOOPS; i++) {
-      long v1 = lrand() & 0xFFFFFF, v2 = lrand() & 0xFFFFFF, v3 = 0, v4 = 0;
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
       test3("subN", subN,
          0, v1, v2, v3, v4,
-         0, v1, v2, (v1-v2) & 0xFFFFFF, v4);
+         0, v1, v2, (v1-v2), v4);
    }
    printf("subN, n=3 PASS\n");
 
@@ -423,13 +530,28 @@ void remN_tests(void) {
 }
 
 int main(void) {
-   printf("hello, world\n");
+   printf("tests\n\n");
 
+   add8_tests();
+   add16_tests();
+   add24_tests();
+   add32_tests();
    addN_tests();
+   printf("\n");
+
+   sub8_tests();
+   sub16_tests();
+   sub24_tests();
+   sub32_tests();
    subN_tests();
+   printf("\n");
+
    mulN_tests();
+   printf("\n");
+
    divN_tests();
    remN_tests();
+   printf("\n");
 
    return 0;
 }
