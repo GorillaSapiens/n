@@ -48,24 +48,6 @@
 @done:
     rts
 .endproc
-    ldy #0
-    sec
-    lda (ptr1), y
-    sbc #1
-    sta (ptr1), y
-    iny
-    lda (ptr1), y
-    sbc #0
-    sta (ptr1), y
-    iny
-    lda (ptr1), y
-    sbc #0
-    sta (ptr1), y
-    iny
-    lda (ptr1), y
-    sbc #0
-    sta (ptr1), y
-    rts
 
 ; Fixed width versions
 
