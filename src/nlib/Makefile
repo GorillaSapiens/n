@@ -15,14 +15,9 @@ all:
 	cp *.s split
 	for each in `ls split/*.s`; do ~/cc65/bin/ca65 $$each; done
 	$(AR65) a nlib.a split/*.o
-	$(CL65) $(MT) -m out.map foo.c nlib.a
-	$(SIM65) foo
+	$(CL65) $(MT) -m out.map tests.c nlib.a
+	$(SIM65) tests
 
 clean:
-	rm -f *.o *.bin foo.* split/*
+	rm -f *.o *.bin tests split/*
 
-debug:
-	cat test.asm div.asm > foo.asm
-	$(CA65) foo.asm -o foo.o
-	$(LD65) foo.o -C sim.cfg -o foo.bin
-	./run6502.exp
