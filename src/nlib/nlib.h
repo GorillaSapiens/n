@@ -11,6 +11,15 @@ extern void* nl_ptr3;
 extern void* nl_ptr4;
 #pragma zpsym ("nl_ptr4");
 
+extern unsigned char nl_tmp1;
+#pragma zpsym ("nl_tmp1");
+extern unsigned char nl_tmp2;
+#pragma zpsym ("nl_tmp2");
+extern unsigned char nl_tmp3;
+#pragma zpsym ("nl_tmp3");
+extern unsigned char nl_tmp4;
+#pragma zpsym ("nl_tmp4");
+
 void add16(void);
 void add24(void);
 void add32(void);

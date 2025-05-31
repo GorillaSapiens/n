@@ -6,18 +6,27 @@
 ; - lsr1: logical shift right by 1
 ; - asr1: arithmetic shift right by 1 (signed)
 ;
+; - lsl8: logical shift left by 8
+; - lsr8: logical shift right by 8
+; - asr8: arithmetic shift right by 8 (signed)
+;
+; - lslN: logical shift left by N
+; - lsrN: logical shift right by N
+; - asrN: arithmetic shift right by N (signed)
+;
 ; Inputs:
-;   ptr1 - source
-;   ptr2 - destination
-;   size - byte count
+;   ptr1  - source, modified in place for *1 and *8
+;   ptr2  - destination for *N
+;   size  - byte count
+;   shift - bits to shift for N
 ; Clobbers: A, X, Y
 
 .include "nlib.inc"
-; we use ptr3 and ptr4
-n_shift   = _nl_tmp1 ;$0A
-n_byte    = _nl_tmp2 ;$0B
-n_bit     = _nl_tmp3 ;$0C
-bytecount = _nl_tmp4 ;$0D
+; lslN lsrN asrN also use ptr3 and ptr4
+n_byte    = _nl_tmp1 ;$0A
+n_bit     = _nl_tmp2 ;$0B
+asr8tmp   = _nl_tmp3 ;$0C
+swaptmp   = _nl_tmp4 ;$0D
 
 .proc _lsl1
     ldx size
@@ -26,7 +35,7 @@ bytecount = _nl_tmp4 ;$0D
 @loop:
     lda (ptr1), y
     rol
-    sta (ptr2), y
+    sta (ptr1), y
     iny
     dex
     bne @loop
@@ -40,7 +49,7 @@ bytecount = _nl_tmp4 ;$0D
 @loop:
     lda (ptr1), y
     ror
-    sta (ptr2), y
+    sta (ptr1), y
     dey
     bmi @loop
     rts
@@ -54,7 +63,7 @@ bytecount = _nl_tmp4 ;$0D
 @loop:
     lda (ptr1), y
     ror
-    sta (ptr2), y
+    sta (ptr1), y
     dey
     bpl @loop
     rts
@@ -64,13 +73,13 @@ bytecount = _nl_tmp4 ;$0D
 .proc _lsl8
     ldy #0
     lda #0
-    sta (ptr2), y
+    sta (ptr1), y
 @loop:
     lda (ptr1), y
     iny
     cpy size
     beq @fini
-    sta (ptr2), y
+    sta (ptr1), y
     jmp @loop
 @fini:
     rts
@@ -81,12 +90,12 @@ bytecount = _nl_tmp4 ;$0D
     ldy size
     dey
     lda #0
-    sta (ptr2), y
+    sta (ptr1), y
 @loop:
     lda (ptr1), y
     dey
     bmi @fini
-    sta (ptr2), y
+    sta (ptr1), y
     jmp @loop
 @fini:
     rts
@@ -95,24 +104,31 @@ bytecount = _nl_tmp4 ;$0D
 ; Arithmetic shift right by 8 bits (1 byte)
 
 .proc _asr8
+    lda #0
+    sta asr8tmp
     ldy size
     dey
     lda (ptr1), y
-    rol
-    bcs @neg
-    lda #0
-    sta (ptr2), y
-    jmp @loop
-@neg:
+    bpl @skip
     lda #$FF
-    sta (ptr2), y
+    sta asr8tmp
+@skip:
+    ldy #0
+    ldx size
+    dex
+    dex
+    bmi @fini
 @loop:
+    iny
     lda (ptr1), y
     dey
-    bmi @fini
-    sta (ptr2), y
-    jmp @loop
+    sta (ptr1), y
+    iny
+    dex
+    bpl @loop
 @fini:
+    lda asr8tmp
+    sta (ptr1), y
     rts
 .endproc
 
@@ -125,11 +141,18 @@ bytecount = _nl_tmp4 ;$0D
 @trampoline8:
     jmp (ptr4)
 @start:
+    ldy size
+    dey
+@copy:
+    lda (ptr1), y
+    sta (ptr2), y
+    dey
+    bpl @copy
+
     lda shift
-    sta n_shift
     and #7
     sta n_bit
-    lda n_shift
+    lda shift
     lsr
     lsr
     lsr
@@ -137,7 +160,6 @@ bytecount = _nl_tmp4 ;$0D
     lda n_bit
     beq @fini1
 @loop1:
-    ldx size
     jsr @trampoline1
     dec n_bit
     bne @loop1
@@ -145,11 +167,21 @@ bytecount = _nl_tmp4 ;$0D
     lda n_byte
     beq @fini2
 @loop2:
-    ldx size
     jsr @trampoline8
     dec n_byte
     bne @loop2
 @fini2:
+    ldy size
+    dey
+@swap:
+    lda (ptr1), y
+    sta swaptmp
+    lda (ptr2), y
+    sta (ptr1), y
+    lda swaptmp
+    sta (ptr2), y
+    dey
+    bpl @swap
     rts
 .endproc
 
