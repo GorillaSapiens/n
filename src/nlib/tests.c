@@ -5,6 +5,12 @@
 
 #define LOOPS 100000
 
+long extend3(long arg) {
+   if (arg & 0x800000)
+      return arg | 0xFF000000;
+   return arg & 0xffffff;
+}
+
 long lrand(void) {
    long ret = rand();
    ret <<= 16;
@@ -841,6 +847,186 @@ void bit_notN_tests(void) {
    printf("bit_notN, n=4 PASS\n");
 }
 
+void eqN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("eqN", eqN,
+         0, v1, v2, v3, v4,
+         v1 == v2, v1, v2, v3, v4);
+   }
+   printf("eqN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("eqN", eqN,
+         0, v1, v2, v3, v4,
+         v1 == v2, v1, v2, v3, v4);
+   }
+   printf("eqN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("eqN", eqN,
+         0, v1, v2, v3, v4,
+         v1 == v2, v1, v2, v3, v4);
+   }
+   printf("eqN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("eqN", eqN,
+         0, v1, v2, v3, v4,
+         v1 == v2, v1, v2, v3, v4);
+   }
+   printf("eqN, n=4 PASS\n");
+}
+
+void ltNs_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      signed char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("ltNs", ltNs,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNs, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("ltNs", ltNs,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNs, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = extend3(lrand()), v2 = extend3(lrand()), v3 = 0, v4 = 0;
+      test3("ltNs", ltNs,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNs, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("ltNs", ltNs,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNs, n=4 PASS\n");
+}
+
+void leNs_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      signed char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("leNs", leNs,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNs, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("leNs", leNs,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNs, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = extend3(lrand()), v2 = extend3(lrand()), v3 = 0, v4 = 0;
+      test3("leNs", leNs,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNs, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("leNs", leNs,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNs, n=4 PASS\n");
+}
+
+void ltNu_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("ltNu", ltNu,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNu, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("ltNu", ltNu,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNu, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand() & 0xFFFFFF, v2 = lrand() & 0xFFFFFF, v3 = 0, v4 = 0;
+      test3("ltNu", ltNu,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNu, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("ltNu", ltNu,
+         0, v1, v2, v3, v4,
+         v1 < v2, v1, v2, v3, v4);
+   }
+   printf("ltNu, n=4 PASS\n");
+}
+
+void leNu_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("leNu", leNu,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNu, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("leNu", leNu,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNu, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("leNu", leNu,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNu, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("leNu", leNu,
+         0, v1, v2, v3, v4,
+         v1 <= v2, v1, v2, v3, v4);
+   }
+   printf("leNu, n=4 PASS\n");
+}
+
 int main(void) {
    printf("tests\n\n");
 
@@ -884,6 +1070,12 @@ int main(void) {
    bit_notN_tests();
    bit_xorN_tests();
    printf("\n");
+
+   eqN_tests();
+   ltNs_tests();
+   leNs_tests();
+   ltNu_tests();
+   leNu_tests();
 
    return 0;
 }

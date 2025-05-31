@@ -34,25 +34,25 @@ void dec16(void);
 void dec24(void);
 void dec32(void);
 void decN(void);
-
 void bit_andN(void);
 void bit_notN(void);
 void bit_orN(void);
 void bit_xorN(void);
 
+void eqN(void);
+void leNs(void);
+void leNu(void);
+void ltNs(void);
+void ltNu(void);
+
 void asr1(void);
 void asr8(void);
 void asrN(void);
-void eq(void);
-void le_signed(void);
-void le_unsigned(void);
 void lsl1(void);
 void lsl8(void);
 void lslN(void);
 void lsr1(void);
 void lsr8(void);
 void lsrN(void);
-void lt_signed(void);
-void lt_unsigned(void);
 void shiftN(void);
 

@@ -16,7 +16,7 @@
 
 .include "nlib.inc"
 
-.proc _eq
+.proc _eqN
     ldx size
     ldy #0
 @loop:
@@ -35,52 +35,85 @@
     rts
 .endproc
 
-.proc _lt_signed
-    ; Signed less-than
-    ; Compare MSB for sign difference first
+.proc _ltNs
     ldy size
-    dey                 ; last byte
+    dey
+    lda (ptr1), y
+    eor (ptr2), y
+    bmi @differ
+
+    lda (ptr1), y
+    bmi @both_neg
+@both_pos:
     lda (ptr1), y
     cmp (ptr2), y
-    beq @compare_unsigned
-    bpl @check_if_b_negative
-    ; A is negative, B is positive → A < B
+    bcc @true
+    bne @false
+    dey
+    bpl @both_pos
+    jmp @false
+@both_neg:
+    lda (ptr2), y
+    cmp (ptr1), y
+    bcc @false
+    bne @true
+    dey
+    bpl @both_neg
+    jmp @false
+@differ:
+    lda (ptr1), y
+    bpl @false
+    ; fallthrough
+@true:
     lda #1
     sta shift
     rts
-@check_if_b_negative:
-    ; A is positive, B is negative → A > B
+@false:
     lda #0
     sta shift
     rts
-@compare_unsigned:
-    jsr _lt_unsigned
-    rts
 .endproc
 
-.proc _le_signed
-    ; Signed less-than-or-equal
+.proc _leNs
     ldy size
-    dey                 ; last byte
+    dey
+    lda (ptr1), y
+    eor (ptr2), y
+    bmi @differ
+
+    lda (ptr1), y
+    bmi @both_neg
+@both_pos:
     lda (ptr1), y
     cmp (ptr2), y
-    beq @compare_unsigned
-    bpl @check_if_b_negative
-    ; A is negative, B is positive → A < B
+    bcc @true
+    bne @false
+    dey
+    bpl @both_pos
+    jmp @true
+@both_neg:
+    lda (ptr2), y
+    cmp (ptr1), y
+    bcc @false
+    bne @true
+    dey
+    bpl @both_neg
+    jmp @true
+@differ:
+    lda (ptr1), y
+    bpl @false
+    ; fallthrough
+@true:
     lda #1
     sta shift
     rts
-@check_if_b_negative:
-    ; A is positive, B is negative → A > B
+@false:
     lda #0
     sta shift
     rts
-@compare_unsigned:
-    jsr _le_unsigned
-    rts
 .endproc
 
-.proc _lt_unsigned
+.proc _ltNu
     ; Unsigned less-than comparison
     ; Compare from most significant byte to least
     ldy size
@@ -102,7 +135,7 @@
     rts
 .endproc
 
-.proc _le_unsigned
+.proc _leNu
     ; Unsigned less-than-or-equal comparison
     ; Compare from most significant byte to least
     ldy size
