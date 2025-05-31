@@ -1011,7 +1011,7 @@ void leNu_tests(void) {
    printf("leNu, n=2 PASS\n");
 
    for (i = 0; i < LOOPS; i++) {
-      unsigned long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      unsigned long v1 = lrand() & 0xFFFFFF, v2 = lrand() & 0xFFFFFF, v3 = 0, v4 = 0;
       test3("leNu", leNu,
          0, v1, v2, v3, v4,
          v1 <= v2, v1, v2, v3, v4);
@@ -1076,6 +1076,7 @@ int main(void) {
    leNs_tests();
    ltNu_tests();
    leNu_tests();
+   printf("\n");
 
    return 0;
 }

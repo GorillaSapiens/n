@@ -114,17 +114,16 @@
 .endproc
 
 .proc _ltNu
-    ; Unsigned less-than comparison
-    ; Compare from most significant byte to least
     ldy size
-@loop:
     dey
+@both_pos:
     lda (ptr1), y
     cmp (ptr2), y
-    bcc @true   ; A < B
-    bne @false  ; A > B
-    cpy #0
-    bne @loop
+    bcc @true
+    bne @false
+    dey
+    bpl @both_pos
+    ; fallthrough jmp @false
 @false:
     lda #0
     sta shift
@@ -136,17 +135,16 @@
 .endproc
 
 .proc _leNu
-    ; Unsigned less-than-or-equal comparison
-    ; Compare from most significant byte to least
     ldy size
-@loop:
     dey
+@both_pos:
     lda (ptr1), y
     cmp (ptr2), y
-    bcc @true   ; A < B
-    bne @false  ; A > B
-    cpy #0
-    bne @loop
+    bcc @true
+    bne @false
+    dey
+    bpl @both_pos
+    ; fallthrough jmp @true
 @true:
     lda #1
     sta shift

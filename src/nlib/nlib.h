@@ -38,21 +38,21 @@ void bit_andN(void);
 void bit_notN(void);
 void bit_orN(void);
 void bit_xorN(void);
-
 void eqN(void);
 void leNs(void);
 void leNu(void);
 void ltNs(void);
 void ltNu(void);
 
+void asrN(void);
+void lslN(void);
+void lsrN(void);
+
 void asr1(void);
 void asr8(void);
-void asrN(void);
 void lsl1(void);
 void lsl8(void);
-void lslN(void);
 void lsr1(void);
 void lsr8(void);
-void lsrN(void);
 void shiftN(void);
 
