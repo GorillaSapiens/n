@@ -697,6 +697,150 @@ void remN_tests(void) {
    printf("remN, n=4 PASS\n");
 }
 
+void bit_andN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("bit_andN", bit_andN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1&v2, v4);
+   }
+   printf("bit_andN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("bit_andN", bit_andN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1&v2, v4);
+   }
+   printf("bit_andN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("bit_andN", bit_andN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, (v1&v2), v4);
+   }
+   printf("bit_andN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("bit_andN", bit_andN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1&v2, v4);
+   }
+   printf("bit_andN, n=4 PASS\n");
+}
+
+void bit_orN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("bit_orN", bit_orN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1|v2, v4);
+   }
+   printf("bit_orN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("bit_orN", bit_orN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1|v2, v4);
+   }
+   printf("bit_orN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("bit_orN", bit_orN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, (v1|v2), v4);
+   }
+   printf("bit_orN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("bit_orN", bit_orN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1|v2, v4);
+   }
+   printf("bit_orN, n=4 PASS\n");
+}
+
+void bit_xorN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("bit_xorN", bit_xorN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1^v2, v4);
+   }
+   printf("bit_xorN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("bit_xorN", bit_xorN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1^v2, v4);
+   }
+   printf("bit_xorN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("bit_xorN", bit_xorN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, (v1^v2), v4);
+   }
+   printf("bit_xorN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("bit_xorN", bit_xorN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, v1^v2, v4);
+   }
+   printf("bit_xorN, n=4 PASS\n");
+}
+
+void bit_notN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test1("bit_notN", bit_notN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, ~v1, v4);
+   }
+   printf("bit_notN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = rand(), v3 = 0, v4 = 0;
+      test2("bit_notN", bit_notN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, ~v1, v4);
+   }
+   printf("bit_notN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test3("bit_notN", bit_notN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, ~v1, v4);
+   }
+   printf("bit_notN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      test4("bit_notN", bit_notN,
+         0, v1, v2, v3, v4,
+         0, v1, v2, ~v1, v4);
+   }
+   printf("bit_notN, n=4 PASS\n");
+}
+
 int main(void) {
    printf("tests\n\n");
 
@@ -733,6 +877,12 @@ int main(void) {
 
    divN_tests();
    remN_tests();
+   printf("\n");
+
+   bit_andN_tests();
+   bit_orN_tests();
+   bit_notN_tests();
+   bit_xorN_tests();
    printf("\n");
 
    return 0;

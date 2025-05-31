@@ -5,7 +5,7 @@
 ;
 ; Inputs:
 ;   ptr1 - buffer to modify
-;   X    - byte count
+;   size - byte count
 ; Clobbers: A, Y
 
 ; Zero page location

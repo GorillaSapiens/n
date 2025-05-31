@@ -24,26 +24,25 @@ void subN(void);
 void mulN(void);
 void divN(void);
 void remN(void);
-
 void inc8(void);
 void inc16(void);
 void inc24(void);
 void inc32(void);
 void incN(void);
-
 void dec8(void);
 void dec16(void);
 void dec24(void);
 void dec32(void);
 void decN(void);
 
-void asr1(void);
-void asr8(void);
-void asrN(void);
 void bit_andN(void);
 void bit_notN(void);
 void bit_orN(void);
 void bit_xorN(void);
+
+void asr1(void);
+void asr8(void);
+void asrN(void);
 void eq(void);
 void le_signed(void);
 void le_unsigned(void);
