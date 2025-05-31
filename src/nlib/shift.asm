@@ -45,13 +45,13 @@ swaptmp   = _nl_tmp4 ;$0D
 .proc _lsr1
     ldy size
     dey
-    clc ; clear carry using SEC followed by ROR
+    clc
 @loop:
     lda (ptr1), y
     ror
     sta (ptr1), y
     dey
-    bmi @loop
+    bpl @loop
     rts
 .endproc
 
@@ -87,17 +87,22 @@ swaptmp   = _nl_tmp4 ;$0D
 
 ; Logical shift right by 8 bits (1 byte)
 .proc _lsr8
-    ldy size
-    dey
-    lda #0
-    sta (ptr1), y
+    ldy #0
+    ldx size
+    dex
+    dex
+    bmi @fini
 @loop:
+    iny
     lda (ptr1), y
     dey
-    bmi @fini
     sta (ptr1), y
-    jmp @loop
+    iny
+    dex
+    bpl @loop
 @fini:
+    lda #0
+    sta (ptr1), y
     rts
 .endproc
 
