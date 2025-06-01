@@ -25,7 +25,7 @@
 ; lslN lsrN asrN also use ptr3 and ptr4
 n_byte    = _nl_tmp1 ;$0A
 n_bit     = _nl_tmp2 ;$0B
-asr8tmp   = _nl_tmp3 ;$0C
+tmp       = _nl_tmp3 ;$0C
 swaptmp   = _nl_tmp4 ;$0D
 
 .proc _lsl1
@@ -71,17 +71,21 @@ swaptmp   = _nl_tmp4 ;$0D
 
 ; Logical shift left by 8 bits (1 byte)
 .proc _lsl8
-    ldy #0
-    lda #0
-    sta (ptr1), y
+    ldy size
+    dey
+    dey
+    bmi @fini
 @loop:
     lda (ptr1), y
     iny
-    cpy size
-    beq @fini
     sta (ptr1), y
-    jmp @loop
+    dey
+    dey
+    bpl @loop
 @fini:
+    iny
+    lda #0
+    sta (ptr1), y
     rts
 .endproc
 
@@ -110,13 +114,13 @@ swaptmp   = _nl_tmp4 ;$0D
 
 .proc _asr8
     lda #0
-    sta asr8tmp
+    sta tmp
     ldy size
     dey
     lda (ptr1), y
     bpl @skip
     lda #$FF
-    sta asr8tmp
+    sta tmp
 @skip:
     ldy #0
     ldx size
@@ -132,7 +136,7 @@ swaptmp   = _nl_tmp4 ;$0D
     dex
     bpl @loop
 @fini:
-    lda asr8tmp
+    lda tmp
     sta (ptr1), y
     rts
 .endproc

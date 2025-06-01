@@ -1079,6 +1079,16 @@ void lslN_tests(void) {
    }
    printf("lslN, n=1 PASS\n");
 
+{
+      unsigned int v1 = 0x5ea5, v2 = 0, v3 = 0, v4 = 0;
+      unsigned char shift;
+      for (shift = 0; shift < 24; shift++) {
+      test2("lslN", lslN,
+         shift, v1, v2, v3, v4,
+         shift, v1, ((shift >= 16) ? 0 : (v1 << shift)), v3, v4);
+      }
+}
+
    for (i = 0; i < LOOPS; i++) {
       unsigned int v1 = rand(), v2 = 0, v3 = 0, v4 = 0;
       unsigned char shift = rand() % 24;
@@ -1150,8 +1160,6 @@ void lsrN_tests(void) {
 int main(void) {
    printf("tests\n\n");
 
-   lslN_tests();
-
    add8_tests();
    add16_tests();
    add24_tests();
@@ -1203,6 +1211,7 @@ int main(void) {
    asrN_tests();
    lsrN_tests();
    lslN_tests();
+   printf("\n");
 
    return 0;
 }
