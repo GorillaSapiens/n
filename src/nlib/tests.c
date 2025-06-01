@@ -867,7 +867,7 @@ void eqN_tests(void) {
    printf("eqN, n=2 PASS\n");
 
    for (i = 0; i < LOOPS; i++) {
-      long v1 = lrand(), v2 = lrand(), v3 = 0, v4 = 0;
+      long v1 = lrand() & 0xFFFFFF, v2 = lrand() & 0xFFFFFF, v3 = 0, v4 = 0;
       test3("eqN", eqN,
          0, v1, v2, v3, v4,
          v1 == v2, v1, v2, v3, v4);
@@ -1068,6 +1068,43 @@ void asrN_tests(void) {
 }
 
 void lslN_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned char v1 = rand(), v2 = 0, v3 = 0, v4 = 0;
+      unsigned char shift = rand() % 16;
+      test1("lslN", lslN,
+         shift, v1, v2, v3, v4,
+         shift, v1, ((shift >= 8) ? 0 : v1 << shift), v3, v4);
+   }
+   printf("lslN, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned int v1 = rand(), v2 = 0, v3 = 0, v4 = 0;
+      unsigned char shift = rand() % 24;
+      test2("lslN", lslN,
+         shift, v1, v2, v3, v4,
+         shift, v1, ((shift >= 16) ? 0 : (v1 << shift)), v3, v4);
+   }
+   printf("lslN, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand() & 0xffffff, v2 = 0, v3 = 0, v4 = 0;
+      unsigned char shift = rand() % 32;
+      test3("lslN", lslN,
+         shift, v1, v2, v3, v4,
+         shift, v1, ((shift >= 24) ? 0 : v1 << shift), v3, v4);
+   }
+   printf("lslN, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      unsigned long v1 = lrand(), v2 = 0, v3 = 0, v4 = 0;
+      unsigned char shift = rand() % 40;
+      test4("lslN", lslN,
+         shift, v1, v2, v3, v4,
+         shift, v1, ((shift >= 32) ? 0 : v1 << shift), v3, v4);
+   }
+   printf("lslN, n=4 PASS\n");
 }
 
 void lsrN_tests(void) {
