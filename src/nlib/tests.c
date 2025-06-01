@@ -1150,7 +1150,7 @@ void lsrN_tests(void) {
 int main(void) {
    printf("tests\n\n");
 
-   lsrN_tests();
+   lslN_tests();
 
    add8_tests();
    add16_tests();
@@ -1201,8 +1201,8 @@ int main(void) {
    printf("\n");
 
    asrN_tests();
-   lslN_tests();
    lsrN_tests();
+   lslN_tests();
 
    return 0;
 }
