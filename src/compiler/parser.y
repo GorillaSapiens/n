@@ -136,7 +136,7 @@ void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
     printf("\n");
 
     // Only build new prefix if there are children
-    char new_prefix[256] = "";
+    char new_prefix[4096] = "";
     if (prefix[0] != '\0') {
         snprintf(new_prefix, sizeof(new_prefix), "%s%s",
                  prefix, is_last ? "    " : "│   ");
@@ -151,11 +151,18 @@ void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
     }
 }
 
+void dump_program(const ASTNode *program) {
+   if (program->children[0]) {
+      dump_program(program->children[0]);
+   }
+   dump_ast(program->children[1], "", 1);
+}
+
 ASTNode *root = NULL;
 
 void parse_dump(void) {
    if (root) {
-      dump_ast(root, "", 1);
+      dump_program(root);
    }
 }
 
