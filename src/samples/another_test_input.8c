@@ -24,14 +24,14 @@ union Value {
 Point origin := Point { x := 0; y := 0; };
 Value v := Value { i := 42; };
 
-void froom(Point) {
+void froom(Point foo) {
 }
 
 void main(void) {
-main:
+eep:
    for (i := 0; i < 10; i := i + 1) {
       if (i == 5) {
-         break main;
+         break eep;
       }
       else {
          continue;
@@ -40,7 +40,7 @@ main:
 
    do {
       // do-while loop with label
-      continue main;
+      continue eep;
    } while (i < 5);
 
    switch (i) {

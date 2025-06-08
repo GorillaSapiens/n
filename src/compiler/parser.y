@@ -95,6 +95,17 @@ ASTNode *make_identifier_leaf(char *strval) {
    return ret;
 }
 
+ASTNode *make_typename_leaf(char *strval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "typename";
+   ret->file = strdup(current_filename);
+   ret->line = yylineno;
+   ret->column = yycolumn;
+   ret->kind = AST_TYPENAME;
+   ret->strval = strval ? strdup(strval) : NULL;
+   return ret;
+}
+
 ASTNode *make_float_leaf(double dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
@@ -116,53 +127,52 @@ ASTNode *make_empty_leaf(void) {
    return ret;
 }
 
-void dump_ast(const ASTNode *node, const char *prefix, int is_last) {
+void dump_ast_flat(const ASTNode *node, const char *prefix, int is_last, const char *parent_name) {
     if (!node) return;
 
-    // Draw the branch
-    printf("%s%s%s", prefix,
-           is_last ? "└──" : "├──",
-           node->name);
+    // Print current node
+    if (!parent_name || strcmp(parent_name, node->name) || !strcmp(node->name, "identifier")) {
+       printf("%s%s%s", prefix,
+             is_last ? "└── " : "├── ",
+             node->name);
 
-    // Add leaf value if applicable
-    switch (node->kind) {
-        case AST_INTEGER:    printf(" %llu", node->intval); break;
-        case AST_FLOAT:      printf(" %f", node->dval); break;
-        case AST_STRING:     printf(" \"%s\"", node->strval); break;
-        case AST_IDENTIFIER: printf(" %s", node->strval); break;
-        case AST_EMPTY:      printf(" <empty>"); break;
-        default: break;
+       switch (node->kind) {
+          case AST_INTEGER:    printf(" %llu", node->intval); break;
+          case AST_FLOAT:      printf(" %f", node->dval); break;
+          case AST_STRING:     printf(" \"%s\"", node->strval); break;
+          case AST_IDENTIFIER: printf(" %s", node->strval); break;
+          case AST_TYPENAME:   printf(" %s", node->strval); break;
+          case AST_EMPTY:      printf(" <empty>"); break;
+          default: break;
+       }
+       printf("\n");
     }
-    printf("\n");
 
-    // Only build new prefix if there are children
-    char new_prefix[4096] = "";
-    if (prefix[0] != '\0') {
-        snprintf(new_prefix, sizeof(new_prefix), "%s%s",
-                 prefix, is_last ? "    " : "│   ");
-    } else {
-        // At the root node (no inherited prefix)
-        snprintf(new_prefix, sizeof(new_prefix), "%s",
-                 is_last ? "    " : "│   ");
+    // Determine if we can flatten this node's children
+    int can_flatten = 0;
+    if (node->count > 1 && node->name && parent_name && strcmp(node->name, parent_name) == 0) {
+        can_flatten = 1;
     }
+
+    // Build next prefix
+    char new_prefix[4096];
+    snprintf(new_prefix, sizeof(new_prefix), "%s%s",
+             prefix, is_last ? "    " : "│   ");
 
     for (int i = 0; i < node->count; ++i) {
-        dump_ast(node->children[i], new_prefix, i == node->count - 1);
+        if (can_flatten) {
+            dump_ast_flat(node->children[i], prefix, i == node->count - 1, node->name);
+        } else {
+            dump_ast_flat(node->children[i], new_prefix, i == node->count - 1, node->name);
+        }
     }
-}
-
-void dump_program(const ASTNode *program) {
-   if (program->children[0]) {
-      dump_program(program->children[0]);
-   }
-   dump_ast(program->children[1], "", 1);
 }
 
 ASTNode *root = NULL;
 
 void parse_dump(void) {
    if (root) {
-      dump_program(root);
+      dump_ast_flat(root, "", 1, NULL);
    }
 }
 

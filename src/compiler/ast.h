@@ -4,6 +4,7 @@
 enum ASTKind {
     AST_GENERIC = 0,
     AST_IDENTIFIER,
+    AST_TYPENAME,
     AST_INTEGER,
     AST_FLOAT,
     AST_STRING,
