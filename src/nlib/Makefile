@@ -9,8 +9,7 @@ SIM65= ~/cc65/bin/sim65
 
 
 all:
-	rm nlib.a
-	rm -rf split
+	rm -rf split nlib.a
 	mkdir split
 	./unbundle.pl
 	cp *.s split

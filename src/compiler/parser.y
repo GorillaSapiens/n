@@ -130,6 +130,8 @@ ASTNode *make_empty_leaf(void) {
 void dump_ast_flat(const ASTNode *node, const char *prefix, int is_last, const char *parent_name) {
     if (!node) return;
 
+    parent_name = NULL;
+
     // Print current node
     if (!parent_name || strcmp(parent_name, node->name) || !strcmp(node->name, "identifier")) {
        printf("%s%s%s", prefix,
@@ -447,7 +449,7 @@ opt_expr:
 
 expr:
     logical_or_expr                    { $$ = MAKE_NODE($1); }
-  | logical_or_expr '?' expr ':' expr  { $$ = MAKE_NODE($1, $3, $5); }
+  | logical_or_expr '?' expr ':' expr  { $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
   | assignable ASSIGN expr             { $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
   | assignable ADD_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
   | assignable SUB_ASSIGN expr         { $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
@@ -514,8 +516,8 @@ shift_expr:
 
 additive_expr:
     multiplicative_expr                       { $$ = $1; }
-  | additive_expr '+' multiplicative_expr     { $$ = MAKE_NAMED_NODE("-", $1, $3); }
-  | additive_expr '-' multiplicative_expr     { $$ = MAKE_NAMED_NODE("+", $1, $3); }
+  | additive_expr '+' multiplicative_expr     { $$ = MAKE_NAMED_NODE("+", $1, $3); }
+  | additive_expr '-' multiplicative_expr     { $$ = MAKE_NAMED_NODE("-", $1, $3); }
   ;
 
 multiplicative_expr:
