@@ -262,18 +262,18 @@ program_item:
   ;
 
 type_decl:
-    TYPE IDENTIFIER '{' INTEGER opt_flags '}' ';' {
+    TYPE IDENTIFIER '{' opt_flags '}' ';' {
         if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf($2), make_integer_leaf($4), $5);
+        $$ = MAKE_NODE(make_identifier_leaf($2), $4);
     }
-  | TYPE '*' '{' INTEGER opt_flags '}' ';' {
+  | TYPE '*' '{' opt_flags '}' ';' {
         if (register_typename("*") < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf("*"), make_integer_leaf($4), $5);
+        $$ = MAKE_NODE(make_identifier_leaf("*"), $4);
     }
-  | TYPE TYPENAME '{' INTEGER opt_flags '}' ';' {
+  | TYPE TYPENAME '{' opt_flags '}' ';' {
         // always fails, but we want the error message
         if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf($2), make_integer_leaf($4), $5); // TODO FIX is this needed?
+        $$ = MAKE_NODE(make_identifier_leaf($2), $4); // TODO FIX is this needed?
     }
   ;
 
