@@ -1,0 +1,10 @@
+//include "stdlib.8c"
+
+//type nul { } ;
+type uno { $size:1 } ;
+//type duo { $size:1 $size:1 };
+type void { $size:0 $bogus };
+
+void main(void) {
+   a := x + y * z - (x >> 2);
+}
