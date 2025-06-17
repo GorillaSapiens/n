@@ -1,3 +1,5 @@
+extern void* nl_sp;
+#pragma zpsym ("nl_sp");
 extern unsigned char nl_size;
 #pragma zpsym ("nl_size");
 extern unsigned char nl_shift;
@@ -65,3 +67,6 @@ void lsr1(void);
 void lsr8(void);
 void shiftN(void);
 
+void pushN(void);
+void popN(void);
+void cpyN(void);

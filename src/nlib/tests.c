@@ -49,7 +49,7 @@ void test1(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -84,7 +84,7 @@ void test2(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -130,7 +130,7 @@ void test3(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -165,7 +165,7 @@ void test4(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -200,7 +200,7 @@ void test1x2(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -235,7 +235,7 @@ void test2x4(const char *name, void(*fn)(void),
          nl_size, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%08lx v4:%04x\n",
          nl_size, nl_shift, val1, val2, val3, val4);
-      exit(0);
+      exit(-1);
    }
 }
 
@@ -1157,6 +1157,34 @@ void lsrN_tests(void) {
    printf("lsrN, n=4 PASS\n");
 }
 
+void stack_tests(void) {
+   int a = 0x1234;
+   int b = 0x5678;
+
+   nl_sp = (void *) 0x12FE;
+   nl_size = 5;
+   pushN();
+   printf("0x12FE push 5 0x%04X\n", (int) nl_sp);
+   if (nl_sp != 0x1303) {
+      exit(-1);
+   }
+   popN();
+   printf("       pop  5 0x%04X\n", (int) nl_sp);
+   if (nl_sp != 0x12FE) {
+      exit(-1);
+   }
+
+   nl_size = 2;
+   nl_ptr1 = &a;
+   nl_ptr2 = &b;
+   printf("%04X %04X\n", a, b);
+   cpyN();
+   printf("%04X %04X\n", a, b);
+   if (a != b) {
+      exit(-1);
+   }
+}
+
 int main(void) {
    printf("tests\n\n");
 
@@ -1211,6 +1239,9 @@ int main(void) {
    asrN_tests();
    lsrN_tests();
    lslN_tests();
+   printf("\n");
+
+   stack_tests();
    printf("\n");
 
    return 0;
