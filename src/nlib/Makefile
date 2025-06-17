@@ -18,5 +18,3 @@ all:
 
 clean:
 	rm -f *.o *.bin tests nlib.a wrk/*
-
-# ~/cc65/bin/cl65 -C n.cfg -m map.txt -u _nrt0_reset --target none -o nrt0.bin nrt0.s nlib_zeropage.s
