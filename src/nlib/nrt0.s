@@ -3,8 +3,11 @@
 
 .include "nlib.inc"
 
-.segment "STARTUP"
+.segment "CODE"
+main:
+    rts
 
+.segment "STARTUP"
 _nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
     sei
@@ -23,7 +26,7 @@ _nrt0_reset:
     stx sp+1
 
     ; jump to main program
-    ;jmp main
+    jmp main
 
 _nrt0_nmi:
     rti
