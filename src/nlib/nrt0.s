@@ -1,6 +1,8 @@
+.include "nlib.inc"
 
-_nrt0_start:
+.segment "STARTUP"
 
+_nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
     sei
 
@@ -20,3 +22,14 @@ _nrt0_start:
     ; jump to main program
     jmp main
 
+_nrt0_nmi:
+    rti
+
+_nrt0_irq:
+    rti
+
+.segment "VECTORS"
+
+.word _nrt0_nmi   ; @ $fffa - $fffb
+.word _nrt0_reset ; @ $fffc - $fffd
+.word _nrt0_irq   ; @ $fffe - $ffff

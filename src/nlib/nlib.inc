@@ -1,3 +1,5 @@
+; nlib.inc
+
 .globalzp _nl_sp
 .globalzp _nl_size, _nl_shift
 .globalzp _nl_ptr1, _nl_ptr2, _nl_ptr3, _nl_ptr4
