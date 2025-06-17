@@ -4,7 +4,7 @@ CC = gcc
 #CFLAGS = -Wall -O2
 CFLAGS = -Wall -g
 #CFLAGS = -Wall -g -DYYDEBUG
-TARGET = 8c
+TARGET = nc
 
 all: $(TARGET)
 
