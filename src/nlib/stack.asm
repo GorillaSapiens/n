@@ -36,3 +36,19 @@
     bne @loop
     rts
 .endproc
+
+.proc _swapN
+    ldx size
+    ldy #0
+@loop:
+    lda (ptr1), y
+    sta tmp1
+    lda (ptr2), y
+    sta (ptr1), y
+    lda tmp1
+    sta (ptr2), y
+    iny
+    dex
+    bne @loop
+    rts
+.endproc

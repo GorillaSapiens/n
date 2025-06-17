@@ -70,3 +70,4 @@ void shiftN(void);
 void pushN(void);
 void popN(void);
 void cpyN(void);
+void swapN(void);

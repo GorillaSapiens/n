@@ -1160,29 +1160,47 @@ void lsrN_tests(void) {
 void stack_tests(void) {
    int a = 0x1234;
    int b = 0x5678;
+   unsigned long la = 0x01234567;
+   unsigned long lb = 0x89ABCDEF;
 
+   printf("pushN/popN");
    nl_sp = (void *) 0x12FE;
    nl_size = 5;
    pushN();
-   printf("0x12FE push 5 0x%04X\n", (int) nl_sp);
-   if (nl_sp != 0x1303) {
+   //printf("0x12FE push 5 0x%04X\n", (int) nl_sp);
+   if (nl_sp != (void *) 0x1303) {
       exit(-1);
    }
    popN();
-   printf("       pop  5 0x%04X\n", (int) nl_sp);
-   if (nl_sp != 0x12FE) {
+   //printf("       pop  5 0x%04X\n", (int) nl_sp);
+   if (nl_sp != (void *) 0x12FE) {
       exit(-1);
    }
+   printf(", PASS\n");
 
+   printf("cpyN");
    nl_size = 2;
    nl_ptr1 = &a;
    nl_ptr2 = &b;
-   printf("%04X %04X\n", a, b);
+   //printf("%04X %04X\n", a, b);
    cpyN();
-   printf("%04X %04X\n", a, b);
+   //printf("%04X %04X\n", a, b);
    if (a != b) {
       exit(-1);
    }
+   printf(", PASS\n");
+
+   printf("swapN");
+   nl_size = 4;
+   nl_ptr1 = &la;
+   nl_ptr2 = &lb;
+   //printf("%08lX %08lX\n", la, lb);
+   swapN();
+   //printf("%08lX %08lX\n", la, lb);
+   if (la != 0x89ABCDEF || lb != 0x01234567) {
+      exit(-1);
+   }
+   printf(", PASS\n");
 }
 
 int main(void) {
