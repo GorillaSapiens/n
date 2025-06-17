@@ -27,4 +27,20 @@ typedef struct ASTNode {
    struct ASTNode *children[16];
 } ASTNode;
 
-#endif
+ASTNode *make_node(const char *name, ...);
+ASTNode *make_integer_leaf(unsigned long long intval);
+ASTNode *make_string_leaf(char *strval);
+ASTNode *make_identifier_leaf(char *strval);
+ASTNode *make_typename_leaf(char *strval);
+ASTNode *make_float_leaf(double dval);
+ASTNode *make_empty_leaf(void);
+
+void dump_ast_flat(const ASTNode *node,
+                   const char *prefix,
+                   int is_last,
+                   const char *parent_name);
+
+#define MAKE_NODE(...) make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)
+#define MAKE_NAMED_NODE(name, ...) make_node(name, __VA_ARGS__, NULL)
+
+#endif // _INCLUDE_AST_H_
