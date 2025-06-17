@@ -4,9 +4,7 @@ CL65=~/cc65/bin/cl65
 LD65=~/cc65/bin/ld65
 AR65=~/cc65/bin/ar65
 MT=-t sim6502
-#SIM65= ~/cc65/bin/sim65 -x 2000000000
 SIM65= ~/cc65/bin/sim65
-
 
 all:
 	rm -rf wrk nlib.a
@@ -21,3 +19,4 @@ all:
 clean:
 	rm -f *.o *.bin tests nlib.a wrk/*
 
+# ~/cc65/bin/cl65 -C n.cfg -m map.txt -u _nrt0_reset --target none -o nrt0.bin nrt0.s nlib_zeropage.s
