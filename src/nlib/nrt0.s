@@ -1,11 +1,8 @@
 .global _nrt0_reset
 .export _nrt0_reset
+.import main
 
 .include "nlib.inc"
-
-.segment "CODE"
-main:
-    rts
 
 .segment "STARTUP"
 _nrt0_reset:

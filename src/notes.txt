@@ -1,2 +1,2 @@
 
-~/cc65/bin/cl65 -C nlib/n.cfg -m map.txt -u _nrt0_reset --target none -o foo.bin nlib/nrt0.s nlib/nlib_zeropage.s
+~/cc65/bin/cl65 -C nlib/n.cfg -m map.txt -u _nrt0_reset --target none -o foo.bin 0.s nlib/nrt0.s nlib/nlib_zeropage.s
