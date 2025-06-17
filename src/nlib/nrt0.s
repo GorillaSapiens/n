@@ -1,3 +1,6 @@
+.global _nrt0_reset
+.export _nrt0_reset
+
 .include "nlib.inc"
 
 .segment "STARTUP"
@@ -20,7 +23,7 @@ _nrt0_reset:
     stx sp+1
 
     ; jump to main program
-    jmp main
+    ;jmp main
 
 _nrt0_nmi:
     rti
