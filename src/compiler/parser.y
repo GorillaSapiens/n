@@ -37,7 +37,8 @@ int register_typename(const char* name) {
          type_names[type_count++] = strdup(name);
       }
       else {
-         yyerror("type table full %s:%d.%d", current_filename, yylineno, yycolumn);
+         yyerror("type table full %s:%d.%d",
+            current_filename, yylineno, yycolumn);
          return -1;
       }
    }
@@ -128,13 +129,18 @@ ASTNode *make_empty_leaf(void) {
    return ret;
 }
 
-void dump_ast_flat(const ASTNode *node, const char *prefix, int is_last, const char *parent_name) {
+void dump_ast_flat(const ASTNode *node,
+                   const char *prefix,
+                   int is_last,
+                   const char *parent_name) {
     if (!node) return;
 
     parent_name = NULL;
 
     // Print current node
-    if (!parent_name || strcmp(parent_name, node->name) || !strcmp(node->name, "identifier")) {
+    if (!parent_name ||
+        strcmp(parent_name, node->name) ||
+        !strcmp(node->name, "identifier")) {
        printf("%s%s%s", prefix,
              is_last ? "└── " : "├── ",
              node->name);
@@ -153,7 +159,9 @@ void dump_ast_flat(const ASTNode *node, const char *prefix, int is_last, const c
 
     // Determine if we can flatten this node's children
     int can_flatten = 0;
-    if (node->count > 1 && node->name && parent_name && strcmp(node->name, parent_name) == 0) {
+    if (node->count > 1 &&
+        node->name && parent_name &&
+        strcmp(node->name, parent_name) == 0) {
         can_flatten = 1;
     }
 
@@ -164,9 +172,11 @@ void dump_ast_flat(const ASTNode *node, const char *prefix, int is_last, const c
 
     for (int i = 0; i < node->count; ++i) {
         if (can_flatten) {
-            dump_ast_flat(node->children[i], prefix, i == node->count - 1, node->name);
+            dump_ast_flat(node->children[i],
+                          prefix, i == node->count - 1, node->name);
         } else {
-            dump_ast_flat(node->children[i], new_prefix, i == node->count - 1, node->name);
+            dump_ast_flat(node->children[i],
+                          new_prefix, i == node->count - 1, node->name);
         }
     }
 }
@@ -213,12 +223,15 @@ void check_type_decl(ASTNode *tree) {
       bool haveSize = false;
       // we need to guarantee a "size"
       if (strcmp(tree->children[1]->name, "empty")) {
-         for (ASTNode *list = tree->children[1]; list != NULL; list = list->children[1]) {
+         for (ASTNode *list = tree->children[1];
+              list != NULL;
+              list = list->children[1]) {
             debug("%s:\t%s", __FUNCTION__, list->children[0]->strval);
             if (!strncmp(list->children[0]->strval, "$size:", 6)) {
                if (haveSize) {
                   error("[%s:%d.%d] type_decl '%s' has multiple '$size:' flags",
-                     tree->file, tree->line, tree->column, tree->children[0]->strval);
+                     tree->file, tree->line, tree->column,
+                     tree->children[0]->strval);
                }
                haveSize = true;
             }
@@ -293,7 +306,8 @@ void parse_dump(void) {
 %type <node> logical_and_expr logical_or_expr
 %type <node> multiplicative_expr
 %type <node> opt_address opt_array_dim opt_expr opt_flags opt_pointer
-%type <node> param_decls param_list postfix_expr primary_expr program program_item
+%type <node> param_decls param_list
+%type <node> postfix_expr primary_expr program program_item
 %type <node> relational_expr
 %type <node> shift_expr statement statement_list struct_decl struct_field
 %type <node> struct_fields struct_init struct_inits struct_literal
