@@ -2,12 +2,8 @@
 
 `mkdir -p wrk`;
 `cp nlib.inc wrk`;
-foreach $file (`ls *.asm`) {
+foreach $file (`ls asm/*.asm`) {
    $file =~ s/[\x0a\x0d]//g;
-
-   if ($file eq "test.asm" || $file eq "foo.asm") {
-      continue;
-   }
 
    print "== $file\n";
    open FILE, $file;
