@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-`mkdir -p split`;
-`cp nlib.inc split`;
+`mkdir -p wrk`;
+`cp nlib.inc wrk`;
 foreach $file (`ls *.asm`) {
    $file =~ s/[\x0a\x0d]//g;
 
@@ -45,8 +45,8 @@ foreach $file (`ls *.asm`) {
          $tmp =~ s/^\.proc//g;
          $tmp =~ s/[\s]//g;
 
-         open FILE, ">split/$tmp.s";
-         print FILE ";;; $tmp split from $file\n";
+         open FILE, ">wrk/$tmp.s";
+         print FILE ";;; $tmp wrk from $file\n";
          print FILE @head;
          print FILE ".export $tmp\n";
          print FILE "\n";

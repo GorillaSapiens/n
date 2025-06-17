@@ -1,134 +1,102 @@
-# c08 — A Compact C Dialect for 8-bit Systems
+# n Compiler (nc)
 
-**c08** is a lightweight systems programming language inspired by C, designed for simplicity, efficiency, and embedded applications on 8-bit microcontrollers. It provides a modern parsing model, better syntax hygiene, and zero legacy bloat — with powerful low-level features and customizability.
+`n` is a small, experimental C-like programming language designed for simplicity, low-level clarity, and eventual embedded use. The project focuses on human-readable syntax, a minimal type system, and ease of compiler implementation — making it ideal for teaching, systems tinkering, or just writing your own language from scratch.
 
----
-
-## 🚀 Why c08?
-
-- **Clean Syntax** – No typedef hell, no implicit casts, and no need for forward declarations.
-- **Embedded Friendly** – Supports fixed-width types, memory-mapped I/O, and explicit address placement.
-- **Self-Hosting Goals** – Intended to compile its own toolchain eventually.
-- **Compiler-as-a-Library** – AST generation and error reporting are easy to integrate.
-- **Deterministic Parsing** – Based on LALR(1), no lookahead gymnastics needed.
+This repository contains the lexer, parser, and AST generation logic for `n`.
 
 ---
 
-## 🔧 Language Highlights
+## ⚙️ Features
 
-- **Explicit Types**
-  ```c
-  type uint16 { $size:2 $unsigned $endian:little };
-  ```
-
-- **Variable Declarations with Addresses**
-  ```c
-  int counter @ 0x20;
-  ```
-
-- **Structs and Unions**
-  ```c
-  struct Point { int x; int y; };
-  union Data  { int i; float f; };
-  ```
-
-- **Function Declarations and Definitions**
-  ```c
-  int sum(int a, int b) {
-      return a + b;
-  }
-  ```
-
-- **Operator Overloading**
-  ```c
-  int operator+(int a, int b) { return a + b; }
-  ```
-
-- **Struct/Union Literals**
-  ```c
-  Point p := Point { x := 4; y := 5; };
-  ```
-
-- **Control Flow**
-  ```c
-  if (x < 10) { ... }
-  while (true) { ... }
-  switch (val) {
-      case 0: return;
-      default: break;
-  }
-  ```
-
-- **Labeled Loops and Goto**
-  ```c
-  myloop: for (...) {
-      if (...) break myloop;
-      if (...) continue myloop;
-  }
-  goto error;
-  ```
-
-- **Comments**
-  - Line: `// comment`
-  - Block: `/* comment */`
+- C-style syntax with modern streamlining
+- Custom types with flags (e.g. `type Point { 8 $packed }`)
+- Statement blocks only — no ambiguous single-line ifs
+- AST construction via Bison/Yacc and Flex
+- Pretty-printed tree output for debugging
+- Simple flag parsing (`$` prefix, like `$packed`, `$aligned`)
+- Optional parameter names in function declarations
+- Unified parser+AST design with node names and source tracking
 
 ---
 
-## 🛠️ Build
+## 🔧 Building
 
-To build the compiler:
-
-```sh
+```bash
 make
 ```
 
-To parse a file and print the AST:
+You need:
+- `bison` (GNU Bison)
+- `flex`
+- a C compiler (e.g. `gcc`, `clang`)
 
-```sh
-./c08 source.c08
+---
+
+## 🚀 Usage
+
+```bash
+./nc input.n
+```
+
+Example output:
+
+```
+Parsing...
+└── program
+    └── type_decl
+        ├── identifier  Point
+        ├── int  8
+        └── flag_list
+            └── identifier  $packed
+Parse successful.
 ```
 
 ---
 
-## 🧪 Sample
+## 📜 Syntax Overview
 
-```c
-type uint8 { 1 $byte $packed };
+```n
+type Point { 8 $packed };
 
-struct Node {
-    int value;
-    Node *left;
-    Node *right;
-};
+func distance(Point* a, Point* b) {
+    return sqrt((a->x - b->x)^2 + (a->y - b->y)^2);
+}
 
-Node root := Node {
-    value := 42;
-    left := NULL;
-    right := NULL;
-};
+main {
+    Point p := Point();
+    p.x := 10;
+    p.y := 20;
+}
 ```
 
 ---
 
-## 📦 Status
+## 📂 Project Structure
 
-- [x] Lexer and Parser using Flex/Bison
-- [x] AST generation with location tracking
-- [x] Operator overloading
-- [x] Struct/Union declarations and literals
-- [x] Labels, Goto, and Loops
-- [ ] Code generation backend (planned)
-- [ ] Optimizer and linker (future)
-- [ ] Self-hosting compiler (ambitious)
+- `lexer.l` – Lexical rules
+- `parser.y` – Grammar and AST generation
+- `ast.h` / `ast.c` – AST node types and manipulation
+- `main.c` – Entry point and AST dumping
+- `Makefile` – Build script
 
 ---
 
-## 🧑‍💻 Author
+## 🔮 Goals
 
-Created and maintained by [Gorilla](mailto:gorilla@guest), retired computer engineer, systems builder, and nomad.
+- Add type inference and pointer safety
+- Optional preprocessor
+- Bytecode or WASM backend
+- VM or interpreter
+- Compile-to-C mode for portability
 
 ---
 
-## 📝 License
+## 🧠 Why “n”?
 
-MIT License — do what you want, just don't sue anyone.
+It’s small, minimal, and meant to be a new start. One letter, no nonsense. Just `n`.
+
+---
+
+## 🪓 License
+
+MIT License. Hack away.
