@@ -7,6 +7,9 @@
 .segment "DATA"
 .word $1234
 
+.segment "RODATA"
+.asciiz "fnord"
+
 .segment "CODE"
 main:
     rts
