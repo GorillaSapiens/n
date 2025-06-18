@@ -11,6 +11,7 @@
 
 ; sneakly trick; we need an argstack, but it can be empty!
 .segment "ARGSTACK"
+_argstack_segment_address:
 .res 0
 
 .segment "STARTUP"
@@ -26,10 +27,10 @@ _nrt0_reset:
     ldx #$FF
     txs
 
-    ; argument stack starts at $0200 and grows up
-    ldx #0
+    ; argument stack starts
+    ldx #<_argstack_segment_address
     stx sp
-    ldx #$02
+    ldx #>_argstack_segment_address
     stx sp+1
 
     ; init nlib dynamic memory
