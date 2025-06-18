@@ -1,12 +1,20 @@
+; nrt0.s
+
 .global _nrt0_reset
 .export _nrt0_reset
+.export _startup_segment_address
 .import main
 .import handle_irq
 .import handle_nmi
 
 .include "nlib.inc"
 
+; sneakly trick; we need an argstack, but it can be empty!
+.segment "ARGSTACK"
+.res 0
+
 .segment "STARTUP"
+_startup_segment_address: ; do not move, must come first !!!
 _nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
     sei
@@ -23,6 +31,15 @@ _nrt0_reset:
     stx sp
     ldx #$02
     stx sp+1
+
+    ; init nlib dynamic memory
+    lda #0
+    sta _startup_segment_address-2
+    sta _startup_segment_address-1
+    lda #<(_startup_segment_address-4)
+    sta _startup_segment_address-4
+    lda #>(_startup_segment_address-4)
+    sta _startup_segment_address-3
 
     ; jump to main program
     jmp main
