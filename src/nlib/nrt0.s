@@ -6,12 +6,20 @@
 .import main
 .import handle_irq
 .import handle_nmi
+.import __DATA_LOAD__, __DATA_RUN__, __DATA_SIZE__
+.import __BSS_RUN__, __BSS_SIZE__
+.import __ARGSTACK_RUN__
 
 .include "nlib.inc"
 
-; sneakly trick; we need an argstack, but it can be empty!
+; sneaky trick; we need an argstack, but it can be empty!
 .segment "ARGSTACK"
-_argstack_segment_address:
+.res 0
+
+.segment "DATA"
+.res 0
+
+.segment "BSS"
 .res 0
 
 .segment "STARTUP"
@@ -27,10 +35,64 @@ _nrt0_reset:
     ldx #$FF
     txs
 
-    ; argument stack starts
-    ldx #<_argstack_segment_address
+    ; copy the DATA segment to RAM
+nrt0_copy_data:
+    lda #<__DATA_LOAD__
+    sta ptr1
+    lda #>__DATA_LOAD__
+    sta ptr1+1
+
+    lda #<__DATA_RUN__
+    sta ptr2
+    lda #>__DATA_RUN__
+    sta ptr2+1
+
+    ldy #0
+    ldx #<__DATA_SIZE__
+    cpx #0
+    bne nrt0_copy_data_loop
+    ldx #1       ; fallback to enter loop if low byte is 0
+nrt0_copy_data_loop:
+    lda (ptr1), y
+    sta (ptr2), y
+    iny
+    bne nrt0_copy_data_loop_continue
+
+    inc ptr1+1
+    inc ptr2+1
+
+nrt0_copy_data_loop_continue:
+    dex
+    bne nrt0_copy_data_loop
+
+    ; clear the BSS segment
+nrt0_clear_bss:
+    lda #<__BSS_RUN__
+    sta ptr1
+    lda #>__BSS_RUN__
+    sta ptr1+1
+
+    ldy #0
+    ldx #<__BSS_SIZE__
+    cpx #0
+    bne nrt0_clear_bss_loop
+    ldx #1
+nrt0_clear_bss_loop:
+    lda #0
+    sta (ptr1), y
+    iny
+    bne nrt0_clear_bss_loop_continue
+
+    inc ptr1+1
+
+nrt0_clear_bss_loop_continue:
+    dex
+    bne nrt0_clear_bss_loop
+
+    ; set up argument stack pointer
+    ldx #<__ARGSTACK_RUN__
     stx sp
-    ldx #>_argstack_segment_address
+    ldx #>__ARGSTACK_RUN__
     stx sp+1
 
     ; init nlib dynamic memory
