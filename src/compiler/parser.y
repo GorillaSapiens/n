@@ -141,6 +141,8 @@ void parse_dump(void) {
 %token BREAK
 %token CONTINUE
 %token DO
+%token CONST
+%token STATIC
 
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
@@ -163,9 +165,9 @@ void parse_dump(void) {
 %type <node> additive_expr arg_list array_initializer assignable
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
-%type <node> decl_stmt
+%type <node> const_decl_stmt decl_stmt
 %type <node> equality_expr expr expr_args expr_list expr_stmt
-%type <node> flag flag_list function_decl
+%type <node> flag flag_list function_decl const_function_decl
 %type <node> include_stmt
 %type <node> logical_and_expr logical_or_expr
 %type <node> multiplicative_expr
@@ -179,6 +181,8 @@ void parse_dump(void) {
 %type <node> type_name
 %type <node> unary_expr
 %type <node> union_decl
+
+%type <node> param static_param const_param
 
 %type <node> return_stmt goto_stmt break_stmt continue_stmt switch_stmt 
 %type <node> if_stmt while_stmt for_stmt do_stmt label_stmt 
@@ -196,12 +200,14 @@ program:
   ;
 
 program_item:
-    type_decl     { $$ = $1; }
-  | function_decl { $$ = $1; }
-  | decl_stmt     { $$ = $1; }
-  | struct_decl   { $$ = $1; }
-  | union_decl    { $$ = $1; }
-  | include_stmt  { $$ = NULL; } // process an include line
+    type_decl            { $$ = $1; }
+  | function_decl        { $$ = $1; }
+  | const_function_decl  { $$ = $1; }
+  | decl_stmt            { $$ = $1; }
+  | const_decl_stmt      { $$ = $1; }
+  | struct_decl          { $$ = $1; }
+  | union_decl           { $$ = $1; }
+  | include_stmt         { $$ = NULL; } // process an include line
   ;
 
 type_decl:
@@ -225,6 +231,13 @@ function_decl:
   | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
   | type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4); }
   | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, make_identifier_leaf($2), $4, $6); }
+  ;
+
+const_function_decl:
+    CONST type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($2, make_identifier_leaf($3), $5); }
+  | CONST type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($2, make_identifier_leaf($3), $5, $7); }
+  | CONST type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE($2, make_identifier_leaf($3), $5); }
+  | CONST type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($2, make_identifier_leaf($3), $5, $7); }
   ;
 
 struct_decl:
@@ -275,10 +288,27 @@ param_list:
   ;
 
 param_decls:
-    type_name IDENTIFIER                 { $$ = MAKE_NODE($1, make_identifier_leaf($2)); }
-  | type_name                            { $$ = MAKE_NODE($1, make_empty_leaf()); } // unnamed param
-  | param_decls ',' type_name IDENTIFIER { $$ = MAKE_NODE($1, MAKE_NODE($3, make_identifier_leaf($4))); }
-  | param_decls ',' type_name            { $$ = MAKE_NODE($1, MAKE_NODE($3, make_empty_leaf())); }
+    param                        { $$ = MAKE_NODE($1); }
+  | const_param                  { $$ = MAKE_NODE($1); }
+  | static_param                 { $$ = MAKE_NODE($1); }
+  | param_decls ',' param        { $$ = MAKE_NODE($1, MAKE_NODE($3)); }
+  | param_decls ',' const_param  { $$ = MAKE_NODE($1, MAKE_NODE($3)); }
+  | param_decls ',' static_param { $$ = MAKE_NODE($1, MAKE_NODE($3)); }
+;
+
+param:
+    type_name IDENTIFIER { $$ = MAKE_NODE($1, make_identifier_leaf($2)); }
+  | type_name            { $$ = MAKE_NODE($1); } // unnamed params are allowed
+;
+
+const_param:
+    CONST type_name IDENTIFIER { $$ = MAKE_NODE($2, make_identifier_leaf($3)); }
+  | CONST type_name            { $$ = MAKE_NODE($2); } // unnamed params are allowed
+;
+
+static_param:
+    STATIC type_name IDENTIFIER { $$ = MAKE_NODE($2, make_identifier_leaf($3)); }
+  | STATIC type_name            { $$ = MAKE_NODE($2); } // unnamed params are allowed, but why ???
 ;
 
 type_name:
@@ -295,19 +325,20 @@ statement_list:
   ;
 
 statement:
-    block          { $$ = $1; }
-  | decl_stmt      { $$ = $1; }
-  | expr_stmt      { $$ = $1; }
-  | return_stmt    { $$ = $1; }
-  | goto_stmt      { $$ = $1; }
-  | break_stmt     { $$ = $1; }
-  | continue_stmt  { $$ = $1; }
-  | switch_stmt    { $$ = $1; }
-  | if_stmt        { $$ = $1; }
-  | while_stmt     { $$ = $1; }
-  | for_stmt       { $$ = $1; }
-  | do_stmt        { $$ = $1; }
-  | label_stmt     { $$ = $1; }
+    block            { $$ = $1; }
+  | decl_stmt        { $$ = $1; }
+  | const_decl_stmt  { $$ = $1; }
+  | expr_stmt        { $$ = $1; }
+  | return_stmt      { $$ = $1; }
+  | goto_stmt        { $$ = $1; }
+  | break_stmt       { $$ = $1; }
+  | continue_stmt    { $$ = $1; }
+  | switch_stmt      { $$ = $1; }
+  | if_stmt          { $$ = $1; }
+  | while_stmt       { $$ = $1; }
+  | for_stmt         { $$ = $1; }
+  | do_stmt          { $$ = $1; }
+  | label_stmt       { $$ = $1; }
   ;
 
 return_stmt:
@@ -362,6 +393,12 @@ decl_stmt:
     type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4); }
   | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
   | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
+  ;
+
+const_decl_stmt:
+    CONST type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5); }
+  | CONST type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
+  | CONST type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
   ;
 
 opt_array_dim:

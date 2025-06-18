@@ -90,6 +90,9 @@ void pop_file() {
 "goto"          return GOTO;
 "return"        return RETURN;
 
+"const"         return CONST;
+"static"        return STATIC;
+
 "break"         return BREAK;
 "continue"      return CONTINUE;
 
