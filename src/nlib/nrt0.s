@@ -28,15 +28,23 @@ _nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
     sei
 
+
     ; clear decimal mode (ensure binary mode math)
     cld
+
 
     ; hardware stack starts at $01FF and grows down
     ldx #$FF
     txs
 
+
     ; copy the DATA segment to RAM
-nrt0_copy_data:
+    lda #<__DATA_SIZE__
+    bne _copy_data_hi
+    lda #>__DATA_SIZE__
+    beq _copy_data_fini
+
+_copy_data_hi:
     lda #<__DATA_LOAD__
     sta ptr1
     lda #>__DATA_LOAD__
@@ -48,52 +56,79 @@ nrt0_copy_data:
     sta ptr2+1
 
     ldy #0
-    ldx #<__DATA_SIZE__
-    cpx #0
-    bne nrt0_copy_data_loop
-    ldx #1       ; fallback to enter loop if low byte is 0
-nrt0_copy_data_loop:
-    lda (ptr1), y
-    sta (ptr2), y
-    iny
-    bne nrt0_copy_data_loop_continue
+    ldx #>__DATA_SIZE__
+    beq _copy_data_lo
 
+_copy_data_hi_loop:
+    lda (ptr1),y
+    sta (ptr2),y
+    iny
+    bne _copy_data_hi_loop
     inc ptr1+1
     inc ptr2+1
-
-nrt0_copy_data_loop_continue:
     dex
-    bne nrt0_copy_data_loop
+    bne _copy_data_hi_loop
+
+_copy_data_lo:
+    ldy #0
+    ldx #<__DATA_SIZE__
+    beq _copy_data_fini
+
+_copy_data_lo_loop:
+    lda (ptr1),y
+    sta (ptr2),y
+    iny
+    dex
+    bne _copy_data_lo_loop
+
+_copy_data_fini:
+
 
     ; clear the BSS segment
-nrt0_clear_bss:
-    lda #<__BSS_RUN__
-    sta ptr1
-    lda #>__BSS_RUN__
-    sta ptr1+1
+    lda #<__BSS_SIZE__
+    bne _clear_bss_hi
+    lda #>__BSS_SIZE__
+    beq _clear_bss_fini
 
+_clear_bss_hi:
+    lda #<__BSS_RUN__
+    sta ptr2
+    lda #>__BSS_RUN__
+    sta ptr2+1
+
+    lda #0
+    ldy #0
+    ldx #>__BSS_SIZE__
+    beq _clear_bss_lo
+
+_clear_bss_hi_loop:
+    sta (ptr2),y
+    iny
+    bne _clear_bss_hi_loop
+    inc ptr2+1
+    dex
+    bne _clear_bss_hi_loop
+
+_clear_bss_lo:
     ldy #0
     ldx #<__BSS_SIZE__
-    cpx #0
-    bne nrt0_clear_bss_loop
-    ldx #1
-nrt0_clear_bss_loop:
-    lda #0
-    sta (ptr1), y
+    beq _clear_bss_fini
+
+_clear_bss_lo_loop:
+    sta (ptr2),y
     iny
-    bne nrt0_clear_bss_loop_continue
-
-    inc ptr1+1
-
-nrt0_clear_bss_loop_continue:
     dex
-    bne nrt0_clear_bss_loop
+    bne _clear_bss_lo_loop
+
+_clear_bss_fini:
+
 
     ; set up argument stack pointer
     ldx #<__ARGSTACK_RUN__
     stx sp
     ldx #>__ARGSTACK_RUN__
     stx sp+1
+
 
     ; init nlib dynamic memory
     lda #0
@@ -104,8 +139,12 @@ nrt0_clear_bss_loop_continue:
     lda #>(_startup_segment_address-4)
     sta _startup_segment_address-3
 
+
     ; jump to main program
-    jmp main
+    jsr main
+
+loop:
+    jmp loop
 
 _nrt0_nmi:
     ; push AXY
