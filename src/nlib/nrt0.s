@@ -1,6 +1,8 @@
 .global _nrt0_reset
 .export _nrt0_reset
 .import main
+.import handle_irq
+.import handle_nmi
 
 .include "nlib.inc"
 
@@ -26,9 +28,41 @@ _nrt0_reset:
     jmp main
 
 _nrt0_nmi:
+    ; push AXY
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; call the handler
+    jsr handle_nmi
+
+    ; pop YXA
+    pla
+    tay
+    pla
+    tax
+    pla
     rti
 
 _nrt0_irq:
+    ; push AXY
+    pha
+    txa
+    pha
+    tya
+    pha
+
+    ; call the handler
+    jsr handle_irq
+
+    ; pop YXA
+    pla
+    tay
+    pla
+    tax
+    pla
     rti
 
 .segment "VECTORS"

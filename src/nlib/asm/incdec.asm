@@ -19,7 +19,7 @@
     clc
     adc #1
     sta (ptr1), y
-    bne @done      ; No carry → done
+    bne @done      ; No carry -> done
     iny
     dex
     bne @loop
@@ -41,7 +41,7 @@
     lda (ptr1), y
     sbc #0
     sta (ptr1), y
-    ;bne @done      ; No borrow → done
+    ;bne @done      ; No borrow -> done
     iny
     dex
     bne @loop

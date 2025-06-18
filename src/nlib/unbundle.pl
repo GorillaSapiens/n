@@ -14,7 +14,6 @@ foreach $file (`ls asm/*.asm`) {
    @constants = ();
    $mode = 0;
    foreach $line (@file) {
-
       if ($line =~ /^[^;]*=/) {
          push @constants, $line;
       }
@@ -41,6 +40,7 @@ foreach $file (`ls asm/*.asm`) {
          $tmp =~ s/^\.proc//g;
          $tmp =~ s/[\s]//g;
 
+         print "--- $tmp.s\n";
          open FILE, ">wrk/$tmp.s";
          print FILE ";;; $tmp wrk from $file\n";
          print FILE @head;
