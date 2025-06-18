@@ -4,10 +4,10 @@
 ; Stores quotient in ptr3, remainder in ptr4.
 ;
 ; Inputs:
-;   ptr1 - dividend (X bytes)
+;   ptr1 - dividend (X bytes), must be writable!
 ;   ptr2 - divisor (X bytes)
-;   ptr3 - quotient (X bytes)
-;   ptr4 - remainder (X bytes)
+;   ptr3 - quotient (X bytes), must be writable!
+;   ptr4 - remainder (X bytes), must be writable!
 ;   size - byte count
 ; Clobbers: A, X, Y, and zero page temps
 
