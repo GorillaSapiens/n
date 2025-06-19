@@ -5,6 +5,8 @@
 
 #define LOOPS 100000
 
+unsigned char stack[256];
+
 long extend3(long arg) {
    if (arg & 0x800000)
       return arg | 0xFF000000;
@@ -1204,6 +1206,8 @@ void stack_tests(void) {
 }
 
 int main(void) {
+   nl_sp = stack;
+
    printf("tests\n\n");
 
    add8_tests();

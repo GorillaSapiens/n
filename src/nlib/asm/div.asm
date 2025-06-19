@@ -4,18 +4,29 @@
 ; Stores quotient in ptr3, remainder in ptr4.
 ;
 ; Inputs:
-;   ptr1 - dividend (X bytes), must be writable!
+;   ptr1 - dividend (X bytes)
 ;   ptr2 - divisor (X bytes)
 ;   ptr3 - quotient (X bytes), must be writable!
 ;   ptr4 - remainder (X bytes), must be writable!
 ;   size - byte count
 ; Clobbers: A, X, Y, and zero page temps
+; NB: ALSO WRITES TO THE STACK!!!
 
 .include "nlib.inc"
 tmpX  = _nl_tmp1 ;$0A
 carry = _nl_tmp2 ;$0B
 
 .proc _divN
+    ; copy dividend to the stack
+    ldx size
+    ldy #0
+@cpy_loop:
+    lda (ptr1), y
+    sta (sp), y
+    iny
+    dex
+    bne @cpy_loop
+
     ; Clear quotient and remainder
     ldy #0
 @clear_loop:
@@ -41,9 +52,9 @@ carry = _nl_tmp2 ;$0B
     dex
     ldy #0
 @shift_div:
-    lda (ptr1), y
+    lda (sp), y
     rol a
-    sta (ptr1), y
+    sta (sp), y
     iny
     dex
     bpl @shift_div
@@ -70,8 +81,8 @@ carry = _nl_tmp2 ;$0B
     ldy #0
     lda carry
     and #1
-    ora (ptr1),y
-    sta (ptr1),y
+    ora (sp),y
+    sta (sp),y
 
     ; Compare remainder with divisor
     jsr @cmp_rev_div
