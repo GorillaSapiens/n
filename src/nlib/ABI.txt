@@ -1,1 +1,32 @@
 If you're not respecting the ABI, you're one segfault away from chaos.
+
+before call:
+push arguments onto ARGUMENT stack
+jsr
+
+function prologue:
+;push frame pointer onto HARDWARE stack
+lda fp+1
+pha
+lda fp
+pha
+;transfer stack pointer to frame pointer
+lda sp+1
+sta fp+1
+lda sp
+sta sp
+
+function epilogue:
+;pop frame pointer
+pla
+sta fp
+pla
+sta fp+1
+rts
+
+
+TODO: do we need to save/restore APXY ??
+PHA/PLA is push pop for A
+PHP/PLP is push pop for P
+X and Y done through A
+
