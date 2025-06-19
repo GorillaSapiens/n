@@ -1,6 +1,10 @@
 If you're not respecting the ABI, you're one segfault away from chaos.
 
+int foo(int in_sp, const int ref_in_sp, static int in_var_not_stack)
+
 before call:
+push stack pointer onto HARDWARE stack
+push room for return onto ARGUMENT stack
 push arguments onto ARGUMENT stack
 jsr
 
@@ -22,6 +26,11 @@ pla
 sta fp
 pla
 sta fp+1
+;pop stack pointer
+pla
+sta sp
+pla
+sta sp+1
 rts
 
 
