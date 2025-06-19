@@ -1,5 +1,9 @@
+// this C header is used to compile the tests.c file
+
 extern void* nl_sp;
 #pragma zpsym ("nl_sp");
+extern void* nl_fp;
+#pragma zpsym ("nl_fp");
 extern unsigned char nl_size;
 #pragma zpsym ("nl_size");
 extern unsigned char nl_shift;
