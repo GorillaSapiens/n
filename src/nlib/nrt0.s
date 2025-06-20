@@ -147,7 +147,8 @@ loop:
     jmp loop
 
 _nrt0_nmi:
-    ; push AXY
+    ; push PAXY
+    php
     pha
     txa
     pha
@@ -157,16 +158,18 @@ _nrt0_nmi:
     ; call the handler
     jsr handle_nmi
 
-    ; pop YXA
+    ; pop YXAP
     pla
     tay
     pla
     tax
     pla
+    plp
     rti
 
 _nrt0_irq:
-    ; push AXY
+    ; push PAXY
+    php
     pha
     txa
     pha
@@ -176,12 +179,13 @@ _nrt0_irq:
     ; call the handler
     jsr handle_irq
 
-    ; pop YXA
+    ; pop YXAP
     pla
     tay
     pla
     tax
     pla
+    plp
     rti
 
 .segment "VECTORS"

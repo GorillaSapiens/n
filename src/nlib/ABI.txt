@@ -39,3 +39,10 @@ PHA/PLA is push pop for A
 PHP/PLP is push pop for P
 X and Y done through A
 
+NOTE: If you care about preserving and restoring both A and P, and you want P exactly as it was, you must pull P last:
+Edit
+PHP      ; save status
+PHA      ; save A
+...
+PLA      ; restore A (and flags get set from A)
+PLP      ; restore original status flags, including N/Z
