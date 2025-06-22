@@ -147,6 +147,4 @@ void parse_dump(void) {
    if (root) {
       dump_ast_flat(root, "", 1, NULL);
    }
-
-   check_type_decl(root);
 }

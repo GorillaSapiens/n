@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ast.h"
+#include "check.h"
 #include "lextern.h"
 #include "md5seen.h"
 #include "messages.h"
@@ -45,7 +46,10 @@ int main(int argc, char** argv) {
       printf("Parse successful.\n");
    } else {
       printf("Parse failed.\n");
+      return -1;
    }
+
+   do_checks();
 
    return 0;
 }
