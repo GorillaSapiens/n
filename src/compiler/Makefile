@@ -6,10 +6,18 @@ CFLAGS = -Wall -g
 #CFLAGS = -Wall -g -DYYDEBUG
 TARGET = nc
 
+SRC = \
+   main.c \
+   parser.tab.c \
+   lex.yy.c \
+   ast.c \
+   check.c \
+   messages.c
+
 all: $(TARGET)
 
-$(TARGET): main.c ast.c parser.tab.c lex.yy.c
-	$(CC) $(CFLAGS) -o $(TARGET) main.c ast.c parser.tab.c lex.yy.c -lfl
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) -lfl
 
 parser.tab.c parser.tab.h: parser.y
 	$(YACC) -d parser.y

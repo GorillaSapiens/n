@@ -7,6 +7,8 @@
 #include <stdbool.h>
 
 #include "ast.h"
+#include "check.h"
+#include "messages.h"
 
 extern char *current_filename;
 extern int push_file(const char *filename);
@@ -46,71 +48,6 @@ int register_typename(const char* name) {
 }
 
 ASTNode *root = NULL;
-
-void debug(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   fprintf(stderr, "debug: ");
-   vfprintf(stderr, fmt, args);
-   fprintf(stderr, "\n");
-   va_end(args);
-}
-
-void error(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   fprintf(stderr, "error: ");
-   vfprintf(stderr, fmt, args);
-   fprintf(stderr, "\n");
-   va_end(args);
-   exit(-1);
-}
-
-void warning(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   fprintf(stderr, "warning: ");
-   vfprintf(stderr, fmt, args);
-   fprintf(stderr, "\n");
-   va_end(args);
-   exit(-1);
-}
-
-void check_type_decl(ASTNode *tree) {
-
-   if (!tree) {
-      return;
-   }
-
-   if (!strcmp(tree->name, "type_decl")) {
-      debug("%s:%s", __FUNCTION__, tree->children[0]->strval);
-      bool haveSize = false;
-      // we need to guarantee a "size"
-      if (strcmp(tree->children[1]->name, "empty")) {
-         for (ASTNode *list = tree->children[1];
-              list != NULL;
-              list = list->children[1]) {
-            debug("%s:\t%s", __FUNCTION__, list->children[0]->strval);
-            if (!strncmp(list->children[0]->strval, "$size:", 6)) {
-               if (haveSize) {
-                  error("[%s:%d.%d] type_decl '%s' has multiple '$size:' flags",
-                     tree->file, tree->line, tree->column,
-                     tree->children[0]->strval);
-               }
-               haveSize = true;
-            }
-         }
-      }
-      if (!haveSize) {
-         error("[%s:%d.%d] type_decl '%s' missing '$size:' flag",
-            tree->file, tree->line, tree->column, tree->children[0]->strval);
-      }
-   }
-
-   for (int i = 0; i < tree->count; i++) {
-      check_type_decl(tree->children[i]);
-   }
-}
 
 void parse_dump(void) {
    if (root) {
