@@ -3,14 +3,17 @@
 #include <string.h>
 
 static int make_le_binary(const char *p, unsigned char *target, int size) {
+   // TODO FIX
    return -1;
 }
 
 static int make_le_hex(const char *p, unsigned char *target, int size) {
+   // TODO FIX
    return -1;
 }
 
 static int make_le_octal(const char *p, unsigned char *target, int size) {
+   // TODO FIX
    return -1;
 }
 
@@ -70,13 +73,13 @@ int make_le_int(const char *p, unsigned char *target, int size) {
       return 1;
    }
    else if (!strncasecmp(copy, "0b", 2)) {
-      return make_le_binary(copy, target, size);
+      return make_le_binary(copy + 2, target, size);
    }
    else if (!strncasecmp(copy, "0x", 2)) {
-      return make_le_hex(copy, target, size);
+      return make_le_hex(copy + 2, target, size);
    }
    else if (copy[0] == '0') {
-      return make_le_octal(copy, target, size);
+      return make_le_octal(copy + 1, target, size);
    }
    else {
       return make_le_decimal(copy, target, size);
