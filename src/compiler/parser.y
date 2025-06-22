@@ -95,9 +95,7 @@ type_decl:
         $$ = MAKE_NODE(make_identifier_leaf("*"), $4);
     }
   | TYPE TYPENAME '{' opt_flags '}' ';' {
-        // always fails, but we want the error message
-        if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf($2), $4); // TODO FIX is this needed?
+        yyerror("duplicate type '%s'", $2);
     }
   ;
 
@@ -124,8 +122,7 @@ struct_decl:
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | STRUCT TYPENAME '{' {
-        // always fails, but we want the error message
-        if (register_typename($2) < 0) YYABORT;  // Add early to type table
+        yyerror("duplicate type '%s'", $2);
     }
   ;
 
@@ -138,8 +135,7 @@ union_decl:
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | UNION TYPENAME '{' {
-        // always fails, but we want the error message
-        if (register_typename($2) < 0) YYABORT;  // Add early to type table
+        yyerror("duplicate type '%s'", $2);
     }
   ;
 
