@@ -1205,6 +1205,37 @@ void stack_tests(void) {
    printf(", PASS\n");
 }
 
+void stacksess_tests(void) {
+   nl_fp = stack + sizeof(stack) / 2;
+   nl_size = 24;
+
+   printf("stacksess1\n");
+   stacksess1();
+   if (nl_ptr1 != (char *)nl_fp - 24) {
+      exit(-1);
+   }
+
+   printf("stacksess2\n");
+   stacksess2();
+   if (nl_ptr1 != (char *) nl_fp - 24) {
+      exit(-1);
+   }
+
+   printf("stacksess3\n");
+   stacksess3();
+   if (nl_ptr1 != (char *) nl_fp - 24) {
+      exit(-1);
+   }
+
+   printf("stacksess4\n");
+   stacksess4();
+   if (nl_ptr1 != (char *) nl_fp - 24) {
+      exit(-1);
+   }
+
+   printf("PASS\n");
+}
+
 int main(void) {
    nl_sp = stack;
 
@@ -1264,6 +1295,7 @@ int main(void) {
    printf("\n");
 
    stack_tests();
+   stacksess_tests();
    printf("\n");
 
    return 0;

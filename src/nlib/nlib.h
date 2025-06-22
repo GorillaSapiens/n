@@ -75,3 +75,8 @@ void pushN(void);
 void popN(void);
 void cpyN(void);
 void swapN(void);
+
+void stacksess1(void);
+void stacksess2(void);
+void stacksess3(void);
+void stacksess4(void);
