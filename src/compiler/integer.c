@@ -142,7 +142,7 @@ void test(const char *p) {
    }
    *b = 0;
 
-   desire = strtoul(buf, NULL, 10);
+   desire = strtoul(buf, NULL, 0);
 
    n = make_le_int(p, buf, sizeof(buf));
    printf("%ld= (%d) ", desire, n);
@@ -162,5 +162,7 @@ void main(void) {
    test("12345");
    test("4_294_967_295");
    test("4_294_967_296");
+   test("0x1234");
+   test("0x123456789ABCDEF");
 }
 #endif
