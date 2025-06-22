@@ -1,23 +1,26 @@
 LEX = flex
 YACC = bison
 CC = gcc
-#CFLAGS = -Wall -O2
 CFLAGS = -Wall -g
+#CFLAGS = -Wall -O2
 #CFLAGS = -Wall -g -DYYDEBUG
 TARGET = nc
 
-SRC = \
-   main.c \
-   parser.tab.c \
-   lex.yy.c \
-   ast.c \
-   check.c \
-   messages.c
+OBJ = \
+   main.o \
+   parser.tab.o \
+   lex.yy.o \
+   ast.o \
+   check.o \
+   messages.o
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) -o $(TARGET) $(SRC) -lfl
+$(TARGET): $(OBJ)
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
+
+%.o: %.c
+	$(CC) -c $(CFLAGS) $< -o $@
 
 parser.tab.c parser.tab.h: parser.y
 	$(YACC) -d parser.y
