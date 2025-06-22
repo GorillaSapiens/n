@@ -44,7 +44,7 @@ int push_file(const char *filename) {
 
    FILE *f = fopen(filename, "r");
    if (!f) {
-      fprintf(stderr, "cannot open include file: %s\n", filename);
+      error("cannot open include file: %s", filename);
       return -1;
    }
 
