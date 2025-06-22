@@ -7,7 +7,14 @@ CFLAGS = -Wall -g
 TARGET = nc
 
 GENSRC = parser.tab.c lex.yy.c
-SRCSRC = main.c ast.c check.c messages.c
+
+SRCSRC = \
+   ast.c \
+   check.c \
+   integer.c \
+   messages.c \
+   main.c
+
 SRC = $(SRCSRC) $(GENSRC)
 OBJ = $(SRC:.c=.o)
 
