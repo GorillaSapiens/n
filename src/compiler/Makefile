@@ -14,6 +14,7 @@ SRCSRC = \
    check.c \
    integer.c \
    md5.c \
+   md5seen.c \
    messages.c \
    typename.c \
    main.c

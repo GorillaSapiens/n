@@ -6,7 +6,8 @@
 #include <ctype.h>
 
 #include "ast.h"
-#include "md5.h"
+#include "lextern.h"
+#include "md5seen.h"
 #include "messages.h"
 #include "typename.h"
 
@@ -14,16 +15,12 @@
 
 #define MAX_INCLUDE_DEPTH 32
 
-extern int yylineno;
-extern YYLTYPE yylloc;
-
 char *current_filename = "<stdin>";
 int yycolumn = 0;
 
 typedef struct FileContext {
     FILE *file;
     char *filename;
-    uint8_t md5[16];
     int lineno;
     int column;
     YY_BUFFER_STATE buffer;
@@ -51,24 +48,14 @@ int push_file(const char *filename) {
       return -1;
    }
 
-   uint8_t md5[16];
-   md5File(f, md5);
-   fclose(f);
-
-   for (int i = 0; i <= file_stack_top; i++) {
-      if (!memcmp(file_stack[i].md5, md5, sizeof(md5))) {
-         // md5sums match, abort.
-         debug("md5sum match '%s' '%s'", filename, file_stack[i].filename);
-         return 0;
-      }
+   if (md5seen(filename, f)) {
+      fclose(f);
+      return 0;
    }
-
-   f = fopen(filename, "r");
 
    file_stack_top++;
    file_stack[file_stack_top].file = f;
    file_stack[file_stack_top].filename = strdup(filename);
-   memcpy(file_stack[file_stack_top].md5, md5, sizeof(md5));
    file_stack[file_stack_top].lineno = yylineno;
    file_stack[file_stack_top].column = yycolumn;
    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;

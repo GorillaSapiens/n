@@ -4,6 +4,7 @@
 
 #include "ast.h"
 #include "lextern.h"
+#include "md5seen.h"
 #include "messages.h"
 
 #include "parser.tab.h"
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
          perror(argv[1]);
          return 1;
       }
+      md5seen(argv[1], yyin);
    }
    else {
       usage(argv[0]);
