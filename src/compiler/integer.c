@@ -8,8 +8,45 @@ static int make_le_binary(const char *p, unsigned char *target, int size) {
 }
 
 static int make_le_hex(const char *p, unsigned char *target, int size) {
-   // TODO FIX
-   return -1;
+   int n = strlen(p);
+   int i;
+
+   for (i = 0; i < n; i++) {
+      switch(p[i]) {
+         case '0':
+         case '1':
+         case '2':
+         case '3':
+         case '4':
+         case '5':
+         case '6':
+         case '7':
+         case '8':
+         case '9':
+            target[n - 1 - i] = p[i] - '0';
+            break;
+         case 'a':
+         case 'b':
+         case 'c':
+         case 'd':
+         case 'e':
+         case 'f':
+            target[n - 1 - i] = p[i] - 'a' + 10;
+            break;
+         case 'A':
+         case 'B':
+         case 'C':
+         case 'D':
+         case 'E':
+         case 'F':
+            target[n - 1 - i] = p[i] - 'A' + 10;
+            break;
+            break;
+         default:
+            return -1;
+      }
+   }
+   return n;
 }
 
 static int make_le_octal(const char *p, unsigned char *target, int size) {
@@ -21,8 +58,6 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
    int i;
    int max = 1;
    int carry;
-
-   memset(target, 0, size);
 
    while (*p) {
       carry = 0;
@@ -55,6 +90,9 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
 }
 
 int make_le_int(const char *p, unsigned char *target, int size) {
+
+   memset(target, 0, size);
+
    // make a copy, strip out underscores;
    char *copy = strdup(p);
    char *q = copy;
