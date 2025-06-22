@@ -10,8 +10,10 @@ static int make_le_binary(const char *p, unsigned char *target, int size) {
 static int make_le_hex(const char *p, unsigned char *target, int size) {
    int n = strlen(p);
    int i;
+   int offset;
 
    for (i = 0; i < n; i++) {
+      offset = (n - 1 - i) % 2 ? 4 : 0;
       switch(p[i]) {
          case '0':
          case '1':
@@ -23,7 +25,7 @@ static int make_le_hex(const char *p, unsigned char *target, int size) {
          case '7':
          case '8':
          case '9':
-            target[n - 1 - i] = p[i] - '0';
+            target[(n - 1 - i) / 2] |= (p[i] - '0') << offset;
             break;
          case 'a':
          case 'b':
@@ -31,7 +33,7 @@ static int make_le_hex(const char *p, unsigned char *target, int size) {
          case 'd':
          case 'e':
          case 'f':
-            target[n - 1 - i] = p[i] - 'a' + 10;
+            target[(n - 1 - i) / 2] |= (p[i] - 'a' + 10) << offset;
             break;
          case 'A':
          case 'B':
@@ -39,14 +41,14 @@ static int make_le_hex(const char *p, unsigned char *target, int size) {
          case 'D':
          case 'E':
          case 'F':
-            target[n - 1 - i] = p[i] - 'A' + 10;
+            target[(n - 1 - i) / 2] |= (p[i] - 'A' + 10) << offset;
             break;
             break;
          default:
             return -1;
       }
    }
-   return n;
+   return (n + 1) / 2;
 }
 
 static int make_le_octal(const char *p, unsigned char *target, int size) {
@@ -162,6 +164,9 @@ void main(void) {
    test("12345");
    test("4_294_967_295");
    test("4_294_967_296");
+   test("0x1");
+   test("0x12");
+   test("0x123");
    test("0x1234");
    test("0x123456789ABCDEF");
 }
