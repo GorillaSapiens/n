@@ -17,6 +17,7 @@ static void check_type_decl(ASTNode *tree) {
    if (!strcmp(tree->name, "type_decl")) {
       debug("%s:%s", __FUNCTION__, tree->children[0]->strval);
       bool haveSize = false;
+      int size = -1;
       bool haveEndian = false;
       // we need to guarantee a "size" and "endian"
       if (strcmp(tree->children[1]->name, "empty")) {
@@ -32,6 +33,14 @@ static void check_type_decl(ASTNode *tree) {
                      tree->file, tree->line, tree->column,
                      tree->children[0]->strval);
                }
+               char *p = strchr(list->children[0]->strval, ':');
+               p++;
+               size = atoi(p);
+               if (size < 0 || (size == 0 && strcmp(p, "0"))) {
+                  error("[%s:%d.%d] type_decl '%s' unrecognized '$size:%s' flag",
+                     tree->file, tree->line, tree->column,
+                     tree->children[0]->strval, p);
+               }
                haveSize = true;
             }
 
@@ -45,9 +54,9 @@ static void check_type_decl(ASTNode *tree) {
                char *p = strchr(list->children[0]->strval, ':');
                p++;
                if (strcmp(p, "big") && strcmp(p, "little")) {
-                  error("[%s:%d.%d] type_decl '%s' unrecognized '$endian:' flag",
+                  error("[%s:%d.%d] type_decl '%s' unrecognized '$endian:%s' flag",
                      tree->file, tree->line, tree->column,
-                     tree->children[0]->strval);
+                     tree->children[0]->strval, p);
                }
 
                haveEndian = true;
@@ -59,7 +68,7 @@ static void check_type_decl(ASTNode *tree) {
          error("[%s:%d.%d] type_decl '%s' missing '$size:' flag",
             tree->file, tree->line, tree->column, tree->children[0]->strval);
       }
-      if (!haveEndian) {
+      if (!haveEndian && size != 0) {
          error("[%s:%d.%d] type_decl '%s' missing '$endian:' flag",
             tree->file, tree->line, tree->column, tree->children[0]->strval);
       }
