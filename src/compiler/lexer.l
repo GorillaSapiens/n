@@ -103,7 +103,7 @@ void pop_file() {
 "switch"        return SWITCH;
 "default"       return DEFAULT;
 
-"include"      return INCLUDE;
+"include"       return INCLUDE;
 
 operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
     yylval.str = strdup(yytext);

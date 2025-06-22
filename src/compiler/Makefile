@@ -32,6 +32,9 @@ parser.tab.c parser.tab.h: parser.y
 lex.yy.c: lexer.l
 	$(LEX) lexer.l
 
+delexer.h: lexer.l delexer.pl
+	./delexer.pl > delexer.h
+
 depend: $(GENSRC)
 	$(CC) $(CFLAGS) -MM $(SRC) > depend.mk
 
