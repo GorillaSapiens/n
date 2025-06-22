@@ -5,24 +5,16 @@
 #include <ctype.h>
 
 #include "ast.h"
+#include "typename.h"
 #include "parser.tab.h"
 
-// External type recognition
-extern int find_typename(const char*);
+#define MAX_INCLUDE_DEPTH 32
 
-int yycolumn = 0;
 extern int yylineno;
-
 extern YYLTYPE yylloc;
 
-#define YY_USER_ACTION \
-    yylloc.first_line = yylineno; \
-    yylloc.first_column = yycolumn; \
-    yylloc.last_line = yylineno; \
-    yycolumn += yyleng; \
-    yylloc.last_column = yycolumn;
-
-#define MAX_INCLUDE_DEPTH 16
+char *current_filename = "<stdin>";
+int yycolumn = 0;
 
 typedef struct FileContext {
     FILE *file;
@@ -34,46 +26,52 @@ typedef struct FileContext {
 
 static FileContext file_stack[MAX_INCLUDE_DEPTH];
 static int file_stack_top = -1;
-char *current_filename = "<stdin>";
+
+#define YY_USER_ACTION \
+    yylloc.first_line = yylineno; \
+    yylloc.first_column = yycolumn; \
+    yylloc.last_line = yylineno; \
+    yycolumn += yyleng; \
+    yylloc.last_column = yycolumn;
 
 int push_file(const char *filename) {
-    if (file_stack_top + 1 >= MAX_INCLUDE_DEPTH) {
-        fprintf(stderr, "include nesting too deep\n");
-        return -1;
-    }
+   if (file_stack_top + 1 >= MAX_INCLUDE_DEPTH) {
+      fprintf(stderr, "include nesting too deep\n");
+      return -1;
+   }
 
-    FILE *f = fopen(filename, "r");
-    if (!f) {
-        fprintf(stderr, "cannot open include file: %s\n", filename);
-        return -1;
-    }
+   FILE *f = fopen(filename, "r");
+   if (!f) {
+      fprintf(stderr, "cannot open include file: %s\n", filename);
+      return -1;
+   }
 
-    file_stack_top++;
-    file_stack[file_stack_top].file = f;
-    file_stack[file_stack_top].filename = strdup(filename);
-    file_stack[file_stack_top].lineno = yylineno;
-    file_stack[file_stack_top].column = yycolumn;
-    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
+   file_stack_top++;
+   file_stack[file_stack_top].file = f;
+   file_stack[file_stack_top].filename = strdup(filename);
+   file_stack[file_stack_top].lineno = yylineno;
+   file_stack[file_stack_top].column = yycolumn;
+   file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
 
-    YY_BUFFER_STATE new_buffer = yy_create_buffer(f, YY_BUF_SIZE);
-    yy_switch_to_buffer(new_buffer);
+   YY_BUFFER_STATE new_buffer = yy_create_buffer(f, YY_BUF_SIZE);
+   yy_switch_to_buffer(new_buffer);
 
-    yylineno = 1;
-    yycolumn = 0;
-    current_filename = file_stack[file_stack_top].filename;
-    return 0;
+   yylineno = 1;
+   yycolumn = 0;
+   current_filename = file_stack[file_stack_top].filename;
+   return 0;
 }
 
 void pop_file() {
-    if (file_stack_top < 0) return;
-    fclose(file_stack[file_stack_top].file);
-    free(file_stack[file_stack_top].filename);
-    yy_delete_buffer(YY_CURRENT_BUFFER);
-    yy_switch_to_buffer(file_stack[file_stack_top].buffer);
-    yylineno = file_stack[file_stack_top].lineno;
-    yycolumn = file_stack[file_stack_top].column;
-    file_stack_top--;
-    current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : "<stdin>";
+   if (file_stack_top < 0) return;
+   fclose(file_stack[file_stack_top].file);
+   free(file_stack[file_stack_top].filename);
+   yy_delete_buffer(YY_CURRENT_BUFFER);
+   yy_switch_to_buffer(file_stack[file_stack_top].buffer);
+   yylineno = file_stack[file_stack_top].lineno;
+   yycolumn = file_stack[file_stack_top].column;
+   file_stack_top--;
+   current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : "<stdin>";
 }
 %}
 
@@ -295,30 +293,30 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 %%
 
 int yywrap(void) {
-    if (file_stack_top >= 0) {
-        pop_file();
-        return 0;  // tell Flex: more input available
-    }
-    return 1;  // tell Flex: we're done
+   if (file_stack_top >= 0) {
+      pop_file();
+      return 0;  // tell Flex: more input available
+   }
+   return 1;  // tell Flex: we're done
 }
 
 int yyparse_file(const char *filename) {
-    FILE *f = fopen(filename, "r");
-    if (!f) {
-        fprintf(stderr, "cannot open file: %s\n", filename);
-        return 1;
-    }
+   FILE *f = fopen(filename, "r");
+   if (!f) {
+      fprintf(stderr, "cannot open file: %s\n", filename);
+      return 1;
+   }
 
-    YY_BUFFER_STATE buf = yy_create_buffer(f, YY_BUF_SIZE);
-    yy_switch_to_buffer(buf);
-    yylineno = 1;
-    yycolumn = 0;
-    current_filename = (char *)filename;
+   YY_BUFFER_STATE buf = yy_create_buffer(f, YY_BUF_SIZE);
+   yy_switch_to_buffer(buf);
+   yylineno = 1;
+   yycolumn = 0;
+   current_filename = (char *)filename;
 
-    int result = yyparse();
+   int result = yyparse();
 
-    yy_delete_buffer(buf);
-    fclose(f);
-    return result;
+   yy_delete_buffer(buf);
+   fclose(f);
+   return result;
 }
 
