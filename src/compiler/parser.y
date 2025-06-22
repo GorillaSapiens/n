@@ -69,6 +69,7 @@ void parse_dump(void) {
 %token <str> STRING IDENTIFIER TYPENAME FLAG OPERATOR
 %token <intval> INTEGER
 %token <dval> FLOAT
+
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
 %token EQ NE LE GE LSHIFT RSHIFT OR AND
@@ -80,24 +81,9 @@ void parse_dump(void) {
 %token DO
 %token CONST
 %token STATIC
-
+%token INCLUDE
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
-
-%left OR
-%left AND
-%left '|'
-%left '^'
-%left '&'
-%left EQ NE
-%left '<' '>' LE GE
-%left LSHIFT RSHIFT
-%left '+' '-'
-%left '*' '/' '%'
-%right UADDR UINDIRECT
-%left POSTINC POSTDEC   // post (x++, x--)
-%right UMINUS UINC UDEC
-%right ASSIGN
 
 %type <node> additive_expr arg_list array_initializer assignable
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
@@ -118,17 +104,13 @@ void parse_dump(void) {
 %type <node> type_name
 %type <node> unary_expr
 %type <node> union_decl
-
 %type <node> param static_param const_param
-
 %type <node> return_stmt goto_stmt break_stmt continue_stmt switch_stmt 
 %type <node> if_stmt while_stmt for_stmt do_stmt label_stmt 
 
 %define parse.error verbose
 %locations
 
-
-%token INCLUDE
 %%
 
 program:
