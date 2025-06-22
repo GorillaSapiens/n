@@ -7,6 +7,7 @@ CFLAGS = -Wall -g
 TARGET = nc
 
 GENSRC = parser.tab.c lex.yy.c
+GENHDR = delexer.h
 
 SRCSRC = \
    ast.c \
@@ -18,7 +19,9 @@ SRCSRC = \
 SRC = $(SRCSRC) $(GENSRC)
 OBJ = $(SRC:.c=.o)
 
-all: $(TARGET)
+all:
+	make depend
+	make $(TARGET)
 
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
@@ -35,11 +38,11 @@ lex.yy.c: lexer.l
 delexer.h: lexer.l delexer.pl
 	./delexer.pl > delexer.h
 
-depend: $(GENSRC)
+depend: $(GENSRC) $(GENHDR)
 	$(CC) $(CFLAGS) -MM $(SRC) > depend.mk
 
 clean:
-	rm -f $(TARGET) *.o parser.tab.c parser.tab.h lex.yy.c depend.mk
+	rm -f $(TARGET) *.o delexer.h parser.tab.c parser.tab.h lex.yy.c depend.mk
 
 -include depend.mk
 
