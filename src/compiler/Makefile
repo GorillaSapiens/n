@@ -22,8 +22,8 @@ SRC = $(SRCSRC) $(GENSRC)
 OBJ = $(SRC:.c=.o)
 
 all:
-	make depend
-	make $(TARGET)
+	@make --no-print-directory depend
+	@make --no-print-directory $(TARGET)
 
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
