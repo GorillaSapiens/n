@@ -2,58 +2,54 @@
 #include <stdlib.h>
 #include <string.h>
 
-static int make_le_binary(const char *p, unsigned char *target, int size) {
-   // TODO FIX
+static int c2n(char c) {
+   if (c >= '0' && c <= '9') {
+      return c - '0';
+   }
+   else if (c >= 'A' && c <= 'F') {
+      return c - 'A' + 10;
+   }
+   else if (c >= 'a' && c <= 'f') {
+      return c - 'a' + 10;
+   }
    return -1;
+}
+
+static int make_le_helper(const char *p, int bpc,
+                          unsigned char *target, int size) {
+   int len = strlen(p);
+   int n = 0;
+   int o = 0;
+   int a = 0;
+   int i;
+
+   p += len - 1;
+   for (i = 0; i < len; i++) {
+      a |= c2n(*p) << o;
+      o += bpc;
+      if (o >= 8) {
+         target[n++] = a;
+         o -= 8;
+         a >>= 8;
+      }
+      p--;
+   }
+   if (a) {
+      target[n++] = a;
+   }
+   return n;
+}
+
+static int make_le_binary(const char *p, unsigned char *target, int size) {
+   return make_le_helper(p, 1, target, size);
 }
 
 static int make_le_hex(const char *p, unsigned char *target, int size) {
-   int n = strlen(p);
-   int i;
-   int offset;
-
-   for (i = 0; i < n; i++) {
-      offset = (n - 1 - i) % 2 ? 4 : 0;
-      switch(p[i]) {
-         case '0':
-         case '1':
-         case '2':
-         case '3':
-         case '4':
-         case '5':
-         case '6':
-         case '7':
-         case '8':
-         case '9':
-            target[(n - 1 - i) / 2] |= (p[i] - '0') << offset;
-            break;
-         case 'a':
-         case 'b':
-         case 'c':
-         case 'd':
-         case 'e':
-         case 'f':
-            target[(n - 1 - i) / 2] |= (p[i] - 'a' + 10) << offset;
-            break;
-         case 'A':
-         case 'B':
-         case 'C':
-         case 'D':
-         case 'E':
-         case 'F':
-            target[(n - 1 - i) / 2] |= (p[i] - 'A' + 10) << offset;
-            break;
-            break;
-         default:
-            return -1;
-      }
-   }
-   return (n + 1) / 2;
+   return make_le_helper(p, 4, target, size);
 }
 
 static int make_le_octal(const char *p, unsigned char *target, int size) {
-   // TODO FIX
-   return -1;
+   return make_le_helper(p, 3, target, size);
 }
 
 static int make_le_decimal(const char *p, unsigned char *target, int size) {
@@ -127,7 +123,16 @@ int make_le_int(const char *p, unsigned char *target, int size) {
 }
 
 #ifdef UNIT_TEST
-void test(const char *p) {
+static unsigned long parse_number(const char *str) {
+   if (str[0] == '0' && (str[1] == 'b' || str[1] == 'B')) {
+      // handles 0b (binary)
+      return strtoul(str + 2, NULL, 2);
+   }
+   // handles 0x (hex), 0 (oct), and default decimal
+   return strtoul(str, NULL, 0);
+}
+
+static void test(const char *p) {
    unsigned char buf[16];
    char *b = buf;
    const char *q = p;
@@ -144,7 +149,7 @@ void test(const char *p) {
    }
    *b = 0;
 
-   desire = strtoul(buf, NULL, 0);
+   desire = parse_number(buf);
 
    n = make_le_int(p, buf, sizeof(buf));
    printf("%ld= (%d) ", desire, n);
@@ -169,5 +174,7 @@ void main(void) {
    test("0x123");
    test("0x1234");
    test("0x123456789ABCDEF");
+   test("0b1100001110100101");
+   test("076543210");
 }
 #endif
