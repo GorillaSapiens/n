@@ -13,6 +13,7 @@ SRCSRC = \
    ast.c \
    check.c \
    integer.c \
+   md5.c \
    messages.c \
    typename.c \
    main.c

@@ -2,15 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Declare from parser.y
-extern int yyparse(void);
-extern void parse_dump(void);
+#include "ast.h"
+#include "lextern.h"
+#include "messages.h"
 
-extern char *current_filename;
+#include "parser.tab.h"
 
-// Optional: reference to input file
-extern FILE* yyin;
-extern int yydebug;
+void usage(const char *exename) {
+   fprintf(stderr, "usage: %s <filename>\n", exename);
+   exit(0);
+}
 
 int main(int argc, char** argv) {
    int ret;
@@ -23,9 +24,13 @@ int main(int argc, char** argv) {
          return 1;
       }
    }
+   else {
+      usage(argv[0]);
+   }
+
    current_filename = argv[1];
 
-#ifdef YYDEBUG
+#if YYDEBUG
    yydebug = 1;
 #endif
 

@@ -2,10 +2,14 @@
 %{
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 
 #include "ast.h"
+#include "md5.h"
+#include "messages.h"
 #include "typename.h"
+
 #include "parser.tab.h"
 
 #define MAX_INCLUDE_DEPTH 32
@@ -19,6 +23,7 @@ int yycolumn = 0;
 typedef struct FileContext {
     FILE *file;
     char *filename;
+    uint8_t md5[16];
     int lineno;
     int column;
     YY_BUFFER_STATE buffer;
@@ -46,9 +51,24 @@ int push_file(const char *filename) {
       return -1;
    }
 
+   uint8_t md5[16];
+   md5File(f, md5);
+   fclose(f);
+
+   for (int i = 0; i <= file_stack_top; i++) {
+      if (!memcmp(file_stack[i].md5, md5, sizeof(md5))) {
+         // md5sums match, abort.
+         debug("md5sum match '%s' '%s'", filename, file_stack[i].filename);
+         return 0;
+      }
+   }
+
+   f = fopen(filename, "r");
+
    file_stack_top++;
    file_stack[file_stack_top].file = f;
    file_stack[file_stack_top].filename = strdup(filename);
+   memcpy(file_stack[file_stack_top].md5, md5, sizeof(md5));
    file_stack[file_stack_top].lineno = yylineno;
    file_stack[file_stack_top].column = yycolumn;
    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
@@ -299,8 +319,9 @@ int yywrap(void) {
    }
    return 1;  // tell Flex: we're done
 }
-
+/*
 int yyparse_file(const char *filename) {
+fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
    FILE *f = fopen(filename, "r");
    if (!f) {
       fprintf(stderr, "cannot open file: %s\n", filename);
@@ -319,4 +340,4 @@ int yyparse_file(const char *filename) {
    fclose(f);
    return result;
 }
-
+*/

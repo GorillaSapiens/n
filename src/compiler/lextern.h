@@ -4,6 +4,7 @@
 int push_file(const char *filename);
 int yylex();
 
+extern FILE *yyin;
 extern char *current_filename;
 extern int yylineno;
 extern int yycolumn;
