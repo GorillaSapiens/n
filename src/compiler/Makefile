@@ -14,6 +14,7 @@ SRCSRC = \
    check.c \
    integer.c \
    messages.c \
+   typename.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)

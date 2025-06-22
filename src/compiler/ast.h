@@ -40,6 +40,10 @@ void dump_ast_flat(const ASTNode *node,
                    int is_last,
                    const char *parent_name);
 
+void parse_dump(void);
+
+extern ASTNode *root;
+
 #define MAKE_NODE(...) make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)
 #define MAKE_NAMED_NODE(name, ...) make_node(name, __VA_ARGS__, NULL)
 

@@ -4,10 +4,10 @@
 #include <string.h>
 
 #include "ast.h"
+#include "check.h"
+#include "lextern.h"
 
-extern int yylineno;
-extern int yycolumn;
-extern char* current_filename;
+ASTNode *root = NULL;
 
 ASTNode *make_node(const char *name, ...) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
@@ -141,4 +141,12 @@ void dump_ast_flat(const ASTNode *node,
                           new_prefix, i == node->count - 1, node->name);
         }
     }
+}
+
+void parse_dump(void) {
+   if (root) {
+      dump_ast_flat(root, "", 1, NULL);
+   }
+
+   check_type_decl(root);
 }
