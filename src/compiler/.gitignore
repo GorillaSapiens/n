@@ -1,1 +1,6 @@
 nc
+*.o
+delexer.h
+parser.tab.c
+lex.yy.c
+depend.mk
