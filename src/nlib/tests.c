@@ -1159,6 +1159,42 @@ void lsrN_tests(void) {
    printf("lsrN, n=4 PASS\n");
 }
 
+void comp2N_tests(void) {
+   long i;
+
+   for (i = 0; i < LOOPS; i++) {
+      char v1 = rand(), v2 = 0, v3 = 0, v4 = 0;
+      test1("comp2N", comp2N,
+         0, v1, v2, v3, v4,
+         0, v1, -v1, v3, v4);
+   }
+   printf("comp2N, n=1 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      int v1 = rand(), v2 = 0, v3 = 0, v4 = 0;
+      test2("comp2N", comp2N,
+         0, v1, v2, v3, v4,
+         0, v1, -v1, v3, v4);
+   }
+   printf("comp2N, n=2 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = 0, v3 = 0, v4 = 0;
+      test3("comp2N", comp2N,
+         0, v1, v2, v3, v4,
+         0, v1, (-v1) & 0xFFFFFF, v3, v4);
+   }
+   printf("comp2N, n=3 PASS\n");
+
+   for (i = 0; i < LOOPS; i++) {
+      long v1 = lrand(), v2 = 0, v3 = 0, v4 = 0;
+      test4("comp2N", comp2N,
+         0, v1, v2, v3, v4,
+         0, v1, -v1, v3, v4);
+   }
+   printf("comp2N, n=4 PASS\n");
+}
+
 void stack_tests(void) {
    int a = 0x1234;
    int b = 0x5678;
@@ -1240,6 +1276,8 @@ int main(void) {
    nl_sp = stack;
 
    printf("tests\n\n");
+
+   comp2N_tests();
 
    add8_tests();
    add16_tests();

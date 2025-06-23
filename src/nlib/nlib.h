@@ -74,6 +74,7 @@ void shiftN(void);
 void pushN(void);
 void popN(void);
 void cpyN(void);
+void comp2N(void);
 void swapN(void);
 
 void stacksess1(void);

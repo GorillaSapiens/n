@@ -37,6 +37,21 @@
     rts
 .endproc
 
+.proc _comp2N
+    ldx size
+    ldy #0
+    sec
+@loop:
+    lda (ptr1), y
+    eor #$FF
+    adc #$0
+    sta (ptr2), y
+    iny
+    dex
+    bne @loop
+    rts
+.endproc
+
 .proc _swapN
     ldx size
     ldy #0
