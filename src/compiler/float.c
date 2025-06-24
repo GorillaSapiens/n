@@ -2,6 +2,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+// TODO FIX later we can add variable length mantissa and exponent,
+// variable offset, and variable ordering.  for right now, you get
+// IEEE 754 based on size.
+
+typedef struct Bytes2EBits {
+   int bytes;
+   int ebits;
+} Bytes2EBits;
+
+static Bytes2EBits exponent_bits[] = {
+   {  1,  4 }, // proposed binary8
+   {  2,  5 }, // half / binary16
+   {  4,  8 }, // single / float / binary32
+   {  8, 11 }, // double / binary64
+   { 16, 15 }, // quad / binary128
+   { 32, 19 }  // binary256
+};
+
+static int ebits(int size) {
+   for (int i = 0;
+        i < sizeof(exponent_bits) /
+            sizeof(exponent_bits[0]);
+        i++) {
+      if (exponent_bits[i].bytes == size) {
+         return exponent_bits[i].ebits;
+      }
+   }
+   return -1;
+}
+
 static int c2n(char c) {
    if (c >= '0' && c <= '9') {
       return c - '0';
