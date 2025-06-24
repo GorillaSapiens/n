@@ -74,10 +74,13 @@ static void do_replacements(char *s) {
 }
 
 static void yymessage(const char *preamble, const char *fmt, va_list args) {
+   va_list args_copy;
+   va_copy(args_copy, args);
+
    int size = 1 + vsnprintf(NULL, 0, fmt, args);
    size *= 2; // allow space for expansion
    char *str = (char *) malloc(sizeof(char) * size);
-   vsnprintf(str, size, fmt, args);
+   vsnprintf(str, size, fmt, args_copy);
 
    do_replacements(str);
 
@@ -92,6 +95,7 @@ void yyerror(const char *fmt, ...) {
    va_start(ap, fmt);
    yymessage("Error", fmt, ap);
    va_end(ap);
+   exit(-1);
 }
 
 void yywarn(const char *fmt, ...) {

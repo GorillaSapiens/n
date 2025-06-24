@@ -142,8 +142,12 @@ void dump_ast_flat(const ASTNode *node,
     }
 }
 
-void parse_dump(void) {
-   if (root) {
-      dump_ast_flat(root, "", 1, NULL);
+void parse_dump_node(ASTNode *node) {
+   if (node) {
+      dump_ast_flat(node, "", 1, NULL);
    }
+}
+
+void parse_dump(void) {
+   parse_dump_node(root);
 }

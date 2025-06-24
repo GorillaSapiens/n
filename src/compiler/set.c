@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,10 +15,23 @@ struct Set {
    Entry *entries;
 };
 
+static void dump(Set *s) {
+   printf("=== %p %d %p\n", s, s->size, s->entries);
+   for (int i = 0; i < s->size; i++) {
+      printf("= %d %s %p\n", i, s->entries[i].key, s->entries[i].value);
+   }
+}
+
 static int compare_entry_by_key(const void *a, const void *b) {
     const Entry *ea = (const Entry *)a;
     const Entry *eb = (const Entry *)b;
     return strcmp(ea->key, eb->key);
+}
+
+static int search_entry_by_key(const void *a, const void *b) {
+    const char *key = (const char *)a;
+    const Entry *entry = (const Entry *)b;
+    return strcmp(key, entry->key);
 }
 
 Set *new_set(void) {
@@ -42,6 +56,8 @@ int set_add(Set *set, const char *key, const void *value) {
       return -1;
    }
 
+printf("=== ADD %s\n", key);
+dump(set);
    int index = set->size;
    set->size++;
    set->entries = (Entry *) realloc(set->entries, set->size * sizeof(Entry));
@@ -50,21 +66,27 @@ int set_add(Set *set, const char *key, const void *value) {
 
    qsort(set->entries, set->size, sizeof(Entry), compare_entry_by_key);
 
+dump(set);
    return 0;
 }
 
 const void *set_get(Set *set, const char *key) {
-   Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), compare_entry_by_key);
+printf("=== GET %s\n", key);
+   Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), search_entry_by_key);
+printf("=== found %p\n", found);
    return (found == NULL) ? NULL : found->value;
 }
 
 void set_rm(Set *set, const char *key) {
-   Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), compare_entry_by_key);
+   Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), search_entry_by_key);
    if (found) {
+      int index = found - set->entries;
       set->size--;
-      found->key = set->entries[set->size].key;
-      found->value = set->entries[set->size].value;
-      qsort(set->entries, set->size, sizeof(Entry), compare_entry_by_key);
+
+      if (index < set->size) {
+         memmove(&set->entries[index], &set->entries[index + 1],
+               (set->size - index) * sizeof(Entry));
+      }
       // no realloc, we expect very few "rm"
    }
 }

@@ -42,7 +42,6 @@ int main(int argc, char** argv) {
    printf("Parsing...\n");
    ret = yyparse();
    if (ret == 0) {
-      parse_dump();
       printf("Parse successful.\n");
    } else {
       printf("Parse failed.\n");

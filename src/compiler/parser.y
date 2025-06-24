@@ -121,7 +121,7 @@ struct_decl:
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | STRUCT TYPENAME '{' {
-        yyerror("duplicate type '%s'", $2);
+        yyerror("duplicate struct '%s'", $2);
     }
   ;
 
@@ -134,7 +134,7 @@ union_decl:
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
   | UNION TYPENAME '{' {
-        yyerror("duplicate type '%s'", $2);
+        yyerror("duplicate union '%s'", $2);
     }
   ;
 

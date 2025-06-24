@@ -41,6 +41,7 @@ void dump_ast_flat(const ASTNode *node,
                    const char *parent_name);
 
 void parse_dump(void);
+void parse_dump_node(ASTNode *node);
 
 extern ASTNode *root;
 
