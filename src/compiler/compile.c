@@ -17,8 +17,8 @@ static void compile_type_decl(ASTNode *node) {
       types = new_set();
    }
 
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   parse_dump_node(node);
+//   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+//   parse_dump_node(node);
 
    const char *key = node->children[0]->strval;
    set_add(types, key, node);
@@ -82,8 +82,8 @@ static void compile_type_decl(ASTNode *node) {
 }
 
 void compile_decl_stmt(ASTNode *node) {
-   //debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   //parse_dump_node(node);
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   parse_dump_node(node);
    return;
 }
 
