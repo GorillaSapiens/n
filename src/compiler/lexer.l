@@ -95,9 +95,9 @@ void pop_file() {
 "goto"          return GOTO;
 "return"        return RETURN;
 
-"const"         return CONST;
-"static"        return STATIC;
-"extern"        return EXTERN;
+"const"         { yylval.str = strdup(yytext); return CONST; }
+"static"        { yylval.str = strdup(yytext); return STATIC; }
+"extern"        { yylval.str = strdup(yytext); return EXTERN; }
 
 "break"         return BREAK;
 "continue"      return CONTINUE;
