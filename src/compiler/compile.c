@@ -20,18 +20,8 @@ static void compile_type_decl(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
 
-#if 0
    const char *key = node->children[0]->strval;
-   if (!strcmp(key, "void")) { fprintf(stderr, "\n\n=========================\n\n"); }
-   ASTNode *value = (ASTNode *) set_get(types, key);
-   if (value) {
-      error("[%s:%d.%d] duplicate type %s, first defined at [%s:%d.%d]",
-         node->file, node->line, node->column,
-         key,
-         value->file, value->line, value->column);
-   }
    set_add(types, key, node);
-#endif
 
    //debug("%s:%s", __FUNCTION__, node->children[0]->strval);
    bool haveSize = false;

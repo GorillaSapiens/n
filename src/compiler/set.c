@@ -15,12 +15,14 @@ struct Set {
    Entry *entries;
 };
 
+#if 0
 static void dump(Set *s) {
    printf("=== %p %d %p\n", s, s->size, s->entries);
    for (int i = 0; i < s->size; i++) {
       printf("= %d %s %p\n", i, s->entries[i].key, s->entries[i].value);
    }
 }
+#endif
 
 static int compare_entry_by_key(const void *a, const void *b) {
     const Entry *ea = (const Entry *)a;
@@ -56,8 +58,6 @@ int set_add(Set *set, const char *key, const void *value) {
       return -1;
    }
 
-printf("=== ADD %s\n", key);
-dump(set);
    int index = set->size;
    set->size++;
    set->entries = (Entry *) realloc(set->entries, set->size * sizeof(Entry));
@@ -66,14 +66,11 @@ dump(set);
 
    qsort(set->entries, set->size, sizeof(Entry), compare_entry_by_key);
 
-dump(set);
    return 0;
 }
 
 const void *set_get(Set *set, const char *key) {
-printf("=== GET %s\n", key);
    Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), search_entry_by_key);
-printf("=== found %p\n", found);
    return (found == NULL) ? NULL : found->value;
 }
 
