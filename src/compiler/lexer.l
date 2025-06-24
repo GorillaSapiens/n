@@ -97,6 +97,7 @@ void pop_file() {
 
 "const"         return CONST;
 "static"        return STATIC;
+"extern"        return EXTERN;
 
 "break"         return BREAK;
 "continue"      return CONTINUE;
