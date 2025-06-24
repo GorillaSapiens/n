@@ -102,6 +102,19 @@ static bool has_modifier(ASTNode *node, const char *modifier) {
    return false;
 }
 
+static int get_size(const char *type) {
+   const ASTNode *node = set_get(types, type);
+   for (const ASTNode *list = node->children[1];
+         list != NULL;
+         list = list->children[1]) {
+      if (!strncmp(list->children[0]->strval, "$size:", 6)) {
+         return atoi(list->children[0]->strval + 6);
+      }
+   }
+   error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+   return -1; // unreachable
+}
+
 static void compile_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
@@ -141,6 +154,8 @@ static void compile_decl_stmt(ASTNode *node) {
       printf("static ");
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
+   
+   int size = get_size(type);
 
    if (is_extern) {
       if (is_static) {
@@ -153,6 +168,12 @@ static void compile_decl_stmt(ASTNode *node) {
    else {
       if (!is_static) {
          emit(".export %s\n", name);
+      }
+      if (expression == NULL) {
+         emit(".section \"BSS\"\n");
+         emit("%s: .res %d\n", name, size);
+      }
+      else {
       }
    }
 
