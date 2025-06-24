@@ -41,6 +41,7 @@
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
 %type <node> static_decl_stmt const_decl_stmt decl_stmt
+%type <node> block_static_decl_stmt block_const_decl_stmt block_decl_stmt
 %type <node> equality_expr expr expr_args expr_list expr_stmt
 %type <node> flag flag_list function_decl const_function_decl
 %type <node> include_stmt
@@ -194,21 +195,21 @@ statement_list:
   ;
 
 statement:
-    block            { $$ = $1; }
-  | decl_stmt        { $$ = $1; }
-  | const_decl_stmt  { $$ = $1; }
-  | static_decl_stmt { $$ = $1; }
-  | expr_stmt        { $$ = $1; }
-  | return_stmt      { $$ = $1; }
-  | goto_stmt        { $$ = $1; }
-  | break_stmt       { $$ = $1; }
-  | continue_stmt    { $$ = $1; }
-  | switch_stmt      { $$ = $1; }
-  | if_stmt          { $$ = $1; }
-  | while_stmt       { $$ = $1; }
-  | for_stmt         { $$ = $1; }
-  | do_stmt          { $$ = $1; }
-  | label_stmt       { $$ = $1; }
+    block                  { $$ = $1; }
+  | block_decl_stmt        { $$ = $1; }
+  | block_const_decl_stmt  { $$ = $1; }
+  | block_static_decl_stmt { $$ = $1; }
+  | expr_stmt              { $$ = $1; }
+  | return_stmt            { $$ = $1; }
+  | goto_stmt              { $$ = $1; }
+  | break_stmt             { $$ = $1; }
+  | continue_stmt          { $$ = $1; }
+  | switch_stmt            { $$ = $1; }
+  | if_stmt                { $$ = $1; }
+  | while_stmt             { $$ = $1; }
+  | for_stmt               { $$ = $1; }
+  | do_stmt                { $$ = $1; }
+  | label_stmt             { $$ = $1; }
   ;
 
 return_stmt:
@@ -272,6 +273,24 @@ const_decl_stmt:
   ;
 
 static_decl_stmt:
+    STATIC type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5); }
+  | STATIC type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
+  | STATIC type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
+  ;
+
+block_decl_stmt:
+    type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
+  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, make_identifier_leaf($2), $3, $4, $6); }
+  ;
+
+block_const_decl_stmt:
+    CONST type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5); }
+  | CONST type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
+  | CONST type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
+  ;
+
+block_static_decl_stmt:
     STATIC type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5); }
   | STATIC type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }
   | STATIC type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($2, make_identifier_leaf($3), $4, $5, $7); }

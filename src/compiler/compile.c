@@ -84,6 +84,15 @@ static void compile_type_decl(ASTNode *node) {
 void compile_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
+
+   const char *type      = node->children[0]->strval;
+   const char *name      = node->children[1]->strval;
+   const char *dimension = node->children[2]->strval;
+   const char *location  = node->children[3]->strval;
+   ASTNode *expression   = node->children[4];
+
+   printf("=%s %s %s %s %p\n", type, name, dimension, location, expression);
+
    return;
 }
 
@@ -106,6 +115,12 @@ void compile(ASTNode *node) {
       compile_type_decl(node);
    }
    else if (!strcmp(node->name, "decl_stmt")) {
+      compile_decl_stmt(node);
+   }
+   else if (!strcmp(node->name, "static_decl_stmt")) {
+      compile_decl_stmt(node);
+   }
+   else if (!strcmp(node->name, "const_decl_stmt")) {
       compile_decl_stmt(node);
    }
    else if (!strcmp(node->name, "function_decl")) {
