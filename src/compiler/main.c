@@ -3,7 +3,7 @@
 #include <string.h>
 
 #include "ast.h"
-#include "check.h"
+#include "compile.h"
 #include "lextern.h"
 #include "md5seen.h"
 #include "messages.h"
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
       return -1;
    }
 
-   do_checks();
+   do_compile();
 
    return 0;
 }

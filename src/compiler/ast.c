@@ -4,7 +4,6 @@
 #include <string.h>
 
 #include "ast.h"
-#include "check.h"
 #include "lextern.h"
 
 ASTNode *root = NULL;

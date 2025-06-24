@@ -1,6 +1,6 @@
 #ifndef _INCLUDE_CHECK_H_
 #define _INCLUDE_CHECK_H_
 
-void do_checks(void);
+void do_compile(void);
 
 #endif

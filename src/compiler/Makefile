@@ -11,11 +11,12 @@ GENHDR = delexer.h
 
 SRCSRC = \
    ast.c \
-   check.c \
+   compile.c \
    integer.c \
    md5.c \
    md5seen.c \
    messages.c \
+   set.c \
    typename.c \
    main.c
 

@@ -7,7 +7,6 @@
 #include <stdbool.h>
 
 #include "ast.h"
-#include "check.h"
 #include "lextern.h"
 #include "messages.h"
 #include "typename.h"
