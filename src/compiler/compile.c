@@ -6,6 +6,7 @@
 
 #include "ast.h"
 #include "compile.h"
+#include "integer.h"
 #include "messages.h"
 #include "set.h"
 
@@ -201,13 +202,38 @@ static void compile_decl_stmt(ASTNode *node) {
          }
          emit("%s:\n", name);
          // TODO FIX multiply "size" by "dimension" if necessary
-         if (has_flag(type, "$signed")) {
-            // a signed integer
-            emit(".res %d ; signed\n", size); // TODO FIX change to initializer
-         }
-         else if (has_flag(type, "$unsigned")) {
-            // an unsigned integer
-            emit(".res %d ; unsigned\n", size); // TODO FIX change to initializer
+         if (has_flag(type, "$signed") || has_flag(type, "$unsigned")) {
+            expression = expression->children[0];
+            // an integer
+            bool neg = false;
+            if (!strcmp(expression->name, "-")) {
+               if (has_flag(type, "$unsigned")) {
+                  warning("[%s:%d.%d] negative initializer for unsigned symbol",
+                     node->file, node->line, node->column);
+               }
+               neg = true;
+               expression = expression->children[0];
+            }
+            if (!strcmp(expression->name, "int")) {
+               unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
+               make_le_int(expression->strval, bytes, size); // TODO FIX check return value
+               if (bytes[size - 1] & 0x80) {
+                  warning("[%s:%d.%d] possible overflow of unsigned initializer",
+                     node->file, node->line, node->column);
+               }
+               if (neg) {
+                  negate_le_int(bytes, size);
+               }
+               emit(".byte $%02x", bytes[0]);
+               for (int i = 1; i < size; i++) {
+                  emit(", $%02x", bytes[i]);
+               }
+               emit("\n");
+            }
+            else {
+               warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
+               emit(".res %d ; signed\n", size); // TODO FIX change to initializer
+            }
          }
          else if (has_flag(type, "$float")) {
             // a float

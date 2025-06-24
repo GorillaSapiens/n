@@ -33,7 +33,6 @@ void warning(const char *fmt, ...) {
    vfprintf(stderr, fmt, args);
    fprintf(stderr, "\n");
    va_end(args);
-   exit(-1);
 }
 
 static bool isident(const char *p) {
