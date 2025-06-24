@@ -12,6 +12,7 @@ GENHDR = delexer.h
 SRCSRC = \
    ast.c \
    compile.c \
+   float.c \
    integer.c \
    md5.c \
    md5seen.c \

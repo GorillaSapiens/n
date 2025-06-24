@@ -40,16 +40,8 @@ static int make_le_helper(const char *p, int bpc,
    return n;
 }
 
-static int make_le_binary(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 1, target, size);
-}
-
 static int make_le_hex(const char *p, unsigned char *target, int size) {
    return make_le_helper(p, 4, target, size);
-}
-
-static int make_le_octal(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 3, target, size);
 }
 
 static int make_le_decimal(const char *p, unsigned char *target, int size) {
@@ -87,7 +79,7 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
    return max;
 }
 
-int make_le_int(const char *p, unsigned char *target, int size) {
+int make_le_float(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
 
@@ -104,33 +96,22 @@ int make_le_int(const char *p, unsigned char *target, int size) {
    }
    *q = 0;
 
-   if (!strcmp(copy, "0")) {
+   if (!strcmp(copy, "0") || !strcmp(copy, "0.") || !strcmp(copy, ".0")) {
       for (int i = 0; i < size; i++) {
          target[i] = 0;
       }
       return 1;
    }
-   else if (!strncasecmp(copy, "0b", 2)) {
-      return make_le_binary(copy + 2, target, size);
-   }
    else if (!strncasecmp(copy, "0x", 2)) {
       return make_le_hex(copy + 2, target, size);
-   }
-   else if (copy[0] == '0') {
-      return make_le_octal(copy + 1, target, size);
    }
    else {
       return make_le_decimal(copy, target, size);
    }
 }
 
-void negate_le_int(unsigned char *target, int size) {
-   int carry = 1;
-   for (int i = 0; i < size; i++) {
-      carry = (target[i] ^  0xFF) + carry;
-      target[i] = carry;
-      carry >>= 8;
-   }
+void negate_le_float(unsigned char *target, int size) {
+   target[size-1] |= 0x80;
 }
 
 #ifdef UNIT_TEST
@@ -162,7 +143,7 @@ static void test(const char *p) {
 
    desire = parse_number(buf);
 
-   n = make_le_int(p, buf, sizeof(buf));
+   n = make_le_float(p, buf, sizeof(buf));
    printf("%ld= (%d) ", desire, n);
 
    for (i = 0; i < n; i++) {
