@@ -81,7 +81,17 @@ static void compile_type_decl(ASTNode *node) {
    }
 }
 
-void compile_decl_stmt(ASTNode *node) {
+static bool has_modifier(ASTNode *node, const char *modifier) {
+   while (node) {
+      if (!strcmp(modifier, node->children[0]->strval)) {
+         return true;
+      }
+      node = node->children[1];
+   }
+   return false;
+}
+
+static void compile_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
 
@@ -92,18 +102,28 @@ void compile_decl_stmt(ASTNode *node) {
    const char *location  = node->children[4]->strval;
    ASTNode *expression   = node->children[5];
 
-   printf("=%p %s %s %p @%s %p\n", modifiers, type, name, dimension, location, expression);
+   printf("=");
+   if (has_modifier(modifiers, "extern")) {
+      printf("extern ");
+   }
+   if (has_modifier(modifiers, "const")) {
+      printf("const ");
+   }
+   if (has_modifier(modifiers, "static")) {
+      printf("static ");
+   }
+   printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
 
    return;
 }
 
-void compile_function_decl(ASTNode *node) {
+static void compile_function_decl(ASTNode *node) {
    //debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    //parse_dump_node(node);
    return;
 }
 
-void compile(ASTNode *node) {
+static void compile(ASTNode *node) {
    if (!node) {
       return;
    }
