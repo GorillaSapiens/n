@@ -170,10 +170,25 @@ static void compile_decl_stmt(ASTNode *node) {
          emit(".export %s\n", name);
       }
       if (expression == NULL) {
+         if (is_const) {
+            error("[%s:%d.%d] 'const' missinf initializer",
+               node->file, node->line, node->column);
+         }
          emit(".section \"BSS\"\n");
-         emit("%s: .res %d\n", name, size);
+         emit("%s:\n", name);
+         // TODO FIX multiply "size" by "dimension" if necessary
+         emit(".res %d\n", size);
       }
       else {
+         if (is_const) {
+            emit(".section \"RODATA\"\n");
+         }
+         else {
+            emit(".section \"DATA\"\n");
+         }
+         emit("%s:\n", name);
+         // TODO FIX multiply "size" by "dimension" if necessary
+         emit(".res %d\n", size); // TODO FIX change to initializer
       }
    }
 
