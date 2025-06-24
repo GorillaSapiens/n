@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -8,7 +9,15 @@
 #include "messages.h"
 #include "set.h"
 
+void emit(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   vprintf(fmt, args);
+   va_end(args);
+}
+
 Set *types = NULL;
+Set *globals = NULL;
 
 // check type_decl for existence of $size and $endian
 static void compile_type_decl(ASTNode *node) {
@@ -104,6 +113,19 @@ static void compile_decl_stmt(ASTNode *node) {
    const char *location  = node->children[4]->strval;
    ASTNode *expression   = node->children[5];
 
+   if (!globals) {
+      globals = new_set();
+   }
+
+   const ASTNode *value = set_get(globals, name);
+   if (value != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+         node->file, node->line, node->column,
+         name,
+         value->file, value->line, value->column);
+   }
+   set_add(globals, name, node);
+
    bool is_extern = has_modifier(modifiers, "extern");
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
@@ -119,6 +141,20 @@ static void compile_decl_stmt(ASTNode *node) {
       printf("static ");
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
+
+   if (is_extern) {
+      if (is_static) {
+         error("[%s:%d.%d] 'extern' and 'static' don't mix",
+            node->file, node->line, node->column);
+      }
+
+      emit(".import %s\n", name);
+   }
+   else {
+      if (!is_static) {
+         emit(".export %s\n", name);
+      }
+   }
 
    return;
 }
