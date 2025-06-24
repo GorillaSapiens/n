@@ -93,6 +93,10 @@ void compile_decl_stmt(ASTNode *node) {
 
    printf("=%s %s %s %s %p\n", type, name, dimension, location, expression);
 
+   if (!strstr(node->name, "const") && !strstr(node->name, "static")) {
+      printf(".export %s\n", name);
+   }
+
    return;
 }
 
