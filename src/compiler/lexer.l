@@ -148,34 +148,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 }
 
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
-    const char* yy = yytext;
-    int val = 0;
-
-    if (yy[1] != '\\') {
-        val = yy[1];
-    } else if (yy[2] == 'x') {
-        val = (int)strtol(yy + 3, NULL, 16);
-    } else if (yy[2] == 'u') {
-        char buf[5] = { yy[3], yy[4], yy[5], yy[6], 0 };
-        val = (int)strtol(buf, NULL, 16);
-    } else {
-        switch (yy[2]) {
-            case 'n': val = '\n'; break;
-            case 'r': val = '\r'; break;
-            case 't': val = '\t'; break;
-            case 'b': val = '\b'; break;
-            case 'f': val = '\f'; break;
-            case 'a': val = '\a'; break;
-            case 'v': val = '\v'; break;
-            case '\\': val = '\\'; break;
-            case '\'': val = '\''; break;
-            case '\"': val = '\"'; break;
-            case '?': val = '\?'; break;
-            default: val = yy[2]; break;
-        }
-    }
-
-    yylval.intval = val;
+    yylval.str = strdup(yytext);
     return INTEGER;
 }
 
@@ -187,90 +160,37 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 }
 
 [0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? {
-    char* clean = malloc(strlen(yytext) + 1);
-    char* dst = clean;
-    for (char* src = yytext; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.dval = strtod(clean, NULL);
-    free(clean);
+    yylval.str = strdup(yytext);
     return FLOAT;
 }
 
 0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+ {
-    char* clean = malloc(strlen(yytext) + 1);
-    char* dst = clean;
-    for (char* src = yytext; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.dval = strtod(clean, NULL);
-    free(clean);
+    yylval.str = strdup(yytext);
     return FLOAT;
 }
 
 [0-9_]+[eE][+-]?[0-9_]+ {
-    char* clean = malloc(strlen(yytext) + 1);
-    char* dst = clean;
-    for (char* src = yytext; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.dval = strtod(clean, NULL);
-    free(clean);
+    yylval.str = strdup(yytext);
     return FLOAT;
 }
 
 0[xX][0-9a-fA-F_]+ {
-    char* raw = yytext + 2;
-    char* clean = malloc(strlen(raw) + 1);
-    char* dst = clean;
-    for (char* src = raw; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.intval = (int)strtol(clean, NULL, 16);
-    free(clean);
+    yylval.str = strdup(yytext);
     return INTEGER;
 }
 
 0[bB][01_]+ {
-    char* clean = strdup(yytext + 2);
-    char* p = clean;
-    int val = 0;
-    while (*p) {
-        if (*p != '_') {
-            val = (val << 1) | (*p - '0');
-        }
-        p++;
-    }
-    free(clean);
-    yylval.intval = val;
+    yylval.str = strdup(yytext);
     return INTEGER;
 }
 
 0[0-7_]+ {
-    char* clean = strdup(yytext);
-    char* dst = clean;
-    for (char* src = clean; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.intval = (int)strtol(clean, NULL, 8);
-    free(clean);
+    yylval.str = strdup(yytext);
     return INTEGER;
 }
 
 [0-9_]+ {
-    char* clean = strdup(yytext);
-    char* dst = clean;
-    for (char* src = yytext; *src; ++src) {
-        if (*src != '_') *dst++ = *src;
-    }
-    *dst = '\0';
-    yylval.intval = atoi(clean);
-    free(clean);
+    yylval.str = strdup(yytext);
     return INTEGER;
 }
 

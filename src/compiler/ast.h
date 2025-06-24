@@ -18,9 +18,7 @@ typedef struct ASTNode {
    enum ASTKind kind;
 
    union {
-      unsigned long long intval;
-      double dval;
-      char *strval;
+      const char *strval;
    };
 
    int count;
@@ -28,12 +26,14 @@ typedef struct ASTNode {
 } ASTNode;
 
 ASTNode *make_node(const char *name, ...);
-ASTNode *make_integer_leaf(unsigned long long intval);
-ASTNode *make_string_leaf(char *strval);
-ASTNode *make_identifier_leaf(char *strval);
-ASTNode *make_typename_leaf(char *strval);
-ASTNode *make_float_leaf(double dval);
+ASTNode *make_integer_leaf(const char *intval);
+ASTNode *increment_integer_leaf(ASTNode *node);
+ASTNode *make_string_leaf(const char *strval);
+ASTNode *make_identifier_leaf(const char *strval);
+ASTNode *make_typename_leaf(const char *strval);
+ASTNode *make_float_leaf(const char *dval);
 ASTNode *make_empty_leaf(void);
+char *make_negative(const char *p);
 
 void dump_ast_flat(const ASTNode *node,
                    const char *prefix,

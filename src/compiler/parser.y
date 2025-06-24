@@ -15,14 +15,12 @@
 
 %union {
     char    *str;
-    double   dval;
-    int      intval;
     ASTNode *node;
 }
 
 %token <str> STRING IDENTIFIER TYPENAME FLAG OPERATOR
-%token <intval> INTEGER
-%token <dval> FLOAT
+%token <str> INTEGER
+%token <str> FLOAT
 
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
@@ -148,8 +146,8 @@ struct_field:
   ;
 
 opt_pointer:
-    /* empty */     { $$ = make_integer_leaf(0); }
-  | '*' opt_pointer { $$ = $2; $$->intval++; }
+    /* empty */     { $$ = make_integer_leaf("0"); }
+  | '*' opt_pointer { $$ = $2; increment_integer_leaf($$); }
   ;
 
 param_list:
@@ -429,9 +427,11 @@ expr_args:
 struct_literal:
     TYPENAME '{' struct_inits ';' '}' { $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
   | TYPENAME '{' FLOAT '}'            { $$ = MAKE_NODE(make_identifier_leaf($1), make_float_leaf($3)); }
-  | TYPENAME '{' '-' FLOAT '}'        { $$ = MAKE_NODE(make_identifier_leaf($1), make_float_leaf(-$4)); }
+  | TYPENAME '{' '-' FLOAT '}'        { $$ = MAKE_NODE(make_identifier_leaf($1),
+                                                       make_float_leaf(make_negative($4))); }
   | TYPENAME '{' INTEGER '}'          { $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf($3)); }
-  | TYPENAME '{' '-' INTEGER '}'      { $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf(-$4)); }
+  | TYPENAME '{' '-' INTEGER '}'      { $$ = MAKE_NODE(make_identifier_leaf($1),
+                                                       make_integer_leaf(make_negative($4))); }
   | TYPENAME '{' STRING '}'           { $$ = MAKE_NODE(make_identifier_leaf($1), make_string_leaf($3)); }
   ;
 

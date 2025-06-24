@@ -25,18 +25,27 @@ ASTNode *make_node(const char *name, ...) {
    return ret;
 }
 
-ASTNode *make_integer_leaf(unsigned long long intval) {
+ASTNode *make_integer_leaf(const char *intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "int";
    ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_INTEGER;
-   ret->intval = intval;
+   ret->strval = intval;
    return ret;
 }
 
-ASTNode *make_string_leaf(char *strval) {
+ASTNode *increment_integer_leaf(ASTNode *node) {
+   unsigned long n = strtoul(node->strval, NULL, 0);
+   n++;
+   free((void *)node->strval);
+   node->strval = (char *) malloc(24);
+   sprintf((char *)node->strval, "%ld", n);
+   return node;
+}
+
+ASTNode *make_string_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
    ret->file = strdup(current_filename);
@@ -47,7 +56,7 @@ ASTNode *make_string_leaf(char *strval) {
    return ret;
 }
 
-ASTNode *make_identifier_leaf(char *strval) {
+ASTNode *make_identifier_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "identifier";
    ret->file = strdup(current_filename);
@@ -58,7 +67,7 @@ ASTNode *make_identifier_leaf(char *strval) {
    return ret;
 }
 
-ASTNode *make_typename_leaf(char *strval) {
+ASTNode *make_typename_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "typename";
    ret->file = strdup(current_filename);
@@ -69,14 +78,14 @@ ASTNode *make_typename_leaf(char *strval) {
    return ret;
 }
 
-ASTNode *make_float_leaf(double dval) {
+ASTNode *make_float_leaf(const char *dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float";
    ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_FLOAT;
-   ret->dval = dval;
+   ret->strval = dval;
    return ret;
 }
 
@@ -88,6 +97,13 @@ ASTNode *make_empty_leaf(void) {
    ret->column = yycolumn;
    ret->kind = AST_EMPTY;
    return ret;
+}
+
+char *make_negative(const char *p) {
+   char *q = (char *) malloc(sizeof(char) * strlen(p) + 2);
+   sprintf(q, "-%s", p);
+   free((void *)p);
+   return q;
 }
 
 void dump_ast_flat(const ASTNode *node,
@@ -107,8 +123,8 @@ void dump_ast_flat(const ASTNode *node,
              node->name);
 
        switch (node->kind) {
-          case AST_INTEGER:    printf(" %llu", node->intval); break;
-          case AST_FLOAT:      printf(" %f", node->dval); break;
+          case AST_INTEGER:    printf(" %s", node->strval); break;
+          case AST_FLOAT:      printf(" %s", node->strval); break;
           case AST_STRING:     printf(" \"%s\"", node->strval); break;
           case AST_IDENTIFIER: printf(" %s", node->strval); break;
           case AST_TYPENAME:   printf(" %s", node->strval); break;
