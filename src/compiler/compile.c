@@ -85,17 +85,14 @@ void compile_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
 
-   const char *type      = node->children[0]->strval;
-   const char *name      = node->children[1]->strval;
-   const char *dimension = node->children[2]->strval;
-   const char *location  = node->children[3]->strval;
-   ASTNode *expression   = node->children[4];
+   ASTNode *modifiers    = node->children[0];
+   const char *type      = node->children[1]->strval;
+   const char *name      = node->children[2]->strval;
+   ASTNode *dimension    = node->children[3];
+   const char *location  = node->children[4]->strval;
+   ASTNode *expression   = node->children[5];
 
-   printf("=%s %s %s %s %p\n", type, name, dimension, location, expression);
-
-   if (!strstr(node->name, "const") && !strstr(node->name, "static")) {
-      printf(".export %s\n", name);
-   }
+   printf("=%p %s %s %p @%s %p\n", modifiers, type, name, dimension, location, expression);
 
    return;
 }
