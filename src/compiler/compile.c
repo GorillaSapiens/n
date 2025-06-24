@@ -82,11 +82,13 @@ static void compile_type_decl(ASTNode *node) {
 }
 
 static bool has_modifier(ASTNode *node, const char *modifier) {
-   while (node) {
-      if (!strcmp(modifier, node->children[0]->strval)) {
-         return true;
+   if (node && node->kind != AST_EMPTY) {
+      while (node) {
+         if (!strcmp(modifier, node->children[0]->strval)) {
+            return true;
+         }
+         node = node->children[1];
       }
-      node = node->children[1];
    }
    return false;
 }
@@ -102,14 +104,18 @@ static void compile_decl_stmt(ASTNode *node) {
    const char *location  = node->children[4]->strval;
    ASTNode *expression   = node->children[5];
 
+   bool is_extern = has_modifier(modifiers, "extern");
+   bool is_const  = has_modifier(modifiers, "const");
+   bool is_static = has_modifier(modifiers, "static");
+
    printf("=");
-   if (has_modifier(modifiers, "extern")) {
+   if (is_extern) {
       printf("extern ");
    }
-   if (has_modifier(modifiers, "const")) {
+   if (is_const) {
       printf("const ");
    }
-   if (has_modifier(modifiers, "static")) {
+   if (is_static) {
       printf("static ");
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
