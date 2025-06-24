@@ -9,7 +9,7 @@
 #include "messages.h"
 #include "set.h"
 
-void emit(const char *fmt, ...) {
+static void emit(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
    vprintf(fmt, args);
@@ -18,6 +18,19 @@ void emit(const char *fmt, ...) {
 
 Set *types = NULL;
 Set *globals = NULL;
+
+// for parameterless flags only
+static bool has_flag(const char *type, const char *flag) {
+   const ASTNode *node = set_get(types, type);
+   for (const ASTNode *list = node->children[1];
+         list != NULL;
+         list = list->children[1]) {
+      if (!strcmp(list->children[0]->strval, flag)) {
+         return true;
+      }
+   }
+   return false;
+}
 
 // check type_decl for existence of $size and $endian
 static void compile_type_decl(ASTNode *node) {
@@ -188,7 +201,21 @@ static void compile_decl_stmt(ASTNode *node) {
          }
          emit("%s:\n", name);
          // TODO FIX multiply "size" by "dimension" if necessary
-         emit(".res %d\n", size); // TODO FIX change to initializer
+         if (has_flag(type, "$signed")) {
+            // a signed integer
+            emit(".res %d ; signed\n", size); // TODO FIX change to initializer
+         }
+         else if (has_flag(type, "$unsigned")) {
+            // an unsigned integer
+            emit(".res %d ; unsigned\n", size); // TODO FIX change to initializer
+         }
+         else if (has_flag(type, "$float")) {
+            // a float
+            emit(".res %d ; float\n", size); // TODO FIX change to initializer
+         }
+         else {
+            emit(".res %d ; huh?\n", size); // TODO FIX change to initializer
+         }
       }
    }
 
