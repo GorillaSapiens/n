@@ -133,6 +133,26 @@ void negate_le_int(unsigned char *target, int size) {
    }
 }
 
+int make_be_int(const char *p, unsigned char *target, int size) {
+   int ret = make_le_int(p, target, size);
+   int tmp;
+   for (int i = 0; i < size/2; i++) {
+      tmp = target[i];
+      target[i] = target[size - 1 - i];
+      target[size - 1 - i] = tmp;
+   }
+   return ret;
+}
+
+void negate_be_int(unsigned char *target, int size) {
+   int carry = 1;
+   for (int i = size - 1; i >= 0; i--) {
+      carry = (target[i] ^  0xFF) + carry;
+      target[i] = carry;
+      carry >>= 8;
+   }
+}
+
 #ifdef UNIT_TEST
 static unsigned long parse_number(const char *str) {
    if (str[0] == '0' && (str[1] == 'b' || str[1] == 'B')) {
