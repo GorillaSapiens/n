@@ -111,3 +111,19 @@ int make_le_float(const char *p, unsigned char *target, int size) {
 void negate_le_float(unsigned char *target, int size) {
    target[size-1] |= 0x80;
 }
+
+int make_be_float(const char *p, unsigned char *target, int size) {
+   int ret = make_le_float(p, target, size);
+   int tmp;
+   for (int i = 0; i < size/2; i++) {
+      tmp = target[i];
+      target[i] = target[size - 1 - i];
+      target[size - 1 - i] = tmp;
+   }
+   return ret;
+}
+
+void negate_be_float(unsigned char *target, int size) {
+   target[0] |= 0x80;
+}
+
