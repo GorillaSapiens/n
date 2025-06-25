@@ -321,11 +321,11 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
       }
       if (a->children[0] && b->children[0]) {
          if (has_modifier(a->children[0]->children[0], "const") !=
-             has_modifier(a->children[0]->children[0], "const")) {
+             has_modifier(b->children[0]->children[0], "const")) {
             return false;
          }
          if (has_modifier(a->children[0]->children[0], "static") !=
-             has_modifier(a->children[0]->children[0], "static")) {
+             has_modifier(b->children[0]->children[0], "static")) {
             return false;
          }
          if (strcmp(a->children[0]->children[1]->strval,
