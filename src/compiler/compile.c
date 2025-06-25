@@ -23,7 +23,8 @@ EmitSink es_bss    = EMIT_INIT;
 Set *types = NULL;
 Set *globals = NULL;
 
-// for parameterless flags only
+// for parameterless flags (e.g. "$signed")
+// also for compleate flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
    const ASTNode *node = set_get(types, type);
    for (const ASTNode *list = node->children[1];
@@ -221,13 +222,26 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             if (!strcmp(expression->name, "int")) {
                unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
-               make_le_int(expression->strval, bytes, size); // TODO FIX check return value
-               if (bytes[size - 1] & 0x80) {
-                  warning("[%s:%d.%d] possible overflow of unsigned initializer",
-                     node->file, node->line, node->column);
+
+               if (has_flag(type, "$endian:big")) {
+                  make_be_int(expression->strval, bytes, size); // TODO FIX check return value
+                  if (bytes[size - 1] & 0x80) {
+                     warning("[%s:%d.%d] possible overflow of unsigned initializer",
+                           node->file, node->line, node->column);
+                  }
+                  if (neg) {
+                     negate_be_int(bytes, size);
+                  }
                }
-               if (neg) {
-                  negate_le_int(bytes, size);
+               else {
+                  make_le_int(expression->strval, bytes, size); // TODO FIX check return value
+                  if (bytes[size - 1] & 0x80) {
+                     warning("[%s:%d.%d] possible overflow of unsigned initializer",
+                           node->file, node->line, node->column);
+                  }
+                  if (neg) {
+                     negate_le_int(bytes, size);
+                  }
                }
                emit(es, "\t.byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
@@ -250,10 +264,20 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             if (!strcmp(expression->name, "float")) {
                unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
-               make_le_float(expression->strval, bytes, size); // TODO FIX check return value
-               if (neg) {
-                  negate_le_float(bytes, size);
+
+               if (has_flag(type, "$endian:big")) {
+                  make_be_float(expression->strval, bytes, size); // TODO FIX check return value
+                  if (neg) {
+                     negate_be_float(bytes, size);
+                  }
                }
+               else {
+                  make_le_float(expression->strval, bytes, size); // TODO FIX check return value
+                  if (neg) {
+                     negate_le_float(bytes, size);
+                  }
+               }
+
                emit(es, "\t.byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
                   emit(es, ", $%02x", bytes[i]);
