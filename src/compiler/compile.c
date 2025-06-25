@@ -22,6 +22,7 @@ EmitSink es_bss    = EMIT_INIT;
 
 Set *types = NULL;
 Set *globals = NULL;
+Set *functions = NULL;
 
 // for parameterless flags (e.g. "$signed")
 // also for compleate flags (e.g. "$endian:little")
@@ -298,11 +299,78 @@ static void compile_decl_stmt(ASTNode *node) {
    return;
 }
 
+static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
+   parse_dump_node(a);
+   parse_dump_node(b);
+
+   // constness must match
+   if (has_modifier(a->children[0], "const") !=
+       has_modifier(b->children[0], "const")) {
+      return false;
+   }
+   // return type must match
+   if (strcmp(a->children[1]->strval, b->children[1]->strval)) {
+      return false;
+   }
+   // param types must match
+   a = a->children[3];
+   b = b->children[3];
+   while (a && b) {
+      if (a->kind != b-> kind) {
+         return false;
+      }
+      if (a->children[0] && b->children[0]) {
+         if (has_modifier(a->children[0]->children[0], "const") !=
+             has_modifier(a->children[0]->children[0], "const")) {
+            return false;
+         }
+         if (has_modifier(a->children[0]->children[0], "static") !=
+             has_modifier(a->children[0]->children[0], "static")) {
+            return false;
+         }
+         if (strcmp(a->children[0]->children[1]->strval,
+                    b->children[0]->children[1]->strval)) {
+            return false;
+         }
+      }
+      else {
+         return false;
+      }
+      a = a->children[1];
+      b = b->children[1];
+   }
+
+   return true;
+}
+
 static void compile_function_decl(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
 
-   emit(&es_code, ".proc _%s\n", node->children[2]->strval);
+   const char *name = node->children[2]->strval;
+
+   if (!functions) {
+      functions = new_set();
+   }
+   const ASTNode *value = set_get(functions, name);
+   if (value == NULL) {
+      set_add(functions, name, node);
+   }
+   else {
+      if (!function_prototype_match(node, value)) {
+         error("[%s:%d.%d] vs [%s:%d.%d] function prototype mismatch for '%s'",
+            node->file, node->line, node->column,
+            value->file, value->line, value->column,
+            name);
+      }
+   }
+
+   if (!node->children[4]) {
+      // just a declaration, no body
+      return;
+   }
+
+   emit(&es_code, ".proc _%s\n", name);
 
    // prologue
 

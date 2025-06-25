@@ -158,7 +158,7 @@ void dump_ast_flat(const ASTNode *node,
     }
 }
 
-void parse_dump_node(ASTNode *node) {
+void parse_dump_node(const ASTNode *node) {
    if (node) {
       dump_ast_flat(node, "", 1, NULL);
    }

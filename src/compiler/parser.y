@@ -48,7 +48,7 @@
 %type <node> multiplicative_expr
 %type <node> opt_address opt_array_dim opt_expr opt_flags opt_pointer
 %type <node> modifier_list modifier
-%type <node> param_decls param_list param
+%type <node> param_list param
 %type <node> postfix_expr primary_expr program program_item
 %type <node> relational_expr
 %type <node> shift_expr statement statement_list struct_decl struct_field
@@ -156,13 +156,9 @@ opt_pointer:
   ;
 
 param_list:
-    /* empty */     { $$ = make_empty_leaf(); }
-  | param_decls     { $$ = $1; }
-  ;
-
-param_decls:
-    param                        { $$ = MAKE_NODE($1); }
-  | param_decls ',' param        { $$ = MAKE_NODE($1, MAKE_NODE($3)); }
+    /* empty */             { $$ = make_empty_leaf(); }
+  | param                   { $$ = MAKE_NODE($1, NULL); }
+  | param_list ',' param    { $$ = MAKE_NODE($3, $1); }
 ;
 
 param:
