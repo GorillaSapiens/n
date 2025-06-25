@@ -275,8 +275,45 @@ static void compile_decl_stmt(ASTNode *node) {
 }
 
 static void compile_function_decl(ASTNode *node) {
-   //debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   //parse_dump_node(node);
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   parse_dump_node(node);
+
+   emit(&es_code, ".proc _%s\n", node->children[2]->strval);
+
+   // prologue
+
+   // ;push frame pointer onto HARDWARE stack
+   emit(&es_code, "    lda fp+1\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "    lda fp\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "\n");
+
+   // ;transfer stack pointer to frame pointer
+   emit(&es_code, "    lda sp+1\n");
+   emit(&es_code, "    sta fp+1\n");
+   emit(&es_code, "    lda sp\n");
+   emit(&es_code, "    sta sp\n");
+   emit(&es_code, "\n");
+
+   // epilogue
+
+   // ;pop frame pointer
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp\n");
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp+1\n");
+   emit(&es_code, "\n");
+
+   // ;pop stack pointer
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta sp\n");
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta sp+1\n");
+   emit(&es_code, "    rts\n");
+
+   emit(&es_code, ".endproc\n");
+
    return;
 }
 
