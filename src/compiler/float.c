@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
+#include "messages.h"
+
+// TODO FIX we'll need to revisit this later, for now just ensure
+// our doubles are big enough.
+static_assert(sizeof(double) == 8);
+static_assert(sizeof(unsigned long long) == 8);
 
 // TODO FIX later we can add variable length mantissa and exponent,
 // variable offset, and variable ordering.  for right now, you get
@@ -14,10 +22,15 @@ typedef struct Bytes2EBits {
 static Bytes2EBits exponent_bits[] = {
    {  1,  4 }, // proposed binary8
    {  2,  5 }, // half / binary16
+   {  3,  7 }, // hypothetical binary24
    {  4,  8 }, // single / float / binary32
+   {  5, 10 }, // matches some legacy x86 hardware
+   {  6, 12 }, // hypothetical binary48
+   {  7, 13 }, // hypothetical binary56
    {  8, 11 }, // double / binary64
-   { 16, 15 }, // quad / binary128
-   { 32, 19 }  // binary256
+   // TODO FIX more here!
+//   { 16, 15 }, // quad / binary128
+//   { 32, 19 }  // binary256
 };
 
 static int ebits(int size) {
@@ -32,84 +45,12 @@ static int ebits(int size) {
    return -1;
 }
 
-static int c2n(char c) {
-   if (c >= '0' && c <= '9') {
-      return c - '0';
-   }
-   else if (c >= 'A' && c <= 'F') {
-      return c - 'A' + 10;
-   }
-   else if (c >= 'a' && c <= 'f') {
-      return c - 'a' + 10;
-   }
-   return -1;
-}
-
-static int make_le_helper(const char *p, int bpc,
-                          unsigned char *target, int size) {
-   int len = strlen(p);
-   int n = 0;
-   int o = 0;
-   int a = 0;
-   int i;
-
-   p += len - 1;
-   for (i = 0; i < len; i++) {
-      a |= c2n(*p) << o;
-      o += bpc;
-      if (o >= 8) {
-         target[n++] = a;
-         o -= 8;
-         a >>= 8;
-      }
-      p--;
-   }
-   if (a) {
-      target[n++] = a;
-   }
-   return n;
-}
-
-static int make_le_hex(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 4, target, size);
-}
-
-static int make_le_decimal(const char *p, unsigned char *target, int size) {
-   int i;
-   int max = 1;
-   int carry;
-
-   while (*p) {
-      carry = 0;
-      for (i = 0; i < max; i++) {
-         carry = target[i] * 10 + carry;
-         target[i] = carry;
-         carry >>= 8;
-      }
-      if (carry) {
-         target[max++] = carry;
-      }
-
-      carry = target[0] + *p - '0';
-      target[0] = carry;
-      carry >>= 8;
-      i = 1;
-      while (i < max && carry) {
-         carry = target[i] + carry;
-         target[i] = carry;
-         carry >>= 8;
-         i++;
-      }
-      if (carry) {
-         target[max++] = carry;
-      }
-      p++;
-   }
-
-   return max;
-}
-
 int make_le_float(const char *p, unsigned char *target, int size) {
+
+   int expbits = ebits(size);
+   if (expbits == -1) {
+      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__);
+   }
 
    memset(target, 0, size);
 
@@ -126,77 +67,47 @@ int make_le_float(const char *p, unsigned char *target, int size) {
    }
    *q = 0;
 
-   if (!strcmp(copy, "0") || !strcmp(copy, "0.") || !strcmp(copy, ".0")) {
-      for (int i = 0; i < size; i++) {
-         target[i] = 0;
+   // TODO FIX for now, we cheat, by using sscanf and some
+   // bit twiddling voodoo that only works for size <= sizeof(double)
+
+   double value;
+   unsigned long long ivalue;
+
+   if (strstr(copy, "0x") || strstr(copy, "0X")) {
+      if (sscanf(copy, "%la", &value) != 1) {
+         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, copy);
       }
-      return 1;
-   }
-   else if (!strncasecmp(copy, "0x", 2)) {
-      return make_le_hex(copy + 2, target, size);
    }
    else {
-      return make_le_decimal(copy, target, size);
+      if (sscanf(copy, "%la", &value) != 1) {
+         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, copy);
+      }
    }
+
+   ivalue = *((unsigned long long *) &value);
+
+   if (size != 8) {
+      unsigned long long mantissa = ivalue & ((1LL << 52) - 1);
+      unsigned long long exponent = (ivalue >> 52) & ((1LL << 11) - 1);
+      unsigned long long sign = ivalue >> 63;
+
+      int bias  = (1 << (expbits - 1)) - 1;
+      int mbits = (8 * size) - 1 - expbits;
+
+      mantissa >>= 52 - mbits;
+      exponent = exponent - 1023 + bias;
+
+      ivalue = (sign << (8 * size - 1)) | (exponent << mbits) | mantissa;
+   }
+
+   for (int i = 0; i < size; i++) {
+      target[i] = ivalue;
+      ivalue >>= 8;
+   }
+
+   return 0;
 }
 
 void negate_le_float(unsigned char *target, int size) {
    target[size-1] |= 0x80;
 }
-
-#ifdef UNIT_TEST
-static unsigned long parse_number(const char *str) {
-   if (str[0] == '0' && (str[1] == 'b' || str[1] == 'B')) {
-      // handles 0b (binary)
-      return strtoul(str + 2, NULL, 2);
-   }
-   // handles 0x (hex), 0 (oct), and default decimal
-   return strtoul(str, NULL, 0);
-}
-
-static void test(const char *p) {
-   unsigned char buf[16];
-   char *b = buf;
-   const char *q = p;
-   int i, n;
-   unsigned long desire;
-
-   while (*q) {
-      if (*q != '_') {
-         *b++ = *q++;
-      }
-      else {
-         q++;
-      }
-   }
-   *b = 0;
-
-   desire = parse_number(buf);
-
-   n = make_le_float(p, buf, sizeof(buf));
-   printf("%ld= (%d) ", desire, n);
-
-   for (i = 0; i < n; i++) {
-      printf("%02x:%02lx ", buf[i], (desire >> (8 * i)) & 0xFF);
-   }
-   printf("\n");
-}
-
-void main(void) {
-   test("0");
-   test("1");
-   test("255");
-   test("256");
-   test("1234");
-   test("12345");
-   test("4_294_967_295");
-   test("4_294_967_296");
-   test("0x1");
-   test("0x12");
-   test("0x123");
-   test("0x1234");
-   test("0x123456789ABCDEF");
-   test("0b1100001110100101");
-   test("076543210");
-}
-#endif

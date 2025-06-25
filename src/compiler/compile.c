@@ -6,6 +6,7 @@
 
 #include "ast.h"
 #include "compile.h"
+#include "float.h"
 #include "integer.h"
 #include "messages.h"
 #include "set.h"
@@ -228,16 +229,37 @@ static void compile_decl_stmt(ASTNode *node) {
                for (int i = 1; i < size; i++) {
                   emit(", $%02x", bytes[i]);
                }
-               emit("\n");
+               emit(" ; integer\n");
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(".res %d ; signed\n", size); // TODO FIX change to initializer
+               emit(".res %d ; integer\n", size); // TODO FIX change to initializer
             }
          }
          else if (has_flag(type, "$float")) {
+            expression = expression->children[0];
             // a float
-            emit(".res %d ; float\n", size); // TODO FIX change to initializer
+            bool neg = false;
+            if (!strcmp(expression->name, "-")) {
+               neg = true;
+               expression = expression->children[0];
+            }
+            if (!strcmp(expression->name, "float")) {
+               unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
+               make_le_float(expression->strval, bytes, size); // TODO FIX check return value
+               if (neg) {
+                  negate_le_float(bytes, size);
+               }
+               emit(".byte $%02x", bytes[0]);
+               for (int i = 1; i < size; i++) {
+                  emit(", $%02x", bytes[i]);
+               }
+               emit(" ; float\n");
+            }
+            else {
+               warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
+               emit(".res %d ; float\n", size); // TODO FIX change to initializer
+            }
          }
          else {
             emit(".res %d ; huh?\n", size); // TODO FIX change to initializer
