@@ -6,17 +6,18 @@
 
 #include "ast.h"
 #include "compile.h"
+#include "emit.h"
 #include "float.h"
 #include "integer.h"
 #include "messages.h"
 #include "set.h"
 
-static void emit(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   vprintf(fmt, args);
-   va_end(args);
-}
+EmitSink es_import = EMIT_INIT;
+EmitSink es_export = EMIT_INIT;
+EmitSink es_code   = EMIT_INIT;
+EmitSink es_rodata = EMIT_INIT;
+EmitSink es_data   = EMIT_INIT;
+EmitSink es_bss    = EMIT_INIT;
 
 Set *types = NULL;
 Set *globals = NULL;
@@ -131,14 +132,14 @@ static int get_size(const char *type) {
 }
 
 static void compile_decl_stmt(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   parse_dump_node(node);
+   //debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   //parse_dump_node(node);
 
    ASTNode *modifiers    = node->children[0];
    const char *type      = node->children[1]->strval;
    const char *name      = node->children[2]->strval;
-   ASTNode *dimension    = node->children[3];
-   const char *location  = node->children[4]->strval;
+   //ASTNode *dimension    = node->children[3];
+   //const char *location  = node->children[4]->strval;
    ASTNode *expression   = node->children[5];
 
    if (!globals) {
@@ -158,6 +159,7 @@ static void compile_decl_stmt(ASTNode *node) {
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
 
+#if 0
    printf("=");
    if (is_extern) {
       printf("extern ");
@@ -169,6 +171,7 @@ static void compile_decl_stmt(ASTNode *node) {
       printf("static ");
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
+#endif
    
    int size = get_size(type);
 
@@ -178,30 +181,30 @@ static void compile_decl_stmt(ASTNode *node) {
             node->file, node->line, node->column);
       }
 
-      emit(".import %s\n", name);
+      emit(&es_import, ".import %s\n", name);
    }
    else {
       if (!is_static) {
-         emit(".export %s\n", name);
+         emit(&es_export, ".export %s\n", name);
       }
       if (expression == NULL) {
          if (is_const) {
-            error("[%s:%d.%d] 'const' missinf initializer",
+            error("[%s:%d.%d] 'const' missing initializer",
                node->file, node->line, node->column);
          }
-         emit(".section \"BSS\"\n");
-         emit("%s:\n", name);
+         emit(&es_bss, "%s: ", name);
          // TODO FIX multiply "size" by "dimension" if necessary
-         emit(".res %d\n", size);
+         emit(&es_bss, ".res %d\n", size);
       }
       else {
+         EmitSink *es;
          if (is_const) {
-            emit(".section \"RODATA\"\n");
+            es = &es_rodata;
          }
          else {
-            emit(".section \"DATA\"\n");
+            es = &es_data;
          }
-         emit("%s:\n", name);
+         emit(es, "%s: ", name);
          // TODO FIX multiply "size" by "dimension" if necessary
          if (has_flag(type, "$signed") || has_flag(type, "$unsigned")) {
             expression = expression->children[0];
@@ -225,15 +228,15 @@ static void compile_decl_stmt(ASTNode *node) {
                if (neg) {
                   negate_le_int(bytes, size);
                }
-               emit(".byte $%02x", bytes[0]);
+               emit(es, ".byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
-                  emit(", $%02x", bytes[i]);
+                  emit(es, ", $%02x", bytes[i]);
                }
-               emit(" ; integer\n");
+               emit(es, " ; integer\n");
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(".res %d ; integer\n", size); // TODO FIX change to initializer
+               emit(es, ".res %d ; integer\n", size); // TODO FIX change to initializer
             }
          }
          else if (has_flag(type, "$float")) {
@@ -250,19 +253,19 @@ static void compile_decl_stmt(ASTNode *node) {
                if (neg) {
                   negate_le_float(bytes, size);
                }
-               emit(".byte $%02x", bytes[0]);
+               emit(es, ".byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
-                  emit(", $%02x", bytes[i]);
+                  emit(es, ", $%02x", bytes[i]);
                }
-               emit(" ; float\n");
+               emit(es, " ; float\n");
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(".res %d ; float\n", size); // TODO FIX change to initializer
+               emit(es, ".res %d ; float\n", size); // TODO FIX change to initializer
             }
          }
          else {
-            emit(".res %d ; huh?\n", size); // TODO FIX change to initializer
+            emit(es, ".res %d ; huh?\n", size); // TODO FIX change to initializer
          }
       }
    }
@@ -308,5 +311,17 @@ static void compile(ASTNode *node) {
 }
 
 void do_compile(void) {
+   emit(&es_code,   ".section \"CODE\"\n");
+   emit(&es_rodata, ".section \"RODATA\"\n");
+   emit(&es_data,   ".section \"DATA\"\n");
+   emit(&es_bss,    ".section \"BSS\"\n");
+
    compile(root);
+
+   emit_print(&es_import);
+   emit_print(&es_export);
+   emit_print(&es_bss);
+   emit_print(&es_data);
+   emit_print(&es_rodata);
+   emit_print(&es_code);
 }
