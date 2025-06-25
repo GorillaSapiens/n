@@ -182,20 +182,20 @@ static void compile_decl_stmt(ASTNode *node) {
             node->file, node->line, node->column);
       }
 
-      emit(&es_import, ".import %s\n", name);
+      emit(&es_import, ".import _%s\n", name);
    }
    else {
       if (!is_static) {
-         emit(&es_export, ".export %s\n", name);
+         emit(&es_export, ".export _%s\n", name);
       }
       if (expression == NULL) {
          if (is_const) {
             error("[%s:%d.%d] 'const' missing initializer",
                node->file, node->line, node->column);
          }
-         emit(&es_bss, "%s:\t", name);
+         emit(&es_bss, "_%s:\n", name);
          // TODO FIX multiply "size" by "dimension" if necessary
-         emit(&es_bss, ".res %d\n", size);
+         emit(&es_bss, "\t.res %d\n", size);
       }
       else {
          EmitSink *es;
@@ -205,7 +205,7 @@ static void compile_decl_stmt(ASTNode *node) {
          else {
             es = &es_data;
          }
-         emit(es, "%s:\t", name);
+         emit(es, "_%s:\n", name);
          // TODO FIX multiply "size" by "dimension" if necessary
          if (has_flag(type, "$signed") || has_flag(type, "$unsigned")) {
             expression = expression->children[0];
@@ -229,7 +229,7 @@ static void compile_decl_stmt(ASTNode *node) {
                if (neg) {
                   negate_le_int(bytes, size);
                }
-               emit(es, ".byte $%02x", bytes[0]);
+               emit(es, "\t.byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
                   emit(es, ", $%02x", bytes[i]);
                }
@@ -237,7 +237,7 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(es, ".res %d ; integer\n", size); // TODO FIX change to initializer
+               emit(es, "\t.res %d ; integer\n", size); // TODO FIX change to initializer
             }
          }
          else if (has_flag(type, "$float")) {
@@ -254,7 +254,7 @@ static void compile_decl_stmt(ASTNode *node) {
                if (neg) {
                   negate_le_float(bytes, size);
                }
-               emit(es, ".byte $%02x", bytes[0]);
+               emit(es, "\t.byte $%02x", bytes[0]);
                for (int i = 1; i < size; i++) {
                   emit(es, ", $%02x", bytes[i]);
                }
@@ -262,11 +262,11 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(es, ".res %d ; float\n", size); // TODO FIX change to initializer
+               emit(es, "\t.res %d ; float\n", size); // TODO FIX change to initializer
             }
          }
          else {
-            emit(es, ".res %d ; huh?\n", size); // TODO FIX change to initializer
+            emit(es, "\t.res %d ; huh?\n", size); // TODO FIX change to initializer
          }
       }
    }
@@ -314,10 +314,10 @@ static void compile(ASTNode *node) {
 void do_compile(void) {
 
    emit(&es_header, ".include \"nlib.inc\"\n");
-   emit(&es_code,   ".section \"CODE\"\n");
-   emit(&es_rodata, ".section \"RODATA\"\n");
-   emit(&es_data,   ".section \"DATA\"\n");
-   emit(&es_bss,    ".section \"BSS\"\n");
+   emit(&es_code,   ".segment \"CODE\"\n");
+   emit(&es_rodata, ".segment \"RODATA\"\n");
+   emit(&es_data,   ".segment \"DATA\"\n");
+   emit(&es_bss,    ".segment \"BSS\"\n");
 
    compile(root);
 
