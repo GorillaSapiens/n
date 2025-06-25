@@ -1,0 +1,6 @@
+float_t  pi := 3.141592653587;
+static float_t  spi := 3.141592653587;
+const float_t  cpi := 3.141592653587;
+double_t nphi := -1.618033988749894848204586834;
+static double_t snphi := -1.618033988749894848204586834;
+const double_t cnphi := -1.618033988749894848204586834;

@@ -1,84 +1,10 @@
-include "stdlib.8c" // haha!!
+//include "stdlib.8c"
 
-// Single-line comment
-
-/* Block comment over
-   multiple lines */
-
-type void { 0 };
-type uint8 { 1 $unsigned };
-type * { 2 $endian:little };
-type float { 2 $endian:little};
-type int { 2 $signed $endian:little};
-
-struct Point {
-    int x;
-    int y;
-};
-
-union Value {
-    int i;
-    float f;
-};
-
-Point origin := Point { x := 0; y := 0; };
-Value v := Value { i := 42; };
-
-void froom(Point foo) {
-}
+//type nul { } ;
+type uno { $size:1 } ;
+//type duo { $size:1 $size:1 };
+type void { $size:0 $bogus };
 
 void main(void) {
-eep:
-   for (i := 0; i < 10; i := i + 1) {
-      if (i == 5) {
-         break eep;
-      }
-      else {
-         continue;
-      }
-   }
-
-   do {
-      // do-while loop with label
-      continue eep;
-   } while (i < 5);
-
-   switch (i) {
-      case 1:
-      case 2: 
-i := 100;
-   break;
-      default:
-            break;
-   }
-
-label1:
-   while (i < 20) {
-      i := i + 1;
-      if (i % 2 == 0) {
-         continue label1;
-      }
-      if (i > 15) {
-         break label1;
-      }
-   }
-
-   goto label1;
-
-   // Function call and assignment
-   foo := bar(1, 2, 3);
-
-     // it came from the preprocessor!!!
-#whateverman
-
-     // Unary operators
-   x := -1;
-   y := !x;
-   z := ~x;
-
-   // Binary and ternary expressions
    a := x + y * z - (x >> 2);
-   b := x ? y : z;
-
-   return 5;
 }
