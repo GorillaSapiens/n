@@ -39,12 +39,12 @@ int main(int argc, char** argv) {
 
    // TODO register built in type names
 
-   printf("Parsing...\n");
+   printf(";Parsing...\n");
    ret = yyparse();
    if (ret == 0) {
-      printf("Parse successful.\n");
+      printf(";Parse successful.\n");
    } else {
-      printf("Parse failed.\n");
+      printf(";Parse failed.\n");
       return -1;
    }
 
