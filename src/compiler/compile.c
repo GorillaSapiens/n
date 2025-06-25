@@ -237,7 +237,7 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(es, "\t.res %d ; integer\n", size); // TODO FIX change to initializer
+               emit(es, "\t.res %d, $00 ; integer\n", size); // TODO FIX change to initializer
             }
          }
          else if (has_flag(type, "$float")) {
@@ -262,11 +262,11 @@ static void compile_decl_stmt(ASTNode *node) {
             }
             else {
                warning("[%s:%d] complex initializers not implemented (yet)", __FILE__, __LINE__);
-               emit(es, "\t.res %d ; float\n", size); // TODO FIX change to initializer
+               emit(es, "\t.res %d, $00 ; float\n", size); // TODO FIX change to initializer
             }
          }
          else {
-            emit(es, "\t.res %d ; huh?\n", size); // TODO FIX change to initializer
+            emit(es, "\t.res %d, $00 ; huh?\n", size); // TODO FIX change to initializer
          }
       }
    }
