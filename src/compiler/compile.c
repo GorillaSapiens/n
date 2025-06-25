@@ -12,6 +12,7 @@
 #include "messages.h"
 #include "set.h"
 
+EmitSink es_header = EMIT_INIT;
 EmitSink es_import = EMIT_INIT;
 EmitSink es_export = EMIT_INIT;
 EmitSink es_code   = EMIT_INIT;
@@ -192,7 +193,7 @@ static void compile_decl_stmt(ASTNode *node) {
             error("[%s:%d.%d] 'const' missing initializer",
                node->file, node->line, node->column);
          }
-         emit(&es_bss, "%s: ", name);
+         emit(&es_bss, "%s:\t", name);
          // TODO FIX multiply "size" by "dimension" if necessary
          emit(&es_bss, ".res %d\n", size);
       }
@@ -204,7 +205,7 @@ static void compile_decl_stmt(ASTNode *node) {
          else {
             es = &es_data;
          }
-         emit(es, "%s: ", name);
+         emit(es, "%s:\t", name);
          // TODO FIX multiply "size" by "dimension" if necessary
          if (has_flag(type, "$signed") || has_flag(type, "$unsigned")) {
             expression = expression->children[0];
@@ -311,6 +312,8 @@ static void compile(ASTNode *node) {
 }
 
 void do_compile(void) {
+
+   emit(&es_header, ".include \"nlib.inc\"\n");
    emit(&es_code,   ".section \"CODE\"\n");
    emit(&es_rodata, ".section \"RODATA\"\n");
    emit(&es_data,   ".section \"DATA\"\n");
@@ -318,10 +321,17 @@ void do_compile(void) {
 
    compile(root);
 
+   emit_print(&es_header);
+   printf("\n");
    emit_print(&es_import);
+   printf("\n");
    emit_print(&es_export);
+   printf("\n");
    emit_print(&es_bss);
+   printf("\n");
    emit_print(&es_data);
+   printf("\n");
    emit_print(&es_rodata);
+   printf("\n");
    emit_print(&es_code);
 }
