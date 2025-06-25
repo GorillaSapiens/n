@@ -2,10 +2,10 @@
 
 .include "nlib.inc"
 
-.proc handle_nmi
+.proc _handle_nmi
     rts
 .endproc
 
-.proc handle_irq
+.proc _handle_irq
     rts
 .endproc

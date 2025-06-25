@@ -1,11 +1,12 @@
 ; nrt0.s
 
-.global _nrt0_reset
-.export _nrt0_reset
-.export _startup_segment_address
-.import main
-.import handle_irq
-.import handle_nmi
+.global nrt0_reset
+.export nrt0_reset
+.export startup_segment_address
+.import _main
+.import _handle_irq
+.import _handle_nmi
+
 .import __DATA_LOAD__, __DATA_RUN__, __DATA_SIZE__
 .import __BSS_RUN__, __BSS_SIZE__
 .import __ARGSTACK_RUN__
@@ -23,8 +24,8 @@
 .res 0
 
 .segment "STARTUP"
-_startup_segment_address: ; do not move, must come first !!!
-_nrt0_reset:
+startup_segment_address: ; do not move, must come first !!!
+nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
     sei
 
@@ -132,21 +133,21 @@ _clear_bss_fini:
 
     ; init nlib dynamic memory
     lda #0
-    sta _startup_segment_address-2
-    sta _startup_segment_address-1
-    lda #<(_startup_segment_address-4)
-    sta _startup_segment_address-4
-    lda #>(_startup_segment_address-4)
-    sta _startup_segment_address-3
+    sta startup_segment_address-2
+    sta startup_segment_address-1
+    lda #<(startup_segment_address-4)
+    sta startup_segment_address-4
+    lda #>(startup_segment_address-4)
+    sta startup_segment_address-3
 
 
     ; jump to main program
-    jsr main
+    jsr _main
 
 loop:
     jmp loop
 
-_nrt0_nmi:
+nrt0_nmi:
     ; push PAXY
     php
     pha
@@ -156,7 +157,7 @@ _nrt0_nmi:
     pha
 
     ; call the handler
-    jsr handle_nmi
+    jsr _handle_nmi
 
     ; pop YXAP
     pla
@@ -167,7 +168,7 @@ _nrt0_nmi:
     plp
     rti
 
-_nrt0_irq:
+nrt0_irq:
     ; push PAXY
     php
     pha
@@ -177,7 +178,7 @@ _nrt0_irq:
     pha
 
     ; call the handler
-    jsr handle_irq
+    jsr _handle_irq
 
     ; pop YXAP
     pla
@@ -190,6 +191,6 @@ _nrt0_irq:
 
 .segment "VECTORS"
 
-.word _nrt0_nmi   ; @ $fffa - $fffb
-.word _nrt0_reset ; @ $fffc - $fffd
-.word _nrt0_irq   ; @ $fffe - $ffff
+.word nrt0_nmi   ; @ $fffa - $fffb
+.word nrt0_reset ; @ $fffc - $fffd
+.word nrt0_irq   ; @ $fffe - $ffff
