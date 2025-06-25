@@ -370,6 +370,18 @@ static void compile_function_decl(ASTNode *node) {
       return;
    }
 
+   // we have a body!
+   if (value && value->children[4]) {
+      error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+         node->file, node->line, node->column,
+         value->file, value->line, value->column,
+         name);
+   }
+   else {
+      set_rm(functions, name);
+      set_add(functions, name, node);
+   }
+
    emit(&es_code, ".proc _%s\n", name);
 
    // prologue
