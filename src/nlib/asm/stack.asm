@@ -6,7 +6,7 @@
     ; stack grows up!
     clc
     lda sp
-    adc size
+    adc arg0
     sta sp
     lda sp+1
     adc #0
@@ -17,7 +17,7 @@
 .proc _popN
     sec
     lda sp
-    sbc size
+    sbc arg0
     sta sp
     lda sp+1
     sbc #0
@@ -26,11 +26,11 @@
 .endproc
 
 .proc _cpyN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
-    lda (ptr1), y
-    sta (ptr2), y
+    lda (ptr0), y
+    sta (ptr1), y
     iny
     dex
     bne @loop
@@ -38,14 +38,14 @@
 .endproc
 
 .proc _comp2N
-    ldx size
+    ldx arg0
     ldy #0
     sec
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     eor #$FF
     adc #$0
-    sta (ptr2), y
+    sta (ptr1), y
     iny
     dex
     bne @loop
@@ -53,15 +53,15 @@
 .endproc
 
 .proc _swapN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
+    lda (ptr0), y
+    sta tmp0
     lda (ptr1), y
-    sta tmp1
-    lda (ptr2), y
+    sta (ptr0), y
+    lda tmp0
     sta (ptr1), y
-    lda tmp1
-    sta (ptr2), y
     iny
     dex
     bne @loop

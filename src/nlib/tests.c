@@ -30,27 +30,27 @@ void test1(const char *name, void(*fn)(void),
    char val3 = bval3;
    char val4 = bval4;
 
-   nl_size = 1;
-   nl_shift = bshift;
+   nl_arg0 = 1;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          val1 != aval1 || val2 != aval2 ||
          val3 != aval3 || val4 != aval4) {
 
       printf("test1 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -65,27 +65,27 @@ void test2(const char *name, void(*fn)(void),
    int val3 = bval3;
    int val4 = bval4;
 
-   nl_size = 2;
-   nl_shift = bshift;
+   nl_arg0 = 2;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          val1 != aval1 || val2 != aval2 ||
          val3 != aval3 || val4 != aval4) {
 
       printf("test2 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -111,27 +111,27 @@ void test3(const char *name, void(*fn)(void),
    val3 = bval3;
    val4 = bval4;
 
-   nl_size = 3;
-   nl_shift = bshift;
+   nl_arg0 = 3;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          (val1 & 0xFFFFFF) != aval1 || (val2 & 0xFFFFFF) != aval2 ||
          (val3 & 0xFFFFFF) != aval3 || (val4 & 0xFFFFFF) != aval4) {
 
       printf("test3 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -146,27 +146,27 @@ void test4(const char *name, void(*fn)(void),
    long val3 = bval3;
    long val4 = bval4;
 
-   nl_size = 4;
-   nl_shift = bshift;
+   nl_arg0 = 4;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          val1 != aval1 || val2 != aval2 ||
          val3 != aval3 || val4 != aval4) {
 
       printf("test4 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%08lx v2:%08lx v3:%08lx v4:%08lx\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -181,27 +181,27 @@ void test1x2(const char *name, void(*fn)(void),
    int val3 = bval3;
    char val4 = bval4;
 
-   nl_size = 1;
-   nl_shift = bshift;
+   nl_arg0 = 1;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          val1 != aval1 || val2 != aval2 ||
          val3 != aval3 || val4 != aval4) {
 
       printf("test1 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%04x v4:%04x\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -216,27 +216,27 @@ void test2x4(const char *name, void(*fn)(void),
    long val3 = bval3;
    int val4 = bval4;
 
-   nl_size = 2;
-   nl_shift = bshift;
+   nl_arg0 = 2;
+   nl_arg1 = bshift;
 
-   nl_ptr1 = &val1;
-   nl_ptr2 = &val2;
-   nl_ptr3 = &val3;
-   nl_ptr4 = &val4;
+   nl_ptr0 = &val1;
+   nl_ptr1 = &val2;
+   nl_ptr2 = &val3;
+   nl_ptr3 = &val4;
 
    fn();
 
-   if (nl_shift != ashift ||
+   if (nl_arg1 != ashift ||
          val1 != aval1 || val2 != aval2 ||
          val3 != aval3 || val4 != aval4) {
 
       printf("test2 : %s ERROR\n", name);
       printf("before: size=%02x shift=%02x v1:%04x v2:%04x v3:%08lx v4:%04x\n",
-         nl_size, bshift, bval1, bval2, bval3, bval4);
+         nl_arg0, bshift, bval1, bval2, bval3, bval4);
       printf("expect: size=%02x shift=%02x v1:%04x v2:%04x v3:%08lx v4:%04x\n",
-         nl_size, ashift, aval1, aval2, aval3, aval4);
+         nl_arg0, ashift, aval1, aval2, aval3, aval4);
       printf("realit: size=%02x shift=%02x v1:%04x v2:%04x v3:%08lx v4:%04x\n",
-         nl_size, nl_shift, val1, val2, val3, val4);
+         nl_arg0, nl_arg1, val1, val2, val3, val4);
       exit(-1);
    }
 }
@@ -1203,7 +1203,7 @@ void stack_tests(void) {
 
    printf("pushN/popN");
    nl_sp = (void *) 0x12FE;
-   nl_size = 5;
+   nl_arg0 = 5;
    pushN();
    //printf("0x12FE push 5 0x%04X\n", (int) nl_sp);
    if (nl_sp != (void *) 0x1303) {
@@ -1217,9 +1217,9 @@ void stack_tests(void) {
    printf(", PASS\n");
 
    printf("cpyN");
-   nl_size = 2;
-   nl_ptr1 = &a;
-   nl_ptr2 = &b;
+   nl_arg0 = 2;
+   nl_ptr0 = &a;
+   nl_ptr1 = &b;
    //printf("%04X %04X\n", a, b);
    cpyN();
    //printf("%04X %04X\n", a, b);
@@ -1229,9 +1229,9 @@ void stack_tests(void) {
    printf(", PASS\n");
 
    printf("swapN");
-   nl_size = 4;
-   nl_ptr1 = &la;
-   nl_ptr2 = &lb;
+   nl_arg0 = 4;
+   nl_ptr0 = &la;
+   nl_ptr1 = &lb;
    //printf("%08lX %08lX\n", la, lb);
    swapN();
    //printf("%08lX %08lX\n", la, lb);
@@ -1243,29 +1243,29 @@ void stack_tests(void) {
 
 void stacksess_tests(void) {
    nl_fp = stack + sizeof(stack) / 2;
-   nl_size = 24;
+   nl_arg0 = 24;
 
    printf("stacksess1\n");
    stacksess1();
-   if (nl_ptr1 != (char *)nl_fp - 24) {
+   if (nl_ptr0 != (char *)nl_fp - 24) {
       exit(-1);
    }
 
    printf("stacksess2\n");
    stacksess2();
-   if (nl_ptr1 != (char *) nl_fp - 24) {
+   if (nl_ptr0 != (char *) nl_fp - 24) {
       exit(-1);
    }
 
    printf("stacksess3\n");
    stacksess3();
-   if (nl_ptr1 != (char *) nl_fp - 24) {
+   if (nl_ptr0 != (char *) nl_fp - 24) {
       exit(-1);
    }
 
    printf("stacksess4\n");
    stacksess4();
-   if (nl_ptr1 != (char *) nl_fp - 24) {
+   if (nl_ptr0 != (char *) nl_fp - 24) {
       exit(-1);
    }
 

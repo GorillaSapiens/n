@@ -47,26 +47,26 @@ nrt0_reset:
 
 _copy_data_hi:
     lda #<__DATA_LOAD__
-    sta ptr1
+    sta ptr0
     lda #>__DATA_LOAD__
-    sta ptr1+1
+    sta ptr0+1
 
     lda #<__DATA_RUN__
-    sta ptr2
+    sta ptr1
     lda #>__DATA_RUN__
-    sta ptr2+1
+    sta ptr1+1
 
     ldy #0
     ldx #>__DATA_SIZE__
     beq _copy_data_lo
 
 _copy_data_hi_loop:
-    lda (ptr1),y
-    sta (ptr2),y
+    lda (ptr0),y
+    sta (ptr1),y
     iny
     bne _copy_data_hi_loop
+    inc ptr0+1
     inc ptr1+1
-    inc ptr2+1
     dex
     bne _copy_data_hi_loop
 
@@ -76,8 +76,8 @@ _copy_data_lo:
     beq _copy_data_fini
 
 _copy_data_lo_loop:
-    lda (ptr1),y
-    sta (ptr2),y
+    lda (ptr0),y
+    sta (ptr1),y
     iny
     dex
     bne _copy_data_lo_loop
@@ -93,9 +93,9 @@ _copy_data_fini:
 
 _clear_bss_hi:
     lda #<__BSS_RUN__
-    sta ptr2
+    sta ptr1
     lda #>__BSS_RUN__
-    sta ptr2+1
+    sta ptr1+1
 
     lda #0
     ldy #0
@@ -103,10 +103,10 @@ _clear_bss_hi:
     beq _clear_bss_lo
 
 _clear_bss_hi_loop:
-    sta (ptr2),y
+    sta (ptr1),y
     iny
     bne _clear_bss_hi_loop
-    inc ptr2+1
+    inc ptr1+1
     dex
     bne _clear_bss_hi_loop
 
@@ -116,7 +116,7 @@ _clear_bss_lo:
     beq _clear_bss_fini
 
 _clear_bss_lo_loop:
-    sta (ptr2),y
+    sta (ptr1),y
     iny
     dex
     bne _clear_bss_lo_loop

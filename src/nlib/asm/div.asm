@@ -1,27 +1,27 @@
 ; div.asm - Arbitrary-length unsigned division
 ;
-; Divides ptr1 (dividend) by ptr2 (divisor), X bytes each.
-; Stores quotient in ptr3, remainder in ptr4.
+; Divides ptr0 (dividend) by ptr1 (divisor), X bytes each.
+; Stores quotient in ptr2, remainder in ptr3.
 ;
 ; Inputs:
-;   ptr1 - dividend (X bytes)
-;   ptr2 - divisor (X bytes)
-;   ptr3 - quotient (X bytes), must be writable!
-;   ptr4 - remainder (X bytes), must be writable!
-;   size - byte count
+;   ptr0 - dividend (X bytes)
+;   ptr1 - divisor (X bytes)
+;   ptr2 - quotient (X bytes), must be writable!
+;   ptr3 - remainder (X bytes), must be writable!
+;   arg0 - byte count
 ; Clobbers: A, X, Y, and zero page temps
 ; NB: ALSO WRITES TO THE STACK!!!
 
 .include "nlib.inc"
-tmpX  = _nl_tmp1 ;$0A
-carry = _nl_tmp2 ;$0B
+tmpX  = _nl_tmp0 ;$0A
+carry = _nl_tmp1 ;$0B
 
 .proc _divN
     ; copy dividend to the stack
-    ldx size
+    ldx arg0
     ldy #0
 @cpy_loop:
-    lda (ptr1), y
+    lda (ptr0), y
     sta (sp), y
     iny
     dex
@@ -31,33 +31,33 @@ carry = _nl_tmp2 ;$0B
     ldy #0
 @clear_loop:
     lda #0
+    sta (ptr2), y
     sta (ptr3), y
-    sta (ptr4), y
     iny
-    cpy size
+    cpy arg0
     bne @clear_loop
 
-    ; Perform size * 8 division steps
+    ; Perform arg0 * 8 division steps
     ldx #0
-    lda size
+    lda arg0
     asl
     asl
     asl
-    sta tmpX         ; tmpX = bit count = size * 8
+    sta tmpX         ; tmpX = bit count = arg0 * 8
 
 @bit_loop:
     ; Shift dividend left by 1
     clc
-    ldx size
+    ldx arg0
     dex
     ldy #0
-@shift_div:
+@arg1_div:
     lda (sp), y
     rol a
     sta (sp), y
     iny
     dex
-    bpl @shift_div
+    bpl @arg1_div
 
     ; save that carry bit so we can restore div
     bcs @onward
@@ -66,16 +66,16 @@ carry = _nl_tmp2 ;$0B
     stx carry
 
     ; Shift next bit from dividend into remainder
-    ldx size
+    ldx arg0
     dex
     ldy #0
-@shift_rem:
-    lda (ptr4), y
+@arg1_rem:
+    lda (ptr3), y
     rol a
-    sta (ptr4), y
+    sta (ptr3), y
     iny
     dex
-    bpl @shift_rem
+    bpl @arg1_rem
 
     ; use carry to set the low bit of dividend
     ldy #0
@@ -92,13 +92,13 @@ carry = _nl_tmp2 ;$0B
     sec                  ; Set quotient bit
    
 @skip_subtract:
-    ldx size
+    ldx arg0
     dex
     ldy #0
 @store_qbit:
-    lda (ptr3), y
+    lda (ptr2), y
     rol a
-    sta (ptr3), y
+    sta (ptr2), y
     iny
     dex
     bpl @store_qbit
@@ -111,11 +111,11 @@ carry = _nl_tmp2 ;$0B
 
 ; Compare remainder with divisor
 @cmp_rev_div:
-    ldy size
+    ldy arg0
     dey
 @cmp_loop:
-    lda (ptr4), y
-    cmp (ptr2), y
+    lda (ptr3), y
+    cmp (ptr1), y
     bne @finish_cmp
     dey
     bpl @cmp_loop
@@ -130,16 +130,16 @@ carry = _nl_tmp2 ;$0B
     clc
     rts
 
-; Subtract divisor from remainder: ptr4 -= ptr2
+; Subtract divisor from remainder: ptr3 -= ptr1
 @sub_div_from_rem:
-    ldx size
+    ldx arg0
     dex
     ldy #0
     sec
 @sub_loop:
-    lda (ptr4), y
-    sbc (ptr2), y
-    sta (ptr4), y
+    lda (ptr3), y
+    sbc (ptr1), y
+    sta (ptr3), y
     iny
     dex
     bpl @sub_loop

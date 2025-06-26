@@ -2,20 +2,20 @@
 ;
 ; Arbitrary-width bitwise logic on buffers
 ; Inputs:
-;   ptr1, ptr2 - input buffers (ptr2 not needed for NOT)
-;   ptr3 - destination
-;   size - byte count
+;   ptr0, ptr1 - input buffers (ptr1 not needed for NOT)
+;   ptr2 - destination
+;   arg0 - byte count
 ; Clobbers: A, Y
 
 .include "nlib.inc"
 
 .proc _bit_andN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
-    lda (ptr1), y
-    and (ptr2), y
-    sta (ptr3), y
+    lda (ptr0), y
+    and (ptr1), y
+    sta (ptr2), y
     iny
     dex
     bne @loop
@@ -23,12 +23,12 @@
 .endproc
 
 .proc _bit_notN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     eor #$FF
-    sta (ptr3), y
+    sta (ptr2), y
     iny
     dex
     bne @loop
@@ -36,12 +36,12 @@
 .endproc
 
 .proc _bit_orN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
-    lda (ptr1), y
-    ora (ptr2), y
-    sta (ptr3), y
+    lda (ptr0), y
+    ora (ptr1), y
+    sta (ptr2), y
     iny
     dex
     bne @loop
@@ -49,12 +49,12 @@
 .endproc
 
 .proc _bit_xorN
-    ldx size
+    ldx arg0
     ldy #0
 @loop:
-    lda (ptr1), y
-    eor (ptr2), y
-    sta (ptr3), y
+    lda (ptr0), y
+    eor (ptr1), y
+    sta (ptr2), y
     iny
     dex
     bne @loop

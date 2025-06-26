@@ -1,7 +1,7 @@
 
 ; rem.asm - Remainder-only division
 ;
-; Like div_unsigned, but only produces remainder in ptr4.
+; Like div_unsigned, but only produces remainder in ptr3.
 .include "nlib.inc"
 
 .proc _remN

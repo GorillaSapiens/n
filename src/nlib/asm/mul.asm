@@ -1,24 +1,24 @@
-; mul.asm - Arbitrary-length unsigned multiplication using proper 8x8 shift-and-add
+; mul.asm - Arbitrary-length unsigned multiplication using proper 8x8 arg1-and-add
 ;
-; Multiply *ptr1 * *ptr2 and store into *ptr3.
+; Multiply *ptr0 * *ptr1 and store into *ptr2.
 ; X = byte count of inputs (result is up to 2X bytes)
 ;
 ; Inputs:
-;   ptr1 - pointer to multiplicand buffer
-;   ptr2 - pointer to multiplier buffer
-;   ptr3 - pointer to result buffer (2X bytes, must be zero-initialized beforehand)
-;   size - byte count
+;   ptr0 - pointer to multiplicand buffer
+;   ptr1 - pointer to multiplier buffer
+;   ptr2 - pointer to result buffer (2X bytes, must be zero-initialized beforehand)
+;   arg0 - byte count
 ; Clobbers: A, X, Y, zero page temp vars
 
 .include "nlib.inc"
-product_lo = _nl_ptr4   ;$0C
-product_hi = _nl_ptr4+1 ;$0D
-byte_b     = _nl_tmp1   ;$08
-tmp_b      = _nl_tmp2   ;$09
-a_lo       = _nl_tmp3   ;$0A
-a_hi       = _nl_tmp4   ;$0B
-outer      = _nl_tmp5   ;$0E
-inner      = _nl_tmp6   ;$0F
+product_lo = _nl_ptr3   ;$0C
+product_hi = _nl_ptr3+1 ;$0D
+byte_b     = _nl_tmp0   ;$08
+tmp_b      = _nl_tmp1   ;$09
+a_lo       = _nl_tmp2   ;$0A
+a_hi       = _nl_tmp3   ;$0B
+outer      = _nl_tmp4   ;$0E
+inner      = _nl_tmp5   ;$0F
 
 
 .proc _mulN
@@ -28,29 +28,29 @@ inner      = _nl_tmp6   ;$0F
 
     ldy #0               ; clear the result
     ldx #0
-@clear_ptr3:
-    sta (ptr3), y
+@clear_ptr2:
+    sta (ptr2), y
     iny
-    sta (ptr3), y
+    sta (ptr2), y
     iny
     inx
-    cpx size
-    bne @clear_ptr3
+    cpx arg0
+    bne @clear_ptr2
 
 @outer_loop:
     ldy outer
-    cpy size
+    cpy arg0
     beq @outer_fini
 
-    lda (ptr2), y          ; initialize b
+    lda (ptr1), y          ; initialize b
     sta byte_b
 
 @inner_loop:
     ldy inner
-    cpy size
+    cpy arg0
     beq @inner_fini
 
-    lda (ptr1), y          ; initialize a
+    lda (ptr0), y          ; initialize a
     sta a_lo
     lda #0
     sta a_hi
@@ -80,23 +80,23 @@ inner      = _nl_tmp6   ;$0F
     dex
     bne @mult_loop
 
-    ; add product to ptr3
+    ; add product to ptr2
     clc
     lda inner
     adc outer
     tay
     clc                ; just to be safe
-    lda (ptr3), y
+    lda (ptr2), y
     adc product_lo
-    sta (ptr3), y
+    sta (ptr2), y
     iny
-    lda (ptr3), y
+    lda (ptr2), y
     adc product_hi
-    sta (ptr3), y
+    sta (ptr2), y
     iny
-    lda (ptr3), y
+    lda (ptr2), y
     adc #0
-    sta (ptr3), y
+    sta (ptr2), y
 
     inc inner
     jmp @inner_loop

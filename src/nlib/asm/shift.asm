@@ -1,41 +1,41 @@
 
-; shift.asm - Bit shifting routines
+; arg1.asm - Bit arg1ing routines
 ;
 ; Implements:
-; - lsl1: logical shift left by 1
-; - lsr1: logical shift right by 1
-; - asr1: arithmetic shift right by 1 (signed)
+; - lsl1: logical arg1 left by 1
+; - lsr1: logical arg1 right by 1
+; - asr1: arithmetic arg1 right by 1 (signed)
 ;
-; - lsl8: logical shift left by 8
-; - lsr8: logical shift right by 8
-; - asr8: arithmetic shift right by 8 (signed)
+; - lsl8: logical arg1 left by 8
+; - lsr8: logical arg1 right by 8
+; - asr8: arithmetic arg1 right by 8 (signed)
 ;
-; - lslN: logical shift left by N
-; - lsrN: logical shift right by N
-; - asrN: arithmetic shift right by N (signed)
+; - lslN: logical arg1 left by N
+; - lsrN: logical arg1 right by N
+; - asrN: arithmetic arg1 right by N (signed)
 ;
 ; Inputs:
-;   ptr1  - source, modified in place for *1 and *8
-;   ptr2  - destination for *N
-;   size  - byte count
-;   shift - bits to shift for N
+;   ptr0  - source, modified in place for *1 and *8
+;   ptr1  - destination for *N
+;   arg0  - byte count
+;   arg1 - bits to arg1 for N
 ; Clobbers: A, X, Y
 
 .include "nlib.inc"
-; lslN lsrN asrN also use ptr3 and ptr4
-n_byte    = _nl_tmp1 ;$0A
-n_bit     = _nl_tmp2 ;$0B
-tmp       = _nl_tmp3 ;$0C
-swaptmp   = _nl_tmp4 ;$0D
+; lslN lsrN asrN also use ptr2 and ptr3
+n_byte    = _nl_tmp0 ;$0A
+n_bit     = _nl_tmp1 ;$0B
+tmp       = _nl_tmp2 ;$0C
+swaptmp   = _nl_tmp3 ;$0D
 
 .proc _lsl1
-    ldx size
+    ldx arg0
     ldy #0
     clc
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     rol
-    sta (ptr1), y
+    sta (ptr0), y
     iny
     dex
     bne @loop
@@ -43,125 +43,125 @@ swaptmp   = _nl_tmp4 ;$0D
 .endproc
 
 .proc _lsr1
-    ldy size
+    ldy arg0
     dey
     clc
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     ror
-    sta (ptr1), y
+    sta (ptr0), y
     dey
     bpl @loop
     rts
 .endproc
 
 .proc _asr1
-    ldy size
+    ldy arg0
     dey
-    lda (ptr1), y
+    lda (ptr0), y
     asl           ; places the high bit in Carry
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     ror
-    sta (ptr1), y
+    sta (ptr0), y
     dey
     bpl @loop
     rts
 .endproc
 
-; Logical shift left by 8 bits (1 byte)
+; Logical arg1 left by 8 bits (1 byte)
 .proc _lsl8
-    ldy size
+    ldy arg0
     dey
     dey
     bmi @fini
 @loop:
-    lda (ptr1), y
+    lda (ptr0), y
     iny
-    sta (ptr1), y
+    sta (ptr0), y
     dey
     dey
     bpl @loop
 @fini:
     iny
     lda #0
-    sta (ptr1), y
+    sta (ptr0), y
     rts
 .endproc
 
-; Logical shift right by 8 bits (1 byte)
+; Logical arg1 right by 8 bits (1 byte)
 .proc _lsr8
     ldy #0
-    ldx size
+    ldx arg0
     dex
     dex
     bmi @fini
 @loop:
     iny
-    lda (ptr1), y
+    lda (ptr0), y
     dey
-    sta (ptr1), y
+    sta (ptr0), y
     iny
     dex
     bpl @loop
 @fini:
     lda #0
-    sta (ptr1), y
+    sta (ptr0), y
     rts
 .endproc
 
-; Arithmetic shift right by 8 bits (1 byte)
+; Arithmetic arg1 right by 8 bits (1 byte)
 
 .proc _asr8
     lda #0
     sta tmp
-    ldy size
+    ldy arg0
     dey
-    lda (ptr1), y
+    lda (ptr0), y
     bpl @skip
     lda #$FF
     sta tmp
 @skip:
     ldy #0
-    ldx size
+    ldx arg0
     dex
     dex
     bmi @fini
 @loop:
     iny
-    lda (ptr1), y
+    lda (ptr0), y
     dey
-    sta (ptr1), y
+    sta (ptr0), y
     iny
     dex
     bpl @loop
 @fini:
     lda tmp
-    sta (ptr1), y
+    sta (ptr0), y
     rts
 .endproc
 
-; Logical shift left by N bits (N in shift)
+; Logical arg1 left by N bits (N in arg1)
 ; Uses lsl8 and lsl1
-.proc _shiftN
+.proc _arg1N
     jmp @start
 @trampoline1:
-    jmp (ptr3)
+    jmp (ptr2)
 @trampoline8:
-    jmp (ptr4)
+    jmp (ptr3)
 @start:
-    ldy size
+    ldy arg0
     dey
 @copy:
-    lda (ptr1), y
-    sta (ptr2), y
+    lda (ptr0), y
+    sta (ptr1), y
     dey
     bpl @copy
 
-    lda shift
+    lda arg1
     and #7
     sta n_bit
-    lda shift
+    lda arg1
     lsr
     lsr
     lsr
@@ -180,15 +180,15 @@ swaptmp   = _nl_tmp4 ;$0D
     dec n_byte
     bne @loop2
 @fini2:
-    ldy size
+    ldy arg0
     dey
 @swap:
-    lda (ptr1), y
+    lda (ptr0), y
     sta swaptmp
-    lda (ptr2), y
-    sta (ptr1), y
+    lda (ptr1), y
+    sta (ptr0), y
     lda swaptmp
-    sta (ptr2), y
+    sta (ptr1), y
     dey
     bpl @swap
     rts
@@ -196,42 +196,42 @@ swaptmp   = _nl_tmp4 ;$0D
 
 .proc _lslN
     lda #<_lsl1
-    sta ptr3
+    sta ptr2
     lda #>_lsl1
-    sta ptr3+1
+    sta ptr2+1
 
     lda #<_lsl8
-    sta ptr4
+    sta ptr3
     lda #>_lsl8
-    sta ptr4+1
+    sta ptr3+1
 
-    jmp _shiftN
+    jmp _arg1N
 .endproc
 
 .proc _lsrN
     lda #<_lsr1
-    sta ptr3
+    sta ptr2
     lda #>_lsr1
-    sta ptr3+1
+    sta ptr2+1
 
     lda #<_lsr8
-    sta ptr4
+    sta ptr3
     lda #>_lsr8
-    sta ptr4+1
+    sta ptr3+1
 
-    jmp _shiftN
+    jmp _arg1N
 .endproc
 
 .proc _asrN
     lda #<_asr1
-    sta ptr3
+    sta ptr2
     lda #>_asr1
-    sta ptr3+1
+    sta ptr2+1
 
     lda #<_asr8
-    sta ptr4
+    sta ptr3
     lda #>_asr8
-    sta ptr4+1
+    sta ptr3+1
 
-    jmp _shiftN
+    jmp _arg1N
 .endproc
