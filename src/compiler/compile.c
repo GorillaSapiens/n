@@ -300,9 +300,6 @@ static void compile_decl_stmt(ASTNode *node) {
 }
 
 static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
-   parse_dump_node(a);
-   parse_dump_node(b);
-
    // constness must match
    if (has_modifier(a->children[0], "const") !=
        has_modifier(b->children[0], "const")) {
@@ -403,6 +400,7 @@ static void compile_function_decl(ASTNode *node) {
    // epilogue
 
    // ;pop frame pointer
+   emit(&es_code, "@fini:\n");
    emit(&es_code, "    pla\n");
    emit(&es_code, "    sta fp\n");
    emit(&es_code, "    pla\n");
