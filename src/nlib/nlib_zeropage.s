@@ -4,13 +4,19 @@
 
 .segment "ZEROPAGE"
 
-; 12 bytes total
+; 36 bytes total
 
 _nl_sp:    .res 2 ; the argument stack pointer
 _nl_fp:    .res 2 ; the frame pointer
 
-_nl_arg0:  .res 1 ; size for the current operation
-_nl_arg1: .res 1 ; 1 byte arg AND/OR result
+_nl_arg0:  .res 1 ; byte argument 0 ; size
+_nl_arg1:  .res 1 ; byte argument 1 ; shift / result
+_nl_arg2:  .res 1 ; byte argument 2
+_nl_arg3:  .res 1 ; byte argument 3
+_nl_arg4:  .res 1 ; byte argument 4
+_nl_arg5:  .res 1 ; byte argument 5
+_nl_arg6:  .res 1 ; byte argument 6
+_nl_arg7:  .res 1 ; byte argument 7
 
 _nl_ptr0:  .res 2 ; pointer to argument 0
 _nl_ptr1:  .res 2 ; pointer to argument 1
