@@ -361,28 +361,52 @@ static void ctx_add(int *n, Context *ctx, const ASTNode *type, const char *name)
    set_add(ctx->vars, strdup(name), entry);
 }
 
+// caution, returns pointer to static buffer overwritten w/ each call
+static const char *missing_argname(int i) {
+   static char ret[16];
+   sprintf(ret, "$%d", i);
+   return ret;
+}
+
 static void build_function_context(const ASTNode *node, Context *ctx) {
    int n = 0;
+   int i = 0;
 
    // first the arguments, in order
    for (ASTNode *arg = node->children[3]; arg; arg = arg->children[1]) {
       ASTNode *type = arg->children[0]->children[1];
-      const char *name = arg->children[0]->children[2]->strval;
+      const char *name = arg->children[0]->children[2] ? arg->children[0]->children[2]->strval : missing_argname(i);
       if (!has_modifier(arg->children[0]->children[0], "static")) {
          ctx_add(&n, ctx, type, name);
       }
       else {
          debug("[%s:%d] skip static %s", __FILE__, __LINE__, name);
       }
+      i++;
    }
 
    // then the return value
    ctx_add(&n, ctx, node->children[1], "$$");
 }
 
-static void compile_statement_list(ASTNode *node, Context *ctx) {
+static void compile_return_stmt(ASTNode *node, Context *ctx) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
+
+   exit(-1);
+}
+
+static void compile_statement_list(ASTNode *node, Context *ctx) {
+   while(node) {
+      if (!strcmp(node->children[0]->name, "return_stmt")) {
+         compile_return_stmt(node->children[0], ctx);
+      }
+      else {
+         parse_dump_node(node);
+         error("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+      }
+      node = node->children[1];
+   }
 
    exit(-1);
 }
@@ -456,9 +480,11 @@ static void compile_function_decl(ASTNode *node) {
       compile_statement_list(node->children[4], &ctx);
    }
    else {
-      error("[%s:%d.%d] unknown body node type '%s'",
-         node->children[4]->file, node->children[4]->line, node->children[4]->column,
-         node->children[4]->name);
+      if (node->children[4]->kind != AST_EMPTY) {
+         error("[%s:%d.%d] unknown body node type '%s'",
+               node->children[4]->file, node->children[4]->line, node->children[4]->column,
+               node->children[4]->name);
+      }
    }
 
    // epilogue

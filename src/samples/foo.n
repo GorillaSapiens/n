@@ -38,8 +38,10 @@ const uint24_t cy := 0;
 
 int16_t bar(int16_t alpha, static uint8_t beta, const uint24_t gamma);
 
+void nop(void) {
+}
+
 int16_t foo(int16_t arg) {
-   return arg;
    return arg;
 }
 
