@@ -352,7 +352,15 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
 }
 
 static void ctx_add(int *n, Context *ctx, const ASTNode *type, const char *name) {
-   ContextEntry *entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+         type->file, type->line, type->column,
+         name,
+         entry->type->file, entry->type->line, entry->type->column);
+   }
+
+   entry = (ContextEntry *) malloc(sizeof(ContextEntry));
    entry->type = type;
    entry->size = get_size(type->strval);
    *n -= entry->size;

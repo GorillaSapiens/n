@@ -158,7 +158,7 @@ opt_pointer:
 param_list:
     /* empty */             { $$ = make_empty_leaf(); }
   | param                   { $$ = MAKE_NODE($1, NULL); }
-  | param_list ',' param    { $$ = MAKE_NODE($3, $1); }
+  | param ',' param_list    { $$ = MAKE_NODE($1, $3); }
 ;
 
 param:

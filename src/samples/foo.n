@@ -41,7 +41,7 @@ int16_t bar(int16_t alpha, static uint8_t beta, const uint24_t gamma);
 void nop(void) {
 }
 
-int16_t foo(int16_t arg) {
+int16_t foo(int16_t alpha, int16_t beta, int16_t gamma) {
    return arg;
 }
 
