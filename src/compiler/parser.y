@@ -180,7 +180,7 @@ block:
 
 statement_list:
     /* empty */              { $$ = make_empty_leaf(); }
-  | statement_list statement { $$ = ($1->kind != AST_EMPTY) ? MAKE_NODE($1, $2) : MAKE_NODE($2); }
+  | statement_list statement { $$ = ($1->kind != AST_EMPTY) ? MAKE_NODE($2,$1) : MAKE_NODE($2); }
   ;
 
 statement:

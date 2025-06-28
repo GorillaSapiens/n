@@ -24,6 +24,17 @@ Set *types = NULL;
 Set *globals = NULL;
 Set *functions = NULL;
 
+typedef struct ContextEntry {
+   const ASTNode *type;
+   int offset;
+   int size;
+} ContextEntry;
+
+typedef struct Context {
+   int depth;
+   Set *vars;
+} Context;
+
 // for parameterless flags (e.g. "$signed")
 // also for compleate flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
@@ -340,6 +351,42 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
    return true;
 }
 
+static void ctx_add(int *n, Context *ctx, const ASTNode *type, const char *name) {
+   ContextEntry *entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->type = type;
+   entry->size = get_size(type->strval);
+   *n -= entry->size;
+   entry->offset = *n;
+   debug("[%s:%d] ctx_add(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
+   set_add(ctx->vars, strdup(name), entry);
+}
+
+static void build_function_context(const ASTNode *node, Context *ctx) {
+   int n = 0;
+
+   // first the arguments, in order
+   for (ASTNode *arg = node->children[3]; arg; arg = arg->children[1]) {
+      ASTNode *type = arg->children[0]->children[1];
+      const char *name = arg->children[0]->children[2]->strval;
+      if (!has_modifier(arg->children[0]->children[0], "static")) {
+         ctx_add(&n, ctx, type, name);
+      }
+      else {
+         debug("[%s:%d] skip static %s", __FILE__, __LINE__, name);
+      }
+   }
+
+   // then the return value
+   ctx_add(&n, ctx, node->children[1], "$$");
+}
+
+static void compile_statement_list(ASTNode *node, Context *ctx) {
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   parse_dump_node(node);
+
+   exit(-1);
+}
+
 static void compile_function_decl(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
@@ -379,6 +426,12 @@ static void compile_function_decl(ASTNode *node) {
       set_add(functions, name, node);
    }
 
+   // build the context
+   Context ctx;
+   ctx.depth = 0;
+   ctx.vars = new_set();
+   build_function_context(node, &ctx);
+
    emit(&es_code, ".proc _%s\n", name);
 
    // prologue
@@ -396,6 +449,17 @@ static void compile_function_decl(ASTNode *node) {
    emit(&es_code, "    lda sp\n");
    emit(&es_code, "    sta sp\n");
    emit(&es_code, "\n");
+
+   // body
+
+   if (!strcmp(node->children[4]->name, "statement_list")) {
+      compile_statement_list(node->children[4], &ctx);
+   }
+   else {
+      error("[%s:%d.%d] unknown body node type '%s'",
+         node->children[4]->file, node->children[4]->line, node->children[4]->column,
+         node->children[4]->name);
+   }
 
    // epilogue
 
