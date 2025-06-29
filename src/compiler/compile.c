@@ -401,7 +401,14 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    parse_dump_node(node);
 
-   exit(-1);
+   debug("TODO FIX");
+}
+
+static void compile_expr(ASTNode *node, Context *ctx) {
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   parse_dump_node(node);
+
+   error("%s:%d %s exiting", __FILE__, __LINE__,  __FUNCTION__);
 }
 
 static void compile_statement_list(ASTNode *node, Context *ctx) {
@@ -409,14 +416,15 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       if (!strcmp(node->children[0]->name, "return_stmt")) {
          compile_return_stmt(node->children[0], ctx);
       }
+      else if (!strcmp(node->children[0]->name, "expr")) {
+         compile_expr(node->children[0], ctx);
+      }
       else {
          parse_dump_node(node);
          error("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
       }
       node = node->children[1];
    }
-
-   exit(-1);
 }
 
 static void compile_function_decl(ASTNode *node) {
