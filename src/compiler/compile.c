@@ -471,6 +471,9 @@ static void compile_block_decl_stmt(ASTNode *node, Context *ctx) {
    parse_dump_node(node);
 
    if (has_modifier(node->children[0], "static")) {
+      ASTNode *type = node->children[1];
+      const char *name = node->children[2]->strval;
+      ctx_static(ctx, type, name, node->children[5] ? false : true);
    }
    else {
       ASTNode *type = node->children[1];
