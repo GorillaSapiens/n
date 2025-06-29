@@ -31,7 +31,8 @@ typedef struct ContextEntry {
 } ContextEntry;
 
 typedef struct Context {
-   int depth;
+   int locals;
+   int params;
    Set *vars;
 } Context;
 
@@ -351,7 +352,7 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
    return true;
 }
 
-static void ctx_add(int *n, Context *ctx, const ASTNode *type, const char *name) {
+static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
@@ -363,9 +364,27 @@ static void ctx_add(int *n, Context *ctx, const ASTNode *type, const char *name)
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
    entry->type = type;
    entry->size = get_size(type->strval);
-   *n -= entry->size;
-   entry->offset = *n;
-   debug("[%s:%d] ctx_add(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
+   ctx->params -= entry->size;
+   entry->offset = ctx->params;
+   debug("[%s:%d] ctx_shove(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
+   set_add(ctx->vars, strdup(name), entry);
+}
+
+static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+         type->file, type->line, type->column,
+         name,
+         entry->type->file, entry->type->line, entry->type->column);
+   }
+
+   entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->type = type;
+   entry->size = get_size(type->strval);
+   entry->offset = ctx->locals;
+   ctx->locals += entry->size;
+   debug("[%s:%d] ctx_push(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
    set_add(ctx->vars, strdup(name), entry);
 }
 
@@ -377,7 +396,6 @@ static const char *missing_argname(int i) {
 }
 
 static void build_function_context(const ASTNode *node, Context *ctx) {
-   int n = 0;
    int i = 0;
 
    // first the arguments, in order
@@ -385,7 +403,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
       ASTNode *type = arg->children[0]->children[1];
       const char *name = arg->children[0]->children[2] ? arg->children[0]->children[2]->strval : missing_argname(i);
       if (!has_modifier(arg->children[0]->children[0], "static")) {
-         ctx_add(&n, ctx, type, name);
+         ctx_shove(ctx, type, name);
       }
       else {
          debug("[%s:%d] skip static %s", __FILE__, __LINE__, name);
@@ -394,7 +412,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    }
 
    // then the return value
-   ctx_add(&n, ctx, node->children[1], "$$");
+   ctx_shove(ctx, node->children[1], "$$");
 }
 
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
@@ -411,6 +429,25 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    error("%s:%d %s exiting", __FILE__, __LINE__,  __FUNCTION__);
 }
 
+static void compile_block_decl_stmt(ASTNode *node, Context *ctx) {
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   parse_dump_node(node);
+
+   if (has_modifier(node->children[0], "static")) {
+   }
+   else {
+      ASTNode *type = node->children[1];
+      const char *name = node->children[2]->strval;
+      ctx_push(ctx, type, name);
+
+      if (node->children[5]) {
+         // TODO FIX evaluate and assign
+      }
+   }
+
+   error("%s:%d %s exiting", __FILE__, __LINE__,  __FUNCTION__);
+}
+
 static void compile_statement_list(ASTNode *node, Context *ctx) {
    while(node) {
       if (!strcmp(node->children[0]->name, "return_stmt")) {
@@ -418,6 +455,9 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       }
       else if (!strcmp(node->children[0]->name, "expr")) {
          compile_expr(node->children[0], ctx);
+      }
+      else if (!strcmp(node->children[0]->name, "block_decl_stmt")) {
+         compile_block_decl_stmt(node->children[0], ctx);
       }
       else {
          parse_dump_node(node);
@@ -468,7 +508,8 @@ static void compile_function_decl(ASTNode *node) {
 
    // build the context
    Context ctx;
-   ctx.depth = 0;
+   ctx.locals = 0;
+   ctx.params = 0;
    ctx.vars = new_set();
    build_function_context(node, &ctx);
 
