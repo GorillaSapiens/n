@@ -26,11 +26,13 @@ Set *functions = NULL;
 
 typedef struct ContextEntry {
    const ASTNode *type;
+   bool is_static;
    int offset;
    int size;
 } ContextEntry;
 
 typedef struct Context {
+   const char *name;
    int locals;
    int params;
    Set *vars;
@@ -362,6 +364,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->is_static = false;
    entry->type = type;
    entry->size = get_size(type->strval);
    ctx->params -= entry->size;
@@ -380,12 +383,35 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->is_static = false;
    entry->type = type;
    entry->size = get_size(type->strval);
    entry->offset = ctx->locals;
    ctx->locals += entry->size;
    debug("[%s:%d] ctx_push(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
    set_add(ctx->vars, strdup(name), entry);
+
+   // TODO FIX increment the stack pointer.
+}
+
+static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+         type->file, type->line, type->column,
+         name,
+         entry->type->file, entry->type->line, entry->type->column);
+   }
+
+   entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->is_static = true;
+   entry->type = type;
+   entry->size = get_size(type->strval);
+   entry->offset = 0;
+   debug("[%s:%d] ctx_static(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
+   set_add(ctx->vars, strdup(name), entry);
+
+   // TODO FIX allocate storage
 }
 
 // caution, returns pointer to static buffer overwritten w/ each call
@@ -406,7 +432,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          ctx_shove(ctx, type, name);
       }
       else {
-         debug("[%s:%d] skip static %s", __FILE__, __LINE__, name);
+         ctx_static(ctx, type, name);
       }
       i++;
    }
@@ -508,6 +534,7 @@ static void compile_function_decl(ASTNode *node) {
 
    // build the context
    Context ctx;
+   ctx.name = name;
    ctx.locals = 0;
    ctx.params = 0;
    ctx.vars = new_set();
@@ -599,6 +626,8 @@ static void compile(ASTNode *node) {
 
 void do_compile(void) {
 
+   emit(&es_header, "; this file produced by \"nc\" compiler\n");
+   emit(&es_header, "; depends on --feature dollar_in_identifiers\n");
    emit(&es_header, ".include \"nlib.inc\"\n");
    emit(&es_code,   ".segment \"CODE\"\n");
    emit(&es_rodata, ".segment \"RODATA\"\n");
