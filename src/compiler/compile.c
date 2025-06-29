@@ -394,7 +394,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    // TODO FIX increment the stack pointer.
 }
 
-static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
+static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool bss) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
@@ -408,10 +408,21 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    entry->type = type;
    entry->size = get_size(type->strval);
    entry->offset = 0;
-   debug("[%s:%d] ctx_static(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
+   debug("[%s:%d] ctx_static(%s, %s$%s, %d, %d)", __FILE__, __LINE__, type->strval, ctx->name, name, entry->size, entry->offset);
    set_add(ctx->vars, strdup(name), entry);
 
-   // TODO FIX allocate storage
+   if (bss) {
+      emit(&es_bss, "_%s$%s:\n", ctx->name, name);
+      // TODO FIX multiply "size" by "dimension" if necessary
+      emit(&es_bss, "\t.res %d\n", entry->size);
+   }
+   else {
+      // TODO FIX allocate storage
+      // TDO FIX how do we initialize it ???
+      emit(&es_data, "_%s$%s:\n", ctx->name, name);
+      // TODO FIX multiply "size" by "dimension" if necessary
+      emit(&es_data, "\t.res %d\n", entry->size); // TODO FIX this is wrong!
+   }
 }
 
 // caution, returns pointer to static buffer overwritten w/ each call
@@ -432,7 +443,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          ctx_shove(ctx, type, name);
       }
       else {
-         ctx_static(ctx, type, name);
+         ctx_static(ctx, type, name, true);
       }
       i++;
    }
