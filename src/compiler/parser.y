@@ -95,13 +95,13 @@ type_decl:
 
 function_decl:
     modifier_list type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5); }
-  | type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
+  |               type_name IDENTIFIER '(' param_list ')' ';'    { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
   | modifier_list type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5, $7); }
-  | type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
+  |               type_name IDENTIFIER '(' param_list ')' block  { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
   | modifier_list type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5); }
-  | type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
+  |               type_name OPERATOR '(' param_list ')' ';'      { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
   | modifier_list type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5, $7); }
-  | type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
+  |               type_name OPERATOR '(' param_list ')' block    { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
   ;
 
 struct_decl:
@@ -163,11 +163,11 @@ param_list:
 
 param:
     modifier_list type_name IDENTIFIER '@' INTEGER { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), make_integer_leaf($5)); }
-  | type_name IDENTIFIER '@' INTEGER { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), make_integer_leaf($4)); }
+  |               type_name IDENTIFIER '@' INTEGER { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), make_integer_leaf($4)); }
   | modifier_list type_name IDENTIFIER             { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3)); }
-  | type_name IDENTIFIER             { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2)); }
+  |               type_name IDENTIFIER             { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2)); }
   | modifier_list type_name                        { $$ = MAKE_NODE($1, $2); } // unnamed params are allowed
-  | type_name                        { $$ = MAKE_NODE(make_empty_leaf(), $1); } // unnamed params are allowed
+  |               type_name                        { $$ = MAKE_NODE(make_empty_leaf(), $1); } // unnamed params are allowed
 ;
 
 type_name:
@@ -249,20 +249,20 @@ opt_address:
 
 decl_stmt:
     modifier_list type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5); }
-  | type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
   | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
   | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
   ;
 
 block_decl_stmt:
     modifier_list type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5); }
-  | type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ';'                          { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
   | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
   | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  | type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
+  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
   ;
 
 opt_array_dim:
