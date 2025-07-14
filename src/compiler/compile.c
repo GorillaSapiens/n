@@ -394,6 +394,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
    entry->is_static = false;
+   entry->is_quick = false;
    entry->type = type;
    entry->size = get_size(type->strval);
    ctx->params -= entry->size;
@@ -413,6 +414,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
    entry->is_static = false;
+   entry->is_quick = false;
    entry->type = type;
    entry->size = get_size(type->strval);
    entry->offset = ctx->locals;
@@ -434,6 +436,7 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
    entry->is_static = true;
+   entry->is_quick = false;
    entry->type = type;
    entry->size = get_size(type->strval);
    entry->offset = 0;
@@ -464,12 +467,12 @@ static void ctx_quick(Context *ctx, const ASTNode *type, const char *name, bool 
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
-   entry->is_static = true;
+   entry->is_static = false;
    entry->is_quick = true;
    entry->type = type;
    entry->size = get_size(type->strval);
    entry->offset = 0;
-   debug("[%s:%d] ctx_static(%s, %s$%s, %d, %d)", __FILE__, __LINE__, type->strval, ctx->name, name, entry->size, entry->offset);
+   debug("[%s:%d] ctx_quick(%s, %s$%s, %d, %d)", __FILE__, __LINE__, type->strval, ctx->name, name, entry->size, entry->offset);
    set_add(ctx->vars, strdup(name), entry);
 
    if (bss) {
