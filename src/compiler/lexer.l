@@ -98,6 +98,7 @@ void pop_file() {
 "const"         { yylval.str = strdup(yytext); return CONST; }
 "static"        { yylval.str = strdup(yytext); return STATIC; }
 "extern"        { yylval.str = strdup(yytext); return EXTERN; }
+"quick"         { yylval.str = strdup(yytext); return QUICK; }
 
 "break"         return BREAK;
 "continue"      return CONTINUE;

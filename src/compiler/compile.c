@@ -19,6 +19,8 @@ EmitSink es_code   = EMIT_INIT;
 EmitSink es_rodata = EMIT_INIT;
 EmitSink es_data   = EMIT_INIT;
 EmitSink es_bss    = EMIT_INIT;
+EmitSink es_zp     = EMIT_INIT;
+EmitSink es_zpdata = EMIT_INIT;
 
 Set *types = NULL;
 Set *globals = NULL;
@@ -27,6 +29,7 @@ Set *functions = NULL;
 typedef struct ContextEntry {
    const ASTNode *type;
    bool is_static;
+   bool is_quick;
    int offset;
    int size;
 } ContextEntry;
@@ -175,6 +178,7 @@ static void compile_decl_stmt(ASTNode *node) {
    bool is_extern = has_modifier(modifiers, "extern");
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
+   bool is_quick  = has_modifier(modifiers, "quick");
 
 #if 0
    printf("=");
@@ -187,6 +191,9 @@ static void compile_decl_stmt(ASTNode *node) {
    if (is_static) {
       printf("static ");
    }
+   if (is_quick) {
+      printf("quick ");
+   }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
 #endif
    
@@ -198,20 +205,37 @@ static void compile_decl_stmt(ASTNode *node) {
             node->file, node->line, node->column);
       }
 
-      emit(&es_import, ".import _%s\n", name);
+      if (is_quick) {
+         emit(&es_import, ".zpimport _%s\n", name);
+      }
+      else {
+         emit(&es_import, ".import _%s\n", name);
+      }
    }
    else {
       if (!is_static) {
-         emit(&es_export, ".export _%s\n", name);
+         if (is_quick) {
+            emit(&es_export, ".zpexport _%s\n", name);
+         }
+         else {
+            emit(&es_export, ".export _%s\n", name);
+         }
       }
       if (expression == NULL) {
          if (is_const) {
             error("[%s:%d.%d] 'const' missing initializer",
                node->file, node->line, node->column);
          }
-         emit(&es_bss, "_%s:\n", name);
-         // TODO FIX multiply "size" by "dimension" if necessary
-         emit(&es_bss, "\t.res %d\n", size);
+         if (is_quick) {
+            emit(&es_zp, "_%s:\n", name);
+            // TODO FIX multiply "size" by "dimension" if necessary
+            emit(&es_zp, "\t.res %d\n", size);
+         }
+         else {
+            emit(&es_bss, "_%s:\n", name);
+            // TODO FIX multiply "size" by "dimension" if necessary
+            emit(&es_bss, "\t.res %d\n", size);
+         }
       }
       else {
          EmitSink *es;
@@ -219,7 +243,12 @@ static void compile_decl_stmt(ASTNode *node) {
             es = &es_rodata;
          }
          else {
-            es = &es_data;
+            if (is_quick) {
+               es = &es_zpdata;
+            }
+            else {
+               es = &es_data;
+            }
          }
          emit(es, "_%s:\n", name);
          // TODO FIX multiply "size" by "dimension" if necessary
@@ -425,6 +454,38 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool
    }
 }
 
+static void ctx_quick(Context *ctx, const ASTNode *type, const char *name, bool bss) {
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+         type->file, type->line, type->column,
+         name,
+         entry->type->file, entry->type->line, entry->type->column);
+   }
+
+   entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+   entry->is_static = true;
+   entry->is_quick = true;
+   entry->type = type;
+   entry->size = get_size(type->strval);
+   entry->offset = 0;
+   debug("[%s:%d] ctx_static(%s, %s$%s, %d, %d)", __FILE__, __LINE__, type->strval, ctx->name, name, entry->size, entry->offset);
+   set_add(ctx->vars, strdup(name), entry);
+
+   if (bss) {
+      emit(&es_bss, "_%s$%s:\n", ctx->name, name);
+      // TODO FIX multiply "size" by "dimension" if necessary
+      emit(&es_bss, "\t.res %d\n", entry->size);
+   }
+   else {
+      // TODO FIX allocate storage
+      // TDO FIX how do we initialize it ???
+      emit(&es_data, "_%s$%s:\n", ctx->name, name);
+      // TODO FIX multiply "size" by "dimension" if necessary
+      emit(&es_data, "\t.res %d\n", entry->size); // TODO FIX this is wrong!
+   }
+}
+
 // caution, returns pointer to static buffer overwritten w/ each call
 static const char *missing_argname(int i) {
    static char ret[16];
@@ -439,11 +500,14 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    for (ASTNode *arg = node->children[3]; arg; arg = arg->children[1]) {
       ASTNode *type = arg->children[0]->children[1];
       const char *name = arg->children[0]->children[2] ? arg->children[0]->children[2]->strval : missing_argname(i);
-      if (!has_modifier(arg->children[0]->children[0], "static")) {
-         ctx_shove(ctx, type, name);
+      if (has_modifier(arg->children[0]->children[0], "static")) {
+         ctx_static(ctx, type, name, true);
+      }
+      else if (has_modifier(arg->children[0]->children[0], "quick")) {
+         ctx_quick(ctx, type, name, true);
       }
       else {
-         ctx_static(ctx, type, name, true);
+         ctx_shove(ctx, type, name);
       }
       i++;
    }
@@ -474,6 +538,11 @@ static void compile_block_decl_stmt(ASTNode *node, Context *ctx) {
       ASTNode *type = node->children[1];
       const char *name = node->children[2]->strval;
       ctx_static(ctx, type, name, node->children[5] ? false : true);
+   }
+   else if (has_modifier(node->children[0], "quick")) {
+      ASTNode *type = node->children[1];
+      const char *name = node->children[2]->strval;
+      ctx_quick(ctx, type, name, node->children[5] ? false : true);
    }
    else {
       ASTNode *type = node->children[1];
