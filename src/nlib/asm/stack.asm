@@ -3,6 +3,7 @@
 .include "nlib.inc"
 
 .proc _pushN
+    ; increment sp by arg0
     ; stack grows up!
     clc
     lda sp
@@ -15,6 +16,7 @@
 .endproc
 
 .proc _popN
+    ; decrement sp by arg0
     sec
     lda sp
     sbc arg0
@@ -26,6 +28,7 @@
 .endproc
 
 .proc _cpyN
+    ; copy arg0 bytes from ptr0 to ptr1
     ldx arg0
     ldy #0
 @loop:
@@ -38,6 +41,7 @@
 .endproc
 
 .proc _comp2N
+    ; arg0 bytes ptr1 = 2's complement of ptr0
     ldx arg0
     ldy #0
     sec
@@ -53,6 +57,7 @@
 .endproc
 
 .proc _swapN
+    ; swap arg0 bytes between ptr0 and ptr1
     ldx arg0
     ldy #0
 @loop:
