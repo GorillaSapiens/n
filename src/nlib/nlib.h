@@ -77,7 +77,7 @@ void cpyN(void);
 void comp2N(void);
 void swapN(void);
 
+void stacksess0(void);
 void stacksess1(void);
 void stacksess2(void);
 void stacksess3(void);
-void stacksess4(void);

@@ -1,49 +1,49 @@
 ; stacksess.asm - Stack access functions
 ;
-; these all transfer fp to ptrN, and subtract arg0
+; these all transfer fp to ptrN, and add arg0
 
 .include "nlib.inc"
 
-.proc _stacksess1
-    sec
+.proc _stacksess0
+    clc
     lda fp
-    sbc arg0
+    adc arg0
     sta ptr0
     lda fp+1
-    sbc #0
+    adc #0
     sta ptr0+1
     rts
 .endproc
 
-.proc _stacksess2
-    sec
+.proc _stacksess1
+    clc
     lda fp
-    sbc arg0
+    adc arg0
     sta ptr1
     lda fp+1
-    sbc #0
+    adc #0
     sta ptr1+1
     rts
 .endproc
 
-.proc _stacksess3
-    sec
+.proc _stacksess2
+    clc
     lda fp
-    sbc arg0
+    adc arg0
     sta ptr2
     lda fp+1
-    sbc #0
+    adc #0
     sta ptr2+1
     rts
 .endproc
 
-.proc _stacksess4
-    sec
+.proc _stacksess3
+    clc
     lda fp
-    sbc arg0
+    adc arg0
     sta ptr3
     lda fp+1
-    sbc #0
+    adc #0
     sta ptr3+1
     rts
 .endproc

@@ -1245,27 +1245,30 @@ void stacksess_tests(void) {
    nl_fp = stack + sizeof(stack) / 2;
    nl_arg0 = 24;
 
+   printf("stacksess0\n");
+   stacksess0();
+   if (nl_ptr0 != (char *)nl_fp + 24) {
+      exit(-1);
+   }
+
    printf("stacksess1\n");
    stacksess1();
-   if (nl_ptr0 != (char *)nl_fp - 24) {
+   if (nl_ptr1 != (char *) nl_fp + 24) {
+      printf("%p %p\n", nl_fp, nl_ptr1);
       exit(-1);
    }
 
    printf("stacksess2\n");
    stacksess2();
-   if (nl_ptr0 != (char *) nl_fp - 24) {
+   if (nl_ptr2 != (char *) nl_fp + 24) {
+      printf("%p %p\n", nl_fp, nl_ptr2);
       exit(-1);
    }
 
    printf("stacksess3\n");
    stacksess3();
-   if (nl_ptr0 != (char *) nl_fp - 24) {
-      exit(-1);
-   }
-
-   printf("stacksess4\n");
-   stacksess4();
-   if (nl_ptr0 != (char *) nl_fp - 24) {
+   if (nl_ptr3 != (char *) nl_fp + 24) {
+      printf("%p %p\n", nl_fp, nl_ptr3);
       exit(-1);
    }
 
