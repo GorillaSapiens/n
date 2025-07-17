@@ -99,6 +99,7 @@ void pop_file() {
 "static"        { yylval.str = strdup(yytext); return STATIC; }
 "extern"        { yylval.str = strdup(yytext); return EXTERN; }
 "quick"         { yylval.str = strdup(yytext); return QUICK; }
+"ref"           { yylval.str = strdup(yytext); return REF; }
 
 "break"         return BREAK;
 "continue"      return CONTINUE;

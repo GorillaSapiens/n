@@ -77,7 +77,12 @@ void cpyN(void);
 void comp2N(void);
 void swapN(void);
 
-void stacksess0(void);
-void stacksess1(void);
-void stacksess2(void);
-void stacksess3(void);
+void fp2ptr0p(void);
+void fp2ptr1p(void);
+void fp2ptr2p(void);
+void fp2ptr3p(void);
+
+void fp2ptr0m(void);
+void fp2ptr1m(void);
+void fp2ptr2m(void);
+void fp2ptr3m(void);

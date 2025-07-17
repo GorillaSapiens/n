@@ -21,7 +21,7 @@
 %token <str> STRING IDENTIFIER TYPENAME FLAG OPERATOR
 %token <str> INTEGER
 %token <str> FLOAT
-%token <str> CONST STATIC EXTERN QUICK
+%token <str> CONST STATIC EXTERN QUICK REF
 
 %token IF ELSE WHILE FOR RETURN TYPE
 %token ASSIGN
@@ -149,6 +149,7 @@ modifier:
   | EXTERN { $$ = make_identifier_leaf($1); }
   | CONST  { $$ = make_identifier_leaf($1); }
   | QUICK  { $$ = make_identifier_leaf($1); }
+  | REF    { $$ = make_identifier_leaf($1); }
   ;
 
 opt_pointer:

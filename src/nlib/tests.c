@@ -1245,29 +1245,56 @@ void stacksess_tests(void) {
    nl_fp = stack + sizeof(stack) / 2;
    nl_arg0 = 24;
 
-   printf("stacksess0\n");
-   stacksess0();
+   printf("fp2ptr0p\n");
+   fp2ptr0p();
    if (nl_ptr0 != (char *)nl_fp + 24) {
       exit(-1);
    }
 
-   printf("stacksess1\n");
-   stacksess1();
+   printf("fp2ptr1p\n");
+   fp2ptr1p();
    if (nl_ptr1 != (char *) nl_fp + 24) {
       printf("%p %p\n", nl_fp, nl_ptr1);
       exit(-1);
    }
 
-   printf("stacksess2\n");
-   stacksess2();
+   printf("fp2ptr2p\n");
+   fp2ptr2p();
    if (nl_ptr2 != (char *) nl_fp + 24) {
       printf("%p %p\n", nl_fp, nl_ptr2);
       exit(-1);
    }
 
-   printf("stacksess3\n");
-   stacksess3();
+   printf("fp2ptr3p\n");
+   fp2ptr3p();
    if (nl_ptr3 != (char *) nl_fp + 24) {
+      printf("%p %p\n", nl_fp, nl_ptr3);
+      exit(-1);
+   }
+
+   printf("fp2ptr0m\n");
+   fp2ptr0m();
+   if (nl_ptr0 != (char *)nl_fp - 24) {
+      exit(-1);
+   }
+
+   printf("fp2ptr1m\n");
+   fp2ptr1m();
+   if (nl_ptr1 != (char *) nl_fp - 24) {
+      printf("%p %p\n", nl_fp, nl_ptr1);
+      exit(-1);
+   }
+
+   printf("fp2ptr2m\n");
+   fp2ptr2m();
+   if (nl_ptr2 != (char *) nl_fp - 24) {
+      printf("%p %p\n", nl_fp, nl_ptr2);
+      exit(-1);
+   }
+
+   printf("fp2ptr3m\n");
+   fp2ptr3m();
+   if (nl_ptr3 != (char *) nl_fp - 24) {
       printf("%p %p\n", nl_fp, nl_ptr3);
       exit(-1);
    }

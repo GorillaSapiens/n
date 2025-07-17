@@ -151,6 +151,7 @@ static int get_size(const char *type) {
    return -1; // unreachable
 }
 
+// decl_stmt is a free floating variable declaration
 static void compile_decl_stmt(ASTNode *node) {
    //debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    //parse_dump_node(node);
@@ -179,6 +180,12 @@ static void compile_decl_stmt(ASTNode *node) {
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
    bool is_quick  = has_modifier(modifiers, "quick");
+   bool is_ref    = has_modifier(modifiers, "ref");
+
+   if (is_ref) {
+      error("[%s:%d.%d] 'ref' not allowed in decl_stmt",
+         node->file, node->line, node->column);
+   }
 
 #if 0
    printf("=");
@@ -193,6 +200,9 @@ static void compile_decl_stmt(ASTNode *node) {
    }
    if (is_quick) {
       printf("quick ");
+   }
+   if (is_ref) {
+      printf("ref ");
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
 #endif
