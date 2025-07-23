@@ -56,7 +56,8 @@ my %terminals = (
    "TYPENAME"	=>	"typename",
    "UNION"	=>	"union",
    "WHILE"	=>	"while",
-   "XOR_ASSIGN"	=>	"^="
+   "XOR_ASSIGN"	=>	"^=",
+   "ε" => ""
 );
 my $in_rules = 0;
 my $in_terminals = 0;
