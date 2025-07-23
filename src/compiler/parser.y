@@ -153,12 +153,12 @@ modifier:
   ;
 
 opt_pointer:
-    /* empty */     { $$ = make_integer_leaf("0"); }
+    %empty          { $$ = make_integer_leaf("0"); }
   | '*' opt_pointer { $$ = $2; increment_integer_leaf($$); }
   ;
 
 param_list:
-    /* empty */             { $$ = make_empty_leaf(); }
+    %empty                  { $$ = make_empty_leaf(); }
   | param                   { $$ = MAKE_NODE($1, NULL); }
   | param ',' param_list    { $$ = MAKE_NODE($1, $3); }
 ;
@@ -181,7 +181,7 @@ block:
   ;
 
 statement_list:
-    /* empty */              { $$ = make_empty_leaf(); }
+    %empty                   { $$ = make_empty_leaf(); }
   | statement statement_list { $$ = ($2->kind != AST_EMPTY) ? MAKE_NODE($1,$2) : MAKE_NODE($1); }
   ;
 
@@ -245,7 +245,7 @@ label_stmt:
   ;
 
 opt_address:
-    /* empty */   { $$ = make_empty_leaf(); }
+    %empty        { $$ = make_empty_leaf(); }
   | '@' INTEGER   { $$ = make_integer_leaf($2); }
   ;
 
@@ -268,7 +268,7 @@ block_decl_stmt:
   ;
 
 opt_array_dim:
-    /* empty */                { $$ = make_empty_leaf(); }
+    %empty                     { $$ = make_empty_leaf(); }
   | '[' expr ']' opt_array_dim { $$ = is_empty($4) ? MAKE_NODE($2) : MAKE_NODE($2, $4); }
 ;
 
@@ -294,7 +294,7 @@ expr_stmt:
   ;
 
 opt_expr:
-    /* empty */  { $$ = make_empty_leaf(); }
+    %empty       { $$ = make_empty_leaf(); }
   | expr         { $$ = $1; }
   ;
 
@@ -410,7 +410,7 @@ primary_expr:
   ;
 
 arg_list:
-    /* empty */  { $$ = make_empty_leaf(); }
+    %empty       { $$ = make_empty_leaf(); }
   | expr_args    { $$ = $1; }
   ;
 
@@ -452,7 +452,7 @@ case_block:
 
 opt_flags:
     flag_list   { $$ = $1; }
-  | /* empty */ { $$ = make_empty_leaf(); }
+  | %empty      { $$ = make_empty_leaf(); }
   ;
 
 flag_list:
