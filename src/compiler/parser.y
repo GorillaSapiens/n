@@ -36,7 +36,7 @@
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
 
-%type <node> additive_expr arg_list array_initializer assignable
+%type <node> additive_expr arg_list array_initializer array_initializer_list assignable
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
 %type <node> decl_stmt
@@ -273,14 +273,20 @@ opt_array_dim:
 ;
 
 array_initializer:
-    '{' expr_list '}' { $$ = $2; }
+    '{' expr_list '}'               { $$ = $2; }
+  | '{' array_initializer_list '}'  { $$ = $2; }
+  | '{' array_initializer_list ',' '}'  { $$ = $2; }
+  ;
+
+array_initializer_list:
+    array_initializer                            { $$ = MAKE_NODE($1); }
+  | array_initializer_list ',' array_initializer { $$ = MAKE_NODE($1, $3); }
   ;
 
 expr_list:
     expr                        { $$ = MAKE_NODE($1); }
   | expr_list ',' expr          { $$ = MAKE_NODE($1, $3); }
 ;
-
 
 expr_stmt:
     expr ';' { $$ = $1; }
