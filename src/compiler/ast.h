@@ -25,6 +25,8 @@ typedef struct ASTNode {
    struct ASTNode *children[16];
 } ASTNode;
 
+#define is_empty(x) ((x)->kind == AST_EMPTY)
+
 ASTNode *make_node(const char *name, ...);
 ASTNode *make_integer_leaf(const char *intval);
 ASTNode *increment_integer_leaf(ASTNode *node);

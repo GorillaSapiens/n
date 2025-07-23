@@ -268,9 +268,9 @@ block_decl_stmt:
   ;
 
 opt_array_dim:
-    /* empty */  { $$ = make_empty_leaf(); }
-  | '[' expr ']' { $$ = $2; }
-  ;
+    /* empty */                { $$ = make_empty_leaf(); }
+  | '[' expr ']' opt_array_dim { $$ = is_empty($4) ? MAKE_NODE($2) : MAKE_NODE($2, $4); }
+;
 
 array_initializer:
     '{' expr_list '}' { $$ = $2; }
