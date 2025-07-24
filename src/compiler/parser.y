@@ -37,7 +37,8 @@
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
 
-%type <node> additive_expr arg_list array_initializer array_initializer_list assignable
+%type <node> additive_expr arg_list array_initializer array_initializer_list
+%type <node> assignable assignable_base assignable_suffixes
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
 %type <node> decl_stmt
@@ -274,8 +275,9 @@ opt_array_dim:
 ;
 
 array_initializer:
-    '{' expr_list '}'               { COVER; $$ = $2; }
-  | '{' array_initializer_list '}'  { COVER; $$ = $2; }
+    '{' expr_list '}'                   { COVER; $$ = $2; }
+  | '{' expr_list ',' '}'               { COVER; $$ = $2; }
+  | '{' array_initializer_list '}'      { COVER; $$ = $2; }
   | '{' array_initializer_list ',' '}'  { COVER; $$ = $2; }
   ;
 
@@ -314,12 +316,6 @@ expr:
   | assignable XOR_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
   | assignable LSHIFT_ASSIGN expr      { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
   | assignable RSHIFT_ASSIGN expr      { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
-  ;
-
-assignable:
-    IDENTIFIER                { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
-  | postfix_expr '[' expr ']' { COVER; $$ = MAKE_NODE($1,$3); }
-  | '*' unary_expr            { COVER; $$ = MAKE_NODE(make_identifier_leaf("*"), $2); }
   ;
 
 logical_or_expr:
@@ -380,6 +376,26 @@ multiplicative_expr:
   | multiplicative_expr '%' unary_expr { COVER; $$ = MAKE_NAMED_NODE("%", $1, $3); }
   ;
 
+assignable:
+    assignable_base assignable_suffixes { COVER; $$ = MAKE_NODE($1,$2); }
+  ;
+
+assignable_base:
+    IDENTIFIER          { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | '*' assignable_base { COVER; $$ = MAKE_NAMED_NODE("*", $2); }
+  | INC assignable_base { COVER; $$ = MAKE_NAMED_NODE("pre++", $2); }
+  | DEC assignable_base { COVER; $$ = MAKE_NAMED_NODE("pre--", $2); }
+  ;
+
+assignable_suffixes:
+    %empty                                { COVER; make_empty_leaf(); }
+  | assignable_suffixes '[' expr ']'      { COVER; MAKE_NAMED_NODE("[", $1, $3); }
+  | assignable_suffixes '.' IDENTIFIER    { COVER; MAKE_NAMED_NODE(".", $1, $3); }
+  | assignable_suffixes ARROW IDENTIFIER  { COVER; MAKE_NAMED_NODE("->", $1, $3); }
+  | assignable_suffixes INC               { COVER; MAKE_NAMED_NODE("post--", $1); }
+  | assignable_suffixes DEC               { COVER; MAKE_NAMED_NODE("post--", $1); }
+  ;
+
 unary_expr:
     postfix_expr   { COVER; $$ = $1; }
   | '!' unary_expr { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
@@ -387,17 +403,10 @@ unary_expr:
   | '-' unary_expr { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
   | '&' unary_expr { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
   | '*' unary_expr { COVER; $$ = MAKE_NAMED_NODE("*", $2); }
-  | INC unary_expr { COVER; $$ = MAKE_NAMED_NODE("pre++", $2); }
-  | DEC unary_expr { COVER; $$ = MAKE_NAMED_NODE("pre--", $2); }
   ;
 
 postfix_expr:
     primary_expr                   { COVER; $$ = $1; }
-  | postfix_expr '.' IDENTIFIER    { COVER; $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
-  | postfix_expr ARROW IDENTIFIER  { COVER; $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
-  | postfix_expr INC               { COVER; $$ = MAKE_NAMED_NODE("post++", $1); }
-  | postfix_expr DEC               { COVER; $$ = MAKE_NAMED_NODE("post--", $1); }
-  | postfix_expr '[' expr ']'      { COVER; $$ = MAKE_NAMED_NODE("[]", $1, $3); }
   | IDENTIFIER '(' arg_list ')'    { COVER; $$ = MAKE_NAMED_NODE("()", make_identifier_leaf($1), $3); }
   ;
 
