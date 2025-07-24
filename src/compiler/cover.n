@@ -1,0 +1,88 @@
+include "cover.n"
+
+type void { $size:0 };
+type char { $size:1 $endian:little };
+type *    { $size:2 $endian:little };
+type int  { $size:2 $endian:little };
+type long { $size:4 $endian:little };
+
+struct xyz { int x; int y; int *z; };
+union  abc { int a; int b; int c; };
+
+void useless() {
+   return;
+}
+
+int globalint0;
+int globalint1 := 5;
+
+int operator*(int l, int r);
+
+int operator*(int l, int r) {
+   return l * r;
+}
+
+static extern const quick ref int operator+(const int l, int r);
+
+static extern const quick ref int operator+(const int l, int r) {
+   { // you know, for scoping!
+      int q;
+      int r := 7;
+      q += 7;
+      q -= 7;
+      q *= 7;
+      q /= 7;
+      q %= 7;
+      q <<= 1;
+      q >>= 1;
+   }
+   return l + r;
+}
+
+int function0(void);
+
+int function0(void) {
+   return 5;
+}
+
+const int function1(int i);
+
+const int function1(int i) {
+   return 5;
+}
+
+int function2(int i @ 12, quick int j @ 13);
+
+int function2(int i @ 12, quick int j @ 13) {
+   switch (i+j) {
+      case 0:
+         i := i - j;
+         break;
+      case 1:
+         i &= j;
+         j |= i;
+         break;
+      default:
+         break;
+   }
+}
+
+int function3(quick void);
+
+int function3(quick void) {
+   if (3 + 3 == 6) {
+   label:
+      goto label;
+   }
+   else {
+      return 1 + 2 - 3 * 4 / 5;
+   }
+
+   int i;
+
+   for (i := 0; i < 10; i++) {
+      if (i == 3) {
+         continue;
+      }
+   }
+}
