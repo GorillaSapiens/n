@@ -392,8 +392,8 @@ lvalue_base:
 lvalue_suffixes:
     %empty                                { COVER; $$ = make_empty_leaf(); }
   | lvalue_suffixes '[' expr ']'      { COVER; $$ = MAKE_NAMED_NODE("[", $1, $3); }
-  | lvalue_suffixes '.' IDENTIFIER    { COVER; $$ = MAKE_NAMED_NODE(".", $1, $3); }
-  | lvalue_suffixes ARROW IDENTIFIER  { COVER; $$ = MAKE_NAMED_NODE("->", $1, $3); }
+  | lvalue_suffixes '.' IDENTIFIER    { COVER; $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
+  | lvalue_suffixes ARROW IDENTIFIER  { COVER; $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
   ;
 
 unary_expr:
@@ -414,7 +414,7 @@ primary_expr:
   | FLOAT          { COVER; $$ = make_float_leaf($1); }
   | STRING         { COVER; $$ = make_string_leaf($1); }
   | struct_literal { COVER; $$ = $1; }
-  | lvalue                         { COVER; $$ = $1; }
+  | lvalue         { COVER; $$ = $1; }
   | '(' expr ')'   { COVER; $$ = $2; }
   ;
 

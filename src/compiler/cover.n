@@ -1,5 +1,6 @@
 include "cover.n"
 
+type whisp { }; // WHY do we support this ???
 type void { $size:0 };
 type char { $size:1 $endian:little };
 type *    { $size:2 $endian:little };
@@ -35,8 +36,50 @@ void useless() {
    a[12] := 5;
    a += b.c;
 
+   a := (b || c) && d;
+
+   a := a > b;
+   a := a < b;
+   a := a >= b;
+   a := a <= b;
+   a := a == b;
+   a := a != b;
+
+   a := a << 1;
+   a := a >> 1;
+
+   a := a % 0;
+
+   ++a;
+   --a;
+   a++;
+   a--;
+
+   *a++;
+   a->b;
+
+   a := !a;
+   a := ~a;
+   a := -a;
+   a := &a;
+
    a;
    ;
+
+   a := 3.14;
+   a := 1;
+   a := "hello";
+
+   // TODO FIX this is fugly!
+   a := xyz { x := 1; y := 2; z := 3; };
+   a := xyz { 3.14 };
+   a := xyz { -3.14 };
+   a := xyz { 3 };
+   a := xyz { -3 };
+   a := xyz { "hello" };
+
+   useless();
+   useless(1, 2, 3);
 
    return;
 }
