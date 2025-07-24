@@ -52,7 +52,7 @@ depend: $(GENSRC) $(GENHDR)
 	$(CC) $(CFLAGS) -MM $(SRC) > depend.mk
 
 clean:
-	rm -f $(TARGET) *.o delexer.h parser.tab.c parser.tab.h lex.yy.c depend.mk
+	rm -f $(TARGET) *.o delexer.h parser.tab.c parser.tab.h lex.yy.c depend.mk parser.output
 
 -include depend.mk
 

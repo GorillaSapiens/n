@@ -4,3 +4,4 @@ delexer.h
 parser.tab.c
 lex.yy.c
 depend.mk
+parser.output
