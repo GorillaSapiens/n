@@ -1,0 +1,30 @@
+#!/usr/bin/perl
+
+open FILE, "parser.y";
+
+@map = ();
+
+$n = 1;
+while (<FILE>) {
+   $bin = int($n / 8);
+   if ($#map < $bin) {
+      push @map, 0;
+   }
+
+   if (/COVER/) {
+      $shift = $n % 8;
+      $map[$bin] |= 1 << $shift;
+   }
+
+   $n++;
+}
+
+$n = 1;
+foreach $v (@map) {
+   printf "0x%02x, ", $v;
+   if (($n % 8) == 0) {
+      print("\n");
+   }
+   $n++;
+}
+printf("0\n");

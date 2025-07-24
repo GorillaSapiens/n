@@ -7,11 +7,12 @@ CFLAGS = -Wall -g
 TARGET = nc
 
 GENSRC = parser.tab.c lex.yy.c
-GENHDR = delexer.h
+GENHDR = delexer.h coverage_map.h
 
 SRCSRC = \
    ast.c \
    compile.c \
+   coverage.c \
    emit.c \
    float.c \
    integer.c \
@@ -43,6 +44,9 @@ lex.yy.c: lexer.l
 
 delexer.h: lexer.l delexer.pl
 	./delexer.pl > delexer.h
+
+coverage_map.h: parser.y coverage.pl
+	./coverage.pl > coverage_map.h
 
 depend: $(GENSRC) $(GENHDR)
 	$(CC) $(CFLAGS) -MM $(SRC) > depend.mk

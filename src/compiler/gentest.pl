@@ -9,7 +9,7 @@ my %rules;
 my %terminals = (
    "ADD_ASSIGN"	=>	"+=",
    "AND"	=>	"&&",
-   "AND_ASSIGN"   	=>	"&=",
+   "AND_ASSIGN"	=>	"&=",
    "ARROW"	=>	"->",
    "ASSIGN"	=>	":=",
    "BREAK"	=>	"break",
@@ -95,7 +95,7 @@ while (<$fh>) {
         }
     } elsif ($in_terminals) {
         if (/^\s*'([^']+)'/) {
-            $terminals{"\'$1\'"} //= $1;
+            $terminals{"'$1'"} //= $1;
         } elsif (/^\s*([A-Z_]+)\s+/) {
             $terminals{$1} //= $1;
         }
@@ -104,7 +104,56 @@ while (<$fh>) {
 
 close $fh;
 
-print "Grammar:\n";
+my %expansions = %terminals;
+my %rule_rhs;
+my %dependents;
+
+foreach my $num (keys %rules) {
+    my ($lhs, $rhs) = $rules{$num} =~ /^(\S+)\s+:\s+(.*)$/;
+    my @symbols = split /\s+/, $rhs;
+    $rule_rhs{$num} = [@symbols];
+    push @{ $dependents{$lhs} }, $num;
+}
+
+my @queue = grep {
+    my $rhs = $rule_rhs{$_};
+    all_expanded($rhs, \%expansions)
+} keys %rule_rhs;
+
+sub all_expanded {
+    my ($rhs, $exp) = @_;
+    return 1 if @$rhs == 0;
+    foreach my $sym (@$rhs) {
+        return 0 unless exists $exp->{$sym};
+    }
+    return 1;
+}
+
+while (@queue) {
+print "$#queue\n";
+    my $rule = shift @queue;
+    my ($lhs, $rhs) = $rules{$rule} =~ /^(\S+)\s+:\s+(.*)$/;
+    my @rhs = @{ $rule_rhs{$rule} };
+    next unless all_expanded(\@rhs, \%expansions);
+    my $string = join(" ", map { $expansions{$_} } @rhs);
+    $expansions{$lhs} //= $string;
+
+    foreach my $r (keys %rule_rhs) {
+        my ($maybe_lhs) = $rules{$r} =~ /^(\S+)/;
+        next if exists $expansions{$maybe_lhs};
+        if (all_expanded($rule_rhs{$r}, \%expansions)) {
+            push @queue, $r;
+        }
+    }
+}
+
+print "\nExpansions:\n";
+foreach my $nt (sort keys %expansions) {
+    next if $terminals{$nt};
+    print "$nt => $expansions{$nt}\n";
+}
+
+print "\nGrammar:\n";
 foreach my $num (sort { $a <=> $b } keys %rules) {
     print "$num: $rules{$num}\n";
 }
