@@ -120,8 +120,7 @@ union_decl_stmt:
   ;
 
 defdecl_stmt:
-    EXTERN decl ';'                     { COVER; $$ = MAKE_NODE($2); }
-  | decl ';'                            { COVER; $$ = MAKE_NODE($1); }
+    decl ';'                            { COVER; $$ = MAKE_NODE($1); }
   | decl block                          { COVER; $$ = MAKE_NODE($1, $2); }
   | decl ASSIGN expr ';'                { COVER; $$ = MAKE_NODE($1, $3); }
   | decl ASSIGN array_initializer ';'   { COVER; $$ = MAKE_NODE($1, $3); }
@@ -144,6 +143,7 @@ modifier_list:
 
 modifier:
     STATIC { COVER; $$ = make_identifier_leaf($1); }
+  | EXTERN { COVER; $$ = make_identifier_leaf($1); }
   | CONST  { COVER; $$ = make_identifier_leaf($1); }
   | QUICK  { COVER; $$ = make_identifier_leaf($1); }
   | REF    { COVER; $$ = make_identifier_leaf($1); }
@@ -171,7 +171,8 @@ pointer:
   ;
 
 direct_declarator:
-    IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
+    %empty                                   { COVER; $$ = make_identifier_leaf(""); }
+  | IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
   | OPERATOR                                 { COVER; $$ = make_identifier_leaf($1); }
   | '(' declarator ')'                       { COVER; $$ = $2; }
   | direct_declarator '[' INTEGER ']'        { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
