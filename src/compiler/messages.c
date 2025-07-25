@@ -9,12 +9,14 @@
 #include "xray.h"
 
 void debug(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   fprintf(stderr, "Debug: ");
-   vfprintf(stderr, fmt, args);
-   fprintf(stderr, "\n");
-   va_end(args);
+   if (get_xray(XRAY_DEBUG)) {
+      va_list args;
+      va_start(args, fmt);
+      fprintf(stderr, "Debug: ");
+      vfprintf(stderr, fmt, args);
+      fprintf(stderr, "\n");
+      va_end(args);
+   }
 }
 
 void error(const char *fmt, ...) {

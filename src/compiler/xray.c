@@ -18,6 +18,7 @@ static struct {
    { XRAY_INVERT,    "invert",    "invert success/failure exit value" },
    { XRAY_COVERAGE,  "coverage",  "yacc/bison rule coverage testing" },
    { XRAY_PARSEONLY, "parseonly", "exit after parsing" },
+   { XRAY_DEBUG,     "debug",     "print debug() messages" },
 };
 
 void xray_exit(int n, const char *file, int line) {

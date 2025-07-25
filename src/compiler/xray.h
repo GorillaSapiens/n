@@ -6,6 +6,7 @@
 #define XRAY_INVERT    0
 #define XRAY_COVERAGE  1
 #define XRAY_PARSEONLY 2
+#define XRAY_DEBUG     3
 
 // return the xray number for a human readable string
 int lookup_xray(const char *);
