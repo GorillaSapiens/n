@@ -95,9 +95,9 @@ int operator*(int l, int r) {
    return l * r;
 }
 
-static extern const quick ref int operator+(const int l, int r);
+extern static const quick ref int operator+(const int l, int r);
 
-static extern const quick ref int operator+(const int l, int r) {
+extern static const quick ref int operator+(const int l, int r) {
    { // you know, for scoping!
       int q;
       int r := 7;

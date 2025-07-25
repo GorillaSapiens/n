@@ -32,9 +32,9 @@ void xray_exit(int n, const char *file, int line) {
 int lookup_xray(const char *name) {
    if (!strcmp(name, "list")) {
       // special code to list defined xrays
-      printf("%019s   %s\n", "name", "description");
+      printf("%19s   %s\n", "name", "description");
       for (int i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
-         printf("(%3d)%014s   %s\n",
+         printf("(%3d)%14s   %s\n",
             name2number[i].number,
             name2number[i].name,
             name2number[i].description);

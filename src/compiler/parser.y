@@ -48,7 +48,7 @@
 %type <node> include_stmt
 %type <node> logical_and_expr logical_or_expr
 %type <node> multiplicative_expr
-%type <node> opt_address opt_array_dim opt_expr opt_flags
+%type <node> opt_expr opt_flags
 %type <node> modifier_list modifier
 %type <node> parameter parameter_list
 %type <node> postfix_expr primary_expr program program_item
@@ -120,10 +120,11 @@ union_decl_stmt:
   ;
 
 defdecl_stmt:
-    EXTERN decl ';'                { COVER; $$ = MAKE_NODE($2); }
-  | decl ';'                       { COVER; $$ = MAKE_NODE($1); }
-  | decl block                     { COVER; $$ = MAKE_NODE($1, $2); }
-  | decl ASSIGN expr ';'           { COVER; $$ = MAKE_NODE($1, $3); }
+    EXTERN decl ';'                     { COVER; $$ = MAKE_NODE($2); }
+  | decl ';'                            { COVER; $$ = MAKE_NODE($1); }
+  | decl block                          { COVER; $$ = MAKE_NODE($1, $2); }
+  | decl ASSIGN expr ';'                { COVER; $$ = MAKE_NODE($1, $3); }
+  | decl ASSIGN array_initializer ';'   { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 
@@ -149,7 +150,9 @@ modifier:
   ;
 
 decl:
-    decl_specifiers declarator { COVER; $$ = MAKE_NODE($1, $2); }
+    decl_specifiers declarator                { COVER; $$ = MAKE_NODE($1, $2); }
+  | decl_specifiers declarator '@' INTEGER    { COVER; $$ = MAKE_NODE($1, $2, make_integer_leaf($4)); }
+  | decl_specifiers declarator '@' IDENTIFIER { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($4)); }
   ;
 
 decl_specifiers:
@@ -169,6 +172,7 @@ pointer:
 
 direct_declarator:
     IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
+  | OPERATOR                                 { COVER; $$ = make_identifier_leaf($1); }
   | '(' declarator ')'                       { COVER; $$ = $2; }
   | direct_declarator '[' INTEGER ']'        { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
   | direct_declarator '(' parameter_list ')' { COVER; $$ = MAKE_NODE($1, $3); }
@@ -196,6 +200,7 @@ statement_list:
 statement:
     block                  { COVER; $$ = $1; }
   | expr_stmt              { COVER; $$ = $1; }
+  | defdecl_stmt           { COVER; $$ = $1; }
   | return_stmt            { COVER; $$ = $1; }
   | goto_stmt              { COVER; $$ = $1; }
   | break_stmt             { COVER; $$ = $1; }
@@ -250,16 +255,6 @@ do_stmt:
 label_stmt:
     IDENTIFIER ':' statement { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
   ;
-
-opt_address:
-    %empty        { COVER; $$ = make_empty_leaf(); }
-  | '@' INTEGER   { COVER; $$ = make_integer_leaf($2); }
-  ;
-
-opt_array_dim:
-    %empty                     { COVER; $$ = make_empty_leaf(); }
-  | '[' expr ']' opt_array_dim { COVER; $$ = is_empty($4) ? MAKE_NODE($2) : MAKE_NODE($2, $4); }
-;
 
 array_initializer:
     '{' expr_list '}'                   { COVER; $$ = $2; }
