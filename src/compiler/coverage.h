@@ -5,5 +5,6 @@
 #define COVER COVER_LINE(__LINE__)
 
 void cover(int n);
+void coverage_report(void);
 
 #endif

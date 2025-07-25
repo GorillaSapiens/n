@@ -5,6 +5,7 @@
 
 #include "ast.h"
 #include "compile.h"
+#include "coverage.h"
 #include "lextern.h"
 #include "md5seen.h"
 #include "messages.h"
@@ -130,6 +131,11 @@ int main(int argc, char** argv) {
    } else {
       printf(";Parse failed.\n");
       exit(-1);
+   }
+
+   if (get_xray(XRAY_COVERAGE)) {
+      coverage_report();
+      exit(0);
    }
 
    do_compile();

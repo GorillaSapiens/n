@@ -10,9 +10,7 @@ static unsigned char coverage_map[] = {
 
 static unsigned char visited[sizeof(coverage_map)] = { 0 };
 
-static bool init = false;
-
-void cover_exit(void) {
+void coverage_report(void) {
    int missing = 0;
    bool begin = false;
    for (int i = 0; i < sizeof(coverage_map); i++) {
@@ -33,13 +31,10 @@ void cover_exit(void) {
    }
    if (missing) {
       printf("\nCOVERAGE MISSING COUNT %d\n", missing);
+      exit(-1);
    }
 }
 
 void cover(int n) {
-   if (!init) {
-      atexit(cover_exit);
-      init = true;
-   }
    visited[n / 8] |= 1 << (n % 8);
 }
