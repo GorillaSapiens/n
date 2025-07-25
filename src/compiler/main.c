@@ -55,6 +55,7 @@ static void opt_help(char *) {
    exit(0);
 }
 
+#define return "DON'T USE return, MUST USE exit !!!" // please don't break xray !!!
 int main(int argc, char** argv) {
    int ret;
 
@@ -107,7 +108,7 @@ int main(int argc, char** argv) {
    yyin = fopen(argv[0], "r");
    if (!yyin) {
       perror(argv[0]);
-      return 1;
+      exit(-1);
    }
    md5seen(argv[0], yyin);
 
@@ -123,12 +124,15 @@ int main(int argc, char** argv) {
    ret = yyparse();
    if (ret == 0) {
       printf(";Parse successful.\n");
+      if (get_xray(XRAY_PARSEONLY)) {
+         exit(0);
+      }
    } else {
       printf(";Parse failed.\n");
-      return -1;
+      exit(-1);
    }
 
    do_compile();
 
-   return 0;
+   exit(0);
 }

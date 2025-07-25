@@ -3,6 +3,10 @@
 
 #include "noreturn.h"
 
+#define XRAY_INVERT    0
+#define XRAY_COVERAGE  1
+#define XRAY_PARSEONLY 2
+
 // return the xray number for a human readable string
 int lookup_xray(const char *);
 
