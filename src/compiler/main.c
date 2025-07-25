@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "ast.h"
 #include "compile.h"
@@ -10,28 +11,106 @@
 
 #include "parser.tab.h"
 
-void usage(const char *exename) {
-   fprintf(stderr, "usage: %s <filename>\n", exename);
+static char *arg0;
+
+static void opt_help(char *);
+
+static void opt_xray(char *n) {
+   printf("xray '%s'\n", n);
+}
+
+struct {
+   char  short_char;
+   char *long_name;
+   char *arg_name;
+   char *help;
+   void (*func)(char *);
+} options[] = {
+   { 'T', "TEST", NULL, "just dome dumb message", opt_xray },
+   { 'X', "XRAY", "n",  "enable XRAY option n for debugging", opt_xray },
+   { '?', "help", NULL, "print usage information", opt_help }
+};
+
+#define NOPTS (sizeof(options) / sizeof(options[0]))
+
+static void opt_help(char *) {
+   printf("Usage: %s <flags> <filename>\n", arg0);
+   printf("   flags:\n");
+   for (int i = 0; i < NOPTS; i++) {
+      if (options[i].arg_name) {
+         printf("   -%c/--%s\t<%s>\t%s\n",
+            options[i].short_char,
+            options[i].long_name,
+            options[i].arg_name,
+            options[i].help);
+      }
+      else {
+         printf("   -%c/--%s\t\t%s\n",
+            options[i].short_char,
+            options[i].long_name,
+            options[i].help);
+      }
+   }
    exit(0);
 }
 
 int main(int argc, char** argv) {
    int ret;
 
-   // Optional: read from file
-   if (argc > 1) {
-      yyin = fopen(argv[1], "r");
-      if (!yyin) {
-         perror(argv[1]);
-         return 1;
+   arg0 = argv[0];
+
+   argc--;
+   argv++;
+
+   while (argc) {
+      if (argv[0][0] == '-') {
+         bool matched = false;
+
+         for (int i = 0; i < NOPTS; i++) {
+            if ((argv[0][1] == '-' && !strcmp(options[i].long_name, argv[0] + 2)) ||
+                (argv[0][1] == options[i].short_char)) {
+               char *arg = NULL;
+               matched = true;
+               argc--;
+               argv++;
+
+               if (options[i].arg_name) {
+                  if (argc == 0) {
+                     opt_help(NULL);
+                  }
+                  else {
+                     arg = argv[0];
+                     argc--;
+                     argv++;
+                  }
+               }
+
+               options[i].func(arg);
+               break;
+            }
+         }
+
+         if (!matched) {
+            opt_help(NULL);
+         }
       }
-      md5seen(argv[1], yyin);
-   }
-   else {
-      usage(argv[0]);
+      else {
+         break;
+      }
    }
 
-   current_filename = argv[1];
+   if (argc != 1) {
+      opt_help(NULL);
+   }
+
+   yyin = fopen(argv[0], "r");
+   if (!yyin) {
+      perror(argv[0]);
+      return 1;
+   }
+   md5seen(argv[0], yyin);
+
+   current_filename = argv[0];
 
 #if YYDEBUG
    yydebug = 1;
