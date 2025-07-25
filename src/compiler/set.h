@@ -1,6 +1,7 @@
 #ifndef _INCLUDE_SET_H_
 #define _INCLUDE_SET_H_
 
+// required typedefs
 struct Set;
 typedef struct Set Set;
 
