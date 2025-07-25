@@ -5,6 +5,7 @@
 #include <stdbool.h>
 
 // returns true if the file has been seen before
+// returns fals otherwise
 // "seen" is based on md5sum
 bool md5seen(const char *filename, FILE *f);
 
