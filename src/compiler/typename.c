@@ -4,6 +4,7 @@
 
 #include "lextern.h"
 #include "messages.h"
+#include "xray.h"
 
 #define MAX_TYPES 1024
 static char *type_names[MAX_TYPES];

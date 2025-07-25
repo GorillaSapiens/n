@@ -5,6 +5,7 @@
 
 #include "ast.h"
 #include "lextern.h"
+#include "xray.h"
 
 ASTNode *root = NULL;
 

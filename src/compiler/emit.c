@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "emit.h"
+#include "xray.h"
 
 void emit(EmitSink *es, const char *fmt, ...) {
    int len;

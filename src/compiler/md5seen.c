@@ -6,6 +6,7 @@
 #include "messages.h"
 #include "md5.h"
 #include "md5seen.h"
+#include "xray.h"
 
 typedef struct MD5Seen {
    const char *filename;

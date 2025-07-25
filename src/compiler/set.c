@@ -4,6 +4,7 @@
 
 #include "messages.h"
 #include "set.h"
+#include "xray.h"
 
 typedef struct Entry {
    const char *key;

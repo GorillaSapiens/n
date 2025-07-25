@@ -11,6 +11,7 @@
 #include "integer.h"
 #include "messages.h"
 #include "set.h"
+#include "xray.h"
 
 EmitSink es_header = EMIT_INIT;
 EmitSink es_import = EMIT_INIT;

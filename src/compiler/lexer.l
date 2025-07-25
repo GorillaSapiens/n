@@ -10,6 +10,7 @@
 #include "md5seen.h"
 #include "messages.h"
 #include "typename.h"
+#include "xray.h"
 
 #include "parser.tab.h"
 

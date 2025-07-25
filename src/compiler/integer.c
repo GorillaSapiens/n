@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "xray.h"
+
 static int c2n(char c) {
    if (c >= '0' && c <= '9') {
       return c - '0';

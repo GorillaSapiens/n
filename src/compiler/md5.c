@@ -4,6 +4,7 @@
  */
 
 #include "md5.h"
+#include "xray.h"
 
 /*
  * Constants defined by the MD5 algorithm

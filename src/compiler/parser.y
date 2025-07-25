@@ -11,6 +11,7 @@
 #include "messages.h"
 #include "typename.h"
 #include "coverage.h"
+#include "xray.h"
 
 %}
 

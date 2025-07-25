@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
+#include "xray.h"
+
 static unsigned char coverage_map[] = {
 #include "coverage_map.h"
 };

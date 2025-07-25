@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "messages.h"
+#include "xray.h"
 
 // TODO FIX we'll need to revisit this later, for now just ensure
 // our doubles are big enough.

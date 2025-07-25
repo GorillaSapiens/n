@@ -6,6 +6,7 @@
 
 #include "lextern.h"
 #include "messages.h"
+#include "xray.h"
 
 void debug(const char *fmt, ...) {
    va_list args;
