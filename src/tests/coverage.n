@@ -1,6 +1,6 @@
 // nc -X coverage
 
-include "cover.n"
+include "coverage.n"
 
 type whisp { }; // WHY do we support this ???
 type void { $size:0 };
