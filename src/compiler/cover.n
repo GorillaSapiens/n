@@ -1,3 +1,5 @@
+// nc -X coverage
+
 include "cover.n"
 
 type whisp { }; // WHY do we support this ???
