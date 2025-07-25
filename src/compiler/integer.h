@@ -3,8 +3,7 @@
 
 // NOTE:
 // 'p' may be binary (0b*), octal(0*), hex (0x*), or decimal
-// returns the value of the integer
-// expect silly return values when 'size' > sizeof(int)
+// returns 'size' on success
 
 // convert the string 'p' to a 'size' little endian int at 'target'
 // see NOTE above
