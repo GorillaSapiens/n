@@ -20,23 +20,57 @@
     ASTNode *node;
 }
 
-%token <str> STRING IDENTIFIER TYPENAME FLAG OPERATOR
-%token <str> INTEGER
-%token <str> FLOAT
-%token <str> CONST STATIC EXTERN QUICK REF
+%token <str> CONST
+%token <str> EXTERN
+%token <str> FLAG
+%token <str> FLOAT         /* string, because value might be outside hosts abilities */
+%token <str> IDENTIFIER
+%token <str> INTEGER       /* string, because value might be outside hosts abilities */
+%token <str> OPERATOR
+%token <str> QUICK
+%token <str> REF
+%token <str> STATIC
+%token <str> STRING
+%token <str> TYPENAME
 
-%token IF ELSE WHILE FOR RETURN TYPE
+%token ADD_ASSIGN
+%token AND
+%token AND_ASSIGN
+%token ARROW
 %token ASSIGN
-%token EQ NE LE GE LSHIFT RSHIFT OR AND
-%token INC DEC ARROW
-%token STRUCT UNION
-%token GOTO SWITCH CASE DEFAULT
 %token BREAK
+%token CASE
 %token CONTINUE
+%token DEC
+%token DEFAULT
+%token DIV_ASSIGN
 %token DO
+%token ELSE
+%token EQ
+%token FOR
+%token GE
+%token GOTO
+%token IF
+%token INC
 %token INCLUDE
-%token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
-%token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
+%token LE
+%token LSHIFT
+%token LSHIFT_ASSIGN
+%token MOD_ASSIGN
+%token MUL_ASSIGN
+%token NE
+%token OR
+%token OR_ASSIGN
+%token RETURN
+%token RSHIFT
+%token RSHIFT_ASSIGN
+%token STRUCT
+%token SUB_ASSIGN
+%token SWITCH
+%token TYPE
+%token UNION
+%token WHILE
+%token XOR_ASSIGN
 
 %type <node> additive_expr
 %type <node> arg_list
