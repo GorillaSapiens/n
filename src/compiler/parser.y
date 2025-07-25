@@ -109,6 +109,7 @@
 %type <node> modifier
 %type <node> modifier_list
 %type <node> multiplicative_expr
+%type <node> named_expr
 %type <node> opt_expr
 %type <node> opt_flags
 %type <node> parameter
@@ -326,9 +327,14 @@ array_initializer:
   ;
 
 expr_list:
-    expr                        { COVER; $$ = MAKE_NODE($1); }
-  | expr_list ',' expr          { COVER; $$ = MAKE_NODE($1, $3); }
+    named_expr                        { COVER; $$ = MAKE_NODE($1); }
+  | expr_list ',' named_expr          { COVER; $$ = MAKE_NODE($1, $3); }
 ;
+
+named_expr:
+    expr                        { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
+  | '.' IDENTIFIER ASSIGN expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  ;
 
 expr_stmt:
     expr ';' { COVER; $$ = $1; }

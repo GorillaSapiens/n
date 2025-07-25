@@ -14,7 +14,7 @@ union  abc { int a; int b; int c; };
 
 static int q[12] @ 27;
 static int qq[12] @ symbol;
-int r[12] @ 27 := { 1, 1, 1 };
+int r[12] @ 27 := { .x := 1, 1, 1 };
 quick int s[12] @ 27 := { 1, 1, 1 };
 int five := 5;
 const int six := 6;
