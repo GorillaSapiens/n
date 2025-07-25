@@ -31,6 +31,9 @@ all:
 	@make --no-print-directory depend
 	@make --no-print-directory $(TARGET)
 
+test:
+	(cd ../test; ./test.pl)
+
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
 
