@@ -73,12 +73,12 @@ void useless() {
    a := "hello";
 
    // TODO FIX this is fugly!
-   a := xyz { x := 1; y := 2; z := 3; };
-   a := xyz { 3.14 };
-   a := xyz { -3.14 };
-   a := xyz { 3 };
-   a := xyz { -3 };
-   a := xyz { "hello" };
+   a := { 1, 2, 3 };
+   a := { 3.14 };
+   a := { -3.14 };
+   a := { 3 };
+   a := { -3 };
+   a := { "hello" };
 
    useless();
    useless(1, 2, 3);

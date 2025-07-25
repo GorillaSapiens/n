@@ -38,7 +38,7 @@
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
 
-%type <node> additive_expr arg_list array_initializer array_initializer_list
+%type <node> additive_expr arg_list array_initializer
 %type <node> lvalue lvalue_base lvalue_suffixes
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
@@ -54,7 +54,7 @@
 %type <node> postfix_expr primary_expr program program_item
 %type <node> relational_expr
 %type <node> shift_expr statement statement_list struct_decl_stmt struct_field
-%type <node> struct_fields struct_init struct_inits struct_literal
+%type <node> struct_fields
 %type <node> type_decl_stmt
 %type <node> unary_expr
 %type <node> union_decl_stmt
@@ -90,7 +90,6 @@ include_stmt:
 type_decl_stmt:
     TYPE IDENTIFIER '{' opt_flags '}' ';' { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   | TYPE '*' '{' opt_flags '}' ';'        { COVER; if (register_typename("*") < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf("*"), $4); }
-  | TYPE TYPENAME '{' opt_flags '}' ';'   { yyerror("duplicate type '%s'", $2); } // no general cover for error cases
   ;
 
 struct_decl_stmt:
@@ -100,9 +99,6 @@ struct_decl_stmt:
     struct_fields '}' ';' { COVER;
         register_typename($2);
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
-    }
-  | STRUCT TYPENAME '{' { // no general cover for error cases
-        yyerror("duplicate struct '%s'", $2);
     }
   ;
 
@@ -114,16 +110,12 @@ union_decl_stmt:
         register_typename($2);
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
-  | UNION TYPENAME '{' { // no general cover for error cases
-        yyerror("duplicate union '%s'", $2);
-    }
   ;
 
 defdecl_stmt:
     decl ';'                            { COVER; $$ = MAKE_NODE($1); }
   | decl block                          { COVER; $$ = MAKE_NODE($1, $2); }
   | decl ASSIGN expr ';'                { COVER; $$ = MAKE_NODE($1, $3); }
-  | decl ASSIGN array_initializer ';'   { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 
@@ -163,6 +155,8 @@ decl_specifiers:
 declarator:
     pointer direct_declarator         { COVER; $$ = MAKE_NODE($1, $2); }
   | direct_declarator                 { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), $1); }
+  | pointer                           { COVER; $$ = MAKE_NODE($1, make_empty_leaf()); }
+  | %empty                            { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), make_empty_leaf()); }
   ;
 
 pointer:
@@ -259,13 +253,6 @@ label_stmt:
 array_initializer:
     '{' expr_list '}'                   { COVER; $$ = $2; }
   | '{' expr_list ',' '}'               { COVER; $$ = $2; }
-  | '{' array_initializer_list '}'      { COVER; $$ = $2; }
-  | '{' array_initializer_list ',' '}'  { COVER; $$ = $2; }
-  ;
-
-array_initializer_list:
-    array_initializer                            { COVER; $$ = MAKE_NODE($1); }
-  | array_initializer_list ',' array_initializer { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 expr_list:
@@ -392,12 +379,12 @@ postfix_expr:
   ;
 
 primary_expr:
-    INTEGER        { COVER; $$ = make_integer_leaf($1); }
-  | FLOAT          { COVER; $$ = make_float_leaf($1); }
-  | STRING         { COVER; $$ = make_string_leaf($1); }
-  | struct_literal { COVER; $$ = $1; }
-  | lvalue         { COVER; $$ = $1; }
-  | '(' expr ')'   { COVER; $$ = $2; }
+    INTEGER           { COVER; $$ = make_integer_leaf($1); }
+  | FLOAT             { COVER; $$ = make_float_leaf($1); }
+  | STRING            { COVER; $$ = make_string_leaf($1); }
+  | array_initializer { COVER; $$ = $1; }
+  | lvalue            { COVER; $$ = $1; }
+  | '(' expr ')'      { COVER; $$ = $2; }
   ;
 
 arg_list:
@@ -410,26 +397,6 @@ expr_args:
   | expr_args ',' expr         { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
-
-struct_literal:
-    TYPENAME '{' struct_inits ';' '}' { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
-  | TYPENAME '{' FLOAT '}'            { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_float_leaf($3)); }
-  | TYPENAME '{' '-' FLOAT '}'        { COVER; $$ = MAKE_NODE(make_identifier_leaf($1),
-                                                       make_float_leaf(make_negative($4))); }
-  | TYPENAME '{' INTEGER '}'          { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf($3)); }
-  | TYPENAME '{' '-' INTEGER '}'      { COVER; $$ = MAKE_NODE(make_identifier_leaf($1),
-                                                       make_integer_leaf(make_negative($4))); }
-  | TYPENAME '{' STRING '}'           { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_string_leaf($3)); }
-  ;
-
-struct_inits:
-    struct_inits ';' struct_init { COVER; $$ = MAKE_NODE($1, $3); }
-  | struct_init                  { COVER; $$ = MAKE_NODE($1); }
-  ;
-
-struct_init:
-    IDENTIFIER ASSIGN expr { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
-  ;
 
 case_section:
     case_section case_block { COVER; $$ = MAKE_NODE($1, $2); }
