@@ -13,10 +13,13 @@ struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
 static int q[12] @ 27;
+static int qq[12] @ symbol;
 int r[12] @ 27 := { 1, 1, 1 };
 quick int s[12] @ 27 := { 1, 1, 1 };
 int five := 5;
 const int six := 6;
+
+void (*fruitloops)(int n);
 
 void useless() {
    static int q[12] @ 27;
@@ -112,9 +115,9 @@ extern static const quick ref int operator+(const int l, int r) {
    return l + r;
 }
 
-int function0(void);
+int function0(void **);
 
-int function0(void) {
+int function0(void **) {
    return 5;
 }
 
