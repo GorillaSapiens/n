@@ -1,0 +1,16 @@
+// nc
+
+type void     { $size:0 };
+type char     { $size:1 };
+type *        { $size:2  $endian:little };
+type short    { $size:2  $endian:little };
+type int      { $size:4  $endian:little };
+type long     { $size:8  $endian:little };
+type longlong { $size:16 $endian:little };
+type float    { $size:4  $endian:little $float };
+type double   { $size:8  $endian:little $float };
+
+char **argv;
+
+int main(int argc, char **argv) {
+}

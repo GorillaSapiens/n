@@ -42,29 +42,31 @@
 %type <node> lvalue lvalue_base lvalue_suffixes
 %type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
 %type <node> case_block case_section
-%type <node> decl_stmt
-%type <node> block_decl_stmt
+%type <node> defdecl_stmt
 %type <node> equality_expr expr expr_args expr_list expr_stmt
-%type <node> flag flag_list function_decl
+%type <node> flag flag_list
 %type <node> include_stmt
 %type <node> logical_and_expr logical_or_expr
 %type <node> multiplicative_expr
-%type <node> opt_address opt_array_dim opt_expr opt_flags opt_pointer
+%type <node> opt_address opt_array_dim opt_expr opt_flags
 %type <node> modifier_list modifier
-%type <node> param_list param
+%type <node> parameter parameter_list
 %type <node> postfix_expr primary_expr program program_item
 %type <node> relational_expr
-%type <node> shift_expr statement statement_list struct_decl struct_field
+%type <node> shift_expr statement statement_list struct_decl_stmt struct_field
 %type <node> struct_fields struct_init struct_inits struct_literal
-%type <node> type_decl
-%type <node> type_name
+%type <node> type_decl_stmt
 %type <node> unary_expr
-%type <node> union_decl
+%type <node> union_decl_stmt
 %type <node> return_stmt goto_stmt break_stmt continue_stmt switch_stmt 
 %type <node> if_stmt while_stmt for_stmt do_stmt label_stmt 
+%type <node> decl decl_specifiers declarator pointer direct_declarator
 
-%define parse.error verbose
 %locations
+%define parse.error verbose
+%define parse.lac full
+%expect 0
+/* %expect-rr 0 */
 
 %%
 
@@ -74,40 +76,24 @@ program:
   ;
 
 program_item:
-    type_decl            { COVER; $$ = $1; }
-  | function_decl        { COVER; $$ = $1; }
-  | decl_stmt            { COVER; $$ = $1; }
-  | struct_decl          { COVER; $$ = $1; }
-  | union_decl           { COVER; $$ = $1; }
-  | include_stmt         { COVER; $$ = NULL; } // process an include line
+    include_stmt          { COVER; $$ = NULL; } // process an include line
+  | type_decl_stmt        { COVER; $$ = $1; }
+  | struct_decl_stmt      { COVER; $$ = $1; }
+  | union_decl_stmt       { COVER; $$ = $1; }
+  | defdecl_stmt          { COVER; $$ = $1; }
   ;
 
-type_decl:
-    TYPE IDENTIFIER '{' opt_flags '}' ';' { COVER;
-        if (register_typename($2) < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf($2), $4);
-    }
-  | TYPE '*' '{' opt_flags '}' ';' { COVER;
-        if (register_typename("*") < 0) YYABORT;
-        $$ = MAKE_NODE(make_identifier_leaf("*"), $4);
-    }
-  | TYPE TYPENAME '{' opt_flags '}' ';' { // no general cover for error cases
-        yyerror("duplicate type '%s'", $2);
-    }
+include_stmt:
+    INCLUDE STRING       { COVER; if (push_file($2) != 0) { yyerror("failed to include file: %s", $2); YYABORT; } }
   ;
 
-function_decl:
-    modifier_list type_name IDENTIFIER '(' param_list ')' ';'    { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5); }
-  |               type_name IDENTIFIER '(' param_list ')' ';'    { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
-  | modifier_list type_name IDENTIFIER '(' param_list ')' block  { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5, $7); }
-  |               type_name IDENTIFIER '(' param_list ')' block  { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
-  | modifier_list type_name OPERATOR '(' param_list ')' ';'      { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5); }
-  |               type_name OPERATOR '(' param_list ')' ';'      { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4); }
-  | modifier_list type_name OPERATOR '(' param_list ')' block    { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $5, $7); }
-  |               type_name OPERATOR '(' param_list ')' block    { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $4, $6); }
+type_decl_stmt:
+    TYPE IDENTIFIER '{' opt_flags '}' ';' { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | TYPE '*' '{' opt_flags '}' ';'        { COVER; if (register_typename("*") < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf("*"), $4); }
+  | TYPE TYPENAME '{' opt_flags '}' ';'   { yyerror("duplicate type '%s'", $2); } // no general cover for error cases
   ;
 
-struct_decl:
+struct_decl_stmt:
     STRUCT IDENTIFIER '{' { COVER;
         if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
@@ -120,7 +106,7 @@ struct_decl:
     }
   ;
 
-union_decl:
+union_decl_stmt:
     UNION IDENTIFIER '{' { COVER;
         if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
@@ -133,13 +119,21 @@ union_decl:
     }
   ;
 
+defdecl_stmt:
+    EXTERN decl ';'                { COVER; $$ = MAKE_NODE($2); }
+  | decl ';'                       { COVER; $$ = MAKE_NODE($1); }
+  | decl block                     { COVER; $$ = MAKE_NODE($1, $2); }
+  | decl ASSIGN expr ';'           { COVER; $$ = MAKE_NODE($1, $3); }
+  ;
+
+
 struct_fields:
     struct_field                        { COVER; $$ = $1; }
   | struct_fields struct_field          { COVER; $$ = MAKE_NODE($1, $2); }
   ;
 
 struct_field:
-    type_name opt_pointer IDENTIFIER ';' { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3)); }
+    decl ';' { COVER; $$ = $1; }
   ;
 
 modifier_list:
@@ -149,34 +143,45 @@ modifier_list:
 
 modifier:
     STATIC { COVER; $$ = make_identifier_leaf($1); }
-  | EXTERN { COVER; $$ = make_identifier_leaf($1); }
   | CONST  { COVER; $$ = make_identifier_leaf($1); }
   | QUICK  { COVER; $$ = make_identifier_leaf($1); }
   | REF    { COVER; $$ = make_identifier_leaf($1); }
   ;
 
-opt_pointer:
-    %empty          { COVER; $$ = make_integer_leaf(strdup("0")); }
-  | '*' opt_pointer { COVER; $$ = $2; increment_integer_leaf($$); }
+decl:
+    decl_specifiers declarator { COVER; $$ = MAKE_NODE($1, $2); }
   ;
 
-param_list:
-    %empty                  { COVER; $$ = make_empty_leaf(); }
-  | param                   { COVER; $$ = MAKE_NODE($1, NULL); }
-  | param ',' param_list    { COVER; $$ = MAKE_NODE($1, $3); }
-;
+decl_specifiers:
+    TYPENAME                          { COVER; $$ = MAKE_NODE(make_empty_leaf(), make_typename_leaf($1)); }
+  | modifier_list TYPENAME            { COVER; $$ = MAKE_NODE($1, make_typename_leaf($2)); }
+  ;
 
-param:
-    modifier_list type_name IDENTIFIER '@' INTEGER { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), make_integer_leaf($5)); }
-  |               type_name IDENTIFIER '@' INTEGER { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), make_integer_leaf($4)); }
-  | modifier_list type_name IDENTIFIER             { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3)); }
-  |               type_name IDENTIFIER             { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2)); }
-  | modifier_list type_name                        { COVER; $$ = MAKE_NODE($1, $2); } // unnamed params are allowed
-  |               type_name                        { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); } // unnamed params are allowed
-;
+declarator:
+    pointer direct_declarator         { COVER; $$ = MAKE_NODE($1, $2); }
+  | direct_declarator                 { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), $1); }
+  ;
 
-type_name:
-    TYPENAME { COVER; $$ = make_identifier_leaf($1); }
+pointer:
+    '*'                               { COVER; $$ = make_integer_leaf(strdup("1")); }
+  | '*' pointer                       { COVER; $$ = $2; increment_integer_leaf($$); }
+  ;
+
+direct_declarator:
+    IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
+  | '(' declarator ')'                       { COVER; $$ = $2; }
+  | direct_declarator '[' INTEGER ']'        { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
+  | direct_declarator '(' parameter_list ')' { COVER; $$ = MAKE_NODE($1, $3); }
+  | direct_declarator '(' ')'                { COVER; $$ = MAKE_NODE($1, make_empty_leaf()); }
+  ;
+
+parameter_list:
+    parameter                    { COVER; $$ = $1; }
+  | parameter_list ',' parameter { COVER; $$ = MAKE_NODE($1, $3); }
+  ;
+
+parameter:
+    decl                  { COVER; $$ = $1; }
   ;
 
 block:
@@ -190,7 +195,6 @@ statement_list:
 
 statement:
     block                  { COVER; $$ = $1; }
-  | block_decl_stmt        { COVER; $$ = $1; }
   | expr_stmt              { COVER; $$ = $1; }
   | return_stmt            { COVER; $$ = $1; }
   | goto_stmt              { COVER; $$ = $1; }
@@ -250,24 +254,6 @@ label_stmt:
 opt_address:
     %empty        { COVER; $$ = make_empty_leaf(); }
   | '@' INTEGER   { COVER; $$ = make_integer_leaf($2); }
-  ;
-
-decl_stmt:
-    modifier_list type_name IDENTIFIER opt_array_dim opt_address ';'                          { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ';'                          { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
-  | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
-  | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
-  ;
-
-block_decl_stmt:
-    modifier_list type_name IDENTIFIER opt_array_dim opt_address ';'                          { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ';'                          { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4); }
-  | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN expr ';'              { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
-  | modifier_list type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($3), $4, $5, $7); }
-  |               type_name IDENTIFIER opt_array_dim opt_address ASSIGN array_initializer ';' { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1, make_identifier_leaf($2), $3, $4, $6); }
   ;
 
 opt_array_dim:
@@ -472,15 +458,6 @@ flag_list:
 
 flag:
     FLAG { COVER; $$ = make_identifier_leaf($1); }
-  ;
-
-include_stmt:
-    INCLUDE STRING { COVER;
-        if (push_file($2) != 0) {
-            yyerror("failed to include file: %s", $2);
-            YYABORT;
-        }
-    }
   ;
 
 %%

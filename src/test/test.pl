@@ -8,7 +8,7 @@ foreach $file (`ls *.n`) {
    $runner = $runner[0];
    $runner =~ s/[\x0a\x0d]//g;
 
-   if (!($runner =~ /\/\/ nc /)) {
+   if (!($runner =~ /\/\/ nc/)) {
       print "[FAIL] missing runner\n";
       exit -1;
    }
@@ -19,6 +19,9 @@ foreach $file (`ls *.n`) {
 
    $runner =~ s/^.../..\/compiler\//g;
    $runner .= " $file";
+
+   $runner =~ s/  / /g; # remove extra spaces, for aesthetics
+
    print "$runner\n";
 
    $status = system("$runner");
@@ -29,5 +32,6 @@ foreach $file (`ls *.n`) {
    }
    else {
       print "[FAIL] exit code $exit_code\n";
+      exit(-1);
    }
 }
