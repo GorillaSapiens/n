@@ -13,7 +13,7 @@ static unsigned int xrays[MAX_XRAY / (8 * sizeof(unsigned int))] = { 0 };
 static struct {
    int number;         // MUST BE IN RANGE [0..MAX_XRAY]
    const char *name;
-   const char * description;
+   const char *description;
 } name2number[] = {
    { XRAY_INVERT,    "invert",    "invert success/failure exit value" },
    { XRAY_COVERAGE,  "coverage",  "yacc/bison rule coverage testing" },
@@ -32,9 +32,9 @@ void xray_exit(int n, const char *file, int line) {
 int lookup_xray(const char *name) {
    if (!strcmp(name, "list")) {
       // special code to list defined xrays
-      printf("\tname\tdescription\n");
+      printf("%019s   %s\n", "name", "description");
       for (int i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
-         printf("(%d)\t%s\t%s\n",
+         printf("(%3d)%014s   %s\n",
             name2number[i].number,
             name2number[i].name,
             name2number[i].description);

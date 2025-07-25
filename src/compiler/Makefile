@@ -4,7 +4,9 @@ CC = gcc
 CFLAGS = -Wall -g
 #CFLAGS = -Wall -O2
 #CFLAGS = -Wall -g -DYYDEBUG
+
 TARGET = nc
+TEST=test
 
 GENSRC = parser.tab.c lex.yy.c
 GENHDR = delexer.h coverage_map.h
@@ -30,6 +32,7 @@ OBJ = $(SRC:.c=.o)
 all:
 	@make --no-print-directory depend
 	@make --no-print-directory $(TARGET)
+	@make --no-print-directory $(TEST)
 
 test:
 	(cd ../test; ./test.pl)
