@@ -171,8 +171,7 @@ pointer:
   ;
 
 direct_declarator:
-    %empty                                   { COVER; $$ = make_identifier_leaf(""); }
-  | IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
+    IDENTIFIER                               { COVER; $$ = make_identifier_leaf($1); }
   | OPERATOR                                 { COVER; $$ = make_identifier_leaf($1); }
   | '(' declarator ')'                       { COVER; $$ = $2; }
   | direct_declarator '[' INTEGER ']'        { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
