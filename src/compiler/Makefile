@@ -21,6 +21,7 @@ SRCSRC = \
    messages.c \
    set.c \
    typename.c \
+   xray.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)

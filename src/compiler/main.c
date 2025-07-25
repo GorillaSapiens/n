@@ -8,6 +8,7 @@
 #include "lextern.h"
 #include "md5seen.h"
 #include "messages.h"
+#include "xray.h"
 
 #include "parser.tab.h"
 
@@ -16,7 +17,8 @@ static char *arg0;
 static void opt_help(char *);
 
 static void opt_xray(char *n) {
-   printf("xray '%s'\n", n);
+   int i = lookup_xray(n);
+   set_xray(i);
 }
 
 struct {
@@ -26,8 +28,7 @@ struct {
    char *help;
    void (*func)(char *);
 } options[] = {
-   { 'T', "TEST", NULL, "just dome dumb message", opt_xray },
-   { 'X', "XRAY", "n",  "enable XRAY option n for debugging", opt_xray },
+   { 'X', "XRAY", "name",  "enable named XRAY option for compiler debugging ('list' will list them)", opt_xray },
    { '?', "help", NULL, "print usage information", opt_help }
 };
 
