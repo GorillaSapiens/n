@@ -1,10 +1,22 @@
 #ifndef _INCLUDE_FLOAT_H_
 #define _INCLUDE_FLOAT_H_
 
+// NOTE:
+// 'p' may be hex (0x*), or decimal
+// returns 'size' on success
+
+// convert the string 'p' to a 'size' little endian float at 'target'
+// see NOTE above
 int make_le_float(const char *p, unsigned char *target, int size);
+
+// negate the 'size' little endian float at 'target'
 void negate_le_float(unsigned char *target, int size);
 
+// convert the string 'p' to a 'size' big endian float at 'target'
+// see NOTE above
 int make_be_float(const char *p, unsigned char *target, int size);
+
+// negate the 'size' big endian float at 'target'
 void negate_be_float(unsigned char *target, int size);
 
 #endif
