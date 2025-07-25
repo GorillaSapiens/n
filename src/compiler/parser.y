@@ -38,29 +38,65 @@
 %token ADD_ASSIGN SUB_ASSIGN MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN
 %token AND_ASSIGN OR_ASSIGN XOR_ASSIGN LSHIFT_ASSIGN RSHIFT_ASSIGN
 
-%type <node> additive_expr arg_list array_initializer
-%type <node> lvalue lvalue_base lvalue_suffixes
-%type <node> bitwise_and_expr bitwise_or_expr bitwise_xor_expr block
-%type <node> case_block case_section
+%type <node> additive_expr
+%type <node> arg_list
+%type <node> array_initializer
+%type <node> bitwise_and_expr
+%type <node> bitwise_or_expr
+%type <node> bitwise_xor_expr
+%type <node> block
+%type <node> break_stmt
+%type <node> case_block
+%type <node> case_section
+%type <node> continue_stmt
+%type <node> decl
+%type <node> declarator
+%type <node> decl_specifiers
 %type <node> defdecl_stmt
-%type <node> equality_expr expr expr_args expr_list expr_stmt
-%type <node> flag flag_list
+%type <node> direct_declarator
+%type <node> do_stmt
+%type <node> equality_expr
+%type <node> expr
+%type <node> expr_args
+%type <node> expr_list
+%type <node> expr_stmt
+%type <node> flag
+%type <node> flag_list
+%type <node> for_stmt
+%type <node> goto_stmt
+%type <node> if_stmt
 %type <node> include_stmt
-%type <node> logical_and_expr logical_or_expr
+%type <node> label_stmt
+%type <node> logical_and_expr
+%type <node> logical_or_expr
+%type <node> lvalue
+%type <node> lvalue_base
+%type <node> lvalue_suffixes
+%type <node> modifier
+%type <node> modifier_list
 %type <node> multiplicative_expr
-%type <node> opt_expr opt_flags
-%type <node> modifier_list modifier
-%type <node> parameter parameter_list
-%type <node> postfix_expr primary_expr program program_item
+%type <node> opt_expr
+%type <node> opt_flags
+%type <node> parameter
+%type <node> parameter_list
+%type <node> pointer
+%type <node> postfix_expr
+%type <node> primary_expr
+%type <node> program
+%type <node> program_item
 %type <node> relational_expr
-%type <node> shift_expr statement statement_list struct_decl_stmt struct_field
+%type <node> return_stmt
+%type <node> shift_expr
+%type <node> statement
+%type <node> statement_list
+%type <node> struct_decl_stmt
+%type <node> struct_field
 %type <node> struct_fields
+%type <node> switch_stmt
 %type <node> type_decl_stmt
 %type <node> unary_expr
 %type <node> union_decl_stmt
-%type <node> return_stmt goto_stmt break_stmt continue_stmt switch_stmt 
-%type <node> if_stmt while_stmt for_stmt do_stmt label_stmt 
-%type <node> decl decl_specifiers declarator pointer direct_declarator
+%type <node> while_stmt
 
 %locations
 %define parse.error verbose
