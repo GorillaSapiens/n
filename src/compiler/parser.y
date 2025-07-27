@@ -20,16 +20,11 @@
     ASTNode *node;
 }
 
-%token <str> CONST
-%token <str> EXTERN
 %token <str> FLAG
 %token <str> FLOAT         /* string, because value might be outside hosts abilities */
 %token <str> IDENTIFIER
 %token <str> INTEGER       /* string, because value might be outside hosts abilities */
 %token <str> OPERATOR
-%token <str> QUICK
-%token <str> REF
-%token <str> STATIC
 %token <str> STRING
 %token <str> TYPENAME
 
@@ -40,6 +35,7 @@
 %token ASSIGN
 %token BREAK
 %token CASE
+%token CONST
 %token CONTINUE
 %token DEC
 %token DEFAULT
@@ -47,6 +43,7 @@
 %token DO
 %token ELSE
 %token EQ
+%token EXTERN
 %token FOR
 %token GE
 %token GOTO
@@ -61,9 +58,12 @@
 %token NE
 %token OR
 %token OR_ASSIGN
+%token QUICK
+%token REF
 %token RETURN
 %token RSHIFT
 %token RSHIFT_ASSIGN
+%token STATIC
 %token STRUCT
 %token SUB_ASSIGN
 %token SWITCH
@@ -200,16 +200,25 @@ struct_field:
   ;
 
 modifier_list:
-    modifier_list modifier { COVER; $$ = MAKE_NODE($2, $1); }
-  | modifier               { COVER; $$ = MAKE_NODE($1); }
+    modifier_list modifier { COVER;
+                             $$ = $1;
+                             for (int i = 0; i < sizeof($$->children) / sizeof($$->children[0]); i++) {
+                                if (NULL == $$->children[i]) {
+                                   $$->children[i] = $2;
+                                   $$->count++;
+                                   break;
+                                }
+                              }
+                           }
+  | modifier               { COVER; $$ = MAKE_NODE($1); printf ("noodle %p %p\n", $1, $$->children[0]); }
   ;
 
 modifier:
-    STATIC { COVER; $$ = make_identifier_leaf($1); }
-  | EXTERN { COVER; $$ = make_identifier_leaf($1); }
-  | CONST  { COVER; $$ = make_identifier_leaf($1); }
-  | QUICK  { COVER; $$ = make_identifier_leaf($1); }
-  | REF    { COVER; $$ = make_identifier_leaf($1); }
+    STATIC { COVER; $$ = make_identifier_leaf("static"); }
+  | EXTERN { COVER; $$ = make_identifier_leaf("extern"); }
+  | CONST  { COVER; $$ = make_identifier_leaf("const"); }
+  | QUICK  { COVER; $$ = make_identifier_leaf("quick"); } 
+  | REF    { COVER; $$ = make_identifier_leaf("ref"); }
   ;
 
 decl:

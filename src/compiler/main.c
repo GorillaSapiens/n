@@ -121,15 +121,21 @@ int main(int argc, char** argv) {
 
    // TODO register built in type names
 
-   printf(";Parsing...\n");
+   debug(";Parsing...\n");
+
    ret = yyparse();
+
+   if (get_xray(XRAY_DUMPAST)) {
+      parse_dump_node(root);
+   }
+
    if (ret == 0) {
-      printf(";Parse successful.\n");
+      debug(";Parse successful.\n");
       if (get_xray(XRAY_PARSEONLY)) {
          exit(0);
       }
    } else {
-      printf(";Parse failed.\n");
+      error(";Parse failed.\n");
       exit(-1);
    }
 
