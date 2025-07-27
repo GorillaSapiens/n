@@ -142,12 +142,12 @@
 %%
 
 program:
-    program_item         { COVER; if ($1) { root = $$ = MAKE_NODE($1); } }
-  | program program_item { COVER; if ($2) { root = $$ = MAKE_NODE($1, $2); } else { $$ = $1; } }
+    program_item         { COVER; root = $$ = MAKE_NODE($1); }
+  | program program_item { COVER; root = $$ = append_child($1, $2); }
   ;
 
 program_item:
-    include_stmt          { COVER; $$ = NULL; } // process an include line
+    include_stmt          { COVER; $$ = $1; }
   | type_decl_stmt        { COVER; $$ = $1; }
   | struct_decl_stmt      { COVER; $$ = $1; }
   | union_decl_stmt       { COVER; $$ = $1; }
@@ -155,7 +155,14 @@ program_item:
   ;
 
 include_stmt:
-    INCLUDE STRING       { COVER; if (push_file($2) != 0) { yyerror("failed to include file: %s", $2); YYABORT; } }
+    INCLUDE STRING      {
+                           COVER;
+                           $$ = MAKE_NODE(make_string_leaf($2));
+                           if (push_file($2) != 0) {
+                              yyerror("failed to include file: %s", $2);
+                              YYABORT;
+                           }
+                        }
   ;
 
 type_decl_stmt:
@@ -245,8 +252,8 @@ direct_declarator:
   ;
 
 parameter_list:
-    parameter                    { COVER; $$ = $1; }
-  | parameter_list ',' parameter { COVER; $$ = MAKE_NODE($1, $3); }
+    parameter_list ',' parameter { COVER; $$ = append_child($1, $3); }
+  | parameter                    { COVER; $$ = MAKE_NODE($1); }
   ;
 
 parameter:
@@ -258,8 +265,8 @@ block:
   ;
 
 statement_list:
-    %empty                   { COVER; $$ = make_empty_leaf(); }
-  | statement statement_list { COVER; $$ = ($2->kind != AST_EMPTY) ? MAKE_NODE($1,$2) : MAKE_NODE($1); }
+    %empty                   { COVER; $$ = MAKE_NODE_EMPTY(); }
+  | statement statement_list { COVER; $$ = prepend_child($2, $1); }
   ;
 
 statement:

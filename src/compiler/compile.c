@@ -770,6 +770,9 @@ static void compile(ASTNode *node) {
    else if (!strcmp(node->name, "defdecl_stmt")) {
       compile_defdecl_stmt(node);
    }
+   else if (!strcmp(node->name, "include_stmt")) {
+      // ignore these, they're handled in the parser
+   }
    else {
       error("[%s:%d.%d] unrecognized AST node '%s'",
          node->file, node->line, node->column,
