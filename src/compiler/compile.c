@@ -656,6 +656,11 @@ static void compile_type_decl_stmt(ASTNode *node) {
    debug("========================================\n");
    parse_dump_node(node);
    debug("========================================\n");
+#if 0
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   debug("========================================\n");
+   parse_dump_node(node);
+   debug("========================================\n");
 
    if (!types) {
       types = new_set();
@@ -720,6 +725,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
+#endif
 }
 
 static void compile_struct_decl_stmt(ASTNode *node) {
