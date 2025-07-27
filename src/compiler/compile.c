@@ -749,6 +749,10 @@ static void compile_defdecl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
+static void compile_include_stmt(ASTNode *node) {
+   // ignore these, they're handled in the parser
+}
+
 static void compile(ASTNode *node) {
    if (!node) {
       return;
@@ -771,7 +775,7 @@ static void compile(ASTNode *node) {
       compile_defdecl_stmt(node);
    }
    else if (!strcmp(node->name, "include_stmt")) {
-      // ignore these, they're handled in the parser
+      compile_include_stmt(node);
    }
    else {
       error("[%s:%d.%d] unrecognized AST node '%s'",

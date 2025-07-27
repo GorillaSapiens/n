@@ -51,8 +51,7 @@ void parse_dump_node(const ASTNode *node);
 
 extern ASTNode *root;
 
-#define MAKE_NODE(...)             make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)
-#define MAKE_NODE_EMPTY()          make_node(yysymbol_name(yyr1[yyn]), NULL)
-#define MAKE_NAMED_NODE(name, ...) make_node(name, __VA_ARGS__, NULL)
+#define MAKE_NODE(...)              make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)
+#define MAKE_NAMED_NODE(name, ...)  make_node(name, __VA_ARGS__, NULL)
 
 #endif // _INCLUDE_AST_H_

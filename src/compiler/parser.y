@@ -94,6 +94,8 @@
 %type <node> expr_args
 %type <node> expr_list
 %type <node> expr_stmt
+%type <node> field
+%type <node> field_list
 %type <node> flag
 %type <node> flag_list
 %type <node> for_stmt
@@ -125,8 +127,6 @@
 %type <node> statement
 %type <node> statement_list
 %type <node> struct_decl_stmt
-%type <node> struct_field
-%type <node> struct_fields
 %type <node> switch_stmt
 %type <node> type_decl_stmt
 %type <node> unary_expr
@@ -174,7 +174,7 @@ struct_decl_stmt:
     STRUCT IDENTIFIER '{' { COVER;
         if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
-    struct_fields '}' ';' { COVER;
+    field_list '}' ';' { COVER;
         register_typename($2);
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
@@ -184,7 +184,7 @@ union_decl_stmt:
     UNION IDENTIFIER '{' { COVER;
         if (register_typename($2) < 0) YYABORT;  // Add early to type table
     }
-    struct_fields '}' ';' { COVER;
+    field_list '}' ';' { COVER;
         register_typename($2);
         $$ = MAKE_NODE(make_identifier_leaf($2), $5);
     }
@@ -197,12 +197,12 @@ defdecl_stmt:
   ;
 
 
-struct_fields:
-    struct_field                        { COVER; $$ = $1; }
-  | struct_fields struct_field          { COVER; $$ = MAKE_NODE($1, $2); }
+field_list:
+    field                        { COVER; $$ = MAKE_NODE($1); }
+  | field_list field             { COVER; $$ = append_child($1, $2); }
   ;
 
-struct_field:
+field:
     decl ';' { COVER; $$ = $1; }
   ;
 
@@ -265,7 +265,7 @@ block:
   ;
 
 statement_list:
-    %empty                   { COVER; $$ = MAKE_NODE_EMPTY(); }
+    %empty                   { COVER; $$ = MAKE_NODE(NULL); }
   | statement statement_list { COVER; $$ = prepend_child($2, $1); }
   ;
 
