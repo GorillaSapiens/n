@@ -200,17 +200,8 @@ struct_field:
   ;
 
 modifier_list:
-    modifier_list modifier { COVER;
-                             $$ = $1;
-                             for (int i = 0; i < sizeof($$->children) / sizeof($$->children[0]); i++) {
-                                if (NULL == $$->children[i]) {
-                                   $$->children[i] = $2;
-                                   $$->count++;
-                                   break;
-                                }
-                              }
-                           }
-  | modifier               { COVER; $$ = MAKE_NODE($1); printf ("noodle %p %p\n", $1, $$->children[0]); }
+    modifier_list modifier { COVER; $$ = append_child($1, $2); }
+  | modifier               { COVER; $$ = MAKE_NODE($1); }
   ;
 
 modifier:

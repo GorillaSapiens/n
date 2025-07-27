@@ -19,11 +19,30 @@ ASTNode *make_node(const char *name, ...) {
    va_start(ap, name);
    ASTNode *child;
    while ((child = va_arg(ap, ASTNode *)) != NULL) {
-      if (ret->count < 16)
-         ret->children[ret->count++] = child;
+      ret = append_child(ret, child);
    }
    va_end(ap);
    return ret;
+}
+
+ASTNode *append_child(ASTNode *parent, ASTNode *child) {
+   size_t newsize = sizeof(ASTNode) + sizeof(ASTNode *) * (parent->count + 1);
+   parent = realloc(parent, newsize);
+   parent->children[parent->count++] = child;
+   return parent;
+}
+
+ASTNode *prepend_child(ASTNode *parent, ASTNode *child) {
+   size_t newsize = sizeof(ASTNode) + sizeof(ASTNode *) * (parent->count + 1);
+   parent = realloc(parent, newsize);
+   if (parent->count > 0) {
+      for (int i = 0; i < parent->count; i++) {
+         parent->children[parent->count - i] = parent->children[parent->count - i - 1];
+      }
+   }
+   parent->children[0] = child;
+   parent->count++;
+   return parent;
 }
 
 ASTNode *make_integer_leaf(const char *intval) {

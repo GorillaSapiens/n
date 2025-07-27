@@ -34,6 +34,10 @@ all:
 	@make --no-print-directory $(TARGET)
 	@make --no-print-directory $(TEST)
 
+part:
+	@make --no-print-directory depend
+	@make --no-print-directory $(TARGET)
+
 test:
 	(cd ../test; ./test.pl)
 

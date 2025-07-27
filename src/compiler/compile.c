@@ -42,6 +42,9 @@ typedef struct Context {
    Set *vars;
 } Context;
 
+#if 0
+
+#if 0
 // for parameterless flags (e.g. "$signed")
 // also for compleate flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
@@ -55,7 +58,9 @@ static bool has_flag(const char *type, const char *flag) {
    }
    return false;
 }
+#endif
 
+#if 0
 static bool has_modifier(ASTNode *node, const char *modifier) {
    if (node && node->kind != AST_EMPTY) {
       while (node) {
@@ -80,6 +85,7 @@ static int get_size(const char *type) {
    error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
    return -1; // unreachable
 }
+#endif
 
 #if 0
 // decl_stmt is a free floating variable declaration
@@ -284,6 +290,7 @@ static void compile_decl_stmt(ASTNode *node) {
 }
 #endif
 
+#if 0
 static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
    // constness must match
    if (has_modifier(a->children[0], "const") !=
@@ -324,6 +331,7 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
 
    return true;
 }
+#endif
 
 static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -345,6 +353,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
+#if 0
 static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -366,6 +375,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
 
    // TODO FIX increment the stack pointer.
 }
+#endif
 
 static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool bss) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -438,6 +448,7 @@ static const char *missing_argname(int i) {
    return ret;
 }
 
+#if 0
 static void build_function_context(const ASTNode *node, Context *ctx) {
    int i = 0;
 
@@ -460,6 +471,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    // then the return value
    ctx_shove(ctx, node->children[1], "$$");
 }
+#endif
 
 #if 0
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
@@ -629,6 +641,8 @@ static void compile_function_decl(ASTNode *node) {
 
    return;
 }
+#endif
+
 #endif
 
 ////////////////////////////////////////
