@@ -344,45 +344,45 @@ label_stmt:
   ;
 
 array_initializer:
-    '{' expr_list '}'                   { COVER; $$ = $2; }
-  | '{' expr_list ',' '}'               { COVER; $$ = $2; }
+    '{' expr_list '}'                        { COVER; $$ = $2; }
+  | '{' expr_list ',' '}'                    { COVER; $$ = $2; }
   ;
 
 expr_list:
-    named_expr                        { COVER; $$ = MAKE_NODE($1); }
-  | expr_list ',' named_expr          { COVER; $$ = MAKE_NODE($1, $3); }
+    named_expr                               { COVER; $$ = MAKE_NODE($1); }
+  | expr_list ',' named_expr                 { COVER; $$ = MAKE_NODE($1, $3); }
 ;
 
 named_expr:
-    expr                        { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
-  | '.' IDENTIFIER ASSIGN expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+    expr                                     { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
+  | '.' IDENTIFIER ASSIGN expr               { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   ;
 
 expr_stmt:
-    expr ';' { COVER; $$ = $1; }
-  | ';'      { COVER; $$ = make_empty_leaf(); }
+    expr ';'                                 { COVER; $$ = $1; }
+  | ';'                                      { COVER; $$ = NULL; } // TODO FIX make_empty_leaf(); }
   ;
 
 opt_expr:
-    %empty       { COVER; $$ = make_empty_leaf(); }
-  | expr         { COVER; $$ = $1; }
+    %empty                                   { COVER; $$ = make_empty_leaf(); }
+  | expr                                     { COVER; $$ = $1; }
   ;
 
 
 expr:
     logical_or_expr                    { COVER; $$ = MAKE_NODE($1); }
   | logical_or_expr '?' expr ':' expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
-  | lvalue ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
-  | lvalue ADD_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
-  | lvalue SUB_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
-  | lvalue MUL_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
-  | lvalue DIV_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
-  | lvalue MOD_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
-  | lvalue AND_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
-  | lvalue OR_ASSIGN expr          { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
-  | lvalue XOR_ASSIGN expr         { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
-  | lvalue LSHIFT_ASSIGN expr      { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
-  | lvalue RSHIFT_ASSIGN expr      { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
+  | lvalue ASSIGN expr                 { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
+  | lvalue ADD_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
+  | lvalue SUB_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
+  | lvalue MUL_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
+  | lvalue DIV_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
+  | lvalue MOD_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
+  | lvalue AND_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
+  | lvalue OR_ASSIGN expr              { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
+  | lvalue XOR_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
+  | lvalue LSHIFT_ASSIGN expr          { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
+  | lvalue RSHIFT_ASSIGN expr          { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
   ;
 
 logical_or_expr:
