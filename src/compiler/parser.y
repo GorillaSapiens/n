@@ -268,7 +268,7 @@ parameter_list:
   ;
 
 parameter:
-    decl_specifiers declarator { COVER; $$ = MAKE_NODE($1, $2); }
+    decl_specifiers decl_item { COVER; $$ = MAKE_NODE($1, $2); }
   ;
 
 block:
