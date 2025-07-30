@@ -84,6 +84,8 @@
 %type <node> case_section
 %type <node> continue_stmt
 %type <node> decl
+%type <node> decl_list
+%type <node> decl_item
 %type <node> declarator
 %type <node> decl_specifiers
 %type <node> defdecl_stmt
@@ -220,9 +222,18 @@ modifier:
   ;
 
 decl:
-    decl_specifiers declarator                { COVER; $$ = MAKE_NODE($1, $2); }
-  | decl_specifiers declarator '@' INTEGER    { COVER; $$ = MAKE_NODE($1, $2, make_integer_leaf($4)); }
-  | decl_specifiers declarator '@' IDENTIFIER { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf($4)); }
+    decl_specifiers decl_list                { COVER; $$ = MAKE_NODE($1, $2); }
+  ;
+
+decl_list:
+    decl_item                        { COVER; $$ = MAKE_NODE($1); }
+  | decl_list ',' decl_item         { COVER; $$ = append_child($1, $3); }
+  ;
+
+decl_item:
+    declarator                      { COVER; $$ = $1; }
+  | declarator '@' INTEGER          { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
+  | declarator '@' IDENTIFIER       { COVER; $$ = MAKE_NODE($1, make_identifier_leaf($3)); }
   ;
 
 decl_specifiers:
