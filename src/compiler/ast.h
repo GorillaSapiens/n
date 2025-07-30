@@ -30,6 +30,7 @@ typedef struct ASTNode {
 ASTNode *make_node(const char *name, ...);
 
 ASTNode *append_child(ASTNode *parent, ASTNode *child);
+ASTNode *append_children_from(ASTNode *parent, ASTNode *other);
 ASTNode *prepend_child(ASTNode *parent, ASTNode *child);
 
 ASTNode *make_integer_leaf(const char *intval);

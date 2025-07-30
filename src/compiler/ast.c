@@ -32,6 +32,13 @@ ASTNode *append_child(ASTNode *parent, ASTNode *child) {
    return parent;
 }
 
+ASTNode *append_children_from(ASTNode *parent, ASTNode *other) {
+   for (int i = 0; i < other->count; i++) {
+      parent = append_child(parent, other->children[i]);
+   }
+   return parent;
+}
+
 ASTNode *prepend_child(ASTNode *parent, ASTNode *child) {
    size_t newsize = sizeof(ASTNode) + sizeof(ASTNode *) * (parent->count + 1);
    parent = realloc(parent, newsize);
