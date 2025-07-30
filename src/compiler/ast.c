@@ -151,7 +151,7 @@ void dump_ast_flat(const ASTNode *node,
           case AST_EMPTY:      printf(" <empty>"); break;
           default: break;
        }
-       printf("\n");
+       printf("\t\t(%s:%d)\n", node->file, node->line);
     }
 
     // Determine if we can flatten this node's children

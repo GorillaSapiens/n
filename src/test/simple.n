@@ -15,7 +15,7 @@ type ulonglong { $size:16 $unsigned $endian:little };
 type float     { $size:4            $endian:little $float };
 type double    { $size:8            $endian:little $float };
 
-char **argv;
+static char **argv;
 
 int main(int argc, char **argv) {
 }
