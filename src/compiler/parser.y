@@ -360,7 +360,7 @@ named_expr:
 
 expr_stmt:
     expr ';'                                 { COVER; $$ = $1; }
-  | ';'                                      { COVER; $$ = NULL; } // TODO FIX make_empty_leaf(); }
+  | ';'                                      { COVER; $$ = make_empty_leaf(); }
   ;
 
 opt_expr:
@@ -370,50 +370,50 @@ opt_expr:
 
 
 expr:
-    logical_or_expr                    { COVER; $$ = MAKE_NODE($1); }
-  | logical_or_expr '?' expr ':' expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
-  | lvalue ASSIGN expr                 { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
-  | lvalue ADD_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
-  | lvalue SUB_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
-  | lvalue MUL_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
-  | lvalue DIV_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
-  | lvalue MOD_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
-  | lvalue AND_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
-  | lvalue OR_ASSIGN expr              { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
-  | lvalue XOR_ASSIGN expr             { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
-  | lvalue LSHIFT_ASSIGN expr          { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
-  | lvalue RSHIFT_ASSIGN expr          { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
+    logical_or_expr                          { COVER; $$ = MAKE_NODE($1); }
+  | logical_or_expr '?' expr ':' expr        { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
+  | lvalue ASSIGN expr                       { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
+  | lvalue ADD_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
+  | lvalue SUB_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
+  | lvalue MUL_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
+  | lvalue DIV_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
+  | lvalue MOD_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
+  | lvalue AND_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
+  | lvalue OR_ASSIGN expr                    { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
+  | lvalue XOR_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
+  | lvalue LSHIFT_ASSIGN expr                { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
+  | lvalue RSHIFT_ASSIGN expr                { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
   ;
 
 logical_or_expr:
-    logical_and_expr                    { COVER; $$ = $1; }
-  | logical_or_expr OR logical_and_expr { COVER; $$ = MAKE_NAMED_NODE("||", $1, $3); }
+    logical_and_expr                         { COVER; $$ = $1; }
+  | logical_or_expr OR logical_and_expr      { COVER; $$ = MAKE_NAMED_NODE("||", $1, $3); }
   ;
 
 logical_and_expr:
-    bitwise_or_expr                       { COVER; $$ = $1; }
-  | logical_and_expr AND bitwise_or_expr  { COVER; $$ = MAKE_NAMED_NODE("&&", $1, $3); }
+    bitwise_or_expr                          { COVER; $$ = $1; }
+  | logical_and_expr AND bitwise_or_expr     { COVER; $$ = MAKE_NAMED_NODE("&&", $1, $3); }
   ;
 
 bitwise_or_expr:
-    bitwise_xor_expr                      { COVER; $$ = $1; }
-  | bitwise_or_expr '|' bitwise_xor_expr  { COVER; $$ = MAKE_NAMED_NODE("|", $1, $3); }
+    bitwise_xor_expr                         { COVER; $$ = $1; }
+  | bitwise_or_expr '|' bitwise_xor_expr     { COVER; $$ = MAKE_NAMED_NODE("|", $1, $3); }
   ;
 
 bitwise_xor_expr:
-    bitwise_and_expr                       { COVER; $$ = $1; }
-  | bitwise_xor_expr '^' bitwise_and_expr  { COVER; $$ = MAKE_NAMED_NODE("^", $1, $3); }
+    bitwise_and_expr                         { COVER; $$ = $1; }
+  | bitwise_xor_expr '^' bitwise_and_expr    { COVER; $$ = MAKE_NAMED_NODE("^", $1, $3); }
   ;
 
 bitwise_and_expr:
-    equality_expr                       { COVER; $$ = $1; }
-  | bitwise_and_expr '&' equality_expr  { COVER; $$ = MAKE_NAMED_NODE("&", $1, $3); }
+    equality_expr                            { COVER; $$ = $1; }
+  | bitwise_and_expr '&' equality_expr       { COVER; $$ = MAKE_NAMED_NODE("&", $1, $3); }
   ;
 
 equality_expr:
-    relational_expr                       { COVER; $$ = $1; }
-  | equality_expr EQ relational_expr      { COVER; $$ = MAKE_NAMED_NODE("==", $1, $3); }
-  | equality_expr NE relational_expr      { COVER; $$ = MAKE_NAMED_NODE("!=", $1, $3); }
+    relational_expr                          { COVER; $$ = $1; }
+  | equality_expr EQ relational_expr         { COVER; $$ = MAKE_NAMED_NODE("==", $1, $3); }
+  | equality_expr NE relational_expr         { COVER; $$ = MAKE_NAMED_NODE("!=", $1, $3); }
   ;
 
 relational_expr:
