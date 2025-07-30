@@ -417,107 +417,107 @@ equality_expr:
   ;
 
 relational_expr:
-    shift_expr                       { COVER; $$ = $1; }
-  | relational_expr '<' shift_expr   { COVER; $$ = MAKE_NAMED_NODE("<", $1, $3); }
-  | relational_expr '>' shift_expr   { COVER; $$ = MAKE_NAMED_NODE(">", $1, $3); }
-  | relational_expr LE shift_expr    { COVER; $$ = MAKE_NAMED_NODE("<=", $1, $3); }
-  | relational_expr GE shift_expr    { COVER; $$ = MAKE_NAMED_NODE(">=", $1, $3); }
+    shift_expr                               { COVER; $$ = $1; }
+  | relational_expr '<' shift_expr           { COVER; $$ = MAKE_NAMED_NODE("<", $1, $3); }
+  | relational_expr '>' shift_expr           { COVER; $$ = MAKE_NAMED_NODE(">", $1, $3); }
+  | relational_expr LE shift_expr            { COVER; $$ = MAKE_NAMED_NODE("<=", $1, $3); }
+  | relational_expr GE shift_expr            { COVER; $$ = MAKE_NAMED_NODE(">=", $1, $3); }
   ;
 
 shift_expr:
-    additive_expr                       { COVER; $$ = $1; }
-  | shift_expr LSHIFT additive_expr     { COVER; $$ = MAKE_NAMED_NODE("<<", $1, $3); }
-  | shift_expr RSHIFT additive_expr     { COVER; $$ = MAKE_NAMED_NODE(">>", $1, $3); }
+    additive_expr                            { COVER; $$ = $1; }
+  | shift_expr LSHIFT additive_expr          { COVER; $$ = MAKE_NAMED_NODE("<<", $1, $3); }
+  | shift_expr RSHIFT additive_expr          { COVER; $$ = MAKE_NAMED_NODE(">>", $1, $3); }
   ;
 
 additive_expr:
-    multiplicative_expr                       { COVER; $$ = $1; }
-  | additive_expr '+' multiplicative_expr     { COVER; $$ = MAKE_NAMED_NODE("+", $1, $3); }
-  | additive_expr '-' multiplicative_expr     { COVER; $$ = MAKE_NAMED_NODE("-", $1, $3); }
+    multiplicative_expr                      { COVER; $$ = $1; }
+  | additive_expr '+' multiplicative_expr    { COVER; $$ = MAKE_NAMED_NODE("+", $1, $3); }
+  | additive_expr '-' multiplicative_expr    { COVER; $$ = MAKE_NAMED_NODE("-", $1, $3); }
   ;
 
 multiplicative_expr:
-    unary_expr                         { COVER; $$ = $1; }
-  | multiplicative_expr '*' unary_expr { COVER; $$ = MAKE_NAMED_NODE("*", $1, $3); }
-  | multiplicative_expr '/' unary_expr { COVER; $$ = MAKE_NAMED_NODE("/", $1, $3); }
-  | multiplicative_expr '%' unary_expr { COVER; $$ = MAKE_NAMED_NODE("%", $1, $3); }
+    unary_expr                               { COVER; $$ = $1; }
+  | multiplicative_expr '*' unary_expr       { COVER; $$ = MAKE_NAMED_NODE("*", $1, $3); }
+  | multiplicative_expr '/' unary_expr       { COVER; $$ = MAKE_NAMED_NODE("/", $1, $3); }
+  | multiplicative_expr '%' unary_expr       { COVER; $$ = MAKE_NAMED_NODE("%", $1, $3); }
   ;
 
 lvalue:
-    lvalue_base lvalue_suffixes { COVER; $$ = MAKE_NODE($1,$2); }
-  | INC lvalue_base lvalue_suffixes { COVER; $$ = MAKE_NODE($2, $3, make_identifier_leaf("pre++")); }
-  | DEC lvalue_base lvalue_suffixes { COVER; $$ = MAKE_NODE($2, $3, make_identifier_leaf("pre--")); }
-  | lvalue_base lvalue_suffixes INC { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf("post++")); }
-  | lvalue_base lvalue_suffixes DEC { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf("post--")); }
+    lvalue_base lvalue_suffixes              { COVER; $$ = MAKE_NODE($1,$2); }
+  | INC lvalue_base lvalue_suffixes          { COVER; $$ = MAKE_NODE($2, $3, make_identifier_leaf("pre++")); }
+  | DEC lvalue_base lvalue_suffixes          { COVER; $$ = MAKE_NODE($2, $3, make_identifier_leaf("pre--")); }
+  | lvalue_base lvalue_suffixes INC          { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf("post++")); }
+  | lvalue_base lvalue_suffixes DEC          { COVER; $$ = MAKE_NODE($1, $2, make_identifier_leaf("post--")); }
   ;
 
 lvalue_base:
-    IDENTIFIER      { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
-  | '*' lvalue_base { COVER; $$ = MAKE_NAMED_NODE("*", $2); }
+    IDENTIFIER                               { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | '*' lvalue_base                          { COVER; $$ = MAKE_NAMED_NODE("*", $2); }
   ;
 
 lvalue_suffixes:
-    %empty                                { COVER; $$ = make_empty_leaf(); }
-  | lvalue_suffixes '[' expr ']'      { COVER; $$ = MAKE_NAMED_NODE("[", $1, $3); }
-  | lvalue_suffixes '.' IDENTIFIER    { COVER; $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
-  | lvalue_suffixes ARROW IDENTIFIER  { COVER; $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
+    %empty                                   { COVER; $$ = make_empty_leaf(); }
+  | lvalue_suffixes '[' expr ']'             { COVER; $$ = MAKE_NAMED_NODE("[", $1, $3); }
+  | lvalue_suffixes '.' IDENTIFIER           { COVER; $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
+  | lvalue_suffixes ARROW IDENTIFIER         { COVER; $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
   ;
 
 unary_expr:
-    postfix_expr   { COVER; $$ = $1; }
-  | '!' unary_expr { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
-  | '~' unary_expr { COVER; $$ = MAKE_NAMED_NODE("~", $2); }
-  | '-' unary_expr { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
-  | '&' unary_expr { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
+    postfix_expr                             { COVER; $$ = $1; }
+  | '!' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
+  | '~' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("~", $2); }
+  | '-' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
+  | '&' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
   ;
 
 postfix_expr:
-    IDENTIFIER '(' arg_list ')'    { COVER; $$ = MAKE_NAMED_NODE("()", make_identifier_leaf($1), $3); }
-  | primary_expr                   { COVER; $$ = $1; }
+    IDENTIFIER '(' arg_list ')'              { COVER; $$ = MAKE_NAMED_NODE("()", make_identifier_leaf($1), $3); }
+  | primary_expr                             { COVER; $$ = $1; }
   ;
 
 primary_expr:
-    INTEGER           { COVER; $$ = make_integer_leaf($1); }
-  | FLOAT             { COVER; $$ = make_float_leaf($1); }
-  | STRING            { COVER; $$ = make_string_leaf($1); }
-  | array_initializer { COVER; $$ = $1; }
-  | lvalue            { COVER; $$ = $1; }
-  | '(' expr ')'      { COVER; $$ = $2; }
+    INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
+  | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
+  | STRING                                   { COVER; $$ = make_string_leaf($1); }
+  | array_initializer                        { COVER; $$ = $1; }
+  | lvalue                                   { COVER; $$ = $1; }
+  | '(' expr ')'                             { COVER; $$ = $2; }
   ;
 
 arg_list:
-    %empty       { COVER; $$ = make_empty_leaf(); }
-  | expr_args    { COVER; $$ = $1; }
+    %empty                                   { COVER; $$ = MAKE_NAMED_NODE("expre_args", NULL); }
+  | expr_args                                { COVER; $$ = $1; }
   ;
 
 expr_args:
-    expr                       { COVER; $$ = MAKE_NODE($1); }
-  | expr_args ',' expr         { COVER; $$ = MAKE_NODE($1, $3); }
+    expr                                     { COVER; $$ = MAKE_NODE($1); }
+  | expr_args ',' expr                       { COVER; $$ = append_child($1, $3); }
   ;
 
 
 case_section:
-    case_section case_block { COVER; $$ = MAKE_NODE($1, $2); }
-  | case_block              { COVER; $$ = MAKE_NODE($1); }
+    case_section case_block                  { COVER; $$ = append_child($1, $2); }
+  | case_block                               { COVER; $$ = MAKE_NODE($1); }
   ;
 
 case_block:
-    CASE expr ':' statement_list { COVER; $$ = MAKE_NODE($2, $4); }
-  | DEFAULT ':' statement_list   { COVER; $$ = MAKE_NODE(make_empty_leaf(), $3); }
+    CASE expr ':' statement_list             { COVER; $$ = MAKE_NODE($2, $4); }
+  | DEFAULT ':' statement_list               { COVER; $$ = MAKE_NODE(make_empty_leaf(), $3); }
   ;
 
 opt_flags:
-    flag_list   { COVER; $$ = $1; }
-  | %empty      { COVER; $$ = make_empty_leaf(); }
+    flag_list                                { COVER; $$ = $1; }
+  | %empty                                   { COVER; $$ = make_empty_leaf(); }
   ;
 
 flag_list:
-    flag_list flag { COVER; $$ = MAKE_NODE($2, $1); }
-  | flag           { COVER; $$ = MAKE_NODE($1); }
+    flag_list flag                           { COVER; $$ = append_child($1, $2); }
+  | flag                                     { COVER; $$ = MAKE_NODE($1); }
   ;
 
 flag:
-    FLAG { COVER; $$ = make_identifier_leaf($1); }
+    FLAG                                     { COVER; $$ = make_identifier_leaf($1); }
   ;
 
 %%
