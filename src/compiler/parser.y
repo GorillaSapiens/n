@@ -86,6 +86,7 @@
 %type <node> decl
 %type <node> decl_list
 %type <node> decl_item
+%type <node> decl_subitem
 %type <node> declarator
 %type <node> decl_specifiers
 %type <node> defdecl_stmt
@@ -198,10 +199,8 @@ union_decl_stmt:
 
 defdecl_stmt:
     decl ';'                                 { COVER; $$ = MAKE_NODE($1); }
-  | decl block                               { COVER; $$ = MAKE_NODE($1, $2); }
-  | decl ASSIGN expr ';'                     { COVER; $$ = MAKE_NODE($1, $3); }
+  | decl_specifiers declarator block         { COVER; $$ = $1; } // TODO FIX
   ;
-
 
 field_list:
     field                                    { COVER; $$ = MAKE_NODE($1); }
@@ -235,6 +234,11 @@ decl_list:
   ;
 
 decl_item:
+    decl_subitem                                     { COVER; $$ = MAKE_NODE($1); } // TODO FIX
+  | decl_subitem ASSIGN expr                         { COVER; $$ = MAKE_NODE($1, $3); } // TODO FIX
+  ;
+
+decl_subitem:
     declarator                               { COVER; $$ = $1; }
   | declarator '@' INTEGER                   { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
   | declarator '@' IDENTIFIER                { COVER; $$ = MAKE_NODE($1, make_identifier_leaf($3)); }
@@ -246,14 +250,14 @@ decl_specifiers:
   ;
 
 declarator:
-    pointer direct_declarator                { COVER; $$ = MAKE_NODE($1, $2); }
-  | direct_declarator                        { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), $1); }
+    pointer direct_declarator                { COVER; $$ = MAKE_NODE($1); $$ = append_children_from($$, $2); }
+  | direct_declarator                        { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0"))); $$->children[0]->name = "pointer"; $$ = append_children_from($$, $1); }
   | pointer                                  { COVER; $$ = MAKE_NODE($1, make_empty_leaf()); }
-  | %empty                                   { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), make_empty_leaf()); }
+  | %empty                                   { COVER; $$ = MAKE_NODE(make_integer_leaf(strdup("0")), make_empty_leaf()); $$->children[0]->name = "pointer"; }
   ;
 
 pointer:
-    '*'                                      { COVER; $$ = make_integer_leaf(strdup("1")); }
+    '*'                                      { COVER; $$ = make_integer_leaf(strdup("1")); $$->name = "pointer"; }
   | '*' pointer                              { COVER; $$ = $2; increment_integer_leaf($$); }
   ;
 
