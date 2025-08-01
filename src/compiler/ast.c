@@ -32,6 +32,7 @@ ASTNode *append_child(ASTNode *parent, ASTNode *child) {
    return parent;
 }
 
+// NB: this is a shallow copy
 ASTNode *append_children_from(ASTNode *parent, ASTNode *other) {
    for (int i = 0; i < other->count; i++) {
       parent = append_child(parent, other->children[i]);
@@ -49,6 +50,14 @@ ASTNode *prepend_child(ASTNode *parent, ASTNode *child) {
    }
    parent->children[0] = child;
    parent->count++;
+   return parent;
+}
+
+// NB: this is a shallow copy
+ASTNode *prepend_children_from(ASTNode *parent, ASTNode *other) {
+   for (int i = 0; i < other->count; i++) {
+      parent = prepend_child(parent, other->children[other->count - i - 1]);
+   }
    return parent;
 }
 

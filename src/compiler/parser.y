@@ -225,7 +225,13 @@ modifier:
   ;
 
 decl:
-    decl_specifiers decl_list                { COVER; $$ = MAKE_NODE($1, $2); }
+    decl_specifiers decl_list                {
+                                                COVER;
+                                                for (int i = 0; i < $2->count; i++) {
+                                                   $2->children[i] = prepend_children_from($2->children[i], $1);
+                                                }
+                                                $$ = $2;
+                                             }
   ;
 
 decl_list:
