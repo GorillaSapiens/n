@@ -199,7 +199,7 @@ union_decl_stmt:
 
 defdecl_stmt:
     decl ';'                                 { COVER; $$ = MAKE_NODE($1); }
-  | decl_specifiers declarator block         { COVER; $$ = $1; } // TODO FIX
+  | decl_specifiers declarator block         { COVER; $$ = MAKE_NODE($1, $2, $3); }
   ;
 
 field_list:
@@ -240,8 +240,8 @@ decl_list:
   ;
 
 decl_item:
-    decl_subitem                                     { COVER; $$ = MAKE_NODE($1); } // TODO FIX
-  | decl_subitem ASSIGN expr                         { COVER; $$ = MAKE_NODE($1, $3); } // TODO FIX
+    decl_subitem                                     { COVER; $$ = MAKE_NODE($1, make_empty_leaf()); }
+  | decl_subitem ASSIGN expr                         { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 decl_subitem:
