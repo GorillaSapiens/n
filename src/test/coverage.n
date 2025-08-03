@@ -7,6 +7,8 @@ type wisp { };
 struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
+struct llnode { int data; llnode *next; };
+
 static int q[12] @ 27;
 static int qq[12] @ symbol;
 int r[12] @ 27 := { .x := 1, 1, 1 };
