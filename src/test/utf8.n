@@ -1,0 +1,5 @@
+// nc -X parseonly -X dumpast
+
+include "machine_generic.n"
+
+int ε := 5;

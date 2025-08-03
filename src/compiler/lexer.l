@@ -93,8 +93,10 @@ ZERO      0
 INT       {HEXINT}|{BININT}|{OCTINT}|{DECINT}|{ZERO}
 
 DECFLOAT  [0-9]((_)?[0-9])*(\.([0-9]((_)?[0-9])*)?)?([eE][+-]?[0-9]+)?
+DOTFLOAT  \.[0-9]((_)?[0-9])*([eE][+-]?[0-9]+)?
 HEXFLOAT  0[xX][0-9a-fA-F]((_)?[0-9a-fA-F_])*(\.([0-9a-fA-F]((_)?[0-9a-fA-F])*)?)?[pP][+-]?[0-9_]+
-FLOAT     {DECFLOAT}|{HEXFLOAT}
+HOTFLOAT  0[xX]\.[0-9a-fA-F]((_)?[0-9a-fA-F])*[pP][+-]?[0-9_]+
+FLOAT     {DECFLOAT}|{DOTFLOAT}|{HEXFLOAT}|{HOTFLOAT}
 
 ANY_CHAR  [^'\\]
 ESC_CHAR  \\[abfnrtv\\'\"?]
@@ -114,63 +116,54 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 
 %%
 
-":="            return ASSIGN;
-"type"          return TYPE;
-"mem"           return MEM;
-"if"            return IF;
-"else"          return ELSE;
-"while"         return WHILE;
+"break"         return BREAK;
+"case"          return CASE;
+"const"         return CONST;
+"continue"      return CONTINUE;
+"default"       return DEFAULT;
 "do"            return DO;
+"else"          return ELSE;
 "for"           return FOR;
 "goto"          return GOTO;
-"return"        return RETURN;
-
-"const"         return CONST;
-"static"        return STATIC;
-"ref"           return REF;
-
-"break"         return BREAK;
-"continue"      return CONTINUE;
-
-"struct"        return STRUCT;
-"union"         return UNION;
-
-"case"          return CASE;
-"switch"        return SWITCH;
-"default"       return DEFAULT;
-
+"if"            return IF;
 "include"       return INCLUDE;
+"mem"           return MEM;
+"ref"           return REF;
+"return"        return RETURN;
+"static"        return STATIC;
+"struct"        return STRUCT;
+"switch"        return SWITCH;
+"type"          return TYPE;
+"union"         return UNION;
+"while"         return WHILE;
 
 operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    yylval.str = strdup(yytext);
    return OPERATOR;
 }
 
-"=="            return EQ;
-"!="            return NE;
-"<="            return LE;
-">="            return GE;
-"<<"            return LSHIFT;
-">>"            return RSHIFT;
-"||"            return OR;
-"&&"            return AND;
-
-"++"            return INC;
-"--"            return DEC;
-
-"->"            return ARROW;
-
 "+="            return ADD_ASSIGN;
-"-="            return SUB_ASSIGN;
-"*="            return MUL_ASSIGN;
-"/="            return DIV_ASSIGN;
-"%="            return MOD_ASSIGN;
+"&&"            return AND;
 "&="            return AND_ASSIGN;
-"|="            return OR_ASSIGN;
-"^="            return XOR_ASSIGN;
+"->"            return ARROW;
+":="            return ASSIGN;
+"--"            return DEC;
+"/="            return DIV_ASSIGN;
+"=="            return EQ;
+">="            return GE;
+"++"            return INC;
+"<="            return LE;
+"<<"            return LSHIFT;
 "<<="           return LSHIFT_ASSIGN;
+"%="            return MOD_ASSIGN;
+"*="            return MUL_ASSIGN;
+"!="            return NE;
+"||"            return OR;
+"|="            return OR_ASSIGN;
+">>"            return RSHIFT;
 ">>="           return RSHIFT_ASSIGN;
-
+"-="            return SUB_ASSIGN;
+"^="            return XOR_ASSIGN;
 
 {FLAG} {
    yylval.str = strdup(yytext);
@@ -236,6 +229,7 @@ int yywrap(void) {
    }
    return 1;  // tell Flex: we're done
 }
+
 /*
 int yyparse_file(const char *filename) {
 fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
