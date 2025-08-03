@@ -1,6 +1,6 @@
-// default
+// ascii
 
-xform default {
+xform ascii {
    // canonical escapes
    '\a' 0x07,
    '\b' 0x08,
