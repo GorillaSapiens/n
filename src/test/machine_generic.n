@@ -1,0 +1,17 @@
+// nc -X dumpast -X parseonly
+
+mem zp       { $start:0x0000 $size:0x0100 $rw };
+mem cpustack { $start:0x0100 $size:0x0100 $rw };
+mem ram      { $start:0x0200 $size:0x7e00 $rw $var };
+mem rom      { $start:0x8000 $size:0x8000 $ro $code $const };
+
+type void     { $size:0 };
+type char     { $size:1 $endian:little };
+type *        { $size:2 $endian:little };
+type int      { $size:2 $endian:little };
+type long     { $size:4 $endian:little };
+type longlong { $size:4 $endian:little };
+type half     { $size:2 $endian:little $float };
+type float    { $size:4 $endian:little $float };
+type double   { $size:8 $endian:little $float };
+
