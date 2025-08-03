@@ -23,6 +23,7 @@ SRCSRC = \
    messages.c \
    set.c \
    typename.c \
+   xform.c \
    xray.c \
    main.c
 
