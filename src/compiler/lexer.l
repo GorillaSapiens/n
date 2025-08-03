@@ -99,7 +99,7 @@ HOTFLOAT  0[xX]\.[0-9a-fA-F]((_)?[0-9a-fA-F])*[pP][+-]?[0-9_]+
 FLOAT     {DECFLOAT}|{DOTFLOAT}|{HEXFLOAT}|{HOTFLOAT}
 
 ANY_CHAR  [^'\\]
-ESC_CHAR  \\[abfnrtv\\'\"?]
+ESC_CHAR  \\[abefnrtv\\'\"?0]
 HEX_CHAR  \\x[0-9a-fA-F]{2}
 UNI_CHAR  \\u[0-9a-fA-F]{4}
 CHAR      \'({ANY_CHAR}|{ESC_CHAR}|{HEX_CHAR}|{UNI_CHAR})\'
@@ -136,6 +136,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 "type"          return TYPE;
 "union"         return UNION;
 "while"         return WHILE;
+"xform"         return XFORM;
 
 operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    yylval.str = strdup(yytext);
@@ -172,7 +173,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 
 {CHAR} {
    yylval.str = strdup(yytext);
-   return INTEGER;
+   return CHAR;
 }
 
 {STRING} {

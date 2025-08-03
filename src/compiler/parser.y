@@ -20,6 +20,7 @@
     ASTNode *node;
 }
 
+%token <str> CHAR
 %token <str> FLAG
 %token <str> FLOAT         /* string, because value might be outside hosts abilities */
 %token <str> IDENTIFIER
@@ -71,6 +72,7 @@
 %token TYPE
 %token UNION
 %token WHILE
+%token XFORM
 %token XOR_ASSIGN
 
 %type <node> additive_expr
@@ -137,6 +139,9 @@
 %type <node> unary_expr
 %type <node> union_decl_stmt
 %type <node> while_stmt
+%type <node> xform_decl_stmt
+%type <node> xform_item
+%type <node> xform_list
 
 %locations
 %define parse.error verbose
@@ -153,6 +158,7 @@ program:
 
 program_item:
     include_stmt                             { COVER; $$ = $1; }
+  | xform_decl_stmt                          { COVER; $$ = $1; }
   | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
   | struct_decl_stmt                         { COVER; $$ = $1; }
@@ -169,6 +175,21 @@ include_stmt:
                                                    YYABORT;
                                                 }
                                              }
+  ;
+
+xform_decl_stmt:
+    XFORM IDENTIFIER '{' xform_list '}' ';'      { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | XFORM IDENTIFIER '{' xform_list ',' '}' ';'  { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  ;
+
+xform_list:
+    xform_item                               { COVER; $$ = MAKE_NODE($1); }
+  | xform_list ',' xform_item                { COVER; $$ = append_child($1, $3); }
+  ;
+
+xform_item:
+    CHAR                                     { COVER; $$ = MAKE_NODE(make_string_leaf($1)); }
+  | xform_item INTEGER                       { COVER; $$ = append_child($1, make_integer_leaf($2)); }
   ;
 
 mem_decl_stmt:
@@ -494,6 +515,7 @@ primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
   | STRING                                   { COVER; $$ = make_string_leaf($1); }
+  | CHAR                                     { COVER; $$ = make_string_leaf($1); } // TODO FIX
   | array_initializer                        { COVER; $$ = $1; }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }
