@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "ast.h"
@@ -46,31 +47,110 @@ bool xform_exists(const char *name) {
    return pair_exists(xforms, name);
 }
 
+static void strappend(char **sp, int *lp, unsigned char byte) {
+   *sp = (char *) realloc(*sp, *lp + 2);
+   (*sp)[*lp] = byte;
+   *lp = *lp + 1;
+   (*sp)[*lp] = 0;
+}
+
+static void strappend_uval(int uval, char **sp, int *lp) {
+}
+
+static void strappend_esc(char c, char **sp, int *lp) {
+}
+
+int decode_utf8(const char *s, int *uval) {
+    *uval = 0;
+    const unsigned char *us = (const unsigned char *)s;
+
+    if ((us[0] & 0x80) == 0) {
+        // 1-byte ASCII
+        *uval = us[0];
+        return 1;
+    } else if ((us[0] & 0xE0) == 0xC0) {
+        // 2-byte sequence
+        if ((us[1] & 0xC0) != 0x80) return 0;
+        *uval = ((us[0] & 0x1F) << 6) | (us[1] & 0x3F);
+        return 2;
+    } else if ((us[0] & 0xF0) == 0xE0) {
+        // 3-byte sequence
+        if ((us[1] & 0xC0) != 0x80 || (us[2] & 0xC0) != 0x80) return 0;
+        *uval = ((us[0] & 0x0F) << 12) |
+                ((us[1] & 0x3F) << 6) |
+                (us[2] & 0x3F);
+        return 3;
+    } else if ((us[0] & 0xF8) == 0xF0) {
+        // 4-byte sequence
+        if ((us[1] & 0xC0) != 0x80 || (us[2] & 0xC0) != 0x80 || (us[3] & 0xC0) != 0x80) return 0;
+        *uval = ((us[0] & 0x07) << 18) |
+                ((us[1] & 0x3F) << 12) |
+                ((us[2] & 0x3F) << 6) |
+                (us[3] & 0x3F);
+        return 4;
+    }
+
+    // Invalid or overlong
+    return 0;
+}
+
+static int fromhex(int len, const char *p) {
+   int ret = 0;
+   for (int i = 0; i < len; i++) {
+      ret <<= 4;
+      if (*p <= '9') {
+         ret |= (*p - '0');
+      }
+      else if (*p <= 'F') {
+         ret |= (*p - 'A' + 10);
+      }
+      else if (*p <= 'f') {
+         ret |= (*p - 'a' + 10);
+      }
+      p++;
+   }
+   return ret;
+}
+
 const char *do_xform(const char *s, const char *name) {
-#if 0
-   unsigned char *ret = NULL;
+   char *ret = NULL;
+   int retlen = 0;
    int uval;
+
+   if (!name) {
+      name = "";
+   }
 
    s++;
    while (s[1]) {
       if (*s == '\\') {
          if (s[1] == 'x') {
+            unsigned char byte = fromhex(2, s+2);
+            strappend(&ret, &retlen, byte);
+            s += 4;
          }
          else if (s[1] == 'u') {
+            uval = fromhex(4, s+2);
+            strappend_uval(uval, &ret, &retlen);
+            s += 6;
          }
          else {
+            strappend_esc(s[1], &ret, &retlen);
+            s += 2;
          }
       }
-      else if (*s & 0x80) { // utf8
-      }
       else {
-         uval = *s;
+         int skip = decode_utf8(s, &uval);
+         if (skip == 0) {
+            // TODO FIX give a bit more information
+            error("invalid utf8 found");
+            exit(-1);
+         }
+         s += skip;
+         strappend_uval(uval, &ret, &retlen);
       }
    }
 
    return ret;
-#else
-   return s;
-#endif
 }
 
