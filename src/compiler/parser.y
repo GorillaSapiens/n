@@ -518,7 +518,9 @@ primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
   | STRING                                   { COVER; $$ = make_string_leaf($1); }
-  | CHAR                                     { COVER; $$ = make_string_leaf($1); } // TODO FIX
+  | STRING ARROW XFORMNAME                   { COVER; $$ = append_child(make_string_leaf($1), make_identifier_leaf($3)); }
+  | CHAR                                     { COVER; $$ = make_string_leaf($1); }
+  | CHAR ARROW XFORMNAME                     { COVER; $$ = append_child(make_string_leaf($1), make_identifier_leaf($3)); }
   | array_initializer                        { COVER; $$ = $1; }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }
