@@ -16,6 +16,8 @@ int s[12] @ 27 := { 1, 1, 1 };
 int five := 5;
 const int six := 6;
 
+zp int in_the_zero_page := 5;
+
 int a[5], *b, c := 3;
 
 void (*fruitloops)(int n);

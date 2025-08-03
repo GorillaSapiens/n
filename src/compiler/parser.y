@@ -225,6 +225,7 @@ modifier:
     CONST                                    { COVER; $$ = make_identifier_leaf("const"); }
   | REF                                      { COVER; $$ = make_identifier_leaf("ref"); }
   | STATIC                                   { COVER; $$ = make_identifier_leaf("static"); }
+  | MEMNAME                                  { COVER; $$ = make_identifier_leaf($1); }
   ;
 
 decl:
