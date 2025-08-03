@@ -58,7 +58,6 @@
 %token NE
 %token OR
 %token OR_ASSIGN
-%token QUICK
 %token REF
 %token RETURN
 %token RSHIFT
@@ -217,11 +216,9 @@ modifier_list:
   ;
 
 modifier:
-    STATIC                                   { COVER; $$ = make_identifier_leaf("static"); }
-  | EXTERN                                   { COVER; $$ = make_identifier_leaf("extern"); }
-  | CONST                                    { COVER; $$ = make_identifier_leaf("const"); }
-  | QUICK                                    { COVER; $$ = make_identifier_leaf("quick"); } 
+    CONST                                    { COVER; $$ = make_identifier_leaf("const"); }
   | REF                                      { COVER; $$ = make_identifier_leaf("ref"); }
+  | STATIC                                   { COVER; $$ = make_identifier_leaf("static"); }
   ;
 
 decl:

@@ -98,8 +98,6 @@ void pop_file() {
 
 "const"         return CONST;
 "static"        return STATIC;
-"extern"        return EXTERN;
-"quick"         return QUICK;
 "ref"           return REF;
 
 "break"         return BREAK;
