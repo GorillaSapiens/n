@@ -122,8 +122,10 @@
 %type <node> modifier_list
 %type <node> multiplicative_expr
 %type <node> named_expr
+%type <node> opt_comma
 %type <node> opt_expr
 %type <node> opt_flags
+%type <node> opt_identifier
 %type <node> parameter
 %type <node> parameter_list
 %type <node> pointer
@@ -181,9 +183,18 @@ include_stmt:
   ;
 
 xform_decl_stmt:
-    XFORM IDENTIFIER '{' xform_list '}' ';'      { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
-  | XFORM IDENTIFIER '{' xform_list ',' '}' ';'  { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+    XFORM opt_identifier '{' xform_list opt_comma '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
   ;
+
+opt_identifier:
+    IDENTIFIER  { $$ = make_identifier_leaf($1); }
+  | %empty      { $$ = make_identifier_leaf(strdup("")); }
+  ;
+
+opt_comma:
+      ','         { /* optional comma, ignore */ }
+    | %empty      { /* no comma, also fine */ }
+    ;
 
 xform_list:
     xform_item                               { COVER; $$ = MAKE_NODE($1); }
@@ -517,10 +528,10 @@ postfix_expr:
 primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
-  | STRING                                   { COVER; $$ = make_string_leaf($1); }
-  | STRING ARROW XFORMNAME                   { COVER; $$ = append_child(make_string_leaf($1), make_identifier_leaf($3)); }
-  | CHAR                                     { COVER; $$ = make_string_leaf($1); }
-  | CHAR ARROW XFORMNAME                     { COVER; $$ = append_child(make_string_leaf($1), make_identifier_leaf($3)); }
+  | STRING                                   { COVER; $$ = make_string_leaf(do_xform($1, NULL)); }
+  | STRING ARROW XFORMNAME                   { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
+  | CHAR                                     { COVER; $$ = make_string_leaf(do_xform($1, NULL)); }
+  | CHAR ARROW XFORMNAME                     { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
   | array_initializer                        { COVER; $$ = $1; }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }

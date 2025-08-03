@@ -47,16 +47,30 @@ bool xform_exists(const char *name) {
 }
 
 const char *do_xform(const char *s, const char *name) {
-   if (!xforms) {
-      xforms = pair_create();
+#if 0
+   unsigned char *ret = NULL;
+   int uval;
+
+   s++;
+   while (s[1]) {
+      if (*s == '\\') {
+         if (s[1] == 'x') {
+         }
+         else if (s[1] == 'u') {
+         }
+         else {
+         }
+      }
+      else if (*s & 0x80) { // utf8
+      }
+      else {
+         uval = *s;
+      }
    }
 
-   if (!pair_exists(xforms, name)) {
-      yyerror ("duplicate xform '%s' %s:%d.%d",
-         name, current_filename, yylineno, yycolumn);
-      return NULL;
-   }
-
+   return ret;
+#else
    return s;
+#endif
 }
 
