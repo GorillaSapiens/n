@@ -22,6 +22,7 @@ SRCSRC = \
    md5seen.c \
    memname.c \
    messages.c \
+   pair.c \
    set.c \
    typename.c \
    xform.c \
@@ -37,6 +38,7 @@ all:
 	@make --no-print-directory $(TEST)
 
 part:
+	@make --no-print-directory clean
 	@make --no-print-directory depend
 	@make --no-print-directory $(TARGET)
 

@@ -1,12 +1,20 @@
 #ifndef _INCLUDE_MEMNAME_H_
 #define _INCLUDE_MEMNAME_H_
 
+#include <stdbool.h>
+
+#include "ast.h"
+
 // determine if memname exists
-// returns a unique number for the mem if it exists
-// returns -1 if it does not exist
-int find_memname(const char* name);
+bool memname_exists(const char* name);
 
 // register a new memname
 int register_memname(const char* name);
+
+// attach an ASTNode to a registered memname
+void attach_memname(const char *name, ASTNode *node);
+
+// get the node attached to a memname
+ASTNode *get_memname_node(const char *name);
 
 #endif

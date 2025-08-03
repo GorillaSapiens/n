@@ -197,8 +197,8 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 
 {IDENT} {
    yylval.str = strdup(yytext);
-   if (find_typename(yytext) != -1) return TYPENAME;
-   if (find_memname(yytext) != -1) return MEMNAME;
+   if (typename_exists(yytext)) return TYPENAME;
+   if (memname_exists(yytext)) return MEMNAME;
    return IDENTIFIER;
 }
 

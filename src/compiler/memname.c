@@ -2,43 +2,57 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "typename.h"
+#include "ast.h"
 #include "lextern.h"
 #include "memname.h"
 #include "messages.h"
+#include "pair.h"
+#include "typename.h"
 #include "xray.h"
 
-#define MAX_MEMS 32
-static char *mem_names[MAX_MEMS];
-static int mem_count = 0;
+static Pair *mems = NULL;
 
-int find_memname(const char* name) {
-   for (int i = 0; i < mem_count; i++) {
-      if (strcmp(mem_names[i], name) == 0) return i;
+bool memname_exists(const char* name) {
+   if (!mems) {
+      mems = pair_create();
    }
-   return -1;
+
+   return pair_exists(mems, name);
 }
 
 int register_memname(const char* name) {
-   if (find_typename(name) != -1) {
+   if (!mems) {
+      mems = pair_create();
+   }
+
+   if (typename_exists(name)) {
       yyerror ("memname cannot be the same as existing typename %s:%d.%d",
          current_filename, yylineno, yycolumn);
       return -1;
    }
 
-   if (find_memname(name) != -1) {
+   if (memname_exists(name)) {
       yyerror ("memname already exists %s:%d.%d",
          current_filename, yylineno, yycolumn);
       return -1;
    }
 
-   if (mem_count < MAX_MEMS) {
-      mem_names[mem_count++] = strdup(name);
-      return 0;
+   pair_insert(mems, name, NULL);
+   return 0;
+}
+
+void attach_memname(const char *name, ASTNode *node) {
+   if (!mems) {
+      mems = pair_create();
    }
-   else {
-      yyerror("mem table full %s:%d.%d",
-         current_filename, yylineno, yycolumn);
-      return -1;
+
+   pair_insert(mems, name, node);
+}
+
+ASTNode *get_memname_node(const char *name) {
+   if (!mems) {
+      mems = pair_create();
    }
+
+   return pair_get(mems, name);
 }
