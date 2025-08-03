@@ -651,13 +651,8 @@ static void compile_function_decl(ASTNode *node) {
 
 
 static void compile_xform_decl_stmt(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
-
    register_xform(node->children[0]->strval, node->children[1]);
-}
+} // fini
 
 // check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {
