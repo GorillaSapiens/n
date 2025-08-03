@@ -20,22 +20,22 @@ char *current_filename = "<stdin>";
 int yycolumn = 0;
 
 typedef struct FileContext {
-    FILE *file;
-    char *filename;
-    int lineno;
-    int column;
-    YY_BUFFER_STATE buffer;
+   FILE *file;
+   char *filename;
+   int lineno;
+   int column;
+   YY_BUFFER_STATE buffer;
 } FileContext;
 
 static FileContext file_stack[MAX_INCLUDE_DEPTH];
 static int file_stack_top = -1;
 
 #define YY_USER_ACTION \
-    yylloc.first_line = yylineno; \
-    yylloc.first_column = yycolumn; \
-    yylloc.last_line = yylineno; \
-    yycolumn += yyleng; \
-    yylloc.last_column = yycolumn;
+   yylloc.first_line = yylineno; \
+   yylloc.first_column = yycolumn; \
+   yylloc.last_line = yylineno; \
+   yycolumn += yyleng; \
+   yylloc.last_column = yycolumn;
 
 int push_file(const char *filename) {
    if (file_stack_top + 1 >= MAX_INCLUDE_DEPTH) {
@@ -114,8 +114,8 @@ void pop_file() {
 "include"       return INCLUDE;
 
 operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
-    yylval.str = strdup(yytext);
-    return OPERATOR;
+   yylval.str = strdup(yytext);
+   return OPERATOR;
 }
 
 
@@ -146,74 +146,82 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 
 
 \$[A-Za-z0-9_]+(:[A-Za-z0-9_]+)? {
-    yylval.str = strdup(yytext);
-    return FLAG;
+   yylval.str = strdup(yytext);
+   return FLAG;
 }
 
 '([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
-    yylval.str = strdup(yytext);
-    return INTEGER;
+   // TODO FIX this was meant to accept a single character as an integer, but it is all wrong
+   yylval.str = strdup(yytext);
+   return INTEGER;
 }
 
 \"([^\"\\]|\\.)*\" {
-    yylval.str = strdup(yytext + 1);
-    yylval.str[strlen(yylval.str) - 1] = 0;
-    // TODO FIX process backslash escapes somewhere
-    return STRING;
+   yylval.str = strdup(yytext + 1);
+   yylval.str[strlen(yylval.str) - 1] = 0;
+   // TODO FIX process backslash escapes somewhere
+   // should not be done here, as we'll need to do character set translation
+   return STRING;
 }
 
-[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? {
-    yylval.str = strdup(yytext);
-    return FLOAT;
+[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? { // regular floats, with decimal point
+   yylval.str = strdup(yytext);
+   return FLOAT;
 }
 
-0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+ {
-    yylval.str = strdup(yytext);
-    return FLOAT;
+[0-9_]+[eE][+-]?[0-9_]+ { // regular floats, without decimal point
+   yylval.str = strdup(yytext);
+   return FLOAT;
 }
 
-[0-9_]+[eE][+-]?[0-9_]+ {
-    yylval.str = strdup(yytext);
-    return FLOAT;
+0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+ { // hex floats
+   yylval.str = strdup(yytext);
+   return FLOAT;
 }
 
-0[xX][0-9a-fA-F_]+ {
-    yylval.str = strdup(yytext);
-    return INTEGER;
+0[xX][0-9a-fA-F_]+ { // hex integers
+   yylval.str = strdup(yytext);
+   return INTEGER;
 }
 
-0[bB][01_]+ {
-    yylval.str = strdup(yytext);
-    return INTEGER;
+0[bB][01_]+ { // binary integers
+   yylval.str = strdup(yytext);
+   return INTEGER;
 }
 
-0[0-7_]+ {
-    yylval.str = strdup(yytext);
-    return INTEGER;
+0[0-7_]+ { // octal integers
+   yylval.str = strdup(yytext);
+   return INTEGER;
 }
 
-[0-9_]+ {
-    yylval.str = strdup(yytext);
-    return INTEGER;
+[0-9_]+ { // decimal integers
+   yylval.str = strdup(yytext);
+   return INTEGER;
 }
 
-[a-zA-Z_][a-zA-Z0-9_]* {
-    yylval.str = strdup(yytext);
-    if (find_typename(yytext) != -1) return TYPENAME;
-    if (find_memname(yytext) != -1) return MEMNAME;
-    return IDENTIFIER;
+[a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]* { // expanded to accept utf8, was: [a-zA-Z_][a-zA-Z0-9_]*
+   yylval.str = strdup(yytext);
+   if (find_typename(yytext) != -1) return TYPENAME;
+   if (find_memname(yytext) != -1) return MEMNAME;
+   return IDENTIFIER;
 }
 
 [ \t\r]+                  ;   // skip whitespace
-[\n]                      { yylineno++; yycolumn = 0;
-    } 
+
 \/\/[^\n]*                ;   // skip line comments
-\/\*([^*]|\*+[^*/])*\*+\/ {
-    for (char *p = yytext; *p; p++) {
-        if (*p == '\n') { yylineno++; yycolumn = 0;
-    }
-        else { yycolumn++; }
-    }
+
+[\n]                      { yylineno++; yycolumn = 0; }
+
+\/\*([^*]|\*+[^*/])*\*+\/ {   // C style block comments
+   for (char *p = yytext; *p; p++) {
+      if (*p == '\n') {
+         yylineno++;
+         yycolumn = 0;
+      }
+      else {
+         yycolumn++;
+      }
+   }
 }
 
 ^#[^\n]*        ; // ignore preprocessor noise (for now.  bwahahahaha!)
