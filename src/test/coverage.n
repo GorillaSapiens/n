@@ -25,6 +25,9 @@ int s[12] @ 27 := { 1, 1, 1 };
 int five := 5;
 const int six := 6;
 
+char *exy := "this is a test";
+char exy  := '\f';
+
 char *exy := "this is a test"->testxform;
 char exy  := '\f'->testxform;
 
