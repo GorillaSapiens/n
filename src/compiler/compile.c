@@ -11,6 +11,7 @@
 #include "integer.h"
 #include "messages.h"
 #include "set.h"
+#include "xform.h"
 #include "xray.h"
 
 EmitSink es_header = EMIT_INIT;
@@ -649,6 +650,14 @@ static void compile_function_decl(ASTNode *node) {
 
 
 
+static void compile_xform_decl_stmt(ASTNode *node) {
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   debug("========================================\n");
+   parse_dump_node(node);
+   debug("========================================\n");
+
+   register_xform(node->children[0]->strval, node->children[1]);
+}
 
 // check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {
@@ -761,6 +770,9 @@ static void compile(ASTNode *node) {
    if (!strcmp(node->name, "program")) {
       compile(node->children[0]);
       compile(node->children[1]);
+   }
+   else if (!strcmp(node->name, "xform_decl_stmt")) {
+      compile_xform_decl_stmt(node);
    }
    else if (!strcmp(node->name, "type_decl_stmt")) {
       compile_type_decl_stmt(node);
