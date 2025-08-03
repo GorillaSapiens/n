@@ -1,6 +1,8 @@
 #ifndef _INCLUDE_PAIR_H_
 #define _INCLUDE_PAIR_H_
 
+#include <stdbool.h>
+
 #ifndef _INSIDE_PAIR_C_
 typedef void *Pair;
 #endif
