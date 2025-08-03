@@ -85,7 +85,35 @@ void pop_file() {
 
 %option noinput nounput
 
+HEXINT    0[xX][0-9a-fA-F]((_)?[0-9a-fA-F])*
+BININT    0[bB][01]((_)?[01])*
+OCTINT    0[1-7]((_)?[0-7])*
+DECINT    [1-9]((_)?[0-9])*
+ZERO      0
+INT       {HEXINT}|{BININT}|{OCTINT}|{DECINT}|{ZERO}
+
+DECFLOAT  [0-9]((_)?[0-9])*(\.([0-9]((_)?[0-9])*)?)?([eE][+-]?[0-9]+)?
+HEXFLOAT  0[xX][0-9a-fA-F]((_)?[0-9a-fA-F_])*(\.([0-9a-fA-F]((_)?[0-9a-fA-F])*)?)?[pP][+-]?[0-9_]+
+FLOAT     {DECFLOAT}|{HEXFLOAT}
+
+ANY_CHAR  [^'\\]
+ESC_CHAR  \\[abfnrtv\\'\"?]
+HEX_CHAR  \\x[0-9a-fA-F]{2}
+UNI_CHAR  \\u[0-9a-fA-F]{4}
+CHAR      \'({ANY_CHAR}|{ESC_CHAR}|{HEX_CHAR}|{UNI_CHAR})\'
+
+FLAG      \$[A-Za-z0-9_]+(:[A-Za-z0-9_]+)?
+
+ANY_STR   [^\"\\]
+ESC_STR   \\.
+STRING    \"({ANY_STR}|{ESC_STR})*\"
+
+IDENT     [a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]*
+
+CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/ 
+
 %%
+
 ":="            return ASSIGN;
 "type"          return TYPE;
 "mem"           return MEM;
@@ -113,11 +141,10 @@ void pop_file() {
 
 "include"       return INCLUDE;
 
-operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
+operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    yylval.str = strdup(yytext);
    return OPERATOR;
 }
-
 
 "=="            return EQ;
 "!="            return NE;
@@ -145,18 +172,17 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 ">>="           return RSHIFT_ASSIGN;
 
 
-\$[A-Za-z0-9_]+(:[A-Za-z0-9_]+)? {
+{FLAG} {
    yylval.str = strdup(yytext);
    return FLAG;
 }
 
-'([^'\\]|\\[abfnrtv\\'\"?]|\\x[0-9a-fA-F]+|\\u[0-9a-fA-F]{4})' {
-   // TODO FIX this was meant to accept a single character as an integer, but it is all wrong
+{CHAR} {
    yylval.str = strdup(yytext);
    return INTEGER;
 }
 
-\"([^\"\\]|\\.)*\" {
+{STRING} {
    yylval.str = strdup(yytext + 1);
    yylval.str[strlen(yylval.str) - 1] = 0;
    // TODO FIX process backslash escapes somewhere
@@ -164,55 +190,24 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
    return STRING;
 }
 
-[0-9_]+\.[0-9_]+([eE][+-]?[0-9_]+)? { // regular floats, with decimal point
+{INT} {
+   yylval.str = strdup(yytext);
+   return INTEGER;
+}
+
+{FLOAT} {
    yylval.str = strdup(yytext);
    return FLOAT;
 }
 
-[0-9_]+[eE][+-]?[0-9_]+ { // regular floats, without decimal point
-   yylval.str = strdup(yytext);
-   return FLOAT;
-}
-
-0[xX][0-9a-fA-F_]+[pP][+-]?[0-9_]+ { // hex floats
-   yylval.str = strdup(yytext);
-   return FLOAT;
-}
-
-0[xX][0-9a-fA-F_]+ { // hex integers
-   yylval.str = strdup(yytext);
-   return INTEGER;
-}
-
-0[bB][01_]+ { // binary integers
-   yylval.str = strdup(yytext);
-   return INTEGER;
-}
-
-0[0-7_]+ { // octal integers
-   yylval.str = strdup(yytext);
-   return INTEGER;
-}
-
-[0-9_]+ { // decimal integers
-   yylval.str = strdup(yytext);
-   return INTEGER;
-}
-
-[a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]* { // expanded to accept utf8, was: [a-zA-Z_][a-zA-Z0-9_]*
+{IDENT} {
    yylval.str = strdup(yytext);
    if (find_typename(yytext) != -1) return TYPENAME;
    if (find_memname(yytext) != -1) return MEMNAME;
    return IDENTIFIER;
 }
 
-[ \t\r]+                  ;   // skip whitespace
-
-\/\/[^\n]*                ;   // skip line comments
-
-[\n]                      { yylineno++; yycolumn = 0; }
-
-\/\*([^*]|\*+[^*/])*\*+\/ {   // C style block comments
+{CBLOCK} {   // C style block comments
    for (char *p = yytext; *p; p++) {
       if (*p == '\n') {
          yylineno++;
@@ -224,8 +219,11 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
    }
 }
 
-^#[^\n]*        ; // ignore preprocessor noise (for now.  bwahahahaha!)
+\/\/[^\n]*                ;   // skip line comments
 
+[ \t\r]+                  ;   // skip whitespace
+
+[\n]                      { yylineno++; yycolumn = 0; }
 
 .               return yytext[0]; // return single-character tokens
 
