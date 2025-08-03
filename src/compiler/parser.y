@@ -7,10 +7,11 @@
 #include <stdbool.h>
 
 #include "ast.h"
+#include "coverage.h"
 #include "lextern.h"
+#include "memname.h"
 #include "messages.h"
 #include "typename.h"
-#include "coverage.h"
 #include "xray.h"
 
 %}

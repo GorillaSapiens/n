@@ -20,6 +20,7 @@ SRCSRC = \
    integer.c \
    md5.c \
    md5seen.c \
+   memname.c \
    messages.c \
    set.c \
    typename.c \

@@ -8,6 +8,7 @@
 #include "ast.h"
 #include "lextern.h"
 #include "md5seen.h"
+#include "memname.h"
 #include "messages.h"
 #include "typename.h"
 #include "xray.h"
