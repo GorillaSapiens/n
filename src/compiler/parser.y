@@ -27,6 +27,7 @@
 %token <str> OPERATOR
 %token <str> STRING
 %token <str> TYPENAME
+%token <str> MEMNAME
 
 %token ADD_ASSIGN
 %token AND
@@ -53,6 +54,7 @@
 %token LE
 %token LSHIFT
 %token LSHIFT_ASSIGN
+%token MEM
 %token MOD_ASSIGN
 %token MUL_ASSIGN
 %token NE
@@ -110,6 +112,7 @@
 %type <node> lvalue
 %type <node> lvalue_base
 %type <node> lvalue_suffixes
+%type <node> mem_decl_stmt
 %type <node> modifier
 %type <node> modifier_list
 %type <node> multiplicative_expr
@@ -150,6 +153,7 @@ program:
 
 program_item:
     include_stmt                             { COVER; $$ = $1; }
+  | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
   | struct_decl_stmt                         { COVER; $$ = $1; }
   | union_decl_stmt                          { COVER; $$ = $1; }
@@ -167,6 +171,10 @@ include_stmt:
                                              }
   ;
 
+mem_decl_stmt:
+    MEM IDENTIFIER '{' opt_flags '}' ';'     { COVER; if (register_memname($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  ;
+
 type_decl_stmt:
     TYPE IDENTIFIER '{' opt_flags '}' ';'    { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   | TYPE '*' '{' opt_flags '}' ';'           { COVER; if (register_typename("*") < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf("*"), $4); }
@@ -179,7 +187,6 @@ struct_decl_stmt:
                                              }
     field_list '}' ';'                       {
                                                 COVER;
-                                                register_typename($2);
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
   ;
@@ -191,7 +198,6 @@ union_decl_stmt:
                                              }
     field_list '}' ';'                       {
                                                 COVER;
-                                                register_typename($2);
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
   ;

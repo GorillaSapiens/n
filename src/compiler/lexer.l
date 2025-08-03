@@ -88,6 +88,7 @@ void pop_file() {
 %%
 ":="            return ASSIGN;
 "type"          return TYPE;
+"mem"           return MEM;
 "if"            return IF;
 "else"          return ELSE;
 "while"         return WHILE;
@@ -199,6 +200,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/.%~]) {
 [a-zA-Z_][a-zA-Z0-9_]* {
     yylval.str = strdup(yytext);
     if (find_typename(yytext) != -1) return TYPENAME;
+    if (find_memname(yytext) != -1) return MEMNAME;
     return IDENTIFIER;
 }
 
