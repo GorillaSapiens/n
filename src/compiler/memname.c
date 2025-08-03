@@ -8,6 +8,7 @@
 #include "messages.h"
 #include "pair.h"
 #include "typename.h"
+#include "xform.h"
 #include "xray.h"
 
 static Pair *mems = NULL;
@@ -23,6 +24,12 @@ bool memname_exists(const char* name) {
 int register_memname(const char* name) {
    if (!mems) {
       mems = pair_create();
+   }
+
+   if (xform_exists(name)) {
+      yyerror ("memname cannot be the same as existing xform %s:%d.%d",
+         current_filename, yylineno, yycolumn);
+      return -1;
    }
 
    if (typename_exists(name)) {

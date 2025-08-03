@@ -651,8 +651,8 @@ static void compile_function_decl(ASTNode *node) {
 
 
 static void compile_xform_decl_stmt(ASTNode *node) {
-   register_xform(node->children[0]->strval, node->children[1]);
-} // fini
+   // literally nothing to do here, parser.y has it covered.
+}
 
 // check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {

@@ -12,6 +12,7 @@
 #include "memname.h"
 #include "messages.h"
 #include "typename.h"
+#include "xform.h"
 #include "xray.h"
 
 %}
@@ -21,15 +22,16 @@
     ASTNode *node;
 }
 
-%token <str> CHAR
+%token <str> CHAR          /* string, because xform shenanigans */
 %token <str> FLAG
 %token <str> FLOAT         /* string, because value might be outside hosts abilities */
 %token <str> IDENTIFIER
 %token <str> INTEGER       /* string, because value might be outside hosts abilities */
+%token <str> MEMNAME
 %token <str> OPERATOR
 %token <str> STRING
 %token <str> TYPENAME
-%token <str> MEMNAME
+%token <str> XFORMNAME
 
 %token ADD_ASSIGN
 %token AND
@@ -159,7 +161,7 @@ program:
 
 program_item:
     include_stmt                             { COVER; $$ = $1; }
-  | xform_decl_stmt                          { COVER; $$ = $1; }
+  | xform_decl_stmt                          { COVER; $$ = $1; register_xform($$->children[0]->strval, $$->children[1]); }
   | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
   | struct_decl_stmt                         { COVER; $$ = $1; }

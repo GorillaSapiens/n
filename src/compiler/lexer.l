@@ -11,6 +11,7 @@
 #include "memname.h"
 #include "messages.h"
 #include "typename.h"
+#include "xform.h"
 #include "xray.h"
 
 #include "parser.tab.h"
@@ -197,8 +198,9 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 
 {IDENT} {
    yylval.str = strdup(yytext);
-   if (typename_exists(yytext)) return TYPENAME;
+   if (xform_exists(yytext)) return XFORMNAME;
    if (memname_exists(yytext)) return MEMNAME;
+   if (typename_exists(yytext)) return TYPENAME;
    return IDENTIFIER;
 }
 
