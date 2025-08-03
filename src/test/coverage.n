@@ -2,6 +2,8 @@
 
 include "machine_generic.n"
 
+type wisp { };
+
 struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
