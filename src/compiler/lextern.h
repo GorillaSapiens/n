@@ -7,6 +7,7 @@ int push_file(const char *filename);
 // extern stuff created by lex/flex
 int yylex();
 extern FILE *yyin;
+extern char *root_filename;
 extern char *current_filename;
 extern int yylineno;
 extern int yycolumn;

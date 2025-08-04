@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
    }
    md5seen(argv[0], yyin);
 
-   current_filename = argv[0];
+   root_filename = current_filename = argv[0];
 
 #if YYDEBUG
    yydebug = 1;

@@ -18,6 +18,7 @@
 
 #define MAX_INCLUDE_DEPTH 32
 
+char *root_filename = "<stdin>";
 char *current_filename = "<stdin>";
 int yycolumn = 0;
 
@@ -81,7 +82,7 @@ void pop_file() {
    yylineno = file_stack[file_stack_top].lineno;
    yycolumn = file_stack[file_stack_top].column;
    file_stack_top--;
-   current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : "<stdin>";
+   current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : root_filename;
 }
 %}
 
