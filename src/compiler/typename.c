@@ -27,20 +27,26 @@ int register_typename(const char* name) {
    }
 
    if (xform_exists(name)) {
-      yyerror ("typename cannot be the same as existing xform %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_xform_node(name);
+      yyerror ("typename at %s:%d.%d cannot be the same as existing xform at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 
    if (memname_exists(name)) {
-      yyerror ("typename cannot be the same as existing memname %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_memname_node(name);
+      yyerror ("typename at %s:%d.%d cannot be the same as existing memname at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 
    if (typename_exists(name)) {
-      yyerror ("typename already exists %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_typename_node(name);
+      yyerror ("typename at %s:%d.%d already exists at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 

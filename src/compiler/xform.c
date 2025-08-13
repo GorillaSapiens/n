@@ -19,20 +19,26 @@ int register_xform(const char *name, ASTNode *node) {
    }
 
    if (memname_exists(name)) {
-      error ("xform cannot be the same as existing memname %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_memname_node(name);
+      error ("xform at %s:%d.%d cannot be the same as existing memname at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 
    if (typename_exists(name)) {
-      error ("xform cannot be the same as existing typename %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_typename_node(name);
+      error ("xform at %s:%d.%d cannot be the same as existing typename at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 
    if (pair_exists(xforms, name)) {
-      error ("xform already exists %s:%d.%d",
-         current_filename, yylineno, yycolumn);
+      ASTNode *previous = get_xform_node(name);
+      error ("xform at %s:%d.%d already exists at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
       return -1;
    }
 
@@ -48,7 +54,7 @@ bool xform_exists(const char *name) {
    return pair_exists(xforms, name);
 }
 
-static void strappend(char **sp, int *lp, unsigned char byte) {
+static void str_append(char **sp, int *lp, unsigned char byte) {
    *sp = (char *) realloc(*sp, *lp + 2);
    (*sp)[*lp] = byte;
    *lp = *lp + 1;
@@ -57,29 +63,29 @@ static void strappend(char **sp, int *lp, unsigned char byte) {
 
 static ASTNode *context = NULL;
 
-static void strappend_helper(const char *match, char **sp, int *lp) {
+static void str_append_helper(const char *match, char **sp, int *lp) {
    for (int i = 0; i < context->count; i++) {
       ASTNode *item = context->children[i];
       if (!strcasecmp(match, item->children[0]->strval)) {
          for (int j = 1; j < item->count; j++) {
-            strappend(sp, lp, strtol(item->children[j]->strval, NULL, 0));
+            str_append(sp, lp, strtol(item->children[j]->strval, NULL, 0));
             return;
          }
       }
    }
-   strappend(sp, lp, 0xFF);
+   str_append(sp, lp, 0xFF);
 }
 
-static void strappend_uval(int uval, char **sp, int *lp) {
+static void str_append_uval(int uval, char **sp, int *lp) {
    char buf[16];
    sprintf(buf, "'\\u%04x'", uval);
-   strappend_helper(buf, sp, lp);
+   str_append_helper(buf, sp, lp);
 }
 
-static void strappend_esc(char c, char **sp, int *lp) {
+static void str_append_esc(char c, char **sp, int *lp) {
    char buf[16];
    sprintf(buf, "'\\%c'", c);
-   strappend_helper(buf, sp, lp);
+   str_append_helper(buf, sp, lp);
 }
 
 static int decode_utf8(const char *s, int *uval) {
@@ -153,16 +159,16 @@ const char *do_xform(const char *s, const char *name) {
       if (*s == '\\') {
          if (s[1] == 'x') {
             unsigned char byte = fromhex(2, s+2);
-            strappend(&ret, &retlen, byte);
+            str_append(&ret, &retlen, byte);
             s += 4;
          }
          else if (s[1] == 'u') {
             uval = fromhex(4, s+2);
-            strappend_uval(uval, &ret, &retlen);
+            str_append_uval(uval, &ret, &retlen);
             s += 6;
          }
          else {
-            strappend_esc(s[1], &ret, &retlen);
+            str_append_esc(s[1], &ret, &retlen);
             s += 2;
          }
       }
@@ -174,9 +180,17 @@ const char *do_xform(const char *s, const char *name) {
             exit(-1);
          }
          s += skip;
-         strappend_uval(uval, &ret, &retlen);
+         str_append_uval(uval, &ret, &retlen);
       }
    }
 
    return ret;
+}
+
+ASTNode *get_xform_node(const char *name) {
+   if (!xforms) {
+      xforms = pair_create();
+   }
+
+   return pair_get(xforms, name);
 }
