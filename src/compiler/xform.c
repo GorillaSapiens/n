@@ -74,9 +74,23 @@ static void str_append_helper(char **sp, int *lp, const char *match) {
          return;
       }
    }
-   warning("no xform translation for %s, using 0xFF at %s:%d.%d",
-      match, working->file, working->line, working->column);
-   str_append(sp, lp, 0xFF);
+   if (match[0] == '\'' && match[1] == '\\') {
+      if (match[2] == 'u') {
+         warning("no xform translation for %s, using 0xFF at %s:%d.%d",
+               match, working->file, working->line, working->column);
+         str_append(sp, lp, 0xFF);
+      }
+      else {
+         warning("no xform translation for %s, using 0x%02X%s%c%s at %s:%d.%d",
+               match,
+               match[2],
+               (match[2] >= ' ' && match[2] <= '~') ? "(" : "",
+               match[2],
+               (match[2] >= ' ' && match[2] <= '~') ? ")" : "",
+               working->file, working->line, working->column);
+         str_append(sp, lp, match[2]);
+      }
+   }
 }
 
 static void str_append_codepoint(char **sp, int *lp, int codepoint) {
