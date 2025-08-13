@@ -62,6 +62,7 @@ static void str_append(char **sp, int *lp, unsigned char byte) {
 }
 
 static ASTNode *context = NULL;
+static ASTNode *working = NULL;
 
 static void str_append_helper(char **sp, int *lp, const char *match) {
    for (int i = 0; i < context->count; i++) {
@@ -73,7 +74,8 @@ static void str_append_helper(char **sp, int *lp, const char *match) {
          }
       }
    }
-   warning("no xform translation for %s, using 0xFF");
+   warning("no xform translation for %s, using 0xFF at %s:%d.%d",
+      match, working->file, working->line, working->column);
    str_append(sp, lp, 0xFF);
 }
 
@@ -171,10 +173,13 @@ static int fromhex(int len, const char *p) {
    return ret;
 }
 
-const char *do_xform(const char *s, const char *name) {
+ASTNode *do_xform(ASTNode *node, const char *name) {
+   const char *s = node->strval;
    char *ret = NULL;
    int retlen = 0;
    int codepoint;
+
+   working = node;
 
    if (!name) {
       name = "";
@@ -183,7 +188,7 @@ const char *do_xform(const char *s, const char *name) {
    context = pair_get(xforms, name);
    if (!context) {
       warning("could not find context '%s'", name ? name : "(null)");
-      return s;
+      return node;
    }
 
    while (*s) {
@@ -231,7 +236,8 @@ const char *do_xform(const char *s, const char *name) {
       }
    }
 
-   return ret;
+   node->strval = ret;
+   return node;
 }
 
 ASTNode *get_xform_node(const char *name) {
