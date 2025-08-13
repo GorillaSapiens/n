@@ -63,7 +63,7 @@ static void str_append(char **sp, int *lp, unsigned char byte) {
 
 static ASTNode *context = NULL;
 
-static void str_append_helper(const char *match, char **sp, int *lp) {
+static void str_append_helper(char **sp, int *lp, const char *match) {
    for (int i = 0; i < context->count; i++) {
       ASTNode *item = context->children[i];
       if (!strcasecmp(match, item->children[0]->strval)) {
@@ -73,45 +73,76 @@ static void str_append_helper(const char *match, char **sp, int *lp) {
          }
       }
    }
+   warning("no xform translation for %s, using 0xFF");
    str_append(sp, lp, 0xFF);
 }
 
-static void str_append_uval(int uval, char **sp, int *lp) {
+static void str_append_codepoint(char **sp, int *lp, int codepoint) {
    char buf[16];
-   sprintf(buf, "'\\u%04x'", uval);
-   str_append_helper(buf, sp, lp);
+   sprintf(buf, "'\\u%04x'", codepoint);
+   str_append_helper(sp, lp, buf);
 }
 
-static void str_append_esc(char c, char **sp, int *lp) {
+static void str_append_utf8(char **sp, int *lp, int codepoint) {
+   char buf[16];
+
+   if (codepoint <= 0x7F) {
+      buf[0] = codepoint;
+      buf[1] = '\0';
+   } else if (codepoint <= 0x7FF) {
+      buf[0] = 0xC0 | ((codepoint >> 6) & 0x1F);
+      buf[1] = 0x80 | (codepoint & 0x3F);
+      buf[2] = '\0';
+   } else if (codepoint <= 0xFFFF) {
+      buf[0] = 0xE0 | ((codepoint >> 12) & 0x0F);
+      buf[1] = 0x80 | ((codepoint >> 6) & 0x3F);
+      buf[2] = 0x80 | (codepoint & 0x3F);
+      buf[3] = '\0';
+   } else if (codepoint <= 0x10FFFF) {
+      buf[0] = 0xF0 | ((codepoint >> 18) & 0x07);
+      buf[1] = 0x80 | ((codepoint >> 12) & 0x3F);
+      buf[2] = 0x80 | ((codepoint >> 6) & 0x3F);
+      buf[3] = 0x80 | (codepoint & 0x3F);
+      buf[4] = '\0';
+   } else {
+      buf[0] = '\0'; // invalid code point
+   }
+
+   for (char *p = buf; *p; p++) {
+      str_append(sp, lp, *p);
+   }
+}
+
+static void str_append_esc(char **sp, int *lp, char c) {
    char buf[16];
    sprintf(buf, "'\\%c'", c);
-   str_append_helper(buf, sp, lp);
+   str_append_helper(sp, lp, buf);
 }
 
-static int decode_utf8(const char *s, int *uval) {
-    *uval = 0;
+static int decode_utf8(const char *s, int *codepoint) {
+    *codepoint = 0;
     const unsigned char *us = (const unsigned char *)s;
 
     if ((us[0] & 0x80) == 0) {
         // 1-byte ASCII
-        *uval = us[0];
+        *codepoint = us[0];
         return 1;
     } else if ((us[0] & 0xE0) == 0xC0) {
         // 2-byte sequence
         if ((us[1] & 0xC0) != 0x80) return 0;
-        *uval = ((us[0] & 0x1F) << 6) | (us[1] & 0x3F);
+        *codepoint = ((us[0] & 0x1F) << 6) | (us[1] & 0x3F);
         return 2;
     } else if ((us[0] & 0xF0) == 0xE0) {
         // 3-byte sequence
         if ((us[1] & 0xC0) != 0x80 || (us[2] & 0xC0) != 0x80) return 0;
-        *uval = ((us[0] & 0x0F) << 12) |
+        *codepoint = ((us[0] & 0x0F) << 12) |
                 ((us[1] & 0x3F) << 6) |
                 (us[2] & 0x3F);
         return 3;
     } else if ((us[0] & 0xF8) == 0xF0) {
         // 4-byte sequence
         if ((us[1] & 0xC0) != 0x80 || (us[2] & 0xC0) != 0x80 || (us[3] & 0xC0) != 0x80) return 0;
-        *uval = ((us[0] & 0x07) << 18) |
+        *codepoint = ((us[0] & 0x07) << 18) |
                 ((us[1] & 0x3F) << 12) |
                 ((us[2] & 0x3F) << 6) |
                 (us[3] & 0x3F);
@@ -143,7 +174,7 @@ static int fromhex(int len, const char *p) {
 const char *do_xform(const char *s, const char *name) {
    char *ret = NULL;
    int retlen = 0;
-   int uval;
+   int codepoint;
 
    if (!name) {
       name = "";
@@ -158,29 +189,45 @@ const char *do_xform(const char *s, const char *name) {
    while (*s) {
       if (*s == '\\') {
          if (s[1] == 'x') {
+            // \x?? is raw no matter what
             unsigned char byte = fromhex(2, s+2);
             str_append(&ret, &retlen, byte);
             s += 4;
          }
          else if (s[1] == 'u') {
-            uval = fromhex(4, s+2);
-            str_append_uval(uval, &ret, &retlen);
+            codepoint = fromhex(4, s+2);
             s += 6;
+            if (name[0]) {
+               // named xform, \u???? is a lookup
+               str_append_codepoint(&ret, &retlen, codepoint);
+            }
+            else {
+               // unnamed xform, \u???? is utf8
+               str_append_utf8(&ret, &retlen, codepoint);
+            }
          }
          else {
-            str_append_esc(s[1], &ret, &retlen);
+            // \? an escaped character
+            str_append_esc(&ret, &retlen, s[1]);
             s += 2;
          }
       }
       else {
-         int skip = decode_utf8(s, &uval);
-         if (skip == 0) {
-            // TODO FIX give a bit more information
-            error("invalid utf8 found");
-            exit(-1);
+         if (name[0]) {
+            // named xform, utf8 is a lookup
+            int skip = decode_utf8(s, &codepoint);
+            if (skip == 0) {
+               // TODO FIX give a bit more information
+               error("invalid utf8 found");
+               exit(-1);
+            }
+            s += skip;
+            str_append_codepoint(&ret, &retlen, codepoint);
          }
-         s += skip;
-         str_append_uval(uval, &ret, &retlen);
+         else {
+            // unnamed xform, raw characters
+            str_append(&ret, &retlen, *s++);
+         }
       }
    }
 
