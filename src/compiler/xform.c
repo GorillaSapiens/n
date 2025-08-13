@@ -67,11 +67,11 @@ static ASTNode *working = NULL;
 static void str_append_helper(char **sp, int *lp, const char *match) {
    for (int i = 0; i < context->count; i++) {
       ASTNode *item = context->children[i];
-      if (!strcasecmp(match, item->children[0]->strval)) {
+      if (!strcmp(match, item->children[0]->strval)) {
          for (int j = 1; j < item->count; j++) {
             str_append(sp, lp, strtol(item->children[j]->strval, NULL, 0));
-            return;
          }
+         return;
       }
    }
    warning("no xform translation for %s, using 0xFF at %s:%d.%d",

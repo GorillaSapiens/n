@@ -102,7 +102,8 @@ HOTFLOAT  0[xX]\.[0-9a-fA-F]((_)?[0-9a-fA-F])*[pP][+-]?[0-9_]+
 FLOAT     {DECFLOAT}|{DOTFLOAT}|{HEXFLOAT}|{HOTFLOAT}
 
 ANY_CHAR  [^'\\]
-ESC_CHAR  \\[abefnrtv\\'\"?0]
+OLD_ESC   \\[abefnrtv\\'\"?0]
+ESC_CHAR  \\[^xu]
 HEX_CHAR  \\x[0-9a-fA-F]{2}
 UNI_CHAR  \\u[0-9a-fA-F]{4}
 CHAR      \'({ANY_CHAR}|{ESC_CHAR}|{HEX_CHAR}|{UNI_CHAR})\'
