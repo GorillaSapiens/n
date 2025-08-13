@@ -31,9 +31,10 @@ static Bytes2EBits exponent_bits[] = {
    {  6, 12 }, // hypothetical binary48
    {  7, 13 }, // hypothetical binary56
    {  8, 11 }, // double / binary64
+
    // TODO FIX more here!
-//   { 16, 15 }, // quad / binary128
-//   { 32, 19 }  // binary256
+   { 16, 15 }, // quad / binary128
+   { 32, 19 }  // binary256
 };
 
 static int ebits(int size) {
