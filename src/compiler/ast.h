@@ -36,11 +36,13 @@ ASTNode *prepend_child(ASTNode *parent, ASTNode *child);
 ASTNode *prepend_children_from(ASTNode *parent, ASTNode *other);
 
 ASTNode *make_integer_leaf(const char *intval);
+ASTNode *make_integer_leaf_with_type(const char *intval, ASTNode *typename);
 ASTNode *increment_integer_leaf(ASTNode *node);
 ASTNode *make_string_leaf(const char *strval);
 ASTNode *make_identifier_leaf(const char *strval);
 ASTNode *make_typename_leaf(const char *strval);
 ASTNode *make_float_leaf(const char *dval);
+ASTNode *make_float_leaf_with_type(const char *dval, ASTNode *typename);
 ASTNode *make_empty_leaf(void);
 char *make_negative(const char *p);
 

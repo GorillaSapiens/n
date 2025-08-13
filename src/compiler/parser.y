@@ -527,11 +527,13 @@ postfix_expr:
 
 primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
+  | INTEGER '`' TYPENAME                     { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
+  | FLOAT '`' TYPENAME                       { COVER; $$ = make_float_leaf_with_type($1, make_typename_leaf($3)); }
   | STRING                                   { COVER; $$ = make_string_leaf(do_xform($1, NULL)); }
-  | STRING ARROW XFORMNAME                   { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
+  | STRING '`' XFORMNAME                     { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
   | CHAR                                     { COVER; $$ = make_string_leaf(do_xform($1, NULL)); }
-  | CHAR ARROW XFORMNAME                     { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
+  | CHAR '`' XFORMNAME                       { COVER; $$ = make_string_leaf(do_xform($1, $3)); }
   | array_initializer                        { COVER; $$ = $1; }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }

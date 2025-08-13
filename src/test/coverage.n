@@ -28,12 +28,15 @@ const int six := 6;
 char *exy := "this is a test";
 char exy  := '\f';
 
-char *exy := "this is a test"->testxform;
-char exy  := '\f'->testxform;
+char *exy := "this is a test" `testxform;
+char exy  := '\f' `testxform;
 
 zp int in_the_zero_page := 5;
 
 int a[5], *b, c := 'a';
+
+int a := 5`int;
+float a := 5.0`float;
 
 void (*fruitloops)(int n);
 

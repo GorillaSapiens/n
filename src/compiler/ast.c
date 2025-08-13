@@ -72,6 +72,12 @@ ASTNode *make_integer_leaf(const char *intval) {
    return ret;
 }
 
+ASTNode *make_integer_leaf_with_type(const char *intval, ASTNode *typename) {
+   ASTNode *ret = make_integer_leaf(intval);
+   ret = append_child(ret, typename);
+   return ret;
+}
+
 ASTNode *increment_integer_leaf(ASTNode *node) {
    unsigned long n = strtoul(node->strval, NULL, 0);
    n++;
@@ -122,6 +128,12 @@ ASTNode *make_float_leaf(const char *dval) {
    ret->column = yycolumn;
    ret->kind = AST_FLOAT;
    ret->strval = dval;
+   return ret;
+}
+
+ASTNode *make_float_leaf_with_type(const char *intval, ASTNode *typename) {
+   ASTNode *ret = make_float_leaf(intval);
+   ret = append_child(ret, typename);
    return ret;
 }
 
