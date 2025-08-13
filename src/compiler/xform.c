@@ -19,20 +19,20 @@ int register_xform(const char *name, ASTNode *node) {
    }
 
    if (memname_exists(name)) {
-      error ("xform conflicts with memname '%s' %s:%d.%d",
-         name, current_filename, yylineno, yycolumn);
+      error ("xform cannot be the same as existing memname %s:%d.%d",
+         current_filename, yylineno, yycolumn);
       return -1;
    }
 
    if (typename_exists(name)) {
-      error ("xform conflicts with typename '%s' %s:%d.%d",
-         name, current_filename, yylineno, yycolumn);
+      error ("xform cannot be the same as existing typename %s:%d.%d",
+         current_filename, yylineno, yycolumn);
       return -1;
    }
 
    if (pair_exists(xforms, name)) {
-      error ("duplicate xform '%s' %s:%d.%d",
-         name, current_filename, yylineno, yycolumn);
+      error ("xform already exists %s:%d.%d",
+         current_filename, yylineno, yycolumn);
       return -1;
    }
 
