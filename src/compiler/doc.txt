@@ -8,6 +8,24 @@ Differences from C:
 
 (*) no "=".  the assignment operator is ":=".  no more accidental confusion between "=" and "==".
 
+(*) no if/if/else ambiguity.  blocks are required in if statements to avoid confusion between:
+
+if (condition) {
+   if (condition) {
+   }
+   else {
+   }
+}
+
+and
+
+if (condition) {
+   if (condition) {
+   }
+}
+else {
+}
+
 (*) all included files are "pragma once", automatically.  file equality is determined by md5sum.
 
 (*) no built in types, and no heirarchy of types.  even basic types need definition, usually in an included file.  sizes are given in bytes, and endianness is explicit.  examples:
@@ -21,6 +39,13 @@ type longlong { $size:8 $endian:little };
 type half     { $size:2 $endian:little $float };
 type float    { $size:4 $endian:little $float };
 type double   { $size:8 $endian:little $float };
+
+(*) some operators can be defined and/or overridden.  example:
+
+// if your platform has no FPU and you want software doubles...
+double operator+(double lhs, double rhs) {
+   // [...]
+}
 
 (*) no typedef nonsense, and no forward declaration of struct or union types.  structs and unions may immediately be used as types.  example:
 
