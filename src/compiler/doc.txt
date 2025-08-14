@@ -1,0 +1,50 @@
+What is "n"?
+
+it's mostly C-like, aimed at 8 bit micros.
+
+===
+
+Differences from C:
+
+(*) no "=".  the assignment operator is ":=".  no more accidental confusion between "=" and "==".
+
+(*) all included files are "pragma once", automatically.  file equality is determined by md5sum.
+
+(*) no built in types, and no heirarchy of types.  even basic types need definition, usually in an included file.  sizes are given in bytes, and endianness is explicit.  examples:
+
+type void     { $size:0 };
+type char     { $size:1 };
+type *        { $size:2 $endian:little }; // ALL pointers
+type int      { $size:2 $endian:little };
+type long     { $size:4 $endian:little };
+type longlong { $size:8 $endian:little };
+type half     { $size:2 $endian:little $float };
+type float    { $size:4 $endian:little $float };
+type double   { $size:8 $endian:little $float };
+
+(*) no typedef nonsense, and no forward declaration of struct or union types.  structs and unions may immediately be used as types.  example:
+
+struct LinkedListNode {
+   void *data;
+   LinkedListNode *next;
+};
+LinkedListNode *head = null;
+
+(*) functions can return any type, including arrays. example:
+
+int [4]func(int arg) {
+   int ret[4];
+   // do some stuff
+   return ret;
+}
+
+(*) multiple character codings through xforms. example:
+
+xform ebcidic { /* see include files */ };
+xform cp437 { /* see include files */ };
+
+char str1[] = "this will be encoded in ebcdic"`ebcidic;
+char str2[] = "this will be encoded in cp437"`cp437;
+char str3[] = "this will not get any translation";
+
+(*) ???
