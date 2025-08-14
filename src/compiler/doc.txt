@@ -26,6 +26,17 @@ if (condition) {
 else {
 }
 
+no more 
+
+if (condition)
+   /* statment */;
+if (condition)
+   /* statment */;
+else
+   /* statment */;
+
+confusion about which "if" the "else" goes with.
+
 (*) all included files are "pragma once", automatically.  file equality is determined by md5sum.
 
 (*) no built in types, and no heirarchy of types.  even basic types need definition, usually in an included file.  sizes are given in bytes, and endianness is explicit.  examples:
@@ -71,5 +82,19 @@ xform cp437 { /* see include files */ };
 char str1[] = "this will be encoded in ebcdic"`ebcidic;
 char str2[] = "this will be encoded in cp437"`cp437;
 char str3[] = "this will not get any translation";
+
+(*) nested break and continue.  example:
+
+label1:
+while (condition) {
+   while (other_condition) {
+      if (something) {
+         break label1; // exits while loop named "label1"
+      }
+      if (something_else) {
+         continue label1; //goes to next iteration of loop named "label1"
+      }
+   }
+}
 
 (*) ???
