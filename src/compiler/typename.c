@@ -69,3 +69,11 @@ ASTNode *get_typename_node(const char *name) {
 
    return pair_get(types, name);
 }
+
+const char *typename_find_null(void) {
+   if (!types) {
+      types = pair_create();
+   }
+
+   return pair_null_value(types);
+}

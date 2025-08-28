@@ -151,6 +151,7 @@ ASTNode *make_empty_leaf(void) {
    ret->column = yycolumn;
    ret->kind = AST_EMPTY;
    ret->handled = false;
+   ret->strval = NULL;
    return ret;
 }
 

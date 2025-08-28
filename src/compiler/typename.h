@@ -17,4 +17,7 @@ void attach_typename(const char *name, ASTNode *node);
 // get the node attached to a typename
 ASTNode *get_typename_node(const char *name);
 
+// check for any null valued typenames
+const char *typename_find_null(void);
+
 #endif

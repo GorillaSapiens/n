@@ -229,7 +229,7 @@ type_decl_stmt:
   ;
 
 struct_decl_stmt:
-    STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
+    STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); $$->strval = strdup($2); } // Add early to type table
   | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $4); }
   | STRUCT IDENTIFIER '{'                    {
                                                 COVER;
@@ -242,7 +242,7 @@ struct_decl_stmt:
   ;
 
 union_decl_stmt:
-    UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
+    UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); $$->strval = strdup($2); } // Add early to type table
   | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $4); }
   | UNION IDENTIFIER '{'                     {
                                                 COVER;

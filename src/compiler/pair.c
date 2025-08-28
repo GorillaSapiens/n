@@ -105,3 +105,14 @@ void pair_destroy(Pair *pair) {
     }
     free(pair);
 }
+
+const char *pair_null_value(Pair *pair) {
+   for (int i = 0; i < TABLE_SIZE; i++) {
+      for (Entry *entry = pair->buckets[i]; entry; entry = entry->next) {
+         if (entry->value == NULL) {
+            return entry->key;
+         }
+      }
+   }
+   return NULL;
+}

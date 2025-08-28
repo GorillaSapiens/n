@@ -750,8 +750,32 @@ static void compile_defdecl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
-static void crosscheck_struct_union_nesting(void) {
-   // TODO
+static void crosscheck_struct_union_nesting(ASTNode *program) {
+   const char *floating = typename_find_null();
+   if (floating) {
+      ASTNode *node = NULL;
+
+      // as an artifact of parsing,
+      // floaters have an empty node
+      // in the program tree
+      for (int i = 0; i < program->count; i++) {
+         if (!strcmp(program->children[i]->name, "empty")) {
+            if (!strcmp(program->children[i]->strval, floating)) {
+               node = program->children[i];
+            }
+         }
+      }
+
+      if (node) {
+         error("undefined struct/union '%s' [%s:%d.%d]",
+            floating, node->file, node->line, node->column);
+      }
+      else {
+         error("undefined struct/union '%s'", floating); // this is probably unreachable
+      }
+      // error() calls exit()
+   }
+
 }
 
 static void compile(ASTNode *program) {
@@ -812,7 +836,7 @@ static void compile(ASTNode *program) {
       }
    }
 
-   crosscheck_struct_union_nesting();
+   crosscheck_struct_union_nesting(program);
 
    for (int i = 0; i < program->count; i++) {
       ASTNode *node = program->children[i];

@@ -7,22 +7,14 @@
 typedef void *Pair;
 #endif
 
-// --- Create pair ---
+// create/destroy for collection
 Pair *pair_create(void);
-
-// --- Insert or update ---
-void pair_insert(Pair *pair, const char *key, void *value);
-
-// --- Existance ---
-bool pair_exists(Pair *pair, const char *key);
-
-// --- Lookup ---
-void *pair_get(Pair *pair, const char *key);
-
-// --- Delete key ---
-void pair_delete(Pair *pair, const char *key);
-
-// --- Free pair ---
 void pair_destroy(Pair *pair);
+
+void pair_insert(Pair *pair, const char *key, void *value);
+bool pair_exists(Pair *pair, const char *key);
+void *pair_get(Pair *pair, const char *key);
+void pair_delete(Pair *pair, const char *key);
+const char *pair_null_value(Pair *pair);
 
 #endif
