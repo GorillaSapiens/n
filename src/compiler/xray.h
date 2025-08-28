@@ -8,6 +8,7 @@
 #define XRAY_COVERAGE  2 // perform coverage test
 #define XRAY_PARSEONLY 3 // parse only, do not compile
 #define XRAY_DUMPAST   4 // dump AST tree after parsing
+#define XRAY_TYPEINFO  5 // dump type size information
 
 // return the xray number for a human readable string
 int lookup_xray(const char *);

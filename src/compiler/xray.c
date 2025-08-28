@@ -20,6 +20,7 @@ static struct {
    { XRAY_COVERAGE,  "coverage",  "yacc/bison rule coverage testing" },
    { XRAY_PARSEONLY, "parseonly", "exit after parsing" },
    { XRAY_DUMPAST,   "dumpast",   "dump AST tree after parsing" },
+   { XRAY_TYPEINFO,  "typeinfo",  "type information" },
 };
 
 void xray_exit(int n, const char *file, int line) {

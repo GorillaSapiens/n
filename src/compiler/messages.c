@@ -8,6 +8,14 @@
 #include "messages.h"
 #include "xray.h"
 
+void message(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   vfprintf(stderr, fmt, args);
+   fprintf(stderr, "\n");
+   va_end(args);
+}
+
 void debug(const char *fmt, ...) {
    if (get_xray(XRAY_DEBUG)) {
       va_list args;

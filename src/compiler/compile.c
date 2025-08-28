@@ -656,11 +656,6 @@ static void compile_mem_decl_stmt(ASTNode *node) {
 
 // check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
-
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
@@ -668,21 +663,21 @@ static void compile_type_decl_stmt(ASTNode *node) {
    bool haveSize = false;
    int size = -1;
    bool haveEndian = false;
+   const char *endian = NULL;
+
    // we need to guarantee a "size" and "endian"
    if (strcmp(node->children[1]->name, "empty")) {
-      for (ASTNode *list = node->children[1];
-            list != NULL;
-            list = list->children[1]) {
-         //debug("%s:\t%s", __FUNCTION__, list->children[0]->strval);
+      for (int i = 0; i < node->children[1]->count; i++) {
+         ASTNode *item = node->children[1]->children[i];
 
          // check for $size, must be nonnegative
-         if (!strncmp(list->children[0]->strval, "$size:", 6)) {
+         if (!strncmp(item->strval, "$size:", 6)) {
             if (haveSize) {
                error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$size:' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
-            char *p = strchr(list->children[0]->strval, ':');
+            char *p = strchr(item->strval, ':');
             p++;
             size = atoi(p);
             if (size < 0 || (size == 0 && strcmp(p, "0"))) {
@@ -694,31 +689,37 @@ static void compile_type_decl_stmt(ASTNode *node) {
          }
 
          // check for $endian, must be "big" or "little"
-         if (!strncmp(list->children[0]->strval, "$endian:", 8)) {
+         if (!strncmp(item->strval, "$endian:", 8)) {
             if (haveEndian) {
                error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$endian:' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
-            char *p = strchr(list->children[0]->strval, ':');
-            p++;
-            if (strcmp(p, "big") && strcmp(p, "little")) {
+            endian = strchr(item->strval, ':');
+            endian++;
+            if (strcmp(endian, "big") && strcmp(endian, "little")) {
                error("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$endian:%s' flag",
                      node->file, node->line, node->column,
-                     node->children[0]->strval, p);
+                     node->children[0]->strval, endian);
             }
 
             haveEndian = true;
          }
       }
    }
+
    if (!haveSize) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$size:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
+
    if (!haveEndian && size > 1) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
+   }
+
+   if (get_xray(XRAY_TYPEINFO)) {
+      message("TYPEINFO: %s %d %s", key, haveSize ? size : -1, haveEndian ? endian : "unspec");
    }
 }
 
@@ -749,8 +750,9 @@ static void compile(ASTNode *node) {
    }
 
    if (!strcmp(node->name, "program")) {
-      compile(node->children[0]);
-      compile(node->children[1]);
+      for (int i = 0; i < node->count; i++) {
+         compile(node->children[i]);
+      }
    }
    else if (!strcmp(node->name, "include_stmt")) {
       // ignore these, they're handled in the parser
