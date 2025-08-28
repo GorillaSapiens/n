@@ -9,6 +9,7 @@
 #include "emit.h"
 #include "float.h"
 #include "integer.h"
+#include "memname.h"
 #include "messages.h"
 #include "set.h"
 #include "xform.h"
@@ -650,17 +651,20 @@ static void compile_function_decl(ASTNode *node) {
 
 
 
-static void compile_xform_decl_stmt(ASTNode *node) {
-   // literally nothing to do here, parser.y has it covered.
-}
-
-// check type_decl_stmt for existence of $size and $endian
-static void compile_type_decl_stmt(ASTNode *node) {
+static void compile_mem_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    debug("========================================\n");
    parse_dump_node(node);
    debug("========================================\n");
-#if 0
+
+   attach_memname(node->children[0]->strval, node);
+
+   exit(-1);
+}
+
+
+// check type_decl_stmt for existence of $size and $endian
+static void compile_type_decl_stmt(ASTNode *node) {
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    debug("========================================\n");
    parse_dump_node(node);
@@ -729,7 +733,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
-#endif
+   exit(-1);
 }
 
 static void compile_struct_decl_stmt(ASTNode *node) {
@@ -753,10 +757,6 @@ static void compile_defdecl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
-static void compile_include_stmt(ASTNode *node) {
-   // ignore these, they're handled in the parser
-}
-
 static void compile(ASTNode *node) {
    if (!node) {
       return;
@@ -766,8 +766,14 @@ static void compile(ASTNode *node) {
       compile(node->children[0]);
       compile(node->children[1]);
    }
+   else if (!strcmp(node->name, "include_stmt")) {
+      // ignore these, they're handled in the parser
+   }
    else if (!strcmp(node->name, "xform_decl_stmt")) {
-      compile_xform_decl_stmt(node);
+      // literally nothing to do here, parser.y has it covered.
+   }
+   else if (!strcmp(node->name, "mem_decl_stmt")) {
+      compile_mem_decl_stmt(node);
    }
    else if (!strcmp(node->name, "type_decl_stmt")) {
       compile_type_decl_stmt(node);
@@ -780,9 +786,6 @@ static void compile(ASTNode *node) {
    }
    else if (!strcmp(node->name, "defdecl_stmt")) {
       compile_defdecl_stmt(node);
-   }
-   else if (!strcmp(node->name, "include_stmt")) {
-      compile_include_stmt(node);
    }
    else {
       error("[%s:%d.%d] unrecognized AST node '%s'",
