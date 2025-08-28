@@ -16,6 +16,13 @@ xform testxform2 {
 struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
+struct struct_b;
+struct struct_a { struct_b *b; };
+struct struct_b { struct_a *a; };
+
+union union_a;
+union union_a { union_a *a; };
+
 struct llnode { int data; llnode *next; };
 
 static int q[12] @ 27;

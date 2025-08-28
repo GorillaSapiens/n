@@ -224,6 +224,8 @@ struct_decl_stmt:
                                                 COVER;
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
+  | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
   ;
 
 union_decl_stmt:
@@ -235,6 +237,8 @@ union_decl_stmt:
                                                 COVER;
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
+  | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
   ;
 
 defdecl_stmt:
