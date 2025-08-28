@@ -12,6 +12,7 @@
 #include "memname.h"
 #include "messages.h"
 #include "set.h"
+#include "typename.h"
 #include "xform.h"
 #include "xray.h"
 
@@ -25,7 +26,6 @@ EmitSink es_bss    = EMIT_INIT;
 EmitSink es_zp     = EMIT_INIT;
 EmitSink es_zpdata = EMIT_INIT;
 
-Set *types = NULL;
 Set *globals = NULL;
 Set *functions = NULL;
 
@@ -145,7 +145,7 @@ static void compile_decl_stmt(ASTNode *node) {
    }
    printf("%s %s %p @%s %p\n", type, name, dimension, location, expression);
 #endif
-   
+
    int size = get_size(type);
 
    if (is_extern) {
@@ -649,19 +649,10 @@ static void compile_function_decl(ASTNode *node) {
 
 ////////////////////////////////////////
 
-
-
 static void compile_mem_decl_stmt(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
-
+   // TODO FIX sanity check the flags!
    attach_memname(node->children[0]->strval, node);
-
-   exit(-1);
 }
-
 
 // check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {
@@ -670,12 +661,8 @@ static void compile_type_decl_stmt(ASTNode *node) {
    parse_dump_node(node);
    debug("========================================\n");
 
-   if (!types) {
-      types = new_set();
-   }
-
    const char *key = node->children[0]->strval;
-   set_add(types, key, node);
+   attach_typename(key, node);
 
    //debug("%s:%s", __FUNCTION__, node->children[0]->strval);
    bool haveSize = false;
@@ -733,7 +720,6 @@ static void compile_type_decl_stmt(ASTNode *node) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
-   exit(-1);
 }
 
 static void compile_struct_decl_stmt(ASTNode *node) {
@@ -796,10 +782,6 @@ static void compile(ASTNode *node) {
 
 void do_compile(void) {
 
-   printf("========================================\n");
-   parse_dump_node(root);
-   printf("========================================\n");
-
    emit(&es_header, "; this file produced by \"nc\" compiler\n");
    emit(&es_header, "; depends on --feature dollar_in_identifiers\n");
    emit(&es_header, ".include \"nlib.inc\"\n");
@@ -807,20 +789,28 @@ void do_compile(void) {
    emit(&es_rodata, ".segment \"RODATA\"\n");
    emit(&es_data,   ".segment \"DATA\"\n");
    emit(&es_bss,    ".segment \"BSS\"\n");
+   emit(&es_import, "; imports\n");
+   emit(&es_export, "; exports\n");
 
    compile(root);
 
    emit_print(&es_header);
    printf("\n");
+
    emit_print(&es_import);
    printf("\n");
+ 
    emit_print(&es_export);
    printf("\n");
+
    emit_print(&es_bss);
    printf("\n");
+
    emit_print(&es_data);
    printf("\n");
+
    emit_print(&es_rodata);
    printf("\n");
+
    emit_print(&es_code);
 }

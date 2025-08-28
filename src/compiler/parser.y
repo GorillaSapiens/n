@@ -216,7 +216,9 @@ type_decl_stmt:
   ;
 
 struct_decl_stmt:
-    STRUCT IDENTIFIER '{'                    {
+    STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
+  | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | STRUCT IDENTIFIER '{'                    {
                                                 COVER;
                                                 if (register_typename($2) < 0) YYABORT;  // Add early to type table
                                              }
@@ -224,12 +226,12 @@ struct_decl_stmt:
                                                 COVER;
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
-  | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
-  | STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
   ;
 
 union_decl_stmt:
-    UNION IDENTIFIER '{'                     {
+    UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
+  | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | UNION IDENTIFIER '{'                     {
                                                 COVER;
                                                 if (register_typename($2) < 0) YYABORT;  // Add early to type table
                                              }
@@ -237,8 +239,6 @@ union_decl_stmt:
                                                 COVER;
                                                 $$ = MAKE_NODE(make_identifier_leaf($2), $5);
                                              }
-  | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
-  | UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
   ;
 
 defdecl_stmt:
