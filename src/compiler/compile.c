@@ -11,6 +11,7 @@
 #include "integer.h"
 #include "memname.h"
 #include "messages.h"
+#include "pair.h"
 #include "set.h"
 #include "typename.h"
 #include "xform.h"
@@ -750,9 +751,10 @@ static void compile_defdecl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
-static void crosscheck_struct_union_nesting(ASTNode *program) {
-   const char *floating = typename_find_null();
-   if (floating) {
+static void check_struct_union_undefined(ASTNode *program) {
+   // undefined struct/union is always an error
+   const char *undefined = typename_find_null();
+   if (undefined) {
       ASTNode *node = NULL;
 
       // as an artifact of parsing,
@@ -760,7 +762,7 @@ static void crosscheck_struct_union_nesting(ASTNode *program) {
       // in the program tree
       for (int i = 0; i < program->count; i++) {
          if (!strcmp(program->children[i]->name, "empty")) {
-            if (!strcmp(program->children[i]->strval, floating)) {
+            if (!strcmp(program->children[i]->strval, undefined)) {
                node = program->children[i];
             }
          }
@@ -768,14 +770,72 @@ static void crosscheck_struct_union_nesting(ASTNode *program) {
 
       if (node) {
          error("undefined struct/union '%s' [%s:%d.%d]",
-            floating, node->file, node->line, node->column);
+               undefined, node->file, node->line, node->column);
       }
       else {
-         error("undefined struct/union '%s'", floating); // this is probably unreachable
+         error("undefined struct/union '%s'", undefined); // this is probably unreachable
       }
       // error() calls exit()
    }
+}
 
+static bool crosscheck_helper(Pair *markers, const char *name) {
+   const char *childname;
+   ASTNode *child;
+   pair_insert(markers, name, (void *)1);
+   ASTNode *node = get_typename_node(name);
+   if (strcmp(node->name, "type_decl_stmt")) {
+      for (int i = 1; i < node->count; i++) {
+         child = node->children[i];
+         if (!strcmp(child->children[2]->children[0]->strval, "0")) {
+            childname = child->children[1]->strval;
+            void *color = pair_get(markers, childname);
+            if (color == 0) {
+               if (crosscheck_helper(markers, childname)) {
+                  goto problem;
+               }
+            }
+            else if (color == (int) 1) {
+               goto problem;   
+            }
+         }
+      }
+   }
+   pair_insert(markers, name, (void *) 2);
+   return false;
+
+problem:
+   warning("struct/union '%s' contains '%s' [%s:%d.%d]",
+         name, childname,
+         child->file, child->line, child->column);
+   return true;
+}
+
+static void crosscheck_struct_union_nesting(ASTNode *program) {
+   Pair *markers = pair_create();
+
+   for (int i = 0; i < program->count; i++) {
+      if (!strcmp(program->children[i]->name, "struct_decl_stmt") ||
+          !strcmp(program->children[i]->name, "union_decl_stmt")) {
+         ASTNode *node = program->children[i]->children[0];
+         pair_insert(markers, node->strval, 0);
+      }
+   }
+
+   for (int i = 0; i < program->count; i++) {
+      if (!strcmp(program->children[i]->name, "struct_decl_stmt") ||
+          !strcmp(program->children[i]->name, "union_decl_stmt")) {
+         ASTNode *node = program->children[i]->children[0];
+         if (pair_get(markers, node->strval) == 0) {
+            if (crosscheck_helper(markers, node->strval)) {
+               error("cyclic struct/union detected");
+               // error() calls exit()
+            }
+         }
+      }
+   }
+
+   pair_destroy(markers);
 }
 
 static void compile(ASTNode *program) {
@@ -836,6 +896,7 @@ static void compile(ASTNode *program) {
       }
    }
 
+   check_struct_union_undefined(program);
    crosscheck_struct_union_nesting(program);
 
    for (int i = 0; i < program->count; i++) {

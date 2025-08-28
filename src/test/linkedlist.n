@@ -1,0 +1,8 @@
+// nc
+
+include "machine_generic.n"
+
+struct llnode {
+   int data;
+   llnode *next;
+};

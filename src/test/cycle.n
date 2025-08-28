@@ -1,0 +1,15 @@
+// nc -X invert
+
+include "machine_generic.n"
+
+struct beta;
+struct gamma;
+struct alpha {
+   beta b;
+};
+struct beta {
+   gamma g;
+};
+struct gamma {
+   alpha a;
+};
