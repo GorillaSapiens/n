@@ -15,6 +15,7 @@ ASTNode *make_node(const char *name, ...) {
    ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
+   ret->handled = false;
    va_list ap;
    va_start(ap, name);
    ASTNode *child;
@@ -69,6 +70,7 @@ ASTNode *make_integer_leaf(const char *intval) {
    ret->column = yycolumn;
    ret->kind = AST_INTEGER;
    ret->strval = intval;
+   ret->handled = false;
    return ret;
 }
 
@@ -95,6 +97,7 @@ ASTNode *make_string_leaf(const char *strval) {
    ret->column = yycolumn;
    ret->kind = AST_STRING;
    ret->strval = strval ? strdup(strval) : NULL;
+   ret->handled = false;
    return ret;
 }
 
@@ -106,6 +109,7 @@ ASTNode *make_identifier_leaf(const char *strval) {
    ret->column = yycolumn;
    ret->kind = AST_IDENTIFIER;
    ret->strval = strval ? strdup(strval) : NULL;
+   ret->handled = false;
    return ret;
 }
 
@@ -117,6 +121,7 @@ ASTNode *make_typename_leaf(const char *strval) {
    ret->column = yycolumn;
    ret->kind = AST_TYPENAME;
    ret->strval = strval ? strdup(strval) : NULL;
+   ret->handled = false;
    return ret;
 }
 
@@ -128,6 +133,7 @@ ASTNode *make_float_leaf(const char *dval) {
    ret->column = yycolumn;
    ret->kind = AST_FLOAT;
    ret->strval = dval;
+   ret->handled = false;
    return ret;
 }
 
@@ -144,6 +150,7 @@ ASTNode *make_empty_leaf(void) {
    ret->line = yylineno;
    ret->column = yycolumn;
    ret->kind = AST_EMPTY;
+   ret->handled = false;
    return ret;
 }
 

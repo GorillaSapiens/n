@@ -1,6 +1,8 @@
 #ifndef _INCLUDE_AST_H_
 #define _INCLUDE_AST_H_
 
+#include <stdbool.h>
+
 enum ASTKind {
     AST_GENERIC = 0,
     AST_IDENTIFIER,
@@ -15,6 +17,7 @@ typedef struct ASTNode {
    const char *name;
    const char *file;
    int line, column;
+   bool handled;
    enum ASTKind kind;
 
    union {

@@ -109,9 +109,9 @@ static void compile_decl_stmt(ASTNode *node) {
    const ASTNode *value = set_get(globals, name);
    if (value != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-         node->file, node->line, node->column,
-         name,
-         value->file, value->line, value->column);
+            node->file, node->line, node->column,
+            name,
+            value->file, value->line, value->column);
    }
    set_add(globals, name, node);
 
@@ -123,7 +123,7 @@ static void compile_decl_stmt(ASTNode *node) {
 
    if (is_ref) {
       error("[%s:%d.%d] 'ref' not allowed in decl_stmt",
-         node->file, node->line, node->column);
+            node->file, node->line, node->column);
    }
 
 #if 0
@@ -151,7 +151,7 @@ static void compile_decl_stmt(ASTNode *node) {
    if (is_extern) {
       if (is_static) {
          error("[%s:%d.%d] 'extern' and 'static' don't mix",
-            node->file, node->line, node->column);
+               node->file, node->line, node->column);
       }
 
       if (is_quick) {
@@ -173,7 +173,7 @@ static void compile_decl_stmt(ASTNode *node) {
       if (expression == NULL) {
          if (is_const) {
             error("[%s:%d.%d] 'const' missing initializer",
-               node->file, node->line, node->column);
+                  node->file, node->line, node->column);
          }
          if (is_quick) {
             emit(&es_zp, "_%s:\n", name);
@@ -208,7 +208,7 @@ static void compile_decl_stmt(ASTNode *node) {
             if (!strcmp(expression->name, "-")) {
                if (has_flag(type, "$unsigned")) {
                   warning("[%s:%d.%d] negative initializer for unsigned symbol",
-                     node->file, node->line, node->column);
+                        node->file, node->line, node->column);
                }
                neg = true;
                expression = expression->children[0];
@@ -296,7 +296,7 @@ static void compile_decl_stmt(ASTNode *node) {
 static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
    // constness must match
    if (has_modifier(a->children[0], "const") !=
-       has_modifier(b->children[0], "const")) {
+         has_modifier(b->children[0], "const")) {
       return false;
    }
    // return type must match
@@ -312,15 +312,15 @@ static bool function_prototype_match(const ASTNode *a, const ASTNode *b) {
       }
       if (a->children[0] && b->children[0]) {
          if (has_modifier(a->children[0]->children[0], "const") !=
-             has_modifier(b->children[0]->children[0], "const")) {
+               has_modifier(b->children[0]->children[0], "const")) {
             return false;
          }
          if (has_modifier(a->children[0]->children[0], "static") !=
-             has_modifier(b->children[0]->children[0], "static")) {
+               has_modifier(b->children[0]->children[0], "static")) {
             return false;
          }
          if (strcmp(a->children[0]->children[1]->strval,
-                    b->children[0]->children[1]->strval)) {
+                  b->children[0]->children[1]->strval)) {
             return false;
          }
       }
@@ -339,9 +339,9 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-         type->file, type->line, type->column,
-         name,
-         entry->type->file, entry->type->line, entry->type->column);
+            type->file, type->line, type->column,
+            name,
+            entry->type->file, entry->type->line, entry->type->column);
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
@@ -360,9 +360,9 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-         type->file, type->line, type->column,
-         name,
-         entry->type->file, entry->type->line, entry->type->column);
+            type->file, type->line, type->column,
+            name,
+            entry->type->file, entry->type->line, entry->type->column);
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
@@ -383,9 +383,9 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-         type->file, type->line, type->column,
-         name,
-         entry->type->file, entry->type->line, entry->type->column);
+            type->file, type->line, type->column,
+            name,
+            entry->type->file, entry->type->line, entry->type->column);
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
@@ -415,9 +415,9 @@ static void ctx_quick(Context *ctx, const ASTNode *type, const char *name, bool 
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-         type->file, type->line, type->column,
-         name,
-         entry->type->file, entry->type->line, entry->type->column);
+            type->file, type->line, type->column,
+            name,
+            entry->type->file, entry->type->line, entry->type->column);
    }
 
    entry = (ContextEntry *) malloc(sizeof(ContextEntry));
@@ -560,9 +560,9 @@ static void compile_function_decl(ASTNode *node) {
    else {
       if (!function_prototype_match(node, value)) {
          error("[%s:%d.%d] vs [%s:%d.%d] function prototype mismatch for '%s'",
-            node->file, node->line, node->column,
-            value->file, value->line, value->column,
-            name);
+               node->file, node->line, node->column,
+               value->file, value->line, value->column,
+               name);
       }
    }
 
@@ -574,9 +574,9 @@ static void compile_function_decl(ASTNode *node) {
    // we have a body!
    if (value && value->children[4]) {
       error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
-         node->file, node->line, node->column,
-         value->file, value->line, value->column,
-         name);
+            node->file, node->line, node->column,
+            value->file, value->line, value->column,
+            name);
    }
    else {
       set_rm(functions, name);
@@ -744,41 +744,82 @@ static void compile_defdecl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
-static void compile(ASTNode *node) {
-   if (!node) {
-      return;
+static void crosscheck_struct_union_nesting(void) {
+   // TODO
+}
+
+static void compile(ASTNode *program) {
+
+   if (!program) {
+      error("internal NULL program node");
+      // error calls exit()
    }
 
-   if (!strcmp(node->name, "program")) {
-      for (int i = 0; i < node->count; i++) {
-         compile(node->children[i]);
+   if (strcmp(program->name, "program")) {
+      error("internal non program node '%s' [%s:%d.%d]",
+            program->name,
+            program->file, program->line, program->column);
+      // error calls exit()
+   }
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "include_stmt")) {
+         node->handled = true;
+         // ignore these, they're handled in the parser
+      }
+      else if (!strcmp(node->name, "xform_decl_stmt")) {
+         node->handled = true;
+         // literally nothing to do here, parser.y has it covered.
       }
    }
-   else if (!strcmp(node->name, "include_stmt")) {
-      // ignore these, they're handled in the parser
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "mem_decl_stmt")) {
+         node->handled = true;
+         compile_mem_decl_stmt(node);
+      }
    }
-   else if (!strcmp(node->name, "xform_decl_stmt")) {
-      // literally nothing to do here, parser.y has it covered.
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "type_decl_stmt")) {
+         node->handled = true;
+         compile_type_decl_stmt(node);
+      }
    }
-   else if (!strcmp(node->name, "mem_decl_stmt")) {
-      compile_mem_decl_stmt(node);
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "struct_decl_stmt")) {
+         node->handled = true;
+         compile_struct_decl_stmt(node);
+      }
+      else if (!strcmp(node->name, "union_decl_stmt")) {
+         node->handled = true;
+         compile_union_decl_stmt(node);
+      }
    }
-   else if (!strcmp(node->name, "type_decl_stmt")) {
-      compile_type_decl_stmt(node);
+
+   crosscheck_struct_union_nesting();
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "defdecl_stmt")) {
+         node->handled = true;
+         compile_defdecl_stmt(node);
+      }
    }
-   else if (!strcmp(node->name, "struct_decl_stmt")) {
-      compile_struct_decl_stmt(node);
-   }
-   else if (!strcmp(node->name, "union_decl_stmt")) {
-      compile_union_decl_stmt(node);
-   }
-   else if (!strcmp(node->name, "defdecl_stmt")) {
-      compile_defdecl_stmt(node);
-   }
-   else {
-      error("[%s:%d.%d] unrecognized AST node '%s'",
-         node->file, node->line, node->column,
-         node->name);
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!node->handled) {
+         error("[%s:%d.%d] unrecognized AST node '%s'",
+               node->file, node->line, node->column,
+               node->name);
+         // error calls exit()
+      }
    }
 }
 
@@ -801,7 +842,7 @@ void do_compile(void) {
 
    emit_print(&es_import);
    printf("\n");
- 
+
    emit_print(&es_export);
    printf("\n");
 
