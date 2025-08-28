@@ -724,6 +724,9 @@ static void compile_type_decl_stmt(ASTNode *node) {
 }
 
 static void compile_struct_decl_stmt(ASTNode *node) {
+   const char *key = node->children[0]->strval;
+   attach_typename(key, node);
+
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    debug("========================================\n");
    parse_dump_node(node);
@@ -731,6 +734,9 @@ static void compile_struct_decl_stmt(ASTNode *node) {
 }
 
 static void compile_union_decl_stmt(ASTNode *node) {
+   const char *key = node->children[0]->strval;
+   attach_typename(key, node);
+
    debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
    debug("========================================\n");
    parse_dump_node(node);
@@ -769,6 +775,10 @@ static void compile(ASTNode *program) {
          // ignore these, they're handled in the parser
       }
       else if (!strcmp(node->name, "xform_decl_stmt")) {
+         node->handled = true;
+         // literally nothing to do here, parser.y has it covered.
+      }
+      else if (!strcmp(node->name, "empty")) {
          node->handled = true;
          // literally nothing to do here, parser.y has it covered.
       }

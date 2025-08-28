@@ -15,6 +15,19 @@
 #include "xform.h"
 #include "xray.h"
 
+// this flattens out fields in structs and unions.
+// we need it here because append/prepend is problematic
+// when we recursive descend at compile time.
+// also makes compile easier.
+ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
+   for (int i = 0; i < fieldlist->count; i++) {
+      for (int j = 0; j < fieldlist->children[i]->count; j++) {
+         parent = append_child(parent, fieldlist->children[i]->children[j]);
+      }
+   }
+   return parent;
+}
+
 %}
 
 %union {
@@ -217,27 +230,27 @@ type_decl_stmt:
 
 struct_decl_stmt:
     STRUCT IDENTIFIER ';'                    { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
-  | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | STRUCT TYPENAME '{' field_list '}' ';'   { COVER; $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $4); }
   | STRUCT IDENTIFIER '{'                    {
                                                 COVER;
                                                 if (register_typename($2) < 0) YYABORT;  // Add early to type table
                                              }
     field_list '}' ';'                       {
                                                 COVER;
-                                                $$ = MAKE_NODE(make_identifier_leaf($2), $5);
+                                                $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $5);
                                              }
   ;
 
 union_decl_stmt:
     UNION IDENTIFIER ';'                     { COVER; if (register_typename($2) < 0) YYABORT; $$ = make_empty_leaf(); } // Add early to type table
-  | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+  | UNION TYPENAME '{' field_list '}' ';'    { COVER; $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $4); }
   | UNION IDENTIFIER '{'                     {
                                                 COVER;
                                                 if (register_typename($2) < 0) YYABORT;  // Add early to type table
                                              }
     field_list '}' ';'                       {
                                                 COVER;
-                                                $$ = MAKE_NODE(make_identifier_leaf($2), $5);
+                                                $$ = append_decl_items(MAKE_NODE(make_identifier_leaf($2)), $5);
                                              }
   ;
 
