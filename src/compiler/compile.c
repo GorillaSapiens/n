@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include "ast.h"
 #include "compile.h"
@@ -26,6 +27,8 @@ EmitSink es_data   = EMIT_INIT;
 EmitSink es_bss    = EMIT_INIT;
 EmitSink es_zp     = EMIT_INIT;
 EmitSink es_zpdata = EMIT_INIT;
+
+Pair *typesizes = NULL;
 
 Set *globals = NULL;
 Set *functions = NULL;
@@ -687,6 +690,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
                      node->children[0]->strval, p);
             }
             haveSize = true;
+            pair_insert(typesizes, key, (void *)(intptr_t) size);
          }
 
          // check for $endian, must be "big" or "little"
@@ -795,7 +799,7 @@ static bool crosscheck_helper(Pair *markers, const char *name) {
                   goto problem;
                }
             }
-            else if (color == (int) 1) {
+            else if ((intptr_t)color == 1) {
                goto problem;   
             }
          }
@@ -836,6 +840,94 @@ static void crosscheck_struct_union_nesting(ASTNode *program) {
    }
 
    pair_destroy(markers);
+}
+
+static void calculate_struct_union_sizes(ASTNode *program) {
+   // everybody uses pointers, let's just do that now...
+
+   if (!typename_exists("*")) {
+      error("type * is not defined, pointer size is unknown");
+      // error() calls exit()
+   }
+
+   int sizeof_ptr = (intptr_t) pair_get(typesizes, "*");
+
+   bool done = false;
+
+   while (!done) {
+      done = true;
+
+      for (int i = 0; i < program->count; i++) {
+         bool is_struct = false;
+         bool is_union = false;
+
+         if (!strcmp(program->children[i]->name, "struct_decl_stmt")) {
+            is_struct = true;
+         }
+         else if (!strcmp(program->children[i]->name, "union_decl_stmt")) {
+            is_union = true;
+         }
+         // else if (!strcmp(program->children[i]->name, "type_decl_stmt")) {
+         // // types have already been done.
+         // }
+
+         if (is_struct || is_union) {
+            ASTNode *node = program->children[i];
+            const char *name = node->children[0]->strval;
+            int size = 0;
+
+            if (!pair_exists(typesizes, name)) {
+               // we need it
+               int othersize;
+
+               for (int i = 1; i < node->count; i++) {
+                  ASTNode *item = node->children[i];
+                  const char *tname = item->children[1]->strval;
+                  int isptr = atoi(item->children[2]->children[0]->strval);
+                  int mult = 1;
+
+                  // arrays get multipliers
+                  for (int j = 2; j < item->children[2]->count; j++) {
+                     mult *= atoi(item->children[2]->children[j]->strval);
+                  }
+
+                  if (isptr) {
+                     othersize = sizeof_ptr;
+                  }
+                  else {
+                     if (pair_exists(typesizes, tname)) {
+                        othersize = (intptr_t) pair_get(typesizes, tname);
+                     }
+                     else {
+                        othersize = -1;
+                     }
+                  }
+
+                  if (othersize == -1) {
+                     size = -1;
+                     break;
+                  }
+                  else if (is_struct) {
+                     size += othersize * mult;
+                  }
+                  else if (is_union) {
+                     if (othersize * mult > size) {
+                        size = othersize * mult;
+                     }
+                  }
+               }
+
+               if (size == -1) {
+                  done = false;
+               }
+               else {
+                  pair_insert(typesizes, name, (void *)(intptr_t)size);
+                  warning("sizeof(%s) == %d", name, size);
+               }
+            }
+         }
+      }
+   }
 }
 
 static void compile(ASTNode *program) {
@@ -898,6 +990,7 @@ static void compile(ASTNode *program) {
 
    check_struct_union_undefined(program);
    crosscheck_struct_union_nesting(program);
+   calculate_struct_union_sizes(program);
 
    for (int i = 0; i < program->count; i++) {
       ASTNode *node = program->children[i];
@@ -919,6 +1012,8 @@ static void compile(ASTNode *program) {
 }
 
 void do_compile(void) {
+
+   typesizes = pair_create();
 
    emit(&es_header, "; this file produced by \"nc\" compiler\n");
    emit(&es_header, "; depends on --feature dollar_in_identifiers\n");
