@@ -16,6 +16,7 @@ SRCSRC = \
    compile.c \
    coverage.c \
    emit.c \
+   expropt.c \
    float.c \
    integer.c \
    md5.c \

@@ -6,6 +6,7 @@
 #include "ast.h"
 #include "compile.h"
 #include "coverage.h"
+#include "expropt.h"
 #include "lextern.h"
 #include "md5seen.h"
 #include "messages.h"
@@ -141,6 +142,11 @@ int main(int argc, char** argv) {
 
    if (get_xray(XRAY_COVERAGE)) {
       coverage_report();
+      exit(0);
+   }
+
+   do_expropt();
+   if (get_xray(XRAY_EXPROPTONLY)) {
       exit(0);
    }
 

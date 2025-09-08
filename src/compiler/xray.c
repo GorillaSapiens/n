@@ -15,12 +15,14 @@ static struct {
    const char *name;
    const char *description;
 } name2number[] = {
-   { XRAY_INVERT,    "invert",    "invert success/failure exit value" },
-   { XRAY_DEBUG,     "debug",     "print debug() messages" },
-   { XRAY_COVERAGE,  "coverage",  "yacc/bison rule coverage testing" },
-   { XRAY_PARSEONLY, "parseonly", "exit after parsing" },
-   { XRAY_DUMPAST,   "dumpast",   "dump AST tree after parsing" },
-   { XRAY_TYPEINFO,  "typeinfo",  "type information" },
+   { XRAY_INVERT,      "invert",      "invert success/failure exit value" },
+   { XRAY_DEBUG,       "debug",       "print debug() messages" },
+   { XRAY_COVERAGE,    "coverage",    "yacc/bison rule coverage testing" },
+   { XRAY_PARSEONLY,   "parseonly",   "exit after parsing" },
+   { XRAY_DUMPAST,     "dumpast",     "dump AST tree after parsing" },
+   { XRAY_TYPEINFO,    "typeinfo",    "type information" },
+   { XRAY_EXPROPT,     "dumpexpr",    "dump expropt stats" },
+   { XRAY_EXPROPTONLY, "exproptonly", "exit after expropt" },
 };
 
 void xray_exit(int n, const char *file, int line) {

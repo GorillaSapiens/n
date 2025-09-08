@@ -3,12 +3,14 @@
 
 #include "noreturn.h"
 
-#define XRAY_INVERT    0 // invert return value
-#define XRAY_DEBUG     1 // enable debug messages
-#define XRAY_COVERAGE  2 // perform coverage test
-#define XRAY_PARSEONLY 3 // parse only, do not compile
-#define XRAY_DUMPAST   4 // dump AST tree after parsing
-#define XRAY_TYPEINFO  5 // dump type size information
+#define XRAY_INVERT      0 // invert return value
+#define XRAY_DEBUG       1 // enable debug messages
+#define XRAY_COVERAGE    2 // perform coverage test
+#define XRAY_PARSEONLY   3 // parse only, do not compile
+#define XRAY_DUMPAST     4 // dump AST tree after parsing
+#define XRAY_TYPEINFO    5 // dump type size information
+#define XRAY_EXPROPT     6 // dump expropt statistics
+#define XRAY_EXPROPTONLY 7 // exit after expropt
 
 // return the xray number for a human readable string
 int lookup_xray(const char *);

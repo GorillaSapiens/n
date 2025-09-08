@@ -1,0 +1,5 @@
+// nc -X dumpexpr -X exproptonly -X invert -X dumpast
+
+include "machine_generic.n"
+
+float a := 5.0 % 4.0;
