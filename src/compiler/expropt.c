@@ -30,9 +30,28 @@ static bool is_float_or_int(ASTNode *node) {
    return false;
 }
 
+static bool is_lone_expr(ASTNode *node) {
+   if (!strcmp(node->name, "expr")) {
+      if (node->count == 1) {
+         if (is_float_or_int(node->children[0])) {
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
 static bool is_binary_op(ASTNode *node) {
    if (node->name[1] == 0 && NULL != strchr("+-*/%", node->name[0])) {
       if (node->count == 2) {
+         if (is_lone_expr(node->children[0])) {
+            node->children[0] = node->children[0]->children[0];
+         }
+
+         if (is_lone_expr(node->children[1])) {
+            node->children[1] = node->children[1]->children[0];
+         }
+
          if (is_float_or_int(node->children[0]) &&
              is_float_or_int(node->children[1])) {
             return true;
@@ -181,6 +200,7 @@ static void expropt(ASTNode **noderef) {
       }
    }
 
+#if 0
    // parenthetical expressions down to one term
    if (!strcmp(node->name, "expr") && node->count == 1) {
       if (is_float_or_int(node->children[0])) {
@@ -188,6 +208,7 @@ static void expropt(ASTNode **noderef) {
          return;
       }
    }
+#endif
 
    // everybody else
    for (int i = 0; i < node->count; i++) {
