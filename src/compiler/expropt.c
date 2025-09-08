@@ -61,6 +61,21 @@ static bool is_binary_op(ASTNode *node) {
    return false;
 }
 
+static bool is_unary_op(ASTNode *node) {
+   if (node->name[1] == 0 && NULL != strchr("+-", node->name[0])) {
+      if (node->count == 1) {
+         if (is_lone_expr(node->children[0])) {
+            node->children[0] = node->children[0]->children[0];
+         }
+
+         if (is_float_or_int(node->children[0])) {
+            return true;
+         }
+      }
+   }
+   return false;
+}
+
 static void handle_binary_plus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -83,6 +98,10 @@ static void handle_binary_plus(ASTNode **noderef) {
    }
 }
 
+static void handle_unary_plus(ASTNode **noderef) {
+   *noderef = (*noderef)->children[0];
+}
+
 static void handle_binary_minus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -100,6 +119,25 @@ static void handle_binary_minus(ASTNode **noderef) {
       double right = atof(node->children[1]->strval);
 
       double result = left - right;
+      sprintf(buf, "%la", result);
+      *noderef = make_float_leaf(strdup(buf));
+   }
+}
+
+static void handle_unary_minus(ASTNode **noderef) {
+   ASTNode *node = *noderef;
+   char buf[256];
+   if (is_int(node->children[0])) {
+      // TODO FIX handle binary!
+      long long left = atoll(node->children[0]->strval);
+
+      long long result = -left;
+      sprintf(buf, "%lld", result);
+      *noderef = make_integer_leaf(strdup(buf));
+   }
+   else {
+      double left = atof(node->children[0]->strval);
+      double result = -left;
       sprintf(buf, "%la", result);
       *noderef = make_float_leaf(strdup(buf));
    }
@@ -200,15 +238,16 @@ static void expropt(ASTNode **noderef) {
       }
    }
 
-#if 0
-   // parenthetical expressions down to one term
-   if (!strcmp(node->name, "expr") && node->count == 1) {
-      if (is_float_or_int(node->children[0])) {
-         *noderef = node->children[0];
-         return;
+   if (is_unary_op(node)) {
+      switch(node->name[0]) {
+         case '+':
+            handle_unary_plus(noderef);
+            return;
+         case '-':
+            handle_unary_minus(noderef);
+            return;
       }
    }
-#endif
 
    // everybody else
    for (int i = 0; i < node->count; i++) {
