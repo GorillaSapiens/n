@@ -23,8 +23,7 @@ static long long parse_binary(const char *p) {
    return ret;
 }
 
-static long long parse_int(const char *p) {
-   char buf[256];
+static void deunderscore(char *buf, const char *p) {
    char *q = buf;
 
    while (*p) {
@@ -36,6 +35,11 @@ static long long parse_int(const char *p) {
       }
    }
    *q = 0;
+}
+
+static long long parse_int(const char *p) {
+   char buf[256];
+   deunderscore(buf, p);
 
    if (buf[0] == '0' && (buf[1] == 'b' || buf[1] == 'B')) {
       return parse_binary(buf);
@@ -46,23 +50,18 @@ static long long parse_int(const char *p) {
 
 static double parse_float(const char *p) {
    char buf[256];
-   char *q = buf;
-
-   while (*p) {
-      if (*p != '_') {
-         *q++ = *p++;
-      }
-      else {
-         p++;
-      }
-   }
-   *q = 0;
-
-   if (buf[0] == '0' && (buf[1] == 'b' || buf[1] == 'B')) {
-      return (double) parse_binary(buf);
-   }
+   deunderscore(buf, p);
 
    return atof(buf);
+}
+
+static double parse_node_to_double(ASTNode *node) {
+   if (!strcmp(node->name, "int")) {
+      return parse_int(node->strval);
+   }
+   else {
+      return parse_float(node->strval);
+   }
 }
 
 static bool is_int(ASTNode *node) {
@@ -133,7 +132,6 @@ static void handle_binary_plus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0]) && is_int(node->children[1])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
@@ -142,8 +140,8 @@ static void handle_binary_plus(ASTNode **noderef) {
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      double left = parse_float(node->children[0]->strval);
-      double right = parse_float(node->children[1]->strval);
+      double left = parse_node_to_double(node->children[0]);
+      double right = parse_node_to_double(node->children[1]);
 
       double result = left + right;
       sprintf(buf, "%la", result);
@@ -159,7 +157,6 @@ static void handle_binary_minus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0]) && is_int(node->children[1])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
@@ -168,8 +165,8 @@ static void handle_binary_minus(ASTNode **noderef) {
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      double left = parse_float(node->children[0]->strval);
-      double right = parse_float(node->children[1]->strval);
+      double left = parse_node_to_double(node->children[0]);
+      double right = parse_node_to_double(node->children[1]);
 
       double result = left - right;
       sprintf(buf, "%la", result);
@@ -181,7 +178,6 @@ static void handle_unary_minus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
 
       long long result = -left;
@@ -189,7 +185,7 @@ static void handle_unary_minus(ASTNode **noderef) {
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      double left = parse_float(node->children[0]->strval);
+      double left = parse_node_to_double(node->children[0]);
       double result = -left;
       sprintf(buf, "%la", result);
       *noderef = make_float_leaf(strdup(buf));
@@ -200,7 +196,6 @@ static void handle_binary_times(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0]) && is_int(node->children[1])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
@@ -209,8 +204,8 @@ static void handle_binary_times(ASTNode **noderef) {
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      double left = parse_float(node->children[0]->strval);
-      double right = parse_float(node->children[1]->strval);
+      double left = parse_node_to_double(node->children[0]);
+      double right = parse_node_to_double(node->children[1]);
 
       double result = left * right;
       sprintf(buf, "%la", result);
@@ -222,7 +217,6 @@ static void handle_binary_divide(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0]) && is_int(node->children[1])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
@@ -231,8 +225,8 @@ static void handle_binary_divide(ASTNode **noderef) {
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      double left = parse_float(node->children[0]->strval);
-      double right = parse_float(node->children[1]->strval);
+      double left = parse_node_to_double(node->children[0]);
+      double right = parse_node_to_double(node->children[1]);
 
       double result = left / right;
       sprintf(buf, "%la", result);
@@ -244,7 +238,6 @@ static void handle_binary_modulo(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
    if (is_int(node->children[0]) && is_int(node->children[1])) {
-      // TODO FIX handle binary!
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
