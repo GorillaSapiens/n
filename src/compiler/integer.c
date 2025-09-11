@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "util.h"
 #include "xray.h"
 
 static int c2n(char c) {
@@ -93,37 +94,30 @@ int make_le_int(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
 
-   // make a copy, strip out underscores;
-   char *copy = strdup(p);
-   char *q = copy;
-   while (*p) {
-      if (*p != '_') {
-         *q++ = *p++;
-      }
-      else {
-         p++;
-      }
-   }
-   *q = 0;
+   char *copy = strip_underscores(p);
+   int ret;
 
    if (!strcmp(copy, "0")) {
       for (int i = 0; i < size; i++) {
          target[i] = 0;
       }
-      return 1;
+      ret = 1;
    }
    else if (!strncasecmp(copy, "0b", 2)) {
-      return make_le_binary(copy + 2, target, size);
+      ret = make_le_binary(copy + 2, target, size);
    }
    else if (!strncasecmp(copy, "0x", 2)) {
-      return make_le_hex(copy + 2, target, size);
+      ret = make_le_hex(copy + 2, target, size);
    }
    else if (copy[0] == '0') {
-      return make_le_octal(copy + 1, target, size);
+      ret = make_le_octal(copy + 1, target, size);
    }
    else {
-      return make_le_decimal(copy, target, size);
+      ret = make_le_decimal(copy, target, size);
    }
+
+   free(copy);
+   return ret;
 }
 
 void negate_le_int(unsigned char *target, int size) {
@@ -154,60 +148,3 @@ void negate_be_int(unsigned char *target, int size) {
       carry >>= 8;
    }
 }
-
-#ifdef UNIT_TEST
-static unsigned long parse_number(const char *str) {
-   if (str[0] == '0' && (str[1] == 'b' || str[1] == 'B')) {
-      // handles 0b (binary)
-      return strtoul(str + 2, NULL, 2);
-   }
-   // handles 0x (hex), 0 (oct), and default decimal
-   return strtoul(str, NULL, 0);
-}
-
-static void test(const char *p) {
-   unsigned char buf[16];
-   char *b = buf;
-   const char *q = p;
-   int i, n;
-   unsigned long desire;
-
-   while (*q) {
-      if (*q != '_') {
-         *b++ = *q++;
-      }
-      else {
-         q++;
-      }
-   }
-   *b = 0;
-
-   desire = parse_number(buf);
-
-   n = make_le_int(p, buf, sizeof(buf));
-   printf("%ld= (%d) ", desire, n);
-
-   for (i = 0; i < n; i++) {
-      printf("%02x:%02lx ", buf[i], (desire >> (8 * i)) & 0xFF);
-   }
-   printf("\n");
-}
-
-void main(void) {
-   test("0");
-   test("1");
-   test("255");
-   test("256");
-   test("1234");
-   test("12345");
-   test("4_294_967_295");
-   test("4_294_967_296");
-   test("0x1");
-   test("0x12");
-   test("0x123");
-   test("0x1234");
-   test("0x123456789ABCDEF");
-   test("0b1100001110100101");
-   test("076543210");
-}
-#endif

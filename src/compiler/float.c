@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "messages.h"
+#include "util.h"
 #include "xray.h"
 
 // TODO FIX we'll need to revisit this later, for now just ensure
@@ -58,18 +59,7 @@ int make_le_float(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
 
-   // make a copy, strip out underscores;
-   char *copy = strdup(p);
-   char *q = copy;
-   while (*p) {
-      if (*p != '_') {
-         *q++ = *p++;
-      }
-      else {
-         p++;
-      }
-   }
-   *q = 0;
+   char *copy = strip_underscores(p);
 
    // TODO FIX for now, we cheat, by using sscanf and some
    // bit twiddling voodoo that only works for size <= sizeof(double)
@@ -83,10 +73,14 @@ int make_le_float(const char *p, unsigned char *target, int size) {
       }
    }
    else {
-      if (sscanf(copy, "%la", &value) != 1) {
+      if (sscanf(copy, "%lf", &value) != 1) {
          error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, copy);
       }
    }
+
+   free(copy);
+
+   // TODO FIX this may depend on host byte ordering
 
    ivalue = *((unsigned long long *) &value);
 

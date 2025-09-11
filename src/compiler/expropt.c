@@ -10,6 +10,7 @@
 #include "float.h"
 #include "integer.h"
 #include "messages.h"
+#include "util.h"
 #include "xray.h"
 
 static long long parse_binary(const char *p) {
@@ -23,36 +24,26 @@ static long long parse_binary(const char *p) {
    return ret;
 }
 
-static void deunderscore(char *buf, const char *p) {
-   char *q = buf;
-
-   while (*p) {
-      if (*p != '_') {
-         *q++ = *p++;
-      }
-      else {
-         p++;
-      }
-   }
-   *q = 0;
-}
-
 static long long parse_int(const char *p) {
-   char buf[256];
-   deunderscore(buf, p);
+   char *buf = strip_underscores(p);
+   long long ret;
 
    if (buf[0] == '0' && (buf[1] == 'b' || buf[1] == 'B')) {
-      return parse_binary(buf);
+      ret = parse_binary(buf);
+   }
+   else {
+      ret = atoll(buf);
    }
 
-   return atoll(buf);
+   free(buf);
+   return ret;
 }
 
 static double parse_float(const char *p) {
-   char buf[256];
-   deunderscore(buf, p);
-
-   return atof(buf);
+   char *buf = strip_underscores(p);
+   double ret = atof(buf);
+   free(buf);
+   return ret;
 }
 
 static double parse_node_to_double(ASTNode *node) {
