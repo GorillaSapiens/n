@@ -26,7 +26,6 @@ SRCSRC = \
    pair.c \
    set.c \
    typename.c \
-   util.c \
    xform.c \
    xray.c \
    main.c

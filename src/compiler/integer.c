@@ -1,9 +1,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
-#include "util.h"
 #include "xray.h"
+
+static long long parse_binary(const char *p) {
+   long long ret = 0;
+   p += 2;
+   while (*p) {
+      ret <<= 1;
+      ret |= (*p - '0');
+      p++;
+   }
+   return ret;
+}
+
+long long parse_int(const char *p) {
+   long long ret;
+   bool negate = false;
+
+   if (*p == '-') {
+      negate = true;
+      p++;
+   }
+
+   if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
+      ret = parse_binary(p);
+   }
+   else {
+      ret = atoll(p);
+   }
+
+   if (negate) {
+      ret = -ret;
+   }
+
+   return ret;
+}
 
 static int c2n(char c) {
    if (c >= '0' && c <= '9') {
@@ -94,29 +128,27 @@ int make_le_int(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
 
-   char *copy = strip_underscores(p);
    int ret;
 
-   if (!strcmp(copy, "0")) {
+   if (!strcmp(p, "0")) {
       for (int i = 0; i < size; i++) {
          target[i] = 0;
       }
       ret = 1;
    }
-   else if (!strncasecmp(copy, "0b", 2)) {
-      ret = make_le_binary(copy + 2, target, size);
+   else if (!strncasecmp(p, "0b", 2)) {
+      ret = make_le_binary(p + 2, target, size);
    }
-   else if (!strncasecmp(copy, "0x", 2)) {
-      ret = make_le_hex(copy + 2, target, size);
+   else if (!strncasecmp(p, "0x", 2)) {
+      ret = make_le_hex(p + 2, target, size);
    }
-   else if (copy[0] == '0') {
-      ret = make_le_octal(copy + 1, target, size);
+   else if (p[0] == '0') {
+      ret = make_le_octal(p + 1, target, size);
    }
    else {
-      ret = make_le_decimal(copy, target, size);
+      ret = make_le_decimal(p, target, size);
    }
 
-   free(copy);
    return ret;
 }
 

@@ -1,6 +1,9 @@
 #ifndef _INCLUDE_INTEGER_H_
 #define _INCLUDE_INTEGER_H_
 
+// convert a string to integer
+long long parse_int(const char *p);
+
 // NOTE:
 // 'p' may be binary (0b*), octal(0*), hex (0x*), or decimal
 // returns 'size' on success

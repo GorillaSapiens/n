@@ -4,7 +4,6 @@
 #include <assert.h>
 
 #include "messages.h"
-#include "util.h"
 #include "xray.h"
 
 // TODO FIX we'll need to revisit this later, for now just ensure
@@ -50,6 +49,23 @@ static int ebits(int size) {
    return -1;
 }
 
+double parse_float(const char *p) {
+   double ret;
+
+   if (strstr(p, "0x") || strstr(p, "0X")) {
+      if (sscanf(p, "%la", &ret) != 1) {
+         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, p);
+      }
+   }
+   else {
+      if (sscanf(p, "%lf", &ret) != 1) {
+         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, p);
+      }
+   }
+
+   return ret;
+}
+
 int make_le_float(const char *p, unsigned char *target, int size) {
 
    int expbits = ebits(size);
@@ -59,26 +75,12 @@ int make_le_float(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
 
-   char *copy = strip_underscores(p);
-
    // TODO FIX for now, we cheat, by using sscanf and some
    // bit twiddling voodoo that only works for size <= sizeof(double)
 
-   double value;
+   double value = parse_float(p);
+
    unsigned long long ivalue;
-
-   if (strstr(copy, "0x") || strstr(copy, "0X")) {
-      if (sscanf(copy, "%la", &value) != 1) {
-         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, copy);
-      }
-   }
-   else {
-      if (sscanf(copy, "%lf", &value) != 1) {
-         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, copy);
-      }
-   }
-
-   free(copy);
 
    // TODO FIX this may depend on host byte ordering
 

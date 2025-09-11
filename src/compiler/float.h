@@ -1,6 +1,9 @@
 #ifndef _INCLUDE_FLOAT_H_
 #define _INCLUDE_FLOAT_H_
 
+// convert a string to float
+double parse_float(const char *p);
+
 // NOTE:
 // 'p' may be hex (0x*), or decimal
 // returns 'size' on success

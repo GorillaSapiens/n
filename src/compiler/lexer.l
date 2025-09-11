@@ -1,9 +1,10 @@
 /* ---------- lexer.l ---------- */
 %{
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
 #include <ctype.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "ast.h"
 #include "lextern.h"
@@ -84,6 +85,28 @@ void pop_file() {
    file_stack_top--;
    current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : root_filename;
 }
+
+static char *strip_underscores(const char *p) {
+   if (!p) {
+      return NULL;
+   }
+
+   char *ret = (char *) malloc (strlen(p) + 1);
+   char *q = ret;
+   
+   while (*p) {
+      if (*p != '_') {
+         *q++ = *p++;
+      }
+      else {
+         p++;
+      }
+   }
+   *q = 0;
+
+   return ret;
+}
+
 %}
 
 %option noinput nounput
@@ -189,12 +212,12 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 }
 
 {INT} {
-   yylval.str = strdup(yytext);
+   yylval.str = strip_underscores(yytext);
    return INTEGER;
 }
 
 {FLOAT} {
-   yylval.str = strdup(yytext);
+   yylval.str = strip_underscores(yytext);
    return FLOAT;
 }
 
