@@ -410,8 +410,7 @@ label_stmt:
   ;
 
 array_initializer:
-    '{' expr_list '}'                        { COVER; $$ = $2; }
-  | '{' expr_list ',' '}'                    { COVER; $$ = $2; }
+    '{' expr_list opt_comma '}'              { COVER; $$ = $2; }
   ;
 
 expr_list:
