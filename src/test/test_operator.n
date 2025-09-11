@@ -1,5 +1,7 @@
-type bool  { 1 };
-type int   { 2 $signed $endian:little };
+// nc -X dumpast -X parseonly
+
+type bool  { $size:1 };
+type int   { $size:2 $signed $endian:little };
 bool operator{}(int);     // used by && || !, may be skipped if all 0x00 is false
 int  operator|(int,int);  // bitwise |, may be skipped if true bitwise or is ok
 int  operator^(int,int);  // bitwise ^, may be skipped if true bitwise xor is ok
