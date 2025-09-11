@@ -1,3 +1,5 @@
+// nc -X dumpast -X parseonly
+
 // cp437
 
 xform cp437 {
