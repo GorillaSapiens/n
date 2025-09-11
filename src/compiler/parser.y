@@ -557,7 +557,7 @@ primary_expr:
   ;
 
 arg_list:
-    %empty                                   { COVER; $$ = MAKE_NAMED_NODE("expre_args", NULL); }
+    %empty                                   { COVER; $$ = MAKE_NAMED_NODE("expr_args", NULL); }
   | expr_args                                { COVER; $$ = $1; }
   ;
 

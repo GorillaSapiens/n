@@ -1,13 +1,15 @@
+// nc -X dumpast -X parseonly
+
 // Single-line comment
 
 /* Block comment over
    multiple lines */
 
-type void { 0 };
-type uint8 { 1 $unsigned };
-type * { 2 $endian:little };
-type float { 2 $endian:little};
-type int { 2 $signed $endian:little};
+type void { $size:0 };
+type uint8 { $size:1 $unsigned };
+type * { $size:2 $endian:little };
+type float { $size:2 $endian:little};
+type int { $size:2 $signed $endian:little};
 
 struct Point {
     int x;
@@ -19,8 +21,8 @@ union Value {
     float f;
 };
 
-Point origin := Point { x := 0; y := 0; };
-Value v := Value { i := 42; };
+Point origin := { .x := 0, .y := 0 };
+Value v := { .i := 42, };
 
 void froom(Point) {
 }
@@ -66,10 +68,8 @@ label1:
    // Function call and assignment
    foo := bar(1, 2, 3);
 
-     // it came from the preprocessor!!!
-#whateverman
 
-     // Unary operators
+   // Unary operators
    x := -1;
    y := !x;
    z := ~x;
