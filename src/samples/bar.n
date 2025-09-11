@@ -1,3 +1,0 @@
-type int { $size:2 $signed $endian:little };
-
-int a := -5 + 3;
