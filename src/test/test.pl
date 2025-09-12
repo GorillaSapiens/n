@@ -2,18 +2,17 @@
 
 foreach $file (`ls *.n`) {
    $file =~ s/[\x0a\x0d]//g;
-   print "=== $file\n";
 
    @runner = `head -1 $file`;
    $runner = $runner[0];
    $runner =~ s/[\x0a\x0d]//g;
 
    if (!($runner =~ /\/\/ nc/)) {
-      print "[FAIL] missing runner\n";
+      print "[FAIL] $file missing runner\n";
       exit -1;
    }
    elsif ($runner =~ /[;`]/ || $runner =~ /\.\./) {
-      print "[FAIL] hey! no sneaky shell shenanigans !!!\n";
+      print "[FAIL] $file hey! no sneaky shell shenanigans !!!\n";
       exit -1;
    }
 
@@ -22,16 +21,15 @@ foreach $file (`ls *.n`) {
 
    $runner =~ s/  / /g; # remove extra spaces, for aesthetics
 
-   print "$runner\n";
-
-   $status = system("$runner");
+   $status = system("$runner >/dev/null 2>/dev/null");
    $exit_code = $? >> 8;
 
    if ($exit_code == 0) {
-      print "[pass]\n";
+      print "[pass] $file\n";
    }
    else {
-      print "[FAIL] exit code $exit_code\n";
+      print "[FAIL] $file exit code $exit_code\n";
+      print "$runner\n";
       exit(-1);
    }
 }
