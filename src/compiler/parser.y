@@ -94,6 +94,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> additive_expr
 %type <node> arg_list
 %type <node> array_initializer
+%type <node> assign_expr
 %type <node> bitwise_and_expr
 %type <node> bitwise_or_expr
 %type <node> bitwise_xor_expr
@@ -101,13 +102,14 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> break_stmt
 %type <node> case_block
 %type <node> case_section
+%type <node> comma_expr
 %type <node> continue_stmt
 %type <node> decl
-%type <node> decl_list
 %type <node> decl_item
+%type <node> decl_list
+%type <node> decl_specifiers
 %type <node> decl_subitem
 %type <node> declarator
-%type <node> decl_specifiers
 %type <node> defdecl_stmt
 %type <node> direct_declarator
 %type <node> do_stmt
@@ -124,6 +126,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> goto_stmt
 %type <node> if_stmt
 %type <node> include_stmt
+%type <node> initializer
 %type <node> label_stmt
 %type <node> logical_and_expr
 %type <node> logical_or_expr
@@ -297,7 +300,7 @@ decl_list:
 
 decl_item:
     decl_subitem                                     { COVER; $$ = MAKE_NODE($1, make_empty_leaf()); }
-  | decl_subitem ASSIGN expr                         { COVER; $$ = MAKE_NODE($1, $3); }
+  | decl_subitem ASSIGN initializer                  { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 decl_subitem:
@@ -409,6 +412,11 @@ label_stmt:
     IDENTIFIER ':' statement                 { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), $3); }
   ;
 
+initializer:
+    assign_expr                              { COVER; $$ = $1; }
+  | array_initializer                        { COVER; $$ = $1; }
+  ;
+
 array_initializer:
     '{' expr_list opt_comma '}'              { COVER; $$ = $2; }
   ;
@@ -419,8 +427,8 @@ expr_list:
 ;
 
 named_expr:
-    expr                                     { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
-  | '.' IDENTIFIER ASSIGN expr               { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+    assign_expr                              { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
+  | '.' IDENTIFIER ASSIGN assign_expr        { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   ;
 
 expr_stmt:
@@ -433,21 +441,29 @@ opt_expr:
   | expr                                     { COVER; $$ = $1; }
   ;
 
-
 expr:
-    logical_or_expr                          { COVER; $$ = MAKE_NODE($1); }
-  | logical_or_expr '?' expr ':' expr        { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
-  | lvalue ASSIGN expr                       { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
-  | lvalue ADD_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
-  | lvalue SUB_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
-  | lvalue MUL_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
-  | lvalue DIV_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
-  | lvalue MOD_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
-  | lvalue AND_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
-  | lvalue OR_ASSIGN expr                    { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
-  | lvalue XOR_ASSIGN expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
-  | lvalue LSHIFT_ASSIGN expr                { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
-  | lvalue RSHIFT_ASSIGN expr                { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
+    comma_expr                               { COVER; $$ = $1; }
+  ;
+
+comma_expr:
+    assign_expr                              { COVER; $$ = $1; }
+  | comma_expr ',' assign_expr               { COVER; $$ = MAKE_NAMED_NODE(",", $1, $3); }
+  ;
+
+assign_expr:
+    logical_or_expr                                { COVER; $$ = MAKE_NODE($1); }
+  | logical_or_expr '?' comma_expr ':' comma_expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
+  | lvalue ASSIGN assign_expr                      { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
+  | lvalue ADD_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
+  | lvalue SUB_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
+  | lvalue MUL_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }
+  | lvalue DIV_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("/="), $1, $3); }
+  | lvalue MOD_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("%="), $1, $3); }
+  | lvalue AND_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("&="), $1, $3); }
+  | lvalue OR_ASSIGN assign_expr                   { COVER; $$ = MAKE_NODE(make_identifier_leaf("|="), $1, $3); }
+  | lvalue XOR_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("^="), $1, $3); }
+  | lvalue LSHIFT_ASSIGN assign_expr               { COVER; $$ = MAKE_NODE(make_identifier_leaf("<<="), $1, $3); }
+  | lvalue RSHIFT_ASSIGN assign_expr               { COVER; $$ = MAKE_NODE(make_identifier_leaf(">>="), $1, $3); }
   ;
 
 logical_or_expr:
@@ -523,7 +539,7 @@ lvalue_base:
 
 lvalue_suffixes:
     %empty                                   { COVER; $$ = make_empty_leaf(); }
-  | lvalue_suffixes '[' expr ']'             { COVER; $$ = MAKE_NAMED_NODE("[", $1, $3); }
+  | lvalue_suffixes '[' assign_expr ']'      { COVER; $$ = MAKE_NAMED_NODE("[", $1, $3); }
   | lvalue_suffixes '.' IDENTIFIER           { COVER; $$ = MAKE_NAMED_NODE(".", $1, make_identifier_leaf($3)); }
   | lvalue_suffixes ARROW IDENTIFIER         { COVER; $$ = MAKE_NAMED_NODE("->", $1, make_identifier_leaf($3)); }
   ;
@@ -550,7 +566,6 @@ primary_expr:
   | STRING '`' XFORMNAME                     { COVER; $$ = do_xform(make_string_leaf($1), $3); }
   | CHAR                                     { COVER; $$ = do_xform(make_string_leaf($1), NULL); }
   | CHAR '`' XFORMNAME                       { COVER; $$ = do_xform(make_string_leaf($1), $3); }
-  | array_initializer                        { COVER; $$ = $1; }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }
   ;
@@ -561,8 +576,8 @@ arg_list:
   ;
 
 expr_args:
-    expr                                     { COVER; $$ = MAKE_NODE($1); }
-  | expr_args ',' expr                       { COVER; $$ = append_child($1, $3); }
+    assign_expr                              { COVER; $$ = MAKE_NODE($1); }
+  | expr_args ',' assign_expr                { COVER; $$ = append_child($1, $3); }
   ;
 
 
@@ -572,7 +587,7 @@ case_section:
   ;
 
 case_block:
-    CASE expr ':' statement_list             { COVER; $$ = MAKE_NODE($2, $4); }
+    CASE assign_expr ':' statement_list      { COVER; $$ = MAKE_NODE($2, $4); }
   | DEFAULT ':' statement_list               { COVER; $$ = MAKE_NODE(make_empty_leaf(), $3); }
   ;
 
