@@ -97,14 +97,4 @@ while (condition) {
    }
 }
 
-(*) commas in expressions are not allowed.  use blocks and semicolons instead.
-
-C statements like:
-
-a = 1, b = 2, c = 3;
-
-become
-
-{ a := 1; b := 2; c := 3; }
-
 (*) ???

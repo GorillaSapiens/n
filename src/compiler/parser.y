@@ -103,6 +103,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> case_block
 %type <node> case_section
 %type <node> comma_expr
+%type <node> conditional_expr
 %type <node> continue_stmt
 %type <node> decl
 %type <node> decl_item
@@ -427,8 +428,8 @@ expr_list:
 ;
 
 named_expr:
-    assign_expr                              { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
-  | '.' IDENTIFIER ASSIGN assign_expr        { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
+    initializer                              { COVER; $$ = MAKE_NODE(make_empty_leaf(), $1); }
+  | '.' IDENTIFIER ASSIGN initializer        { COVER; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   ;
 
 expr_stmt:
@@ -446,14 +447,18 @@ expr:
   ;
 
 comma_expr:
-    assign_expr                              { COVER; $$ = $1; }
-  | comma_expr ',' assign_expr               { COVER; $$ = MAKE_NAMED_NODE(",", $1, $3); }
+    conditional_expr                         { COVER; $$ = $1; }
+  | comma_expr ',' conditional_expr          { COVER; $$ = MAKE_NAMED_NODE(",", $1, $3); }
+  ;
+
+conditional_expr:
+    assign_expr                                { COVER; $$ = $1; }
+  | assign_expr '?' expr ':' conditional_expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
   ;
 
 assign_expr:
     logical_or_expr                                { COVER; $$ = MAKE_NODE($1); }
-  | logical_or_expr '?' comma_expr ':' comma_expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
-  | lvalue ASSIGN assign_expr                      { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
+  | lvalue ASSIGN initializer                      { COVER; $$ = MAKE_NODE(make_identifier_leaf(":="), $1, $3); }
   | lvalue ADD_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("+="), $1, $3); }
   | lvalue SUB_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("-="), $1, $3); }
   | lvalue MUL_ASSIGN assign_expr                  { COVER; $$ = MAKE_NODE(make_identifier_leaf("*="), $1, $3); }

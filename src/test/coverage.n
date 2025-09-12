@@ -102,6 +102,7 @@ void useless() {
    a := "hello";
 
    // TODO FIX this is fugly!
+   a := { 1, 2, 3, };
    a := { 1, 2, 3 };
    a := { 3.14 };
    a := { -3.14 };
@@ -203,4 +204,7 @@ int function3(void) {
       continue do_label;
       i++;
    } while (i != 5);
+
+   for (i := 0, j := 2; i < 3; j++) {
+   }
 }
