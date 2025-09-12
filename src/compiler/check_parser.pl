@@ -3,40 +3,40 @@ use strict;
 use warnings;
 use utf8;
 
-# Usage: perl check_parser.pl grammar.y
-# Goal: For every action block in a Bison/Yacc .y grammar, verify that
-#       all NONTERMINALS on the RHS so far are referenced via $n.
+# check_actions.pl — verify that each action uses all $n for NONTERMINALS in its visible RHS.
 # Assumptions:
-#   - ALL-CAPS identifiers are terminals.
-#   - Single-quoted character literals are terminals.
-#   - Mid-rule actions are supported; they create a synthetic symbol which is
-#     NOT required to be referenced.
+#   * ALL-CAPS identifiers are terminals.
+#   * Single-quoted character literals are terminals.
+#   * %empty contributes no symbols (no $n required).
+#   * Mid-rule actions are supported; they create a synthetic nonterminal that is NOT required.
 # Output:
-#   file:line: unused $n in action for rule 'LHS' (alternative starts here)
+#   file:line: unused $N in action for rule 'LHS' (alternative starts here)
 
+# ---- Load file ---------------------------------------------------------------
 my $file = shift @ARGV or die "Usage: $0 grammar.y\n";
 open my $fh, "<:raw", $file or die "Cannot open $file: $!\n";
 local $/;
 my $src = <$fh>;
 close $fh;
 
-# Extract grammar section between %% ... %%
+# ---- Find grammar section and establish line offset --------------------------
 my $i1 = index($src, "%%");
 $i1 >= 0 or die "No '%%' section delimiter found.\n";
 my $i2 = index($src, "%%", $i1 + 2);
 $i2 >= 0 or die "Only one '%%' delimiter found; need two.\n";
-my $grammar = substr($src, $i1 + 2, $i2 - ($i1 + 2));
 
-# --- Utilities ---------------------------------------------------------------
+my $GRAMMAR_START = $i1 + 2;                      # byte offset where grammar slice starts
+my $LINE_OFFSET   = (() = substr($src, 0, $GRAMMAR_START) =~ /\n/g);  # lines before grammar
 
+my $grammar = substr($src, $GRAMMAR_START, $i2 - $GRAMMAR_START);
+
+# ---- Helpers -----------------------------------------------------------------
 sub line_of_pos {
     my ($s, $p) = @_;
     $p = 0 if $p < 0;
     $p = length($s) if $p > length($s);
-    # Count newlines up to $p
-    my $sub = substr($s, 0, $p);
-    my $c = ($sub =~ tr/\n//);
-    return $c + 1;
+    my $c = (() = substr($s, 0, $p) =~ /\n/g);
+    return $c + 1 + $LINE_OFFSET;                 # adjust to file-absolute line numbers
 }
 
 sub is_terminal_id {
@@ -44,8 +44,7 @@ sub is_terminal_id {
     return $id =~ /^[A-Z][A-Z0-9_]*$/;
 }
 
-# Parse a single-quoted char literal starting at $pos in $grammar.
-# Returns new position (past the literal) and the literal text; dies if unterminated.
+# Parse single-quoted character token at $pos; returns (new_pos, literal_text)
 sub parse_char_token_at {
     my ($start) = @_;
     my $p = $start;
@@ -67,8 +66,7 @@ sub parse_char_token_at {
     die "Unterminated character literal at line $line\n";
 }
 
-# Parse a { ... } action block starting at $pos (on '{').
-# Handles nested braces, strings, chars, // and /* */ comments.
+# Parse a { ... } action block at $pos (on '{'); returns (new_pos, code_wo_outer_braces, start_line_abs)
 sub parse_action_at {
     my ($start) = @_;
     my $p   = $start;
@@ -76,15 +74,14 @@ sub parse_action_at {
     die "Internal: parse_action_at not at '{'\n" unless substr($grammar, $p, 1) eq '{';
     my $start_line = line_of_pos($grammar, $p);
 
-    my $code = '';
-    my $depth = 1;          # we're ON the first '{'
-    my $in_sl = 0;          # //
-    my $in_ml = 0;          # /* */
-    my $in_sq = 0;          # '...'
-    my $in_dq = 0;          # "..."
+    my $code  = '{';
+    my $depth = 1;     # we are ON the first '{'
+    my $in_sl = 0;     # //
+    my $in_ml = 0;     # /* */
+    my $in_sq = 0;     # '...'
+    my $in_dq = 0;     # "..."
     my $esc   = 0;
 
-    $code .= '{';           # include the opening brace
     $p++;
 
     while ($p < $len) {
@@ -108,12 +105,11 @@ sub parse_action_at {
         if ($ch eq "'")  { $in_sq = 1; next; }
         if ($ch eq '"')  { $in_dq = 1; next; }
 
-        # braces (only count when not in comment/string)
+        # braces (only when not in comment/string)
         if ($ch eq '{') { $depth++; next; }
         if ($ch eq '}') {
             $depth--;
             if ($depth == 0) {
-                # strip outer braces from returned code
                 (my $raw = $code) =~ s/^\{//s;
                 $raw =~ s/\}$//s;
                 return ($p, $raw, $start_line);
@@ -124,15 +120,11 @@ sub parse_action_at {
     die "Unterminated action block starting at line $start_line\n";
 }
 
-# --- Tokenizer ---------------------------------------------------------------
-
-# We keep an explicit $pos pointer and always run regexes directly on $grammar.
+# ---- Tokenizer ---------------------------------------------------------------
 my $pos = 0;
 pos($grammar) = 0;
+my @look = ();
 
-my @look = (); # token lookahead buffer
-
-# Token structure: { type => ..., line => N, ... }
 sub peek_token {
     my $t = next_token();
     unshift @look, $t if defined $t;
@@ -147,14 +139,10 @@ sub next_token {
     # Skip whitespace and comments
     while ($pos < $len) {
         pos($grammar) = $pos;
-        # spaces/tabs/formfeeds
         if ($grammar =~ /\G[ \t\r\f]+/gc) { $pos = pos($grammar); next; }
-        # newlines
-        if ($grammar =~ /\G\n/gc) { $pos = pos($grammar); next; }
-        # // comment
-        if ($grammar =~ /\G\/\/[^\n]*/gc) { $pos = pos($grammar); next; }
-        # /* */ comment
-        if ($grammar =~ /\G\/\*.*?\*\//gcs) { $pos = pos($grammar); next; }
+        if ($grammar =~ /\G\n/gc)          { $pos = pos($grammar); next; }
+        if ($grammar =~ /\G\/\/[^\n]*/gc)  { $pos = pos($grammar); next; }
+        if ($grammar =~ /\G\/\*.*?\*\//gcs){ $pos = pos($grammar); next; }
         last;
     }
     return undef if $pos >= $len;
@@ -168,7 +156,15 @@ sub next_token {
         return { type => ($ch eq ':' ? 'colon' : $ch eq '|' ? 'bar' : 'semi'), line => $start_line };
     }
 
-    # Single-quoted char token
+    # %empty keyword
+    pos($grammar) = $pos;
+    if ($grammar =~ /\G%empty\b/gc) {
+        my $tok = { type => 'empty', line => $start_line };
+        $pos = pos($grammar);
+        return $tok;
+    }
+
+    # Single-quoted char token (terminal)
     if ($ch eq "'") {
         my ($newpos, $text) = parse_char_token_at($pos);
         my $tok = { type => 'term_char', text => $text, line => $start_line };
@@ -192,16 +188,16 @@ sub next_token {
         return { type => 'id', value => $id, line => $start_line };
     }
 
-    # Unrecognized: advance one char to avoid infinite loop
+    # Fallback: advance one char to avoid infinite loop
     $pos++;
     return next_token();
 }
 
-# --- Parser & Checker --------------------------------------------------------
-
-# Parse: LHS ':' alt ('|' alt)* ';'
-# alt := sequence (action? where action before |/; is final-action)
-# sequence items: id (terminal/nonterminal by rule), term_char, mid-rule action
+# ---- Parser & Checker --------------------------------------------------------
+# Grammar: LHS ':' alt ('|' alt)* ';'
+# For each action (mid-rule or final), check that all NONTERMINALS among visible RHS items
+# have their $n referenced in the action. Synthetic mid-rule placeholders are excluded.
+# %empty adds nothing to the visible sequence.
 
 while (defined (my $tok = next_token())) {
     next unless $tok->{type} eq 'id';
@@ -214,6 +210,10 @@ while (defined (my $tok = next_token())) {
         my @seq = (); # items so far in this alternative
 
         while (defined (my $t = next_token())) {
+            if ($t->{type} eq 'empty') {
+                # %empty contributes no symbols; nothing to push.
+                next;
+            }
             if ($t->{type} eq 'id') {
                 my $is_term = is_terminal_id($t->{value});
                 push @seq, { type => ($is_term ? 'terminal' : 'nonterminal'), synthetic => 0 };
@@ -224,7 +224,6 @@ while (defined (my $tok = next_token())) {
                 next;
             }
             if ($t->{type} eq 'action') {
-                # Final action if next token is '|' or ';' (peek without consuming)
                 my $after = peek_token();
                 my $is_final = ($after && ($after->{type} eq 'bar' || $after->{type} eq 'semi')) ? 1 : 0;
 
@@ -237,7 +236,6 @@ while (defined (my $tok = next_token())) {
                     $expected{$i} = 1;
                 }
 
-                # Which $n are used in this action
                 my %used;
                 my $code = $t->{code} // '';
                 while ($code =~ /\$(\d+)/g) {
@@ -245,26 +243,21 @@ while (defined (my $tok = next_token())) {
                     $used{$n} = 1 if $n >= 1 && $n <= $visible;
                 }
 
-                # Report missing
                 for my $n (sort { $a <=> $b } keys %expected) {
                     next if $used{$n};
                     printf "%s:%d: unused \$%d in action for rule '%s' (alternative starts here)\n",
                         $file, $t->{line}, $n, $lhs;
                 }
 
-                # Mid-rule action creates a synthetic nonterminal
+                # Mid-rule action: synthesize a placeholder nonterminal
                 if (!$is_final) {
                     push @seq, { type => 'nonterminal', synthetic => 1 };
                 }
                 next;
             }
-            if ($t->{type} eq 'bar') {
-                next ALT;
-            }
-            if ($t->{type} eq 'semi') {
-                last ALT;
-            }
-            # else ignore unknowns
+            if ($t->{type} eq 'bar') { next ALT; }
+            if ($t->{type} eq 'semi') { last ALT; }
+            # else ignore unknown
         }
         last ALT; # safety
     }

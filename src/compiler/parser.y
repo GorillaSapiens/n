@@ -179,7 +179,7 @@ program:
   ;
 
 program_item:
-    include_stmt                             { COVER; $$ = $1; }
+    include_stmt                             { COVER; }
   | xform_decl_stmt                          { COVER; $$ = $1; register_xform($$->children[0]->strval, $$->children[1]); }
   | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
@@ -200,7 +200,8 @@ include_stmt:
   ;
 
 xform_decl_stmt:
-    XFORM opt_identifier '{' xform_list opt_comma '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
+    XFORM opt_identifier '{' xform_list ',' '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
+  | XFORM opt_identifier '{' xform_list '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
   ;
 
 opt_identifier:
@@ -419,11 +420,12 @@ initializer:
   ;
 
 array_initializer:
-    '{' expr_list opt_comma '}'              { COVER; $$ = $2; }
+    '{' expr_list ',' '}'                    { COVER; $$ = $2; }
+  | '{' expr_list '}'                        { COVER; $$ = $2; }
   ;
 
 expr_list:
-    named_expr                               { COVER; $$ = MAKE_NODE($1); }
+    named_expr                               { COVER; $$ = $1; }
   | expr_list ',' named_expr                 { COVER; $$ = MAKE_NODE($1, $3); }
 ;
 
