@@ -53,6 +53,7 @@ $(TARGET): $(OBJ)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 parser.tab.c parser.tab.h: parser.y
+	./check_parser.pl parser.y
 	$(YACC) -v -d -W --report=all parser.y
 
 lex.yy.c: lexer.l

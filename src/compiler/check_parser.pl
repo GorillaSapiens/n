@@ -12,6 +12,8 @@ use utf8;
 # Output:
 #   file:line: unused $N in action for rule 'LHS' (alternative starts here)
 
+my $errors = 0;
+
 # ---- Load file ---------------------------------------------------------------
 my $file = shift @ARGV or die "Usage: $0 grammar.y\n";
 open my $fh, "<:raw", $file or die "Cannot open $file: $!\n";
@@ -245,6 +247,7 @@ while (defined (my $tok = next_token())) {
 
                 for my $n (sort { $a <=> $b } keys %expected) {
                     next if $used{$n};
+                    $errors++;
                     printf "%s:%d: unused \$%d in action for rule '%s' (alternative starts here)\n",
                         $file, $t->{line}, $n, $lhs;
                 }
@@ -263,4 +266,4 @@ while (defined (my $tok = next_token())) {
     }
 }
 
-exit 0;
+exit ($errors ? -1 : 0) ;

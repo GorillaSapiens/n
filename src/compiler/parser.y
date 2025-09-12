@@ -139,7 +139,6 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> modifier_list
 %type <node> multiplicative_expr
 %type <node> named_expr
-%type <node> opt_comma
 %type <node> opt_expr
 %type <node> opt_flags
 %type <node> opt_identifier
@@ -179,7 +178,7 @@ program:
   ;
 
 program_item:
-    include_stmt                             { COVER; }
+    include_stmt                             { COVER; $$ = $1; }
   | xform_decl_stmt                          { COVER; $$ = $1; register_xform($$->children[0]->strval, $$->children[1]); }
   | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
@@ -208,11 +207,6 @@ opt_identifier:
     IDENTIFIER  { $$ = make_identifier_leaf($1); }
   | %empty      { $$ = make_identifier_leaf(strdup("")); }
   ;
-
-opt_comma:
-      ','         { /* optional comma, ignore */ }
-    | %empty      { /* no comma, also fine */ }
-    ;
 
 xform_list:
     xform_item                               { COVER; $$ = MAKE_NODE($1); }
