@@ -97,4 +97,8 @@ while (condition) {
    }
 }
 
+(*) function parameters may be declared static.
+
+static function parameters are allocated the same as static variables inside functions.  they are not pushed on the stack during function calls.  while re-entrancy is not prohibited, it should be used with great caution.
+
 (*) ???
