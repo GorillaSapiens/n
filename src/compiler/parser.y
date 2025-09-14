@@ -444,7 +444,7 @@ expr:
 
 comma_expr:
     conditional_expr                         { COVER; $$ = $1; }
-  | comma_expr ',' conditional_expr          { COVER; $$ = MAKE_NAMED_NODE(",", $1, $3); }
+  | comma_expr ',' conditional_expr          { COVER; if (!strcmp($1->name, "comma_expr")) { $$ = append_child($1, $3); } else { $$ = MAKE_NAMED_NODE("comma_expr", $1, $3); } }
   ;
 
 conditional_expr:
