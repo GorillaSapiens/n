@@ -1,8 +1,16 @@
-.org $FFF0
+.org $FF00
+LDA #0
+LDX #<data
+LDY #>data
 JSR $FFFF
-JMP $FFF0
+JMP $FF00
+
+data:
+.asciiz "Hello, World!\n"
+.ascii  "test1"
+.text   "test2"
 
 .org $FFFA
-.word $FFF0
-.word $FFF0
-.word $FFF0
+.word $FF00
+.word $FF00
+.word $FF00

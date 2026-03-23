@@ -91,6 +91,17 @@ uint8_t read_cb(uint16_t addr) {
 void clock_cb(mos6502* cpu) {
 }
 
+void dispatch(uint8_t op, uint16_t arg) {
+   switch(op) {
+      case 0:
+         printf("%s", mem+arg);
+         break;
+      default:
+         fprintf(stderr, "unknown dispatch op %02x\n", op);
+         break;
+   }
+}
+
 int main (int argc, char **argv) {
    if (argc != 2) {
       fprintf(stderr, "Usage: %s <hex>\n", argv[0]);
@@ -107,11 +118,11 @@ int main (int argc, char **argv) {
 
    while (1) {
       cpu->Run(1, counter, mos6502::INST_COUNT);
-      printf("%04x\n", cpu->GetPC());
       if (cpu->GetPC() == 0xFFFF) {
 
-         // do stuff here!
-         printf("peep!\n");
+         uint8_t op = cpu->GetA();
+         uint16_t arg = ((uint16_t)cpu->GetY()) << 8 | cpu->GetX();
+         dispatch(op, arg);
 
          uint8_t tmp = mem[0xFFFF]; // remember original value
          mem[0xFFFF] = 0x60; // insert an RTS there

@@ -66,6 +66,68 @@ static char *unquote_string(const char *s)
    return xstrdup(s);
 }
 
+static int decode_escaped_string(const char *quoted,
+                                 unsigned char *out,
+                                 int out_cap,
+                                 int *out_len)
+{
+   size_t i;
+   size_t n;
+   int len;
+
+   if (!quoted || !out_len)
+      return 0;
+
+   n = strlen(quoted);
+   if (n < 2 || quoted[0] != '"' || quoted[n - 1] != '"')
+      return 0;
+
+   len = 0;
+
+   for (i = 1; i + 1 < n; i++) {
+      unsigned char ch;
+
+      if (quoted[i] == '\\' && i + 2 < n) {
+         i++;
+         switch (quoted[i]) {
+            case 'n':
+               ch = '\n';
+               break;
+            case 'r':
+               ch = '\r';
+               break;
+            case 't':
+               ch = '\t';
+               break;
+            case '0':
+               ch = '\0';
+               break;
+            case '\\':
+               ch = '\\';
+               break;
+            case '"':
+               ch = '"';
+               break;
+            case '\'':
+               ch = '\'';
+               break;
+            default:
+               ch = (unsigned char)quoted[i];
+               break;
+         }
+      } else {
+         ch = (unsigned char)quoted[i];
+      }
+
+      if (out && len < out_cap)
+         out[len] = ch;
+      len++;
+   }
+
+   *out_len = len;
+   return 1;
+}
+
 static void free_imports(import_name_t *head)
 {
    import_name_t *p;
@@ -1062,18 +1124,26 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
 
             if (!strcmp(stmt->u.dir->name, ".text") ||
                 !strcmp(stmt->u.dir->name, ".ascii")) {
-               long len = 0;
-               if (stmt->u.dir->string)
-                  len = (long)strlen(stmt->u.dir->string) - 2;
+               int len = 0;
+
+               if (stmt->u.dir->string && !decode_escaped_string(stmt->u.dir->string, NULL, 0, &len)) {
+                  asm_error(ctx, stmt, "malformed quoted string");
+                  break;
+               }
+
                segment_advance(ctx, seg, stmt, len);
                break;
             }
 
             if (!strcmp(stmt->u.dir->name, ".asciiz")) {
-               long len = 1;
-               if (stmt->u.dir->string)
-                  len = (long)strlen(stmt->u.dir->string) - 1;
-               segment_advance(ctx, seg, stmt, len);
+               int len = 0;
+
+               if (stmt->u.dir->string && !decode_escaped_string(stmt->u.dir->string, NULL, 0, &len)) {
+                  asm_error(ctx, stmt, "malformed quoted string");
+                  break;
+               }
+
+               segment_advance(ctx, seg, stmt, len + 1);
                break;
             }
 
@@ -1287,8 +1357,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
    }
 
    if (!strcmp(dir->name, ".text") || !strcmp(dir->name, ".ascii")) {
-      const char *s;
-      size_t i, n;
+      unsigned char buf[256];
+      int len;
+      int i;
 
       if (!dir->string) {
          if (ctx->listing)
@@ -1296,16 +1367,17 @@ static int directive_emit_pass2(asm_context_t *ctx,
          return 0;
       }
 
-      s = dir->string;
-      n = strlen(s);
-      if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
-         for (i = 1; i + 1 < n; i++) {
-            if (!emit_byte(ctx, pc, (unsigned char)s[i], stmt))
-               return -1;
-            if (rec_count < (int)sizeof(rec))
-               rec[rec_count++] = (unsigned char)s[i];
-            pc++;
-         }
+      if (!decode_escaped_string(dir->string, buf, (int)sizeof(buf), &len)) {
+         asm_error(ctx, stmt, "malformed quoted string");
+         return -1;
+      }
+
+      for (i = 0; i < len; i++) {
+         if (!emit_byte(ctx, pc, buf[i], stmt))
+            return -1;
+         if (rec_count < (int)sizeof(rec))
+            rec[rec_count++] = buf[i];
+         pc++;
       }
 
       if (ctx->listing)
@@ -1314,8 +1386,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
    }
 
    if (!strcmp(dir->name, ".asciiz")) {
-      const char *s;
-      size_t i, n;
+      unsigned char buf[256];
+      int len;
+      int i;
 
       if (!dir->string) {
          if (!emit_byte(ctx, pc, 0x00, stmt))
@@ -1326,16 +1399,17 @@ static int directive_emit_pass2(asm_context_t *ctx,
          return 0;
       }
 
-      s = dir->string;
-      n = strlen(s);
-      if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
-         for (i = 1; i + 1 < n; i++) {
-            if (!emit_byte(ctx, pc, (unsigned char)s[i], stmt))
-               return -1;
-            if (rec_count < (int)sizeof(rec))
-               rec[rec_count++] = (unsigned char)s[i];
-            pc++;
-         }
+      if (!decode_escaped_string(dir->string, buf, (int)sizeof(buf), &len)) {
+         asm_error(ctx, stmt, "malformed quoted string");
+         return -1;
+      }
+
+      for (i = 0; i < len; i++) {
+         if (!emit_byte(ctx, pc, buf[i], stmt))
+            return -1;
+         if (rec_count < (int)sizeof(rec))
+            rec[rec_count++] = buf[i];
+         pc++;
       }
 
       if (!emit_byte(ctx, pc, 0x00, stmt))
