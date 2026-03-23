@@ -3,7 +3,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include "asm_pass.h"
-#include "ir.h"
 #include "opcode.h"
 #include "util.h"
 
@@ -346,6 +345,26 @@ static int directive_size_pass1(asm_context_t *ctx,
       return (int)(strlen(dir->string) - 2);
    }
 
+   if (!strcmp(dir->name, ".res")) {
+      if (!dir->exprs || dir->exprs->next) {
+         asm_error(ctx, stmt, ".res expects exactly one expression");
+         return 0;
+      }
+
+      rc = expr_eval(dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->address, &value);
+      if (rc != EXPR_EVAL_OK) {
+         asm_error(ctx, stmt, ".res must be resolvable in pass 1");
+         return 0;
+      }
+
+      if (value < 0) {
+         asm_error(ctx, stmt, ".res requires a non-negative size");
+         return 0;
+      }
+
+      return (int)value;
+   }
+
    return 0;
 }
 
@@ -559,10 +578,9 @@ static int resolve_constants(asm_context_t *ctx)
 {
    int iter;
    int changed;
+   stmt_t *stmt;
 
    for (iter = 0; iter < 64; iter++) {
-      stmt_t *stmt;
-
       changed = 0;
 
       for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
@@ -591,7 +609,7 @@ static int resolve_constants(asm_context_t *ctx)
          break;
    }
 
-   for (stmt_t *stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       const symbol_t *sym;
 
       if (stmt->kind != STMT_CONST)
@@ -664,10 +682,9 @@ int asm_relax(asm_context_t *ctx)
 {
    int iter;
    int changed;
+   stmt_t *stmt;
 
    for (iter = 1; iter <= 20; iter++) {
-      stmt_t *stmt;
-
       asm_pass1(ctx, iter);
 
       changed = 0;
@@ -810,6 +827,35 @@ static int directive_emit_pass2(asm_context_t *ctx,
                rec[rec_count++] = (unsigned char)s[i];
             (*pc)++;
          }
+      }
+
+      if (ctx->listing)
+         listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
+      return 0;
+   }
+
+   if (!strcmp(dir->name, ".res")) {
+      long i;
+
+      if (!dir->exprs || dir->exprs->next) {
+         asm_error(ctx, stmt, ".res expects exactly one expression");
+         return -1;
+      }
+
+      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, *pc, &value, stmt))
+         return -1;
+
+      if (value < 0) {
+         asm_error(ctx, stmt, ".res requires a non-negative size");
+         return -1;
+      }
+
+      for (i = 0; i < value; i++) {
+         if (!emit_byte(ctx, *pc, 0x00, stmt))
+            return -1;
+         if (rec_count < (int)sizeof(rec))
+            rec[rec_count++] = 0x00;
+         (*pc)++;
       }
 
       if (ctx->listing)
