@@ -10,7 +10,7 @@ TARGET = nc
 TEST   = test
 
 GENSRC = parser.tab.c lex.yy.c
-GENHDR = delexer.h coverage_map.h
+GENHDR = parser.tab.h delexer.h coverage_map.h
 
 SRCSRC = \
    ast.c \
@@ -67,7 +67,7 @@ coverage_map.h: parser.y coverage.pl
 
 clean:
 	rm -f $(TARGET) $(OBJ) $(DEP)
-	rm -f delexer.h parser.tab.c parser.tab.h lex.yy.c parser.output
+	rm -f $(GENSRC) $(GENHDR) parser.output
 
 -include $(DEP)
 
