@@ -1,5 +1,11 @@
 %code requires {
 #include "addr_mode.h"
+#include "expr.h"
+
+typedef struct operand_info {
+   addr_mode_t mode;
+   expr_t *expr;
+} operand_info_t;
 }
 
 %{
@@ -7,11 +13,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "addr_mode.h"
+#include "expr.h"
 
 int yylex(void);
 void yyerror(const char *s);
-extern int yylineno;
-//extern YYLTYPE yylloc;
 
 typedef struct opcode_rule {
    const char *name;
@@ -24,22 +29,6 @@ static void free_if(char *s)
 {
    if (s)
       free(s);
-}
-
-static char *xstrdup(const char *s)
-{
-   char *p;
-
-   if (!s)
-      return NULL;
-
-   p = strdup(s);
-   if (!p) {
-      fprintf(stderr, "out of memory\n");
-      exit(1);
-   }
-
-   return p;
 }
 
 static const char *addr_mode_name(addr_mode_t mode)
@@ -165,6 +154,8 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 %union {
    char *str;
    addr_mode_t mode;
+   expr_t *expr;
+   operand_info_t operand;
 }
 
 %token <str> OPCODE
@@ -178,9 +169,9 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 %token REG_A REG_X REG_Y
 %token EOL
 
-%type <str> expr add_expr mul_expr unary_expr primary
-%type <str> simple_expr simple_add_expr simple_mul_expr simple_unary simple_primary
-%type <mode> operand
+%type <expr> expr add_expr mul_expr unary_expr primary
+%type <expr> simple_expr simple_add_expr simple_mul_expr simple_unary simple_primary
+%type <operand> operand_expr
 
 %start program
 
@@ -241,11 +232,15 @@ directive_stmt
 expr_list
    : expr
      {
-        free_if($1);
+        expr_print($1);
+        printf("\n");
+        expr_free($1);
      }
    | expr_list ',' expr
      {
-        free_if($3);
+        expr_print($3);
+        printf("\n");
+        expr_free($3);
      }
    ;
 
@@ -264,61 +259,71 @@ instruction_stmt
 
         free_if($1);
      }
-   | OPCODE operand
+   | OPCODE operand_expr
      {
-        addr_mode_t mode = normalize_mode($1, $2);
+        addr_mode_t mode = normalize_mode($1, $2.mode);
 
-        if (!opcode_mode_is_legal($1, mode))
+        if (!opcode_mode_is_legal($1, mode)) {
            fprintf(stderr,
                    "line %d: illegal addressing mode for %s ... %s\n",
                    @1.first_line, $1, addr_mode_name(mode));
-        else
-           printf("line %d: %s ... %s\n",
+        } else {
+           printf("line %d: %s ... %s",
                   @1.first_line, $1, addr_mode_name(mode));
 
+           if ($2.expr) {
+              printf("  expr=");
+              expr_print($2.expr);
+           }
+
+           printf("\n");
+        }
+
+        expr_free($2.expr);
         free_if($1);
      }
    ;
 
-operand
+operand_expr
    : REG_A
      {
-        $$ = AM_ACCUMULATOR;
+        $$.mode = AM_ACCUMULATOR;
+        $$.expr = NULL;
      }
    | '#' expr
      {
-        $$ = AM_IMMEDIATE;
-        free_if($2);
+        $$.mode = AM_IMMEDIATE;
+        $$.expr = $2;
      }
    | simple_expr
      {
-        $$ = AM_ZP_OR_ABS;
-        free_if($1);
+        $$.mode = AM_ZP_OR_ABS;
+        $$.expr = $1;
      }
    | simple_expr ',' REG_X
      {
-        $$ = AM_ZPX_OR_ABSX;
-        free_if($1);
+        $$.mode = AM_ZPX_OR_ABSX;
+        $$.expr = $1;
      }
    | simple_expr ',' REG_Y
      {
-        $$ = AM_ZPY_OR_ABSY;
-        free_if($1);
+        $$.mode = AM_ZPY_OR_ABSY;
+        $$.expr = $1;
      }
    | '(' expr ')'
      {
-        $$ = AM_INDIRECT;
-        free_if($2);
+        $$.mode = AM_INDIRECT;
+        $$.expr = $2;
      }
    | '(' expr ',' REG_X ')'
      {
-        $$ = AM_INDEXED_INDIRECT;
-        free_if($2);
+        $$.mode = AM_INDEXED_INDIRECT;
+        $$.expr = $2;
      }
    | '(' expr ')' ',' REG_Y
      {
-        $$ = AM_INDIRECT_INDEXED;
-        free_if($2);
+        $$.mode = AM_INDIRECT_INDEXED;
+        $$.expr = $2;
      }
    ;
 
@@ -336,15 +341,11 @@ add_expr
      }
    | add_expr '+' mul_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_ADD, $1, $3);
      }
    | add_expr '-' mul_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_SUB, $1, $3);
      }
    ;
 
@@ -355,15 +356,11 @@ mul_expr
      }
    | mul_expr '*' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_MUL, $1, $3);
      }
    | mul_expr '/' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_DIV, $1, $3);
      }
    ;
 
@@ -374,37 +371,37 @@ unary_expr
      }
    | '-' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_NEG, $2);
      }
    | '<' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_LO, $2);
      }
    | '>' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_HI, $2);
      }
    ;
 
 primary
    : NUMBER
      {
-        $$ = $1;
+        $$ = expr_make_number(parse_number_token($1));
+        free_if($1);
      }
    | IDENT
      {
-        $$ = $1;
+        $$ = expr_make_ident($1);
+        free_if($1);
      }
    | CHARCONST
      {
-        $$ = $1;
+        $$ = expr_make_char(parse_charconst_token($1));
+        free_if($1);
      }
    | '*'
      {
-        $$ = xstrdup("*");
+        $$ = expr_make_pc();
      }
    | '(' expr ')'
      {
@@ -426,15 +423,11 @@ simple_add_expr
      }
    | simple_add_expr '+' mul_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_ADD, $1, $3);
      }
    | simple_add_expr '-' mul_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_SUB, $1, $3);
      }
    ;
 
@@ -445,15 +438,11 @@ simple_mul_expr
      }
    | simple_mul_expr '*' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_MUL, $1, $3);
      }
    | simple_mul_expr '/' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($1);
-        free_if($3);
+        $$ = expr_make_binary(EXPR_BOP_DIV, $1, $3);
      }
    ;
 
@@ -464,37 +453,37 @@ simple_unary
      }
    | '-' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_NEG, $2);
      }
    | '<' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_LO, $2);
      }
    | '>' unary_expr
      {
-        $$ = xstrdup("<expr>");
-        free_if($2);
+        $$ = expr_make_unary(EXPR_UOP_HI, $2);
      }
    ;
 
 simple_primary
    : NUMBER
      {
-        $$ = $1;
+        $$ = expr_make_number(parse_number_token($1));
+        free_if($1);
      }
    | IDENT
      {
-        $$ = $1;
+        $$ = expr_make_ident($1);
+        free_if($1);
      }
    | CHARCONST
      {
-        $$ = $1;
+        $$ = expr_make_char(parse_charconst_token($1));
+        free_if($1);
      }
    | '*'
      {
-        $$ = xstrdup("*");
+        $$ = expr_make_pc();
      }
    ;
 

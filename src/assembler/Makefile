@@ -12,6 +12,7 @@ GENSRC = parser.tab.c lex.yy.c
 GENHDR = parser.tab.h
 
 SRCSRC = \
+   expr.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)
