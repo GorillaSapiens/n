@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "expr.h"
+#include "symtab.h"
 
 static char *xstrdup(const char *s)
 {
@@ -213,4 +214,101 @@ int parse_charconst_token(const char *text)
    }
 
    return (unsigned char)*text;
+}
+
+expr_eval_status_t expr_eval(const expr_t *expr,
+                             const symtab_t *symtab,
+                             long pc,
+                             long *value)
+{
+   long left;
+   long right;
+   expr_eval_status_t rc_left;
+   expr_eval_status_t rc_right;
+   const symbol_t *sym;
+
+   if (!expr || !value)
+      return EXPR_EVAL_UNRESOLVED;
+
+   switch (expr->kind) {
+      case EXPR_NUMBER:
+         *value = expr->u.number;
+         return EXPR_EVAL_OK;
+
+      case EXPR_IDENT:
+         if (!symtab)
+            return EXPR_EVAL_UNRESOLVED;
+
+         sym = symtab_find_const(symtab, expr->u.ident);
+         if (!sym || !sym->defined)
+            return EXPR_EVAL_UNRESOLVED;
+
+         *value = sym->value;
+         return EXPR_EVAL_OK;
+
+      case EXPR_CHARCONST:
+         *value = expr->u.char_value;
+         return EXPR_EVAL_OK;
+
+      case EXPR_PC:
+         *value = pc;
+         return EXPR_EVAL_OK;
+
+      case EXPR_UNARY:
+         rc_left = expr_eval(expr->u.unary.child, symtab, pc, &left);
+         if (rc_left != EXPR_EVAL_OK)
+            return rc_left;
+
+         switch (expr->u.unary.op) {
+            case EXPR_UOP_NEG:
+               *value = -left;
+               return EXPR_EVAL_OK;
+
+            case EXPR_UOP_LO:
+               *value = left & 0xFF;
+               return EXPR_EVAL_OK;
+
+            case EXPR_UOP_HI:
+               *value = (left >> 8) & 0xFF;
+               return EXPR_EVAL_OK;
+         }
+         return EXPR_EVAL_UNRESOLVED;
+
+      case EXPR_BINARY:
+         rc_left = expr_eval(expr->u.binary.left, symtab, pc, &left);
+         if (rc_left != EXPR_EVAL_OK)
+            return rc_left;
+
+         rc_right = expr_eval(expr->u.binary.right, symtab, pc, &right);
+         if (rc_right != EXPR_EVAL_OK)
+            return rc_right;
+
+         switch (expr->u.binary.op) {
+            case EXPR_BOP_ADD:
+               *value = left + right;
+               return EXPR_EVAL_OK;
+
+            case EXPR_BOP_SUB:
+               *value = left - right;
+               return EXPR_EVAL_OK;
+
+            case EXPR_BOP_MUL:
+               *value = left * right;
+               return EXPR_EVAL_OK;
+
+            case EXPR_BOP_DIV:
+               if (right == 0)
+                  return EXPR_EVAL_DIVZERO;
+               *value = left / right;
+               return EXPR_EVAL_OK;
+         }
+         return EXPR_EVAL_UNRESOLVED;
+   }
+
+   return EXPR_EVAL_UNRESOLVED;
+}
+
+int expr_is_byte_value(long value)
+{
+   return value >= 0 && value <= 0xFF;
 }

@@ -14,6 +14,7 @@ GENHDR = parser.tab.h
 SRCSRC = \
    directive.c \
    expr.c \
+   symtab.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)

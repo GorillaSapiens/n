@@ -23,6 +23,15 @@ typedef enum expr_binary_op {
    EXPR_BOP_DIV
 } expr_binary_op_t;
 
+typedef enum expr_eval_status {
+   EXPR_EVAL_OK = 0,
+   EXPR_EVAL_UNRESOLVED,
+   EXPR_EVAL_DIVZERO
+} expr_eval_status_t;
+
+struct symtab;
+typedef struct symtab symtab_t;
+
 typedef struct expr expr_t;
 
 struct expr {
@@ -58,5 +67,12 @@ void expr_print(const expr_t *expr);
 
 long parse_number_token(const char *text);
 int parse_charconst_token(const char *text);
+
+expr_eval_status_t expr_eval(const expr_t *expr,
+                             const symtab_t *symtab,
+                             long pc,
+                             long *value);
+
+int expr_is_byte_value(long value);
 
 #endif
