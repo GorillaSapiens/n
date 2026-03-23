@@ -12,6 +12,7 @@ GENSRC = parser.tab.c lex.yy.c
 GENHDR = parser.tab.h
 
 SRCSRC = \
+   directive.c \
    expr.c \
    main.c
 

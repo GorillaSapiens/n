@@ -1,6 +1,7 @@
 %code requires {
 #include "addr_mode.h"
 #include "expr.h"
+#include "directive.h"
 
 typedef struct operand_info {
    addr_mode_t mode;
@@ -14,6 +15,7 @@ typedef struct operand_info {
 #include <string.h>
 #include "addr_mode.h"
 #include "expr.h"
+#include "directive.h"
 
 int yylex(void);
 void yyerror(const char *s);
@@ -156,6 +158,8 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
    addr_mode_t mode;
    expr_t *expr;
    operand_info_t operand;
+   expr_list_node_t *expr_list;
+   directive_info_t *directive;
 }
 
 %token <str> OPCODE
@@ -172,6 +176,8 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 %type <expr> expr add_expr mul_expr unary_expr primary
 %type <expr> simple_expr simple_add_expr simple_mul_expr simple_unary simple_primary
 %type <operand> operand_expr
+%type <expr_list> expr_list
+%type <directive> directive_stmt
 
 %start program
 
@@ -198,6 +204,8 @@ statement
      }
    | LABEL_DEF directive_stmt
      {
+        directive_print($2);
+        directive_free($2);
         free_if($1);
      }
    | LABEL_DEF instruction_stmt
@@ -205,25 +213,33 @@ statement
         free_if($1);
      }
    | directive_stmt
+     {
+        directive_print($1);
+        directive_free($1);
+     }
    | instruction_stmt
    ;
 
 directive_stmt
    : DIRECTIVE
      {
+        $$ = directive_make_empty($1);
         free_if($1);
      }
    | DIRECTIVE expr_list
      {
+        $$ = directive_make_exprs($1, $2);
         free_if($1);
      }
    | DIRECTIVE STRING
      {
+        $$ = directive_make_string($1, $2);
         free_if($1);
         free_if($2);
      }
    | DIRECTIVE STRING ',' expr_list
      {
+        $$ = directive_make_string_exprs($1, $2, $4);
         free_if($1);
         free_if($2);
      }
@@ -232,15 +248,11 @@ directive_stmt
 expr_list
    : expr
      {
-        expr_print($1);
-        printf("\n");
-        expr_free($1);
+        $$ = expr_list_node_make($1);
      }
    | expr_list ',' expr
      {
-        expr_print($3);
-        printf("\n");
-        expr_free($3);
+        $$ = expr_list_append($1, $3);
      }
    ;
 
