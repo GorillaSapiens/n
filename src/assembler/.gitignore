@@ -1,4 +1,5 @@
 *.o
 *.d
 na
+nid
 parser.output
