@@ -1,6 +1,8 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#include <stdio.h>
+
 typedef enum expr_kind {
    EXPR_NUMBER = 0,
    EXPR_IDENT,
@@ -64,6 +66,7 @@ expr_t *expr_make_binary(expr_binary_op_t op, expr_t *left, expr_t *right);
 
 void expr_free(expr_t *expr);
 void expr_print(const expr_t *expr);
+void expr_fprint(FILE *fp, const expr_t *expr);
 
 long parse_number_token(const char *text);
 int parse_charconst_token(const char *text);

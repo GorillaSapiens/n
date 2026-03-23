@@ -4,15 +4,17 @@
 #include "ir.h"
 #include "symtab.h"
 #include "ihex.h"
+#include "listing.h"
 
 typedef struct asm_context {
    program_ir_t *prog;
    symtab_t symbols;
    long origin;
    ihex_image_t image;
+   listing_writer_t *listing;
 } asm_context_t;
 
-void asm_context_init(asm_context_t *ctx, program_ir_t *prog);
+void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing);
 void asm_context_free(asm_context_t *ctx);
 
 int asm_pass1(asm_context_t *ctx);

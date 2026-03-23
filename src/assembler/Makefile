@@ -17,6 +17,7 @@ SRCSRC = \
    expr.c \
    ihex.c \
    ir.c \
+   listing.c \
    opcode.c \
    symtab.c \
    main.c

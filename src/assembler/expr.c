@@ -116,78 +116,83 @@ void expr_free(expr_t *expr)
    free(expr);
 }
 
-static void expr_print_inner(const expr_t *expr)
+static void expr_fprint_inner(FILE *fp, const expr_t *expr)
 {
    if (!expr) {
-      printf("<null>");
+      fprintf(fp, "<null>");
       return;
    }
 
    switch (expr->kind) {
       case EXPR_NUMBER:
-         printf("%ld", expr->u.number);
+         fprintf(fp, "%ld", expr->u.number);
          break;
 
       case EXPR_IDENT:
-         printf("%s", expr->u.ident);
+         fprintf(fp, "%s", expr->u.ident);
          break;
 
       case EXPR_CHARCONST:
-         printf("'%d", expr->u.char_value);
+         fprintf(fp, "'%d", expr->u.char_value);
          break;
 
       case EXPR_PC:
-         printf("*");
+         fprintf(fp, "*");
          break;
 
       case EXPR_UNARY:
-         printf("(");
+         fprintf(fp, "(");
          switch (expr->u.unary.op) {
             case EXPR_UOP_NEG:
-               printf("-");
+               fprintf(fp, "-");
                break;
 
             case EXPR_UOP_LO:
-               printf("<");
+               fprintf(fp, "<");
                break;
 
             case EXPR_UOP_HI:
-               printf(">");
+               fprintf(fp, ">");
                break;
          }
-         expr_print_inner(expr->u.unary.child);
-         printf(")");
+         expr_fprint_inner(fp, expr->u.unary.child);
+         fprintf(fp, ")");
          break;
 
       case EXPR_BINARY:
-         printf("(");
-         expr_print_inner(expr->u.binary.left);
+         fprintf(fp, "(");
+         expr_fprint_inner(fp, expr->u.binary.left);
          switch (expr->u.binary.op) {
             case EXPR_BOP_ADD:
-               printf(" + ");
+               fprintf(fp, " + ");
                break;
 
             case EXPR_BOP_SUB:
-               printf(" - ");
+               fprintf(fp, " - ");
                break;
 
             case EXPR_BOP_MUL:
-               printf(" * ");
+               fprintf(fp, " * ");
                break;
 
             case EXPR_BOP_DIV:
-               printf(" / ");
+               fprintf(fp, " / ");
                break;
          }
-         expr_print_inner(expr->u.binary.right);
-         printf(")");
+         expr_fprint_inner(fp, expr->u.binary.right);
+         fprintf(fp, ")");
          break;
    }
 }
 
 void expr_print(const expr_t *expr)
 {
-   expr_print_inner(expr);
+   expr_fprint_inner(stdout, expr);
+}
+
+void expr_fprint(FILE *fp, const expr_t *expr)
+{
+   expr_fprint_inner(fp, expr);
 }
 
 long parse_number_token(const char *text)
@@ -270,20 +275,10 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_OK;
 
       case EXPR_IDENT:
-         if (!symtab) {
-#if 0
-            fprintf(stderr, "lookup %s: no symtab\n", expr->u.ident);
-#endif
+         if (!symtab)
             return EXPR_EVAL_UNRESOLVED;
-         }
 
          sym = symtab_find_const(symtab, expr->u.ident);
-#if 0
-         fprintf(stderr, "lookup %s: %s\n",
-                 expr->u.ident,
-                 (sym && sym->defined) ? "defined" : "missing");
-#endif
-
          if (!sym || !sym->defined)
             return EXPR_EVAL_UNRESOLVED;
 

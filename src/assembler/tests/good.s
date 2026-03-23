@@ -3,6 +3,7 @@
 ; and comments.
 
 start:
+   ASL
    NOP
    CLC
    CLD

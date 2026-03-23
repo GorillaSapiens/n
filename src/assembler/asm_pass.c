@@ -70,23 +70,6 @@ static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
    return 0;
 }
 
-/*
-   Addressing-mode specifiers are allowed to override some surface syntax.
-
-   Examples:
-      LDA.ix $44    == LDA ($44,X)
-      LDA.iy $44    == LDA ($44),Y
-      JMP.i  $1234  == JMP ($1234)
-
-   Why:
-   - The suffix is a hard encoding selector, not a suggestion.
-   - Requiring both the suffix and the traditional punctuation is redundant.
-   - We still reject combinations that don't match the underlying operand
-     family at all, like LDA.ix foo,Y or LDA.ax (foo).
-
-   This lets the programmer force a specific encoding without turning the
-   assembler into a "maybe I will shrink it later" guessing machine.
-*/
 static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
 {
    parsed_mode = normalize_mode("", parsed_mode);
@@ -133,21 +116,6 @@ static int expr_is_s8_or_u8_value(long value)
    return value >= -128 && value <= 0xFF;
 }
 
-/*
-   No suffix:
-      Use stable-width defaults for ambiguous families when both concrete
-      encodings exist for this opcode.
-
-      But if the opcode only supports one concrete encoding in that family,
-      choose the only legal one. Example:
-         STX $99,Y
-      parses as the ambiguous Y-index family, but STX only has zp,Y on
-      6502, not abs,Y, so the assembler must choose ZPY here or it will
-      reject valid source for the wrong reason.
-
-   With suffix:
-      The suffix is a hard requirement. Encode exactly that mode or error.
-*/
 static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
@@ -304,17 +272,58 @@ static int insn_size_pass1(const insn_info_t *insn, int line)
    return emit_mode_size(emode);
 }
 
-void asm_context_init(asm_context_t *ctx, program_ir_t *prog)
+void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing)
 {
    ctx->prog = prog;
    ctx->origin = 0;
    symtab_init(&ctx->symbols);
    ihex_image_init(&ctx->image);
+   ctx->listing = listing;
 }
 
 void asm_context_free(asm_context_t *ctx)
 {
    symtab_free(&ctx->symbols);
+}
+
+static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, int line)
+{
+   if (!ihex_write_byte(&ctx->image, addr, b)) {
+      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      return 0;
+   }
+
+   return 1;
+}
+
+static int emit_word(asm_context_t *ctx, long addr, unsigned short w, int line)
+{
+   if (!ihex_write_word(&ctx->image, addr, w)) {
+      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      return 0;
+   }
+
+   return 1;
+}
+
+static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
+{
+   expr_eval_status_t rc;
+
+   rc = expr_eval(expr, symbols, pc, value);
+   if (rc == EXPR_EVAL_OK)
+      return 0;
+
+   fprintf(stderr, "line %d: ", line);
+   expr_fprint(stderr, expr);
+   fprintf(stderr, " -> ");
+
+   if (rc == EXPR_EVAL_DIVZERO)
+      fprintf(stderr, "divide by zero\n");
+   else
+      fprintf(stderr, "unresolved expression\n");
+
+   return 1;
 }
 
 int asm_pass1(asm_context_t *ctx)
@@ -358,87 +367,65 @@ int asm_pass1(asm_context_t *ctx)
    return 0;
 }
 
-static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, int line)
-{
-   if (!ihex_write_byte(&ctx->image, addr, b)) {
-      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
-      return 0;
-   }
-
-   return 1;
-}
-
-static int emit_word(asm_context_t *ctx, long addr, unsigned short w, int line)
-{
-   if (!ihex_write_word(&ctx->image, addr, w)) {
-      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
-      return 0;
-   }
-
-   return 1;
-}
-
-static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
-{
-   expr_eval_status_t rc;
-
-   rc = expr_eval(expr, symbols, pc, value);
-   if (rc == EXPR_EVAL_OK)
-      return 0;
-
-   fprintf(stderr, "line %d: ", line);
-   expr_print(expr);
-   fprintf(stderr, " -> ");
-
-   if (rc == EXPR_EVAL_DIVZERO)
-      fprintf(stderr, "divide by zero\n");
-   else
-      fprintf(stderr, "unresolved expression\n");
-
-   return 1;
-}
-
 static int directive_emit_pass2(asm_context_t *ctx,
+                                const stmt_t *stmt,
                                 const directive_info_t *dir,
                                 const symtab_t *symbols,
-                                long *pc,
-                                int line)
+                                long *pc)
 {
    const expr_list_node_t *node;
    long value;
+   long start_pc;
+   unsigned char rec[16];
+   int rec_count;
+
+   start_pc = *pc;
+   rec_count = 0;
 
    if (!strcmp(dir->name, ".org")) {
       if (!dir->exprs || dir->exprs->next) {
-         fprintf(stderr, "line %d: .org expects exactly one expression\n", line);
+         fprintf(stderr, "line %d: .org expects exactly one expression\n", stmt->line);
          return 1;
       }
 
-      if (eval_or_report(dir->exprs->expr, symbols, *pc, &value, line))
+      if (eval_or_report(dir->exprs->expr, symbols, *pc, &value, stmt->line))
          return 1;
 
       *pc = value;
+      if (ctx->listing)
+         listing_write_no_bytes(ctx->listing, stmt);
       return 0;
    }
 
    if (!strcmp(dir->name, ".byte")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(node->expr, symbols, *pc, &value, line))
+         if (eval_or_report(node->expr, symbols, *pc, &value, stmt->line))
             return 1;
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt->line))
             return 1;
+         if (rec_count < (int)sizeof(rec))
+            rec[rec_count++] = (unsigned char)(value & 0xFF);
          (*pc)++;
       }
+      if (ctx->listing)
+         listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
       return 0;
    }
 
    if (!strcmp(dir->name, ".word")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(node->expr, symbols, *pc, &value, line))
+         if (eval_or_report(node->expr, symbols, *pc, &value, stmt->line))
             return 1;
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), line))
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt->line))
             return 1;
+         if (rec_count + 1 < (int)sizeof(rec)) {
+            rec[rec_count++] = (unsigned char)(value & 0xFF);
+            rec[rec_count++] = (unsigned char)((value >> 8) & 0xFF);
+         }
          (*pc) += 2;
       }
+      if (ctx->listing)
+         listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
       return 0;
    }
 
@@ -446,62 +433,74 @@ static int directive_emit_pass2(asm_context_t *ctx,
       const char *s;
       size_t i, n;
 
-      if (!dir->string)
+      if (!dir->string) {
+         if (ctx->listing)
+            listing_write_no_bytes(ctx->listing, stmt);
          return 0;
+      }
 
       s = dir->string;
       n = strlen(s);
       if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
          for (i = 1; i + 1 < n; i++) {
-            if (!emit_byte(ctx, *pc, (unsigned char)s[i], line))
+            if (!emit_byte(ctx, *pc, (unsigned char)s[i], stmt->line))
                return 1;
+            if (rec_count < (int)sizeof(rec))
+               rec[rec_count++] = (unsigned char)s[i];
             (*pc)++;
          }
       }
+
+      if (ctx->listing)
+         listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
       return 0;
    }
 
-   fprintf(stderr, "line %d: unhandled directive %s\n", line, dir->name);
+   fprintf(stderr, "line %d: unhandled directive %s\n", stmt->line, dir->name);
    return 1;
 }
 
 static int insn_emit_pass2(asm_context_t *ctx,
+                           const stmt_t *stmt,
                            const insn_info_t *insn,
                            const symtab_t *symbols,
-                           long *pc,
-                           int line)
+                           long *pc)
 {
    long value;
    emit_mode_t emode;
    unsigned char opcode;
    const char *why;
+   long start_pc;
+   unsigned char rec[3];
+   int rec_count;
+
+   start_pc = *pc;
+   rec_count = 0;
 
    if (!choose_emit_mode(insn, &emode, &why)) {
       fprintf(stderr,
               "line %d: %s%s ... %s\n",
-              line, insn->opcode, mode_spec_suffix(insn->spec), why);
+              stmt->line, insn->opcode, mode_spec_suffix(insn->spec), why);
       return 1;
    }
-
-#if 0
-fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
-        insn->opcode, mode_spec_suffix(insn->spec), (int)emode);
-#endif
 
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
       fprintf(stderr,
               "line %d: illegal addressing mode for %s%s\n",
-              line, insn->opcode, mode_spec_suffix(insn->spec));
+              stmt->line, insn->opcode, mode_spec_suffix(insn->spec));
       return 1;
    }
 
-   if (!emit_byte(ctx, *pc, opcode, line))
+   if (!emit_byte(ctx, *pc, opcode, stmt->line))
       return 1;
+   rec[rec_count++] = opcode;
    (*pc)++;
 
    switch (emode) {
       case EM_IMPLIED:
       case EM_ACCUMULATOR:
+         if (ctx->listing)
+            listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
          return 0;
 
       default:
@@ -509,11 +508,11 @@ fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
    }
 
    if (!insn->has_operand || !insn->expr) {
-      fprintf(stderr, "line %d: internal error: missing operand expression\n", line);
+      fprintf(stderr, "line %d: internal error: missing operand expression\n", stmt->line);
       return 1;
    }
 
-   if (eval_or_report(insn->expr, symbols, *pc, &value, line))
+   if (eval_or_report(insn->expr, symbols, *pc, &value, stmt->line))
       return 1;
 
    switch (emode) {
@@ -521,7 +520,7 @@ fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
          if (!expr_is_s8_or_u8_value(value)) {
             fprintf(stderr,
                     "line %d: %s%s immediate operand out of range: %ld\n",
-                    line, insn->opcode, mode_spec_suffix(insn->spec), value);
+                    stmt->line, insn->opcode, mode_spec_suffix(insn->spec), value);
             return 1;
          }
          break;
@@ -534,7 +533,7 @@ fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
          if (!expr_is_u8_value(value)) {
             fprintf(stderr,
                     "line %d: %s%s requires a zero-page operand, got $%lX\n",
-                    line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
+                    stmt->line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
             return 1;
          }
          break;
@@ -550,39 +549,48 @@ fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
       case EM_ZPY:
       case EM_INDX:
       case EM_INDY:
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt->line))
             return 1;
+         rec[rec_count++] = (unsigned char)(value & 0xFF);
          (*pc)++;
-         return 0;
+         break;
 
       case EM_REL: {
          long disp;
 
          disp = value - (*pc + 1);
          if (disp < -128 || disp > 127) {
-            fprintf(stderr, "line %d: branch out of range\n", line);
+            fprintf(stderr, "line %d: branch out of range\n", stmt->line);
             return 1;
          }
 
-         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), stmt->line))
             return 1;
+         rec[rec_count++] = (unsigned char)(disp & 0xFF);
          (*pc)++;
-         return 0;
+         break;
       }
 
       case EM_ABS:
       case EM_ABSX:
       case EM_ABSY:
       case EM_IND:
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), line))
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt->line))
             return 1;
+         rec[rec_count++] = (unsigned char)(value & 0xFF);
+         rec[rec_count++] = (unsigned char)((value >> 8) & 0xFF);
          (*pc) += 2;
-         return 0;
+         break;
 
       default:
-         fprintf(stderr, "line %d: internal emitter error\n", line);
+         fprintf(stderr, "line %d: internal emitter error\n", stmt->line);
          return 1;
    }
+
+   if (ctx->listing)
+      listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
+
+   return 0;
 }
 
 int asm_pass2(asm_context_t *ctx)
@@ -595,15 +603,17 @@ int asm_pass2(asm_context_t *ctx)
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {
          case STMT_LABEL:
+            if (ctx->listing)
+               listing_write_no_bytes(ctx->listing, stmt);
             break;
 
          case STMT_DIR:
-            if (directive_emit_pass2(ctx, stmt->u.dir, &ctx->symbols, &pc, stmt->line))
+            if (directive_emit_pass2(ctx, stmt, stmt->u.dir, &ctx->symbols, &pc))
                return 1;
             break;
 
          case STMT_INSN:
-            if (insn_emit_pass2(ctx, &stmt->u.insn, &ctx->symbols, &pc, stmt->line))
+            if (insn_emit_pass2(ctx, stmt, &stmt->u.insn, &ctx->symbols, &pc))
                return 1;
             break;
       }
