@@ -15,6 +15,7 @@ SRCSRC = \
    asm_pass.c \
    directive.c \
    expr.c \
+   ihex.c \
    ir.c \
    opcode.c \
    symtab.c \

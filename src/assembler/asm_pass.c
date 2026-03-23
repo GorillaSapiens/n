@@ -79,14 +79,13 @@ static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
       JMP.i  $1234  == JMP ($1234)
 
    Why:
-   - The suffix is meant to be a hard encoding selector.
+   - The suffix is a hard encoding selector, not a suggestion.
    - Requiring both the suffix and the traditional punctuation is redundant.
    - We still reject combinations that don't match the underlying operand
      family at all, like LDA.ix foo,Y or LDA.ax (foo).
 
-   So for some specifiers we accept either the explicit traditional parsed
-   shape or the simpler base expression form and let the specifier choose
-   the final encoding.
+   This lets the programmer force a specific encoding without turning the
+   assembler into a "maybe I will shrink it later" guessing machine.
 */
 static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
 {
@@ -145,18 +144,12 @@ static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, cons
    addr_mode_t mode;
 
    /*
-      Addressing-mode specifiers are treated as hard requirements, not hints.
+      No suffix:
+         Use stable-width defaults for ambiguous families. That keeps pass 1
+         and pass 2 in agreement and avoids label movement.
 
-      Why:
-      - They are there so the programmer can force a specific encoding.
-      - That keeps instruction sizes stable and predictable.
-      - It also avoids "helpful" auto-shrinking from ABS to ZP in pass 2,
-        which would move labels around and turn a simple two-pass assembler
-        into a relaxation engine.
-
-      So:
-      - no suffix      => use the conservative stable-width default
-      - suffix present => encode exactly that mode or error
+      With suffix:
+         The suffix is a hard requirement. Encode exactly that mode or error.
    */
 
    mode = normalize_mode(insn->opcode, insn->mode);
@@ -294,6 +287,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog)
    ctx->prog = prog;
    ctx->origin = 0;
    symtab_init(&ctx->symbols);
+   ihex_image_init(&ctx->image);
 }
 
 void asm_context_free(asm_context_t *ctx)
@@ -342,15 +336,24 @@ int asm_pass1(asm_context_t *ctx)
    return 0;
 }
 
-static void emit_byte(unsigned char b)
+static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, int line)
 {
-   printf("%02X ", b);
+   if (!ihex_write_byte(&ctx->image, addr, b)) {
+      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      return 0;
+   }
+
+   return 1;
 }
 
-static void emit_word(unsigned short w)
+static int emit_word(asm_context_t *ctx, long addr, unsigned short w, int line)
 {
-   emit_byte((unsigned char)(w & 0xFF));
-   emit_byte((unsigned char)((w >> 8) & 0xFF));
+   if (!ihex_write_word(&ctx->image, addr, w)) {
+      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      return 0;
+   }
+
+   return 1;
 }
 
 static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
@@ -373,7 +376,11 @@ static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, 
    return 1;
 }
 
-static int directive_emit_pass2(const directive_info_t *dir, const symtab_t *symbols, long *pc, int line)
+static int directive_emit_pass2(asm_context_t *ctx,
+                                const directive_info_t *dir,
+                                const symtab_t *symbols,
+                                long *pc,
+                                int line)
 {
    const expr_list_node_t *node;
    long value;
@@ -395,7 +402,8 @@ static int directive_emit_pass2(const directive_info_t *dir, const symtab_t *sym
       for (node = dir->exprs; node; node = node->next) {
          if (eval_or_report(node->expr, symbols, *pc, &value, line))
             return 1;
-         emit_byte((unsigned char)(value & 0xFF));
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), line))
+            return 1;
          (*pc)++;
       }
       return 0;
@@ -405,7 +413,8 @@ static int directive_emit_pass2(const directive_info_t *dir, const symtab_t *sym
       for (node = dir->exprs; node; node = node->next) {
          if (eval_or_report(node->expr, symbols, *pc, &value, line))
             return 1;
-         emit_word((unsigned short)(value & 0xFFFF));
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), line))
+            return 1;
          (*pc) += 2;
       }
       return 0;
@@ -422,18 +431,23 @@ static int directive_emit_pass2(const directive_info_t *dir, const symtab_t *sym
       n = strlen(s);
       if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
          for (i = 1; i + 1 < n; i++) {
-            emit_byte((unsigned char)s[i]);
+            if (!emit_byte(ctx, *pc, (unsigned char)s[i], line))
+               return 1;
             (*pc)++;
          }
       }
       return 0;
    }
 
-   printf("; line %d: unhandled directive %s\n", line, dir->name);
-   return 0;
+   fprintf(stderr, "line %d: unhandled directive %s\n", line, dir->name);
+   return 1;
 }
 
-static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, long *pc, int line)
+static int insn_emit_pass2(asm_context_t *ctx,
+                           const insn_info_t *insn,
+                           const symtab_t *symbols,
+                           long *pc,
+                           int line)
 {
    long value;
    emit_mode_t emode;
@@ -454,7 +468,8 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
       return 1;
    }
 
-   emit_byte(opcode);
+   if (!emit_byte(ctx, *pc, opcode, line))
+      return 1;
    (*pc)++;
 
    switch (emode) {
@@ -488,7 +503,8 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
       case EM_ZPY:
       case EM_INDX:
       case EM_INDY:
-         emit_byte((unsigned char)(value & 0xFF));
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), line))
+            return 1;
          (*pc)++;
          return 0;
 
@@ -501,7 +517,8 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
             return 1;
          }
 
-         emit_byte((unsigned char)(disp & 0xFF));
+         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), line))
+            return 1;
          (*pc)++;
          return 0;
       }
@@ -510,7 +527,8 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
       case EM_ABSX:
       case EM_ABSY:
       case EM_IND:
-         emit_word((unsigned short)(value & 0xFFFF));
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), line))
+            return 1;
          (*pc) += 2;
          return 0;
 
@@ -533,17 +551,16 @@ int asm_pass2(asm_context_t *ctx)
             break;
 
          case STMT_DIR:
-            if (directive_emit_pass2(stmt->u.dir, &ctx->symbols, &pc, stmt->line))
+            if (directive_emit_pass2(ctx, stmt->u.dir, &ctx->symbols, &pc, stmt->line))
                return 1;
             break;
 
          case STMT_INSN:
-            if (insn_emit_pass2(&stmt->u.insn, &ctx->symbols, &pc, stmt->line))
+            if (insn_emit_pass2(ctx, &stmt->u.insn, &ctx->symbols, &pc, stmt->line))
                return 1;
             break;
       }
    }
 
-   printf("\n");
    return 0;
 }
