@@ -123,34 +123,35 @@ static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
    return 0;
 }
 
-static int mode_requires_byte_operand(emit_mode_t mode)
+static int expr_is_u8_value(long value)
 {
-   switch (mode) {
-      case EM_IMMEDIATE:
-      case EM_ZP:
-      case EM_ZPX:
-      case EM_ZPY:
-      case EM_INDX:
-      case EM_INDY:
-         return 1;
-
-      default:
-         return 0;
-   }
+   return value >= 0 && value <= 0xFF;
 }
 
+static int expr_is_s8_or_u8_value(long value)
+{
+   return value >= -128 && value <= 0xFF;
+}
+
+/*
+   No suffix:
+      Use stable-width defaults for ambiguous families when both concrete
+      encodings exist for this opcode.
+
+      But if the opcode only supports one concrete encoding in that family,
+      choose the only legal one. Example:
+         STX $99,Y
+      parses as the ambiguous Y-index family, but STX only has zp,Y on
+      6502, not abs,Y, so the assembler must choose ZPY here or it will
+      reject valid source for the wrong reason.
+
+   With suffix:
+      The suffix is a hard requirement. Encode exactly that mode or error.
+*/
 static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
-
-   /*
-      No suffix:
-         Use stable-width defaults for ambiguous families. That keeps pass 1
-         and pass 2 in agreement and avoids label movement.
-
-      With suffix:
-         The suffix is a hard requirement. Encode exactly that mode or error.
-   */
+   unsigned char dummy;
 
    mode = normalize_mode(insn->opcode, insn->mode);
 
@@ -200,16 +201,37 @@ static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, cons
          return 1;
 
       case AM_ZP_OR_ABS:
-         *out_mode = EM_ABS;
-         return 1;
+         if (opcode_lookup(insn->opcode, EM_ABS, &dummy)) {
+            *out_mode = EM_ABS;
+            return 1;
+         }
+         if (opcode_lookup(insn->opcode, EM_ZP, &dummy)) {
+            *out_mode = EM_ZP;
+            return 1;
+         }
+         break;
 
       case AM_ZPX_OR_ABSX:
-         *out_mode = EM_ABSX;
-         return 1;
+         if (opcode_lookup(insn->opcode, EM_ABSX, &dummy)) {
+            *out_mode = EM_ABSX;
+            return 1;
+         }
+         if (opcode_lookup(insn->opcode, EM_ZPX, &dummy)) {
+            *out_mode = EM_ZPX;
+            return 1;
+         }
+         break;
 
       case AM_ZPY_OR_ABSY:
-         *out_mode = EM_ABSY;
-         return 1;
+         if (opcode_lookup(insn->opcode, EM_ABSY, &dummy)) {
+            *out_mode = EM_ABSY;
+            return 1;
+         }
+         if (opcode_lookup(insn->opcode, EM_ZPY, &dummy)) {
+            *out_mode = EM_ZPY;
+            return 1;
+         }
+         break;
 
       default:
          break;
@@ -461,6 +483,11 @@ static int insn_emit_pass2(asm_context_t *ctx,
       return 1;
    }
 
+#if 0
+fprintf(stderr, "DEBUG: opcode=%s spec=%s emode=%d\n",
+        insn->opcode, mode_spec_suffix(insn->spec), (int)emode);
+#endif
+
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
       fprintf(stderr,
               "line %d: illegal addressing mode for %s%s\n",
@@ -489,11 +516,31 @@ static int insn_emit_pass2(asm_context_t *ctx,
    if (eval_or_report(insn->expr, symbols, *pc, &value, line))
       return 1;
 
-   if (mode_requires_byte_operand(emode) && !expr_is_byte_value(value)) {
-      fprintf(stderr,
-              "line %d: %s%s requires an 8-bit operand, got $%lX\n",
-              line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
-      return 1;
+   switch (emode) {
+      case EM_IMMEDIATE:
+         if (!expr_is_s8_or_u8_value(value)) {
+            fprintf(stderr,
+                    "line %d: %s%s immediate operand out of range: %ld\n",
+                    line, insn->opcode, mode_spec_suffix(insn->spec), value);
+            return 1;
+         }
+         break;
+
+      case EM_ZP:
+      case EM_ZPX:
+      case EM_ZPY:
+      case EM_INDX:
+      case EM_INDY:
+         if (!expr_is_u8_value(value)) {
+            fprintf(stderr,
+                    "line %d: %s%s requires a zero-page operand, got $%lX\n",
+                    line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
+            return 1;
+         }
+         break;
+
+      default:
+         break;
    }
 
    switch (emode) {
