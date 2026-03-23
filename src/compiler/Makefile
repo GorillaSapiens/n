@@ -3,7 +3,7 @@ YACC = bison
 CC = gcc
 CFLAGS = -Wall -MMD -MP
 CFLAGS += -g        # for debugging
-CFLAGS += -DYYDEBUG # for yacc debugging
+#CFLAGS += -DYYDEBUG # for yacc debugging
 #CFLAGS += -O2       # for obtimization
 
 TARGET = nc

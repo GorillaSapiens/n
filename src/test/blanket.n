@@ -1,0 +1,178 @@
+// nc -X coverage -X parseonly
+
+// for code coverage, some is nonsensical
+
+include "machine_6502.n"
+
+mem nulspace { };
+
+struct node {
+   int data;
+   node *next := 0;
+};
+
+node head := { .data := 0, .next := 0 };
+
+union ofthesnake {
+   int idata;
+   float fdata;
+};
+
+struct undeclared;
+union also_undeclared;
+
+xform nulxform {
+   '\0' 0
+};
+
+struct int { // should cause an error
+   int fred;
+};
+
+union float { // should cause an error
+   float fred;
+};
+
+int ia;
+static int ib;
+zp const ref static int ic, id;
+
+zp int ie @ 12;
+zp int ie @ ia;
+
+int ig := 5`int;
+
+float fa := 3.1415;
+float fb := 3.1415`float;
+
+char *msg := "hello, world!";
+char *msg2 := "hello, world!"`nulxform;
+
+int *pia;
+
+int ** @ 13; // TODO FIX
+int *;
+
+void foo(void) {
+}
+
+int operator==(int l, int r) {
+   return 0;
+}
+
+int array[12];
+int (*fnptrs)()[12];
+int (*fnptrs)(void)[12];
+
+int main(int argc, char **argv) {
+   int *pic;
+   int arg[12] := { 1, 2, 3 };
+   int arg2[12] := { 1, 2, 3, };
+
+   ia := ib;
+   ib += ia;
+   ib -= ia;
+   ib *= ia;
+   ib /= ia;
+   ib %= ia;
+   ib &= ia;
+   ib |= ia;
+   ib ^= ia;
+   ib <<= ia;
+   ib >>= ia;
+
+label:
+   if (ia == ib) {
+      ic := 12;
+   }
+   else {
+      ic := 13;
+   }
+
+   if (ia != ia) {
+      fnord();
+      err(6, "ouch!");
+      exit(0);
+   }
+
+   {
+      id := 4;
+   }
+
+   goto label;
+
+   for (i := 0; i < 12; i++) { // TODO FIX allow to declare here
+      if (i == 3) {
+         break;
+      }
+      else {
+         continue;
+      }
+   }
+
+label2:
+   for (a := 0; a < 12; a++) {
+      for (b := 0; b < 12; b++) {
+         break label2;
+         continue label2;
+      }
+   }
+
+   for (q := 5;;) {
+      ia := 2;
+   }
+
+   ;
+
+   while (i <= 5) {
+      i++;
+   }
+
+   do {
+      i--;
+   } while (i >= 5);
+
+   switch(n) {
+      case 0:
+         break;
+      default:
+      case 1:
+         break;
+   }
+
+   a.b := 12;
+
+   a ? b : c, d ? e : f;
+
+   a := b || c && d || e ^ f | g & a;
+
+   if (a < b) {
+      if (c > d) {
+      }
+   }
+
+   a := b << 5;
+   a := b >> 5;
+
+   a := 2 + 2 - 2 * 2 / 2 % 2;
+   a := ( 2 + 2 );
+
+   ++a;
+   --b;
+
+   a := *b;
+
+   a[12] := 5;
+
+   a->b := c.d;
+
+   a := !a;
+   a := ~a;
+   a := -a;
+   a := &a;
+   a := +a;
+
+   a := 'x';
+   a := 'x'`nulxform;
+}
+

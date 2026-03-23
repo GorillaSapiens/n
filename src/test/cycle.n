@@ -1,6 +1,6 @@
 // nc -X invert
 
-include "machine_generic.n"
+include "machine_6502.n"
 
 struct beta;
 struct gamma;

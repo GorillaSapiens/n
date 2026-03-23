@@ -1,6 +1,6 @@
 // nc -X coverage -X dumpast
 
-include "machine_generic.n"
+include "machine_6502.n"
 
 type wisp { };
 
@@ -92,6 +92,7 @@ void useless() {
    a := !a;
    a := ~a;
    a := -a;
+   a := +a;
    a := &a;
 
    a;

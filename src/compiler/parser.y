@@ -550,6 +550,7 @@ unary_expr:
   | '!' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
   | '~' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("~", $2); }
   | '-' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
+  | '+' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("+", $2); }
   | '&' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
   ;
 
@@ -607,3 +608,5 @@ flag:
   ;
 
 %%
+
+/* vim: set expandtab nu nowrap tabstop=3 shiftwidth=3 softtabstop=3: */
