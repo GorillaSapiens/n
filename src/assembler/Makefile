@@ -16,6 +16,7 @@ SRCSRC = \
    directive.c \
    expr.c \
    ir.c \
+   opcode.c \
    symtab.c \
    main.c
 

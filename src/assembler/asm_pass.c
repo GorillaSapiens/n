@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "asm_pass.h"
+#include "opcode.h"
 
 static int is_branch_opcode(const char *opcode)
 {
@@ -23,12 +24,58 @@ static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
    return mode;
 }
 
-static int opcode_accepts_mode(const char *opcode, addr_mode_t mode)
+static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode)
 {
-   /* keep this minimal for now; parser already did some checking */
-   (void)opcode;
-   (void)mode;
-   return 1;
+   addr_mode_t mode;
+
+   mode = normalize_mode(insn->opcode, insn->mode);
+
+   switch (mode) {
+      case AM_IMPLIED:
+         *out_mode = EM_IMPLIED;
+         return 1;
+
+      case AM_ACCUMULATOR:
+         *out_mode = EM_ACCUMULATOR;
+         return 1;
+
+      case AM_IMMEDIATE:
+         *out_mode = EM_IMMEDIATE;
+         return 1;
+
+      case AM_INDEXED_INDIRECT:
+         *out_mode = EM_INDX;
+         return 1;
+
+      case AM_INDIRECT_INDEXED:
+         *out_mode = EM_INDY;
+         return 1;
+
+      case AM_INDIRECT:
+         *out_mode = EM_IND;
+         return 1;
+
+      case AM_RELATIVE:
+         *out_mode = EM_REL;
+         return 1;
+
+      case AM_ZP_OR_ABS:
+         *out_mode = EM_ABS;
+         return 1;
+
+      case AM_ZPX_OR_ABSX:
+         *out_mode = EM_ABSX;
+         return 1;
+
+      case AM_ZPY_OR_ABSY:
+         *out_mode = EM_ABSY;
+         return 1;
+
+      default:
+         break;
+   }
+
+   return 0;
 }
 
 static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
@@ -79,37 +126,12 @@ static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
 
 static int insn_size_pass1(const insn_info_t *insn)
 {
-   addr_mode_t mode;
+   emit_mode_t emode;
 
-   mode = normalize_mode(insn->opcode, insn->mode);
+   if (!choose_emit_mode(insn, &emode))
+      return -1;
 
-   switch (mode) {
-      case AM_IMPLIED:
-      case AM_ACCUMULATOR:
-         return 1;
-
-      case AM_IMMEDIATE:
-      case AM_INDEXED_INDIRECT:
-      case AM_INDIRECT_INDEXED:
-      case AM_RELATIVE:
-         return 2;
-
-      case AM_INDIRECT:
-         return 3;
-
-      case AM_ZP_OR_ABS:
-      case AM_ZPX_OR_ABSX:
-      case AM_ZPY_OR_ABSY:
-         /*
-            Conservative in pass 1: assume worst case.
-            Pass 2 can shrink zp later if you want, but that implies
-            either relaxation or a policy choice. For now, keep it stable.
-         */
-         return 3;
-
-      default:
-         return 0;
-   }
+   return emit_mode_size(emode);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog)
@@ -259,68 +281,76 @@ static int directive_emit_pass2(const directive_info_t *dir, const symtab_t *sym
 static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, long *pc, int line)
 {
    long value;
-   addr_mode_t mode;
+   emit_mode_t emode;
+   unsigned char opcode;
 
-   mode = normalize_mode(insn->opcode, insn->mode);
-
-   if (!opcode_accepts_mode(insn->opcode, mode)) {
-      fprintf(stderr, "line %d: illegal addressing mode\n", line);
+   if (!choose_emit_mode(insn, &emode)) {
+      fprintf(stderr, "line %d: unsupported addressing mode\n", line);
       return 1;
    }
 
-   emit_byte(0xEA);
+   if (!opcode_lookup(insn->opcode, emode, &opcode)) {
+      fprintf(stderr, "line %d: illegal addressing mode for %s\n", line, insn->opcode);
+      return 1;
+   }
+
+   emit_byte(opcode);
    (*pc)++;
 
-   switch (mode) {
-      case AM_IMPLIED:
-      case AM_ACCUMULATOR:
+   switch (emode) {
+      case EM_IMPLIED:
+      case EM_ACCUMULATOR:
          return 0;
 
       default:
          break;
    }
 
-   if (!insn->has_operand) {
-      fprintf(stderr, "line %d: internal error: missing operand\n", line);
+   if (!insn->has_operand || !insn->expr) {
+      fprintf(stderr, "line %d: internal error: missing operand expression\n", line);
       return 1;
    }
 
    if (eval_or_report(insn->expr, symbols, *pc, &value, line))
       return 1;
 
-   switch (mode) {
-      case AM_IMMEDIATE:
-      case AM_INDEXED_INDIRECT:
-      case AM_INDIRECT_INDEXED:
-      case AM_RELATIVE:
-         if (mode == AM_RELATIVE) {
-            long disp;
-            disp = value - (*pc + 1);
-            if (disp < -128 || disp > 127) {
-               fprintf(stderr, "line %d: branch out of range\n", line);
-               return 1;
-            }
-            emit_byte((unsigned char)(disp & 0xFF));
-         } else {
-            emit_byte((unsigned char)(value & 0xFF));
-         }
+   switch (emode) {
+      case EM_IMMEDIATE:
+      case EM_ZP:
+      case EM_ZPX:
+      case EM_ZPY:
+      case EM_INDX:
+      case EM_INDY:
+         emit_byte((unsigned char)(value & 0xFF));
          (*pc)++;
-         break;
+         return 0;
 
-      case AM_ZP_OR_ABS:
-      case AM_ZPX_OR_ABSX:
-      case AM_ZPY_OR_ABSY:
-      case AM_INDIRECT:
+      case EM_REL: {
+         long disp;
+
+         disp = value - (*pc + 1);
+         if (disp < -128 || disp > 127) {
+            fprintf(stderr, "line %d: branch out of range\n", line);
+            return 1;
+         }
+
+         emit_byte((unsigned char)(disp & 0xFF));
+         (*pc)++;
+         return 0;
+      }
+
+      case EM_ABS:
+      case EM_ABSX:
+      case EM_ABSY:
+      case EM_IND:
          emit_word((unsigned short)(value & 0xFFFF));
          (*pc) += 2;
-         break;
+         return 0;
 
       default:
-         fprintf(stderr, "line %d: unhandled mode in emitter\n", line);
+         fprintf(stderr, "line %d: internal emitter error\n", line);
          return 1;
    }
-
-   return 0;
 }
 
 int asm_pass2(asm_context_t *ctx)
