@@ -189,17 +189,6 @@ static const char *skip_ws(const char *p)
    return p;
 }
 
-static void rstrip_inplace(char *s)
-{
-   size_t n;
-
-   n = strlen(s);
-   while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r' || s[n - 1] == ' ' || s[n - 1] == '\t')) {
-      s[n - 1] = '\0';
-      n--;
-   }
-}
-
 static int is_ident_start(int c)
 {
    return isalpha(c) || c == '_' || c == '@' || c == '?';
@@ -351,34 +340,6 @@ static int is_endm_line(const char *line)
    p += 4;
    p = skip_ws(p);
    return *p == '\0' || *p == '\n' || *p == '\r' || *p == ';';
-}
-
-static char *trim_copy_no_comment(const char *line)
-{
-   const char *p;
-   const char *end;
-   char *out;
-   size_t len;
-
-   p = skip_ws(line);
-   end = p;
-
-   while (*end && *end != '\n' && *end != '\r' && *end != ';')
-      end++;
-
-   while (end > p && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\r'))
-      end--;
-
-   len = (size_t)(end - p);
-   out = (char *)malloc(len + 1);
-   if (!out) {
-      fprintf(stderr, "out of memory\n");
-      exit(1);
-   }
-
-   memcpy(out, p, len);
-   out[len] = '\0';
-   return out;
 }
 
 static int parse_invocation(const char *line,
