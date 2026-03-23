@@ -133,6 +133,7 @@ directive_tests:
    .word $1234, target, (target + 2)
    .text "HELLO"
    .ascii "WORLD", 13, 10
+   .byte $01, $02, $03, 'A', 'B', 'C'
 
 label1:
 target:
