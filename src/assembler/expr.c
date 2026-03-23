@@ -237,8 +237,26 @@ int parse_charconst_token(const char *text)
    return (unsigned char)*text;
 }
 
+static const symbol_t *find_scoped_ident(const symtab_t *symtab,
+                                         const char *scope,
+                                         const char *ident)
+{
+   char buf[4096];
+
+   if (!symtab)
+      return NULL;
+
+   if (ident[0] == '@') {
+      snprintf(buf, sizeof(buf), "%s::%s", scope ? scope : "__root__", ident);
+      return symtab_find_const(symtab, buf);
+   }
+
+   return symtab_find_const(symtab, ident);
+}
+
 expr_eval_status_t expr_eval(const expr_t *expr,
                              const symtab_t *symtab,
+                             const char *scope,
                              long pc,
                              long *value)
 {
@@ -260,7 +278,7 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          if (!symtab)
             return EXPR_EVAL_UNRESOLVED;
 
-         sym = symtab_find_const(symtab, expr->u.ident);
+         sym = find_scoped_ident(symtab, scope, expr->u.ident);
          if (!sym || !sym->defined)
             return EXPR_EVAL_UNRESOLVED;
 
@@ -276,7 +294,7 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_OK;
 
       case EXPR_UNARY:
-         rc_left = expr_eval(expr->u.unary.child, symtab, pc, &left);
+         rc_left = expr_eval(expr->u.unary.child, symtab, scope, pc, &left);
          if (rc_left != EXPR_EVAL_OK)
             return rc_left;
 
@@ -296,11 +314,11 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_UNRESOLVED;
 
       case EXPR_BINARY:
-         rc_left = expr_eval(expr->u.binary.left, symtab, pc, &left);
+         rc_left = expr_eval(expr->u.binary.left, symtab, scope, pc, &left);
          if (rc_left != EXPR_EVAL_OK)
             return rc_left;
 
-         rc_right = expr_eval(expr->u.binary.right, symtab, pc, &right);
+         rc_right = expr_eval(expr->u.binary.right, symtab, scope, pc, &right);
          if (rc_right != EXPR_EVAL_OK)
             return rc_right;
 

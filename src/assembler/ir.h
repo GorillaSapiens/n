@@ -50,6 +50,7 @@ struct stmt {
    int line;
    long address;
    char *label;
+   char *scope;
    union {
       insn_info_t insn;
       directive_info_t *dir;

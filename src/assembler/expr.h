@@ -73,6 +73,7 @@ int parse_charconst_token(const char *text);
 
 expr_eval_status_t expr_eval(const expr_t *expr,
                              const symtab_t *symtab,
+                             const char *scope,
                              long pc,
                              long *value);
 
