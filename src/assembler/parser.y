@@ -11,6 +11,7 @@
 int yylex(void);
 void yyerror(const char *s);
 extern int yylineno;
+//extern YYLTYPE yylloc;
 
 typedef struct opcode_rule {
    const char *name;
@@ -159,6 +160,8 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 }
 %}
 
+%locations
+
 %union {
    char *str;
    addr_mode_t mode;
@@ -254,10 +257,10 @@ instruction_stmt
         if (!opcode_mode_is_legal($1, mode))
            fprintf(stderr,
                    "line %d: illegal addressing mode for %s ... %s\n",
-                   yylineno - 1, $1, addr_mode_name(mode));
+                   @1.first_line, $1, addr_mode_name(mode));
         else
            printf("line %d: %s ... %s\n",
-                  yylineno - 1, $1, addr_mode_name(mode));
+                  @1.first_line, $1, addr_mode_name(mode));
 
         free_if($1);
      }
@@ -268,10 +271,10 @@ instruction_stmt
         if (!opcode_mode_is_legal($1, mode))
            fprintf(stderr,
                    "line %d: illegal addressing mode for %s ... %s\n",
-                   yylineno - 1, $1, addr_mode_name(mode));
+                   @1.first_line, $1, addr_mode_name(mode));
         else
            printf("line %d: %s ... %s\n",
-                  yylineno - 1, $1, addr_mode_name(mode));
+                  @1.first_line, $1, addr_mode_name(mode));
 
         free_if($1);
      }
@@ -499,5 +502,5 @@ simple_primary
 
 void yyerror(const char *s)
 {
-   fprintf(stderr, "parse error at line %d: %s\n", yylineno, s);
+   fprintf(stderr, "parse error at line %d: %s\n", yylloc.first_line, s);
 }

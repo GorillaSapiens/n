@@ -20,6 +20,14 @@ static char *xstrdup(const char *s)
    memcpy(p, s, n);
    return p;
 }
+
+#define YY_USER_ACTION                        \
+   do {                                       \
+      yylloc.first_line = yylineno;           \
+      yylloc.last_line = yylineno;            \
+      yylloc.first_column = 1;                \
+      yylloc.last_column = 1;                 \
+   } while (0);
 %}
 
 WS          [ \t\r]+
