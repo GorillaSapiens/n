@@ -12,7 +12,7 @@ type char     { $size:1 };
 type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
-type longlong { $size:4 $endian:little };
+type longlong { $size:8 $endian:little };
 type half     { $size:2 $endian:little $float };
 type float    { $size:4 $endian:little $float };
 type double   { $size:8 $endian:little $float };
