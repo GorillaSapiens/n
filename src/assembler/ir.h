@@ -4,6 +4,7 @@
 #include "addr_mode.h"
 #include "expr.h"
 #include "directive.h"
+#include "opcode.h"
 
 typedef enum mode_spec {
    MODE_SPEC_NONE = 0,
@@ -30,6 +31,9 @@ typedef struct insn_info {
    addr_mode_t mode;
    expr_t *expr;
    int has_operand;
+
+   emit_mode_t final_mode;
+   int size;
 } insn_info_t;
 
 typedef struct stmt stmt_t;

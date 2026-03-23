@@ -60,7 +60,7 @@ int main(int argc, char **argv)
 
    asm_context_init(&ctx, &g_program, &lst);
 
-   if (asm_pass1(&ctx) != 0) {
+   if (asm_relax(&ctx) != 0) {
       asm_context_free(&ctx);
       listing_close(&lst);
       fclose(hexfp);

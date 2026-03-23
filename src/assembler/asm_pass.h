@@ -17,7 +17,8 @@ typedef struct asm_context {
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing);
 void asm_context_free(asm_context_t *ctx);
 
-int asm_pass1(asm_context_t *ctx);
+int asm_relax(asm_context_t *ctx);
+int asm_pass1(asm_context_t *ctx, int pass_index);
 int asm_pass2(asm_context_t *ctx);
 
 #endif

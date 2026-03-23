@@ -81,6 +81,23 @@ static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
    return 0;
 }
 
+/*
+   Addressing-mode specifiers are allowed to override some surface syntax.
+
+   Examples:
+      LDA.ix $44    == LDA ($44,X)
+      LDA.iy $44    == LDA ($44),Y
+      JMP.i  $1234  == JMP ($1234)
+
+   Why:
+   - The suffix is a hard encoding selector, not a suggestion.
+   - Requiring both the suffix and the traditional punctuation is redundant.
+   - We still reject combinations that don't match the underlying operand
+     family at all, like LDA.ix foo,Y or LDA.ax (foo).
+
+   This lets the programmer force a specific encoding without turning the
+   assembler into a "maybe I will shrink it later" guessing machine.
+*/
 static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
 {
    parsed_mode = normalize_mode("", parsed_mode);
@@ -127,7 +144,15 @@ static int expr_is_s8_or_u8_value(long value)
    return value >= -128 && value <= 0xFF;
 }
 
-static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
+/*
+   Pick the initial, conservative encoding before relaxation.
+
+   Rules:
+   - explicit mode specifier wins and is never relaxed
+   - ambiguous no-spec families start wide when both wide/narrow exist
+   - if an opcode only has one concrete form in that family, choose it
+*/
+static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
    unsigned char dummy;
@@ -222,6 +247,11 @@ static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, cons
    return 0;
 }
 
+static int insn_size_from_mode(emit_mode_t mode)
+{
+   return emit_mode_size(mode);
+}
+
 static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
 {
    const expr_list_node_t *node;
@@ -268,33 +298,251 @@ static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
    return 0;
 }
 
-static int insn_size_pass1(const insn_info_t *insn, int line)
+static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
 {
-   emit_mode_t emode;
-   const char *why;
+   expr_eval_status_t rc;
 
-   if (!choose_emit_mode(insn, &emode, &why)) {
-      fprintf(stderr,
-              "line %d: %s%s ... %s\n",
-              line, insn->opcode, mode_spec_suffix(insn->spec), why);
-      return -1;
+   rc = expr_eval(expr, symbols, pc, value);
+   if (rc == EXPR_EVAL_OK)
+      return 0;
+
+   fprintf(stderr, "line %d: ", line);
+   expr_fprint(stderr, expr);
+   fprintf(stderr, " -> ");
+
+   if (rc == EXPR_EVAL_DIVZERO)
+      fprintf(stderr, "divide by zero\n");
+   else
+      fprintf(stderr, "unresolved expression\n");
+
+   return 1;
+}
+
+static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_mode, emit_mode_t *relaxed_mode)
+{
+   unsigned char dummy;
+
+   if (insn->spec != MODE_SPEC_NONE)
+      return 0;
+
+   switch (current_mode) {
+      case EM_ABS:
+         if (opcode_lookup(insn->opcode, EM_ZP, &dummy)) {
+            *relaxed_mode = EM_ZP;
+            return 1;
+         }
+         break;
+
+      case EM_ABSX:
+         if (opcode_lookup(insn->opcode, EM_ZPX, &dummy)) {
+            *relaxed_mode = EM_ZPX;
+            return 1;
+         }
+         break;
+
+      case EM_ABSY:
+         if (opcode_lookup(insn->opcode, EM_ZPY, &dummy)) {
+            *relaxed_mode = EM_ZPY;
+            return 1;
+         }
+         break;
+
+      default:
+         break;
    }
 
-   return emit_mode_size(emode);
+   return 0;
+}
+
+static void print_pass_stats(const asm_context_t *ctx, int pass_index, const char *phase)
+{
+   const stmt_t *stmt;
+   int insn_count;
+   int dir_count;
+   int label_count;
+   int total_bytes;
+   int zp_like;
+   int abs_like;
+
+   insn_count = 0;
+   dir_count = 0;
+   label_count = 0;
+   total_bytes = 0;
+   zp_like = 0;
+   abs_like = 0;
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      switch (stmt->kind) {
+         case STMT_LABEL:
+            label_count++;
+            break;
+
+         case STMT_DIR:
+            dir_count++;
+            break;
+
+         case STMT_INSN:
+            insn_count++;
+            total_bytes += stmt->u.insn.size;
+
+            switch (stmt->u.insn.final_mode) {
+               case EM_ZP:
+               case EM_ZPX:
+               case EM_ZPY:
+                  zp_like++;
+                  break;
+
+               case EM_ABS:
+               case EM_ABSX:
+               case EM_ABSY:
+                  abs_like++;
+                  break;
+
+               default:
+                  break;
+            }
+            break;
+      }
+   }
+
+   printf("pass %d %-10s bytes=%d insns=%d dirs=%d labels=%d zp=%d abs=%d\n",
+          pass_index, phase, total_bytes, insn_count, dir_count, label_count, zp_like, abs_like);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing)
 {
+   stmt_t *stmt;
+   const char *why;
+
    ctx->prog = prog;
    ctx->origin = 0;
    symtab_init(&ctx->symbols);
    ihex_image_init(&ctx->image);
    ctx->listing = listing;
+
+   for (stmt = prog->head; stmt; stmt = stmt->next) {
+      if (stmt->kind != STMT_INSN)
+         continue;
+
+      if (!choose_initial_emit_mode(&stmt->u.insn, &stmt->u.insn.final_mode, &why)) {
+         fprintf(stderr,
+                 "line %d: %s%s ... %s\n",
+                 stmt->line,
+                 stmt->u.insn.opcode,
+                 mode_spec_suffix(stmt->u.insn.spec),
+                 why);
+         stmt->u.insn.final_mode = EM_IMPLIED;
+         stmt->u.insn.size = 1;
+      } else {
+         stmt->u.insn.size = insn_size_from_mode(stmt->u.insn.final_mode);
+      }
+   }
 }
 
 void asm_context_free(asm_context_t *ctx)
 {
    symtab_free(&ctx->symbols);
+}
+
+int asm_pass1(asm_context_t *ctx, int pass_index)
+{
+   stmt_t *stmt;
+   long pc;
+   long new_origin;
+   int sz;
+
+   symtab_free(&ctx->symbols);
+   symtab_init(&ctx->symbols);
+
+   pc = ctx->origin;
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      if (stmt->label)
+         symtab_define(&ctx->symbols, stmt->label, pc);
+
+      switch (stmt->kind) {
+         case STMT_LABEL:
+            break;
+
+         case STMT_INSN:
+            sz = stmt->u.insn.size;
+            if (sz < 0)
+               return 1;
+            pc += sz;
+            break;
+
+         case STMT_DIR:
+            new_origin = pc;
+            sz = directive_size_pass1(stmt->u.dir, &new_origin);
+            if (sz < 0)
+               return 1;
+
+            if (!strcmp(stmt->u.dir->name, ".org"))
+               pc = new_origin;
+            else
+               pc += sz;
+            break;
+      }
+   }
+
+   print_pass_stats(ctx, pass_index, "layout");
+   return 0;
+}
+
+int asm_relax(asm_context_t *ctx)
+{
+   int iter;
+   int changed;
+
+   for (iter = 1; iter <= 20; iter++) {
+      stmt_t *stmt;
+
+      if (asm_pass1(ctx, iter) != 0)
+         return 1;
+
+      changed = 0;
+
+      for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+         long pc;
+         long value;
+         emit_mode_t candidate;
+
+         if (stmt->kind != STMT_INSN)
+            continue;
+
+         if (!can_relax_to_zp_family(&stmt->u.insn, stmt->u.insn.final_mode, &candidate))
+            continue;
+
+         /*
+            Evaluate with the current symbol table. Because we started wide and
+            only ever shrink, addresses move monotonically downward and the
+            process converges.
+         */
+         pc = 0; /* not used for zp-vs-abs choice */
+         if (!stmt->u.insn.expr)
+            continue;
+
+         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, pc, &value) != EXPR_EVAL_OK)
+            continue;
+
+         if (!expr_is_u8_value(value))
+            continue;
+
+         if (candidate != stmt->u.insn.final_mode) {
+            stmt->u.insn.final_mode = candidate;
+            stmt->u.insn.size = insn_size_from_mode(candidate);
+            changed = 1;
+         }
+      }
+
+      print_pass_stats(ctx, iter, changed ? "relaxed" : "stable");
+
+      if (!changed)
+         return 0;
+   }
+
+   fprintf(stderr, "relaxation did not converge\n");
+   return 1;
 }
 
 static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, int line)
@@ -317,67 +565,6 @@ static int emit_word(asm_context_t *ctx, long addr, unsigned short w, int line)
    return 1;
 }
 
-static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
-{
-   expr_eval_status_t rc;
-
-   rc = expr_eval(expr, symbols, pc, value);
-   if (rc == EXPR_EVAL_OK)
-      return 0;
-
-   fprintf(stderr, "line %d: ", line);
-   expr_fprint(stderr, expr);
-   fprintf(stderr, " -> ");
-
-   if (rc == EXPR_EVAL_DIVZERO)
-      fprintf(stderr, "divide by zero\n");
-   else
-      fprintf(stderr, "unresolved expression\n");
-
-   return 1;
-}
-
-int asm_pass1(asm_context_t *ctx)
-{
-   stmt_t *stmt;
-   long pc;
-   long new_origin;
-   int sz;
-
-   pc = ctx->origin;
-
-   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
-      if (stmt->label)
-         symtab_define(&ctx->symbols, stmt->label, pc);
-
-      switch (stmt->kind) {
-         case STMT_LABEL:
-            break;
-
-         case STMT_INSN:
-            sz = insn_size_pass1(&stmt->u.insn, stmt->line);
-            if (sz < 0)
-               return 1;
-            pc += sz;
-            break;
-
-         case STMT_DIR:
-            new_origin = pc;
-            sz = directive_size_pass1(stmt->u.dir, &new_origin);
-            if (sz < 0)
-               return 1;
-
-            if (!strcmp(stmt->u.dir->name, ".org"))
-               pc = new_origin;
-            else
-               pc += sz;
-            break;
-      }
-   }
-
-   return 0;
-}
-
 static int directive_emit_pass2(asm_context_t *ctx,
                                 const stmt_t *stmt,
                                 const directive_info_t *dir,
@@ -387,7 +574,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
    const expr_list_node_t *node;
    long value;
    long start_pc;
-   unsigned char rec[16];
+   unsigned char rec[256];
    int rec_count;
 
    start_pc = *pc;
@@ -478,22 +665,15 @@ static int insn_emit_pass2(asm_context_t *ctx,
                            long *pc)
 {
    long value;
-   emit_mode_t emode;
    unsigned char opcode;
-   const char *why;
-   long start_pc;
-   unsigned char rec[3];
+   unsigned char rec[8];
    int rec_count;
+   long start_pc;
+   emit_mode_t emode;
 
+   emode = insn->final_mode;
    start_pc = *pc;
    rec_count = 0;
-
-   if (!choose_emit_mode(insn, &emode, &why)) {
-      fprintf(stderr,
-              "line %d: %s%s ... %s\n",
-              stmt->line, insn->opcode, mode_spec_suffix(insn->spec), why);
-      return 1;
-   }
 
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
       fprintf(stderr,
@@ -609,7 +789,10 @@ int asm_pass2(asm_context_t *ctx)
    stmt_t *stmt;
    long pc;
 
+   ihex_image_init(&ctx->image);
    pc = ctx->origin;
+
+   print_pass_stats(ctx, 999, "emit");
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {

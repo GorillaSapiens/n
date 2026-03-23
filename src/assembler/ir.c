@@ -195,6 +195,8 @@ stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mod
    stmt->u.insn.mode = mode;
    stmt->u.insn.expr = expr;
    stmt->u.insn.has_operand = has_operand;
+   stmt->u.insn.final_mode = EM_IMPLIED;
+   stmt->u.insn.size = 1;
    return stmt;
 }
 
@@ -250,10 +252,12 @@ void stmt_print(const stmt_t *stmt)
          break;
 
       case STMT_INSN:
-         printf("insn %s%s %s",
+         printf("insn %s%s %s size=%d emode=%d",
                 stmt->u.insn.opcode,
                 mode_spec_suffix(stmt->u.insn.spec),
-                addr_mode_name(stmt->u.insn.mode));
+                addr_mode_name(stmt->u.insn.mode),
+                stmt->u.insn.size,
+                (int)stmt->u.insn.final_mode);
          if (stmt->u.insn.expr) {
             printf(" expr=");
             expr_print(stmt->u.insn.expr);
