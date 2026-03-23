@@ -30,23 +30,26 @@ static char *xstrdup(const char *s)
    } while (0);
 %}
 
-WS          [ \t\r]+
-HEX         \$[0-9A-Fa-f]+
-BIN         %[01]+
-DEC         [0-9]+
-CHARBODY    ([^\\\n']|\\[0nrt'\"\\])
-CHARCONST   \'{CHARBODY}\'?
-STRING      \"([^\\\n]|\\.)*\"
-IDSTART     [A-Za-z_@?]
-IDCHAR      [A-Za-z0-9_@?]
-IDENT       {IDSTART}{IDCHAR}*
-DIRECTIVE   [.!][A-Za-z_][A-Za-z0-9_]*
-OPC_BRANCH  BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS
-OPC_FLAGS   CLC|CLD|CLI|CLV|SEC|SED|SEI
-OPC_LOADST  LDA|LDX|LDY|STA|STX|STY
-OPC_ALU     ADC|AND|ASL|BIT|CMP|CPX|CPY|DEC|EOR|INC|LSR|ORA|ROL|ROR|SBC
-OPC_MISC    BRK|DEX|DEY|INX|INY|JMP|JSR|NOP|PHA|PHP|PLA|PLP|RTI|RTS|TAX|TAY|TSX|TXA|TXS|TYA
-OPCODE6502  {OPC_BRANCH}|{OPC_FLAGS}|{OPC_LOADST}|{OPC_ALU}|{OPC_MISC}
+WS           [ \t\r]+
+HEX          \$[0-9A-Fa-f]+
+BIN          %[01]+
+DEC          [0-9]+
+CHARBODY     ([^\\\n']|\\[0nrt'\"\\])
+CHARCONST    \'{CHARBODY}\'?
+STRING       \"([^\\\n]|\\.)*\"
+IDSTART      [A-Za-z_@?]
+IDCHAR       [A-Za-z0-9_@?]
+IDENT        {IDSTART}{IDCHAR}*
+DIRECTIVE    [.!][A-Za-z_][A-Za-z0-9_]*
+MODE_SUFFIX  \.(z|zx|zy|a|ax|ay|i|ix|iy)
+
+OPC_BRANCH   BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS
+OPC_FLAGS    CLC|CLD|CLI|CLV|SEC|SED|SEI
+OPC_LOADST   LDA|LDX|LDY|STA|STX|STY
+OPC_ALU      ADC|AND|ASL|BIT|CMP|CPX|CPY|DEC|EOR|INC|LSR|ORA|ROL|ROR|SBC
+OPC_MISC     BRK|DEX|DEY|INX|INY|JMP|JSR|NOP|PHA|PHP|PLA|PLP|RTI|RTS|TAX|TAY|TSX|TXA|TXS|TYA
+OPCODE6502   {OPC_BRANCH}|{OPC_FLAGS}|{OPC_LOADST}|{OPC_ALU}|{OPC_MISC}
+OPCODETOK    {OPCODE6502}{MODE_SUFFIX}?
 
 %%
 
@@ -54,7 +57,7 @@ OPCODE6502  {OPC_BRANCH}|{OPC_FLAGS}|{OPC_LOADST}|{OPC_ALU}|{OPC_MISC}
 {WS}                       { }
 \n                         { return EOL; }
 
-{OPCODE6502}               { yylval.str = xstrdup(yytext); return OPCODE; }
+{OPCODETOK}                { yylval.str = xstrdup(yytext); return OPCODE; }
 {DIRECTIVE}                { yylval.str = xstrdup(yytext); return DIRECTIVE; }
 
 ","                        { return ','; }

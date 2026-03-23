@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "ir.h"
 
 static char *xstrdup(const char *s)
@@ -20,6 +21,86 @@ static char *xstrdup(const char *s)
 
    memcpy(p, s, n);
    return p;
+}
+
+static char *dup_upper(const char *s, size_t n)
+{
+   size_t i;
+   char *p;
+
+   p = (char *)malloc(n + 1);
+   if (!p) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   for (i = 0; i < n; i++)
+      p[i] = (char)toupper((unsigned char)s[i]);
+
+   p[n] = '\0';
+   return p;
+}
+
+static mode_spec_t parse_mode_spec(const char *suffix)
+{
+   if (!suffix || !*suffix)
+      return MODE_SPEC_NONE;
+
+   if (!strcmp(suffix, ".z"))
+      return MODE_SPEC_Z;
+   if (!strcmp(suffix, ".zx"))
+      return MODE_SPEC_ZX;
+   if (!strcmp(suffix, ".zy"))
+      return MODE_SPEC_ZY;
+   if (!strcmp(suffix, ".a"))
+      return MODE_SPEC_A;
+   if (!strcmp(suffix, ".ax"))
+      return MODE_SPEC_AX;
+   if (!strcmp(suffix, ".ay"))
+      return MODE_SPEC_AY;
+   if (!strcmp(suffix, ".i"))
+      return MODE_SPEC_I;
+   if (!strcmp(suffix, ".ix"))
+      return MODE_SPEC_IX;
+   if (!strcmp(suffix, ".iy"))
+      return MODE_SPEC_IY;
+
+   return MODE_SPEC_NONE;
+}
+
+const char *mode_spec_suffix(mode_spec_t spec)
+{
+   switch (spec) {
+      case MODE_SPEC_NONE: return "";
+      case MODE_SPEC_Z:    return ".z";
+      case MODE_SPEC_ZX:   return ".zx";
+      case MODE_SPEC_ZY:   return ".zy";
+      case MODE_SPEC_A:    return ".a";
+      case MODE_SPEC_AX:   return ".ax";
+      case MODE_SPEC_AY:   return ".ay";
+      case MODE_SPEC_I:    return ".i";
+      case MODE_SPEC_IX:   return ".ix";
+      case MODE_SPEC_IY:   return ".iy";
+   }
+
+   return "";
+}
+
+static void split_opcode_text(const char *opcode_text, char **opcode_out, mode_spec_t *spec_out)
+{
+   const char *dot;
+   size_t len;
+
+   dot = strchr(opcode_text, '.');
+   if (!dot) {
+      *opcode_out = dup_upper(opcode_text, strlen(opcode_text));
+      *spec_out = MODE_SPEC_NONE;
+      return;
+   }
+
+   len = (size_t)(dot - opcode_text);
+   *opcode_out = dup_upper(opcode_text, len);
+   *spec_out = parse_mode_spec(dot);
 }
 
 void program_ir_init(program_ir_t *prog)
@@ -97,7 +178,7 @@ stmt_t *stmt_make_label(int line, char *label)
    return stmt;
 }
 
-stmt_t *stmt_make_insn(int line, char *label, char *opcode, addr_mode_t mode, expr_t *expr, int has_operand)
+stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand)
 {
    stmt_t *stmt;
 
@@ -110,7 +191,7 @@ stmt_t *stmt_make_insn(int line, char *label, char *opcode, addr_mode_t mode, ex
    stmt->kind = STMT_INSN;
    stmt->line = line;
    stmt->label = xstrdup(label);
-   stmt->u.insn.opcode = xstrdup(opcode);
+   split_opcode_text(opcode_text, &stmt->u.insn.opcode, &stmt->u.insn.spec);
    stmt->u.insn.mode = mode;
    stmt->u.insn.expr = expr;
    stmt->u.insn.has_operand = has_operand;
@@ -169,7 +250,10 @@ void stmt_print(const stmt_t *stmt)
          break;
 
       case STMT_INSN:
-         printf("insn %s %s", stmt->u.insn.opcode, addr_mode_name(stmt->u.insn.mode));
+         printf("insn %s%s %s",
+                stmt->u.insn.opcode,
+                mode_spec_suffix(stmt->u.insn.spec),
+                addr_mode_name(stmt->u.insn.mode));
          if (stmt->u.insn.expr) {
             printf(" expr=");
             expr_print(stmt->u.insn.expr);

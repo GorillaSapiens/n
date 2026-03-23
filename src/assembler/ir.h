@@ -5,6 +5,19 @@
 #include "expr.h"
 #include "directive.h"
 
+typedef enum mode_spec {
+   MODE_SPEC_NONE = 0,
+   MODE_SPEC_Z,
+   MODE_SPEC_ZX,
+   MODE_SPEC_ZY,
+   MODE_SPEC_A,
+   MODE_SPEC_AX,
+   MODE_SPEC_AY,
+   MODE_SPEC_I,
+   MODE_SPEC_IX,
+   MODE_SPEC_IY
+} mode_spec_t;
+
 typedef enum stmt_kind {
    STMT_INSN = 0,
    STMT_DIR,
@@ -13,6 +26,7 @@ typedef enum stmt_kind {
 
 typedef struct insn_info {
    char *opcode;
+   mode_spec_t spec;
    addr_mode_t mode;
    expr_t *expr;
    int has_operand;
@@ -41,8 +55,10 @@ void program_ir_append(program_ir_t *prog, stmt_t *stmt);
 void program_ir_free(program_ir_t *prog);
 
 stmt_t *stmt_make_label(int line, char *label);
-stmt_t *stmt_make_insn(int line, char *label, char *opcode, addr_mode_t mode, expr_t *expr, int has_operand);
+stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand);
 stmt_t *stmt_make_dir(int line, char *label, directive_info_t *dir);
+
+const char *mode_spec_suffix(mode_spec_t spec);
 
 void stmt_print(const stmt_t *stmt);
 void program_ir_print(const program_ir_t *prog);

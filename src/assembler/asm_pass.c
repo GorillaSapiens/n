@@ -24,11 +24,158 @@ static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
    return mode;
 }
 
-static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode)
+static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
+{
+   switch (spec) {
+      case MODE_SPEC_Z:
+         *out_mode = EM_ZP;
+         return 1;
+
+      case MODE_SPEC_ZX:
+         *out_mode = EM_ZPX;
+         return 1;
+
+      case MODE_SPEC_ZY:
+         *out_mode = EM_ZPY;
+         return 1;
+
+      case MODE_SPEC_A:
+         *out_mode = EM_ABS;
+         return 1;
+
+      case MODE_SPEC_AX:
+         *out_mode = EM_ABSX;
+         return 1;
+
+      case MODE_SPEC_AY:
+         *out_mode = EM_ABSY;
+         return 1;
+
+      case MODE_SPEC_I:
+         *out_mode = EM_IND;
+         return 1;
+
+      case MODE_SPEC_IX:
+         *out_mode = EM_INDX;
+         return 1;
+
+      case MODE_SPEC_IY:
+         *out_mode = EM_INDY;
+         return 1;
+
+      default:
+         break;
+   }
+
+   return 0;
+}
+
+/*
+   Addressing-mode specifiers are allowed to override some surface syntax.
+
+   Examples:
+      LDA.ix $44    == LDA ($44,X)
+      LDA.iy $44    == LDA ($44),Y
+      JMP.i  $1234  == JMP ($1234)
+
+   Why:
+   - The suffix is meant to be a hard encoding selector.
+   - Requiring both the suffix and the traditional punctuation is redundant.
+   - We still reject combinations that don't match the underlying operand
+     family at all, like LDA.ix foo,Y or LDA.ax (foo).
+
+   So for some specifiers we accept either the explicit traditional parsed
+   shape or the simpler base expression form and let the specifier choose
+   the final encoding.
+*/
+static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
+{
+   parsed_mode = normalize_mode("", parsed_mode);
+
+   switch (spec) {
+      case MODE_SPEC_Z:
+      case MODE_SPEC_A:
+         return parsed_mode == AM_ZP_OR_ABS;
+
+      case MODE_SPEC_ZX:
+      case MODE_SPEC_AX:
+         return parsed_mode == AM_ZPX_OR_ABSX;
+
+      case MODE_SPEC_ZY:
+      case MODE_SPEC_AY:
+         return parsed_mode == AM_ZPY_OR_ABSY;
+
+      case MODE_SPEC_I:
+         return parsed_mode == AM_ZP_OR_ABS ||
+                parsed_mode == AM_INDIRECT;
+
+      case MODE_SPEC_IX:
+         return parsed_mode == AM_ZP_OR_ABS ||
+                parsed_mode == AM_INDEXED_INDIRECT;
+
+      case MODE_SPEC_IY:
+         return parsed_mode == AM_ZP_OR_ABS ||
+                parsed_mode == AM_INDIRECT_INDEXED;
+
+      case MODE_SPEC_NONE:
+         return 1;
+   }
+
+   return 0;
+}
+
+static int mode_requires_byte_operand(emit_mode_t mode)
+{
+   switch (mode) {
+      case EM_IMMEDIATE:
+      case EM_ZP:
+      case EM_ZPX:
+      case EM_ZPY:
+      case EM_INDX:
+      case EM_INDY:
+         return 1;
+
+      default:
+         return 0;
+   }
+}
+
+static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
 
+   /*
+      Addressing-mode specifiers are treated as hard requirements, not hints.
+
+      Why:
+      - They are there so the programmer can force a specific encoding.
+      - That keeps instruction sizes stable and predictable.
+      - It also avoids "helpful" auto-shrinking from ABS to ZP in pass 2,
+        which would move labels around and turn a simple two-pass assembler
+        into a relaxation engine.
+
+      So:
+      - no suffix      => use the conservative stable-width default
+      - suffix present => encode exactly that mode or error
+   */
+
    mode = normalize_mode(insn->opcode, insn->mode);
+
+   if (insn->spec != MODE_SPEC_NONE) {
+      if (!parsed_mode_accepts_spec(mode, insn->spec)) {
+         if (why)
+            *why = "specifier is incompatible with the operand shape";
+         return 0;
+      }
+
+      if (!spec_to_emit_mode(insn->spec, out_mode)) {
+         if (why)
+            *why = "unknown addressing-mode specifier";
+         return 0;
+      }
+
+      return 1;
+   }
 
    switch (mode) {
       case AM_IMPLIED:
@@ -74,6 +221,9 @@ static int choose_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode)
       default:
          break;
    }
+
+   if (why)
+      *why = "unsupported addressing mode";
 
    return 0;
 }
@@ -124,12 +274,17 @@ static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
    return 0;
 }
 
-static int insn_size_pass1(const insn_info_t *insn)
+static int insn_size_pass1(const insn_info_t *insn, int line)
 {
    emit_mode_t emode;
+   const char *why;
 
-   if (!choose_emit_mode(insn, &emode))
+   if (!choose_emit_mode(insn, &emode, &why)) {
+      fprintf(stderr,
+              "line %d: %s%s ... %s\n",
+              line, insn->opcode, mode_spec_suffix(insn->spec), why);
       return -1;
+   }
 
    return emit_mode_size(emode);
 }
@@ -164,7 +319,7 @@ int asm_pass1(asm_context_t *ctx)
             break;
 
          case STMT_INSN:
-            sz = insn_size_pass1(&stmt->u.insn);
+            sz = insn_size_pass1(&stmt->u.insn, stmt->line);
             if (sz < 0)
                return 1;
             pc += sz;
@@ -283,14 +438,19 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
    long value;
    emit_mode_t emode;
    unsigned char opcode;
+   const char *why;
 
-   if (!choose_emit_mode(insn, &emode)) {
-      fprintf(stderr, "line %d: unsupported addressing mode\n", line);
+   if (!choose_emit_mode(insn, &emode, &why)) {
+      fprintf(stderr,
+              "line %d: %s%s ... %s\n",
+              line, insn->opcode, mode_spec_suffix(insn->spec), why);
       return 1;
    }
 
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
-      fprintf(stderr, "line %d: illegal addressing mode for %s\n", line, insn->opcode);
+      fprintf(stderr,
+              "line %d: illegal addressing mode for %s%s\n",
+              line, insn->opcode, mode_spec_suffix(insn->spec));
       return 1;
    }
 
@@ -313,6 +473,13 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
 
    if (eval_or_report(insn->expr, symbols, *pc, &value, line))
       return 1;
+
+   if (mode_requires_byte_operand(emode) && !expr_is_byte_value(value)) {
+      fprintf(stderr,
+              "line %d: %s%s requires an 8-bit operand, got $%lX\n",
+              line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
+      return 1;
+   }
 
    switch (emode) {
       case EM_IMMEDIATE:
