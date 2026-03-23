@@ -430,6 +430,25 @@ void asm_context_free(asm_context_t *ctx)
    symtab_free(&ctx->symbols);
 }
 
+static int declare_symbol_or_report(asm_context_t *ctx, const char *name, const stmt_t *stmt)
+{
+   symbol_t *sym;
+   const symbol_t *prev;
+
+   sym = symtab_declare(&ctx->symbols, name, stmt->file, stmt->line);
+   if (sym)
+      return 1;
+
+   prev = symtab_find_const(&ctx->symbols, name);
+   print_loc(stderr, stmt);
+   fprintf(stderr, ": duplicate symbol '%s'\n", name);
+   if (prev && prev->def_file) {
+      fprintf(stderr, "%s:%d: first defined here\n",
+              prev->def_file, prev->def_line);
+   }
+   return 0;
+}
+
 static int resolve_constants(asm_context_t *ctx)
 {
    int iter;
@@ -443,6 +462,7 @@ static int resolve_constants(asm_context_t *ctx)
       for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
          const symbol_t *sym;
          long value;
+         symbol_t *mut;
 
          if (stmt->kind != STMT_CONST)
             continue;
@@ -451,8 +471,12 @@ static int resolve_constants(asm_context_t *ctx)
             continue;
 
          sym = symtab_find_const(&ctx->symbols, stmt->u.cnst.name);
-         if (!sym || !sym->defined || sym->value != value) {
-            symtab_define(&ctx->symbols, stmt->u.cnst.name, value);
+         if (!sym)
+            continue;
+
+         if (!sym->defined || sym->value != value) {
+            mut = symtab_find(&ctx->symbols, stmt->u.cnst.name);
+            symtab_set_value(mut, value);
             changed = 1;
          }
       }
@@ -461,8 +485,12 @@ static int resolve_constants(asm_context_t *ctx)
          break;
    }
 
-   {
+   for (;;) {
+      int unresolved_found;
       stmt_t *stmt;
+
+      unresolved_found = 0;
+
       for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
          const symbol_t *sym;
 
@@ -471,13 +499,14 @@ static int resolve_constants(asm_context_t *ctx)
 
          sym = symtab_find_const(&ctx->symbols, stmt->u.cnst.name);
          if (!sym || !sym->defined) {
-            print_loc(stderr, stmt);
-            fprintf(stderr, ": could not resolve constant %s = ", stmt->u.cnst.name);
-            expr_fprint(stderr, stmt->u.cnst.expr);
-            fprintf(stderr, "\n");
-            return 1;
+            unresolved_found = 1;
+            if (eval_or_report(stmt->u.cnst.expr, &ctx->symbols, stmt->address, &stmt->address, stmt))
+               return 1;
          }
       }
+
+      if (!unresolved_found)
+         break;
    }
 
    return 0;
@@ -489,6 +518,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    long pc;
    long new_origin;
    int sz;
+   symbol_t *sym;
 
    symtab_free(&ctx->symbols);
    symtab_init(&ctx->symbols);
@@ -498,14 +528,20 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       stmt->address = pc;
 
-      if (stmt->label)
-         symtab_define(&ctx->symbols, stmt->label, pc);
+      if (stmt->label) {
+         if (!declare_symbol_or_report(ctx, stmt->label, stmt))
+            return 1;
+         sym = symtab_find(&ctx->symbols, stmt->label);
+         symtab_set_value(sym, pc);
+      }
 
       switch (stmt->kind) {
          case STMT_LABEL:
             break;
 
          case STMT_CONST:
+            if (!declare_symbol_or_report(ctx, stmt->u.cnst.name, stmt))
+               return 1;
             break;
 
          case STMT_INSN:
