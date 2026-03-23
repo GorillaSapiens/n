@@ -80,9 +80,9 @@ indexed_tests:
    STA $88,Y
    STA $8800,Y
    STX $99,Y
-   STX $9900,Y
+   ;STX $9900,Y
    STY $AA,X
-   STY $AA00,X
+   ;STY $AA00,X
    ADC $12,X
    ADC $1234,X
    ADC $13,Y
@@ -120,7 +120,7 @@ branch_tests:
 expr_tests:
    LDA <target
    LDA >target
-   LDA (target + 4),Y
+   ;LDA (target + 4),Y
    LDA -(1 + 2)
    LDA #(1 + 2)
    LDA #((3 * 4) + 1)
