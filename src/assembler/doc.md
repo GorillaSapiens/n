@@ -841,6 +841,308 @@ load16 $20, target
 ```
 
 ---
+# Segments
+
+The assembler supports **named segments** with independent location counters.
+
+Each segment has:
+
+- a **base address**
+- a **declared capacity**
+- its own **PC / used size**
+
+This means code and data can be assembled in separate streams and placed at different absolute addresses without pretending everything lives in one flat linear source order.
+
+---
+
+## Segment Directives
+
+### `.segmentdef`
+
+Defines a segment’s placement and capacity.
+
+```asm
+.segmentdef "NAME", base_expr, size_expr
+```
+
+Parameters:
+
+- `"NAME"` ... segment name in double quotes
+- `base_expr` ... absolute base address for the segment
+- `size_expr` ... declared capacity of the segment in bytes
+
+Example:
+
+```asm
+.segmentdef "ZEROPAGE", $0000, $0100
+.segmentdef "CODE",     $8000, $2000
+.segmentdef "RODATA",   $A000, $1000
+```
+
+Notes:
+
+- segment names are strings, not identifiers
+- base and size must evaluate to non-negative values
+- a segment that is used but never defined is an error
+- the assembler provides an implicit default segment named `__default__` at base `$0000` with capacity `$10000`
+
+---
+
+### `.segment`
+
+Switches the current segment.
+
+```asm
+.segment "CODE"
+```
+
+All following statements belong to that segment until another `.segment` is encountered.
+
+Example:
+
+```asm
+.segment "CODE"
+start:
+   LDA #1
+   RTS
+
+.segment "RODATA"
+msg:
+   .asciiz "hello"
+```
+
+---
+
+## Segment PCs
+
+Each segment has its own location counter.
+
+That means:
+
+- instructions advance the PC of the **current segment**
+- `.byte`, `.word`, `.text`, `.ascii`, `.asciiz`, and `.res` advance the PC of the **current segment**
+- labels are assigned addresses using the current segment’s base plus its current segment-local offset
+
+So segment layout is independent.
+
+For example:
+
+```asm
+.segmentdef "CODE",   $8000, $2000
+.segmentdef "RODATA", $A000, $1000
+
+.segment "CODE"
+start:
+   NOP
+
+.segment "RODATA"
+msg:
+   .byte 1, 2, 3
+```
+
+Results:
+
+- `start = $8000`
+- `msg = $A000`
+
+even though `msg` appears later in source.
+
+---
+
+## Segment Overflow Warnings
+
+If a segment’s used size exceeds its declared capacity, the assembler emits a **warning**.
+
+Example:
+
+```asm
+.segmentdef "CODE", $8000, $0010
+.segment "CODE"
+
+start:
+   .res $20
+```
+
+This will warn that `CODE` overflowed its declared size.
+
+Important:
+
+- this is currently a **warning**, not a hard error
+- assembly continues
+- final addresses are still based on the segment base and actual used offsets
+
+---
+
+## `.org` Inside Segments
+
+`.org` works relative to the **current segment base**.
+
+```asm
+.segmentdef "CODE", $8000, $2000
+.segment "CODE"
+.org $8100
+```
+
+This sets the `CODE` segment PC to:
+
+```text
+$8100 - $8000 = $0100
+```
+
+So the next label or emitted byte will appear at absolute address `$8100`.
+
+This is invalid:
+
+```asm
+.segmentdef "CODE", $8000, $2000
+.segment "CODE"
+.org $7000
+```
+
+because `$7000` is below the base of the current segment.
+
+---
+
+## Segment Symbols
+
+For every defined segment, the assembler automatically defines four symbols:
+
+- `NAME_BASE`
+- `NAME_SIZE`
+- `NAME_END`
+- `NAME_CAPACITY`
+
+For example, for:
+
+```asm
+.segmentdef "CODE", $8000, $2000
+```
+
+the assembler defines:
+
+- `CODE_BASE`
+- `CODE_SIZE`
+- `CODE_END`
+- `CODE_CAPACITY`
+
+### Meaning
+
+- `NAME_BASE` ... segment base address
+- `NAME_SIZE` ... actual number of bytes currently used by the segment
+- `NAME_END` ... `NAME_BASE + NAME_SIZE`
+- `NAME_CAPACITY` ... declared size from `.segmentdef`
+
+These are ordinary expression symbols and can be used anywhere expressions are allowed.
+
+Example:
+
+```asm
+.segmentdef "CODE",   $8000, $2000
+.segmentdef "RODATA", CODE_END, $2000 - CODE_SIZE
+```
+
+This places `RODATA` immediately after the used portion of `CODE`, and gives it the remaining space up to a total combined size of `$2000`.
+
+---
+
+## Derived Segment Placement
+
+Because segment symbols are available as expressions, segment bases and capacities can depend on earlier segments.
+
+Example:
+
+```asm
+.segmentdef "CODE",   $8000, $2000
+.segmentdef "RODATA", CODE_END, $0800
+.segmentdef "BSS",    RODATA_END, $0400
+```
+
+This creates a packed layout where each segment starts immediately after the previous segment’s used bytes.
+
+You can also derive capacities:
+
+```asm
+.segmentdef "CODE",   $8000, $2000
+.segmentdef "RODATA", CODE_END, $2000 - CODE_SIZE
+```
+
+That means:
+
+- `RODATA_BASE = CODE_END`
+- `RODATA_CAPACITY = $2000 - CODE_SIZE`
+
+---
+
+## Relaxation and Segment Symbols
+
+Instruction relaxation and derived segment placement interact.
+
+Because the assembler can shrink some instructions from absolute-family encodings to zero-page-family encodings, segment sizes may change during relaxation. That means symbols like:
+
+- `CODE_SIZE`
+- `CODE_END`
+
+may also change from pass to pass.
+
+The assembler handles this by including segment layout in the same fixed-point iteration as relaxation:
+
+1. lay out segments
+2. compute segment symbols
+3. resolve expressions
+4. relax shrinkable instructions
+5. repeat until stable
+
+So derived segment placement and instruction relaxation converge together.
+
+---
+
+## Segment Example
+
+```asm
+.segmentdef "ZEROPAGE", $0000, $0100
+.segmentdef "CODE",     $8000, $2000
+.segmentdef "RODATA",   CODE_END, $2000 - CODE_SIZE
+
+.segment "ZEROPAGE"
+ptr:
+   .res 2
+
+.segment "CODE"
+start:
+   LDA #<msg
+   STA ptr
+   LDA #>msg
+   STA ptr+1
+   RTS
+
+.segment "RODATA"
+msg:
+   .asciiz "hello"
+```
+
+In this example:
+
+- `ptr` is placed in zero page
+- `start` is placed in `CODE`
+- `msg` is placed in `RODATA`
+- `RODATA` starts immediately after the used portion of `CODE`
+
+---
+
+## Current Limitations of Segments
+
+Segments are currently **assembler-placed**, not linker-placed.
+
+That means:
+
+- segment bases are resolved during assembly
+- output is still final absolute Intel HEX
+- there is no relocatable object format
+- there are no fixups or external relocation records
+
+So segment support is real and useful, but it is still **final-assembly segment layout**, not full linker semantics.
+
+---
 
 # Current Limitations / Not Yet Implemented
 
