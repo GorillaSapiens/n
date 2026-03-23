@@ -239,9 +239,11 @@ int parse_charconst_token(const char *text)
 
 static const symbol_t *find_scoped_ident(const symtab_t *symtab,
                                          const char *scope,
+                                         const char *file_scope,
                                          const char *ident)
 {
    char buf[4096];
+   const symbol_t *sym;
 
    if (!symtab)
       return NULL;
@@ -251,12 +253,20 @@ static const symbol_t *find_scoped_ident(const symtab_t *symtab,
       return symtab_find_const(symtab, buf);
    }
 
+   if (file_scope && *file_scope) {
+      snprintf(buf, sizeof(buf), "%s::%s", file_scope, ident);
+      sym = symtab_find_const(symtab, buf);
+      if (sym)
+         return sym;
+   }
+
    return symtab_find_const(symtab, ident);
 }
 
 expr_eval_status_t expr_eval(const expr_t *expr,
                              const symtab_t *symtab,
                              const char *scope,
+                             const char *file_scope,
                              long pc,
                              long *value)
 {
@@ -278,7 +288,7 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          if (!symtab)
             return EXPR_EVAL_UNRESOLVED;
 
-         sym = find_scoped_ident(symtab, scope, expr->u.ident);
+         sym = find_scoped_ident(symtab, scope, file_scope, expr->u.ident);
          if (!sym || !sym->defined)
             return EXPR_EVAL_UNRESOLVED;
 
@@ -294,7 +304,7 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_OK;
 
       case EXPR_UNARY:
-         rc_left = expr_eval(expr->u.unary.child, symtab, scope, pc, &left);
+         rc_left = expr_eval(expr->u.unary.child, symtab, scope, file_scope, pc, &left);
          if (rc_left != EXPR_EVAL_OK)
             return rc_left;
 
@@ -314,11 +324,11 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_UNRESOLVED;
 
       case EXPR_BINARY:
-         rc_left = expr_eval(expr->u.binary.left, symtab, scope, pc, &left);
+         rc_left = expr_eval(expr->u.binary.left, symtab, scope, file_scope, pc, &left);
          if (rc_left != EXPR_EVAL_OK)
             return rc_left;
 
-         rc_right = expr_eval(expr->u.binary.right, symtab, scope, pc, &right);
+         rc_right = expr_eval(expr->u.binary.right, symtab, scope, file_scope, pc, &right);
          if (rc_right != EXPR_EVAL_OK)
             return rc_right;
 

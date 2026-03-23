@@ -60,40 +60,102 @@ static char *make_scoped_name(const char *scope, const char *name)
    return xstrdup(buf);
 }
 
+static char *make_file_scoped_name(const char *file, const char *name)
+{
+   char buf[4096];
+
+   snprintf(buf, sizeof(buf), "%s::%s", file ? file : "<input>", name);
+   return xstrdup(buf);
+}
+
 static int is_global_label_name(const char *name)
 {
    return name && !is_local_name(name);
 }
 
-static void assign_scopes(program_ir_t *prog)
+static int directive_expr_is_ident(const expr_t *expr, const char **name_out)
 {
-   stmt_t *stmt;
-   const char *current_global;
-   char *current_scope_dup;
+   if (!expr || expr->kind != EXPR_IDENT)
+      return 0;
 
-   current_global = "__root__";
-   current_scope_dup = xstrdup(current_global);
+   *name_out = expr->u.ident;
+   return 1;
+}
+
+static int is_exported_name(const program_ir_t *prog, const char *file, const char *name)
+{
+   const stmt_t *stmt;
+   const expr_list_node_t *node;
 
    for (stmt = prog->head; stmt; stmt = stmt->next) {
-      free(stmt->scope);
-      stmt->scope = xstrdup(current_global);
+      if (stmt->kind != STMT_DIR)
+         continue;
+      if (!stmt->file || strcmp(stmt->file, file))
+         continue;
+      if (strcmp(stmt->u.dir->name, ".global") && strcmp(stmt->u.dir->name, ".export"))
+         continue;
 
-      if (stmt->kind == STMT_LABEL && stmt->label && is_global_label_name(stmt->label)) {
-         free(current_scope_dup);
-         current_scope_dup = xstrdup(stmt->label);
-         current_global = current_scope_dup;
-         free(stmt->scope);
-         stmt->scope = xstrdup(current_global);
-      } else if (stmt->label && is_global_label_name(stmt->label)) {
-         free(current_scope_dup);
-         current_scope_dup = xstrdup(stmt->label);
-         current_global = current_scope_dup;
-         free(stmt->scope);
-         stmt->scope = xstrdup(current_global);
+      for (node = stmt->u.dir->exprs; node; node = node->next) {
+         const char *n;
+         if (directive_expr_is_ident(node->expr, &n) && !strcmp(n, name))
+            return 1;
       }
    }
 
-   free(current_scope_dup);
+   return 0;
+}
+
+static const char *symbol_storage_name(const program_ir_t *prog, const stmt_t *stmt, const char *name, char **owned_out)
+{
+   *owned_out = NULL;
+
+   if (is_local_name(name)) {
+      *owned_out = make_scoped_name(stmt->scope, name);
+      return *owned_out;
+   }
+
+   if (is_exported_name(prog, stmt->file, name))
+      return name;
+
+   *owned_out = make_file_scoped_name(stmt->file, name);
+   return *owned_out;
+}
+
+static void assign_scopes(program_ir_t *prog)
+{
+   stmt_t *stmt;
+   char *current_scope;
+
+   current_scope = xstrdup("__root__");
+
+   for (stmt = prog->head; stmt; stmt = stmt->next) {
+      free(stmt->scope);
+      stmt->scope = xstrdup(current_scope);
+
+      if (stmt->kind == STMT_LABEL && stmt->label && is_global_label_name(stmt->label)) {
+         char *owned;
+         const char *name_key;
+
+         name_key = symbol_storage_name(prog, stmt, stmt->label, &owned);
+         free(current_scope);
+         current_scope = xstrdup(name_key);
+         free(stmt->scope);
+         stmt->scope = xstrdup(current_scope);
+         free(owned);
+      } else if (stmt->label && is_global_label_name(stmt->label)) {
+         char *owned;
+         const char *name_key;
+
+         name_key = symbol_storage_name(prog, stmt, stmt->label, &owned);
+         free(current_scope);
+         current_scope = xstrdup(name_key);
+         free(stmt->scope);
+         stmt->scope = xstrdup(current_scope);
+         free(owned);
+      }
+   }
+
+   free(current_scope);
 }
 
 static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
@@ -315,7 +377,7 @@ static int directive_size_pass1(asm_context_t *ctx,
          return 0;
       }
 
-      rc = expr_eval(dir->exprs->expr, NULL, stmt->scope, 0, &value);
+      rc = expr_eval(dir->exprs->expr, NULL, stmt->scope, stmt->file, 0, &value);
       if (rc != EXPR_EVAL_OK) {
          asm_error(ctx, stmt, ".org must be absolute in pass 1");
          return 0;
@@ -351,7 +413,7 @@ static int directive_size_pass1(asm_context_t *ctx,
          return 0;
       }
 
-      rc = expr_eval(dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->address, &value);
+      rc = expr_eval(dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value);
       if (rc != EXPR_EVAL_OK) {
          asm_error(ctx, stmt, ".res must be resolvable in pass 1");
          return 0;
@@ -372,13 +434,14 @@ static int eval_or_report(asm_context_t *ctx,
                           const expr_t *expr,
                           const symtab_t *symbols,
                           const char *scope,
+                          const char *file_scope,
                           long pc,
                           long *value,
                           const stmt_t *stmt)
 {
    expr_eval_status_t rc;
 
-   rc = expr_eval(expr, symbols, scope, pc, value);
+   rc = expr_eval(expr, symbols, scope, file_scope, pc, value);
    if (rc == EXPR_EVAL_OK)
       return 0;
 
@@ -531,20 +594,14 @@ static int declare_symbol_or_report(asm_context_t *ctx, const char *name, const 
 {
    symbol_t *sym;
    const symbol_t *prev;
-   char *key;
+   char *owned;
    const char *lookup_name;
 
-   if (is_local_name(name)) {
-      key = make_scoped_name(stmt->scope, name);
-      lookup_name = key;
-   } else {
-      key = NULL;
-      lookup_name = name;
-   }
+   lookup_name = symbol_storage_name(ctx->prog, stmt, name, &owned);
 
    sym = symtab_declare(&ctx->symbols, lookup_name, stmt->file, stmt->line);
    if (sym) {
-      free(key);
+      free(owned);
       return 1;
    }
 
@@ -555,23 +612,20 @@ static int declare_symbol_or_report(asm_context_t *ctx, const char *name, const 
               prev->def_file, prev->def_line);
    }
 
-   free(key);
+   free(owned);
    return 0;
 }
 
-static symbol_t *find_declared_symbol(symtab_t *tab, const stmt_t *stmt, const char *name)
+static symbol_t *find_declared_symbol(symtab_t *tab, const program_ir_t *prog, const stmt_t *stmt, const char *name)
 {
-   char *key;
+   char *owned;
    symbol_t *sym;
+   const char *lookup_name;
 
-   if (is_local_name(name)) {
-      key = make_scoped_name(stmt->scope, name);
-      sym = symtab_find(tab, key);
-      free(key);
-      return sym;
-   }
-
-   return symtab_find(tab, name);
+   lookup_name = symbol_storage_name(prog, stmt, name, &owned);
+   sym = symtab_find(tab, lookup_name);
+   free(owned);
+   return sym;
 }
 
 static int resolve_constants(asm_context_t *ctx)
@@ -591,15 +645,15 @@ static int resolve_constants(asm_context_t *ctx)
          if (stmt->kind != STMT_CONST)
             continue;
 
-         if (expr_eval(stmt->u.cnst.expr, &ctx->symbols, stmt->scope, stmt->address, &value) != EXPR_EVAL_OK)
+         if (expr_eval(stmt->u.cnst.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value) != EXPR_EVAL_OK)
             continue;
 
-         sym = find_declared_symbol(&ctx->symbols, stmt, stmt->u.cnst.name);
+         sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->u.cnst.name);
          if (!sym)
             continue;
 
          if (!sym->defined || sym->value != value) {
-            mut = find_declared_symbol(&ctx->symbols, stmt, stmt->u.cnst.name);
+            mut = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->u.cnst.name);
             symtab_set_value(mut, value);
             changed = 1;
          }
@@ -615,9 +669,9 @@ static int resolve_constants(asm_context_t *ctx)
       if (stmt->kind != STMT_CONST)
          continue;
 
-      sym = find_declared_symbol(&ctx->symbols, stmt, stmt->u.cnst.name);
+      sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->u.cnst.name);
       if (!sym || !sym->defined) {
-         eval_or_report(ctx, stmt->u.cnst.expr, &ctx->symbols, stmt->scope, stmt->address, &stmt->address, stmt);
+         eval_or_report(ctx, stmt->u.cnst.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &stmt->address, stmt);
       }
    }
 
@@ -642,7 +696,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
 
       if (stmt->label) {
          if (declare_symbol_or_report(ctx, stmt->label, stmt)) {
-            sym = find_declared_symbol(&ctx->symbols, stmt, stmt->label);
+            sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->label);
             symtab_set_value(sym, pc);
          }
       }
@@ -702,7 +756,7 @@ int asm_relax(asm_context_t *ctx)
          if (!stmt->u.insn.expr)
             continue;
 
-         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->scope, stmt->address, &value) != EXPR_EVAL_OK)
+         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value) != EXPR_EVAL_OK)
             continue;
 
          if (!expr_is_u8_value(value))
@@ -766,7 +820,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
          return -1;
       }
 
-      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, *pc, &value, stmt))
+      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
          return -1;
 
       *pc = value;
@@ -775,9 +829,15 @@ static int directive_emit_pass2(asm_context_t *ctx,
       return 0;
    }
 
+   if (!strcmp(dir->name, ".global") || !strcmp(dir->name, ".export")) {
+      if (ctx->listing)
+         listing_write_no_bytes(ctx->listing, stmt);
+      return 0;
+   }
+
    if (!strcmp(dir->name, ".byte")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, *pc, &value, stmt))
+         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
             return -1;
          if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt))
             return -1;
@@ -792,7 +852,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".word")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, *pc, &value, stmt))
+         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
             return -1;
          if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt))
             return -1;
@@ -842,7 +902,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
          return -1;
       }
 
-      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, *pc, &value, stmt))
+      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
          return -1;
 
       if (value < 0) {
@@ -912,7 +972,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
       return -1;
    }
 
-   if (eval_or_report(ctx, insn->expr, symbols, stmt->scope, *pc, &value, stmt))
+   if (eval_or_report(ctx, insn->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
       return -1;
 
    switch (emode) {
