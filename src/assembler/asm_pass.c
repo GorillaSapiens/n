@@ -6,6 +6,8 @@
 #include "opcode.h"
 #include "util.h"
 
+#define DEFAULT_SEGMENT_NAME "__default__"
+
 static void print_loc(FILE *fp, const stmt_t *stmt)
 {
    fprintf(fp, "%s:%d", stmt->file ? stmt->file : "<input>", stmt->line);
@@ -25,6 +27,43 @@ static void asm_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt, .
    va_end(ap);
 
    fprintf(stderr, "\n");
+}
+
+static void asm_warning(const stmt_t *stmt, const char *fmt, ...)
+{
+   va_list ap;
+
+   print_loc(stderr, stmt);
+   fprintf(stderr, ": warning: ");
+
+   va_start(ap, fmt);
+   vfprintf(stderr, fmt, ap);
+   va_end(ap);
+
+   fprintf(stderr, "\n");
+}
+
+static char *unquote_string(const char *s)
+{
+   size_t n;
+   char *out;
+
+   if (!s)
+      return NULL;
+
+   n = strlen(s);
+   if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
+      out = (char *)malloc(n - 1);
+      if (!out) {
+         fprintf(stderr, "out of memory\n");
+         exit(1);
+      }
+      memcpy(out, s + 1, n - 2);
+      out[n - 2] = '\0';
+      return out;
+   }
+
+   return xstrdup(s);
 }
 
 static void free_imports(import_name_t *head)
@@ -71,19 +110,73 @@ static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name)
    ctx->imports = p;
 }
 
-static void validate_imports(asm_context_t *ctx)
+static asm_segment_t *segment_find(asm_context_t *ctx, const char *name)
 {
-   import_name_t *p;
-   const symbol_t *sym;
+   asm_segment_t *seg;
 
-   for (p = ctx->imports; p; p = p->next) {
-      sym = symtab_find_const(&ctx->symbols, p->name);
-      if (!sym || !sym->defined) {
-         ctx->error_count++;
-         fprintf(stderr, "%s:%d: imported symbol '%s' was not resolved\n",
-                 p->file ? p->file : "<input>", p->line, p->name);
-      }
+   for (seg = ctx->segments; seg; seg = seg->next) {
+      if (!strcmp(seg->name, name))
+         return seg;
    }
+
+   return NULL;
+}
+
+static asm_segment_t *segment_get_or_create(asm_context_t *ctx, const char *name)
+{
+   asm_segment_t *seg;
+
+   seg = segment_find(ctx, name);
+   if (seg)
+      return seg;
+
+   seg = (asm_segment_t *)calloc(1, sizeof(*seg));
+   if (!seg) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   seg->name = xstrdup(name);
+   seg->base = 0;
+   seg->size = 0x10000L;
+   seg->pc = 0;
+   seg->defined = 0;
+   seg->overflow_warned = 0;
+   seg->next = ctx->segments;
+   ctx->segments = seg;
+   return seg;
+}
+
+static void free_segments(asm_segment_t *head)
+{
+   asm_segment_t *seg;
+   asm_segment_t *next;
+
+   for (seg = head; seg; seg = next) {
+      next = seg->next;
+      free(seg->name);
+      free(seg);
+   }
+}
+
+static void reset_segment_pcs(asm_context_t *ctx)
+{
+   asm_segment_t *seg;
+
+   for (seg = ctx->segments; seg; seg = seg->next) {
+      seg->pc = 0;
+      seg->overflow_warned = 0;
+   }
+}
+
+static void ensure_default_segment(asm_context_t *ctx)
+{
+   asm_segment_t *seg;
+
+   seg = segment_get_or_create(ctx, DEFAULT_SEGMENT_NAME);
+   seg->base = 0;
+   seg->size = 0x10000L;
+   seg->defined = 1;
 }
 
 static int is_branch_opcode(const char *opcode)
@@ -180,6 +273,37 @@ static const char *symbol_storage_name(const program_ir_t *prog, const stmt_t *s
    return *owned_out;
 }
 
+static void assign_segments(program_ir_t *prog)
+{
+   stmt_t *stmt;
+   char *current_segment;
+
+   current_segment = xstrdup(DEFAULT_SEGMENT_NAME);
+
+   for (stmt = prog->head; stmt; stmt = stmt->next) {
+      free(stmt->segment);
+      stmt->segment = xstrdup(current_segment);
+
+      if (stmt->kind == STMT_DIR &&
+          stmt->u.dir &&
+          !strcmp(stmt->u.dir->name, ".segment") &&
+          stmt->u.dir->string) {
+         char *segname;
+
+         segname = unquote_string(stmt->u.dir->string);
+         free(current_segment);
+         current_segment = xstrdup(segname);
+
+         free(stmt->segment);
+         stmt->segment = xstrdup(segname);
+
+         free(segname);
+      }
+   }
+
+   free(current_segment);
+}
+
 static void assign_scopes(program_ir_t *prog)
 {
    stmt_t *stmt;
@@ -215,6 +339,105 @@ static void assign_scopes(program_ir_t *prog)
    }
 
    free(current_scope);
+}
+
+static void gather_segment_uses(asm_context_t *ctx)
+{
+   stmt_t *stmt;
+
+   ensure_default_segment(ctx);
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      if (stmt->segment)
+         segment_get_or_create(ctx, stmt->segment);
+   }
+}
+
+static void gather_segment_defs(asm_context_t *ctx)
+{
+   stmt_t *stmt;
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      const directive_info_t *dir;
+      const expr_list_node_t *node;
+      asm_segment_t *seg;
+      char *segname;
+      long base;
+      long size;
+      expr_eval_status_t rc;
+
+      if (stmt->kind != STMT_DIR)
+         continue;
+
+      dir = stmt->u.dir;
+      if (strcmp(dir->name, ".segmentdef"))
+         continue;
+
+      if (!dir->string) {
+         asm_error(ctx, stmt, ".segmentdef expects a quoted segment name");
+         continue;
+      }
+
+      if (!dir->exprs || !dir->exprs->next || dir->exprs->next->next) {
+         asm_error(ctx, stmt, ".segmentdef expects exactly two expressions: base, size");
+         continue;
+      }
+
+      segname = unquote_string(dir->string);
+      seg = segment_get_or_create(ctx, segname);
+
+      if (seg->defined && strcmp(seg->name, DEFAULT_SEGMENT_NAME)) {
+         asm_error(ctx, stmt, "duplicate .segmentdef for segment '%s'", segname);
+         free(segname);
+         continue;
+      }
+
+      node = dir->exprs;
+      rc = expr_eval(node->expr, NULL, stmt->scope, stmt->file, 0, &base);
+      if (rc != EXPR_EVAL_OK) {
+         asm_error(ctx, stmt, ".segmentdef base must be absolute");
+         free(segname);
+         continue;
+      }
+
+      node = node->next;
+      rc = expr_eval(node->expr, NULL, stmt->scope, stmt->file, 0, &size);
+      if (rc != EXPR_EVAL_OK) {
+         asm_error(ctx, stmt, ".segmentdef size must be absolute");
+         free(segname);
+         continue;
+      }
+
+      if (base < 0 || size < 0) {
+         asm_error(ctx, stmt, ".segmentdef base and size must be non-negative");
+         free(segname);
+         continue;
+      }
+
+      seg->base = base;
+      seg->size = size;
+      seg->defined = 1;
+      free(segname);
+   }
+}
+
+static void validate_segment_defs(asm_context_t *ctx)
+{
+   asm_segment_t *seg;
+   stmt_t fake_stmt;
+
+   memset(&fake_stmt, 0, sizeof(fake_stmt));
+   fake_stmt.file = "<segments>";
+   fake_stmt.line = 0;
+
+   for (seg = ctx->segments; seg; seg = seg->next) {
+      if (!seg->defined) {
+         fake_stmt.file = "<segments>";
+         fake_stmt.line = 0;
+         ctx->error_count++;
+         fprintf(stderr, "segment '%s' was used but never defined with .segmentdef\n", seg->name);
+      }
+   }
 }
 
 static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
@@ -420,81 +643,6 @@ static int insn_size_from_mode(emit_mode_t mode)
    return emit_mode_size(mode);
 }
 
-static int directive_size_pass1(asm_context_t *ctx,
-                                const stmt_t *stmt,
-                                const directive_info_t *dir,
-                                long *new_origin)
-{
-   const expr_list_node_t *node;
-   long value;
-   expr_eval_status_t rc;
-   int count;
-
-   if (!strcmp(dir->name, ".org")) {
-      if (!dir->exprs || dir->exprs->next) {
-         asm_error(ctx, stmt, ".org expects exactly one expression");
-         return 0;
-      }
-
-      rc = expr_eval(dir->exprs->expr, NULL, stmt->scope, stmt->file, 0, &value);
-      if (rc != EXPR_EVAL_OK) {
-         asm_error(ctx, stmt, ".org must be absolute in pass 1");
-         return 0;
-      }
-
-      *new_origin = value;
-      return 0;
-   }
-
-   if (!strcmp(dir->name, ".global") ||
-       !strcmp(dir->name, ".export") ||
-       !strcmp(dir->name, ".import")) {
-      return 0;
-   }
-
-   if (!strcmp(dir->name, ".byte")) {
-      count = 0;
-      for (node = dir->exprs; node; node = node->next)
-         count++;
-      return count;
-   }
-
-   if (!strcmp(dir->name, ".word")) {
-      count = 0;
-      for (node = dir->exprs; node; node = node->next)
-         count++;
-      return count * 2;
-   }
-
-   if (!strcmp(dir->name, ".text") || !strcmp(dir->name, ".ascii")) {
-      if (!dir->string)
-         return 0;
-      return (int)(strlen(dir->string) - 2);
-   }
-
-   if (!strcmp(dir->name, ".res")) {
-      if (!dir->exprs || dir->exprs->next) {
-         asm_error(ctx, stmt, ".res expects exactly one expression");
-         return 0;
-      }
-
-      rc = expr_eval(dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value);
-      if (rc != EXPR_EVAL_OK) {
-         asm_error(ctx, stmt, ".res must be resolvable in pass 1");
-         return 0;
-      }
-
-      if (value < 0) {
-         asm_error(ctx, stmt, ".res requires a non-negative size");
-         return 0;
-      }
-
-      return (int)value;
-   }
-
-   return 0;
-}
-
 static int eval_or_report(asm_context_t *ctx,
                           const expr_t *expr,
                           const symtab_t *symbols,
@@ -522,40 +670,21 @@ static int eval_or_report(asm_context_t *ctx,
    return 1;
 }
 
-static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_mode, emit_mode_t *relaxed_mode)
+static void segment_advance(asm_context_t *ctx, asm_segment_t *seg, const stmt_t *stmt, long amount)
 {
-   unsigned char dummy;
-
-   if (insn->spec != MODE_SPEC_NONE)
-      return 0;
-
-   switch (current_mode) {
-      case EM_ABS:
-         if (opcode_lookup(insn->opcode, EM_ZP, &dummy)) {
-            *relaxed_mode = EM_ZP;
-            return 1;
-         }
-         break;
-
-      case EM_ABSX:
-         if (opcode_lookup(insn->opcode, EM_ZPX, &dummy)) {
-            *relaxed_mode = EM_ZPX;
-            return 1;
-         }
-         break;
-
-      case EM_ABSY:
-         if (opcode_lookup(insn->opcode, EM_ZPY, &dummy)) {
-            *relaxed_mode = EM_ZPY;
-            return 1;
-         }
-         break;
-
-      default:
-         break;
+   if (amount < 0) {
+      asm_error(ctx, stmt, "negative segment advance");
+      return;
    }
 
-   return 0;
+   seg->pc += amount;
+
+   if (seg->size >= 0 && seg->pc > seg->size && !seg->overflow_warned) {
+      asm_warning(stmt,
+                  "segment '%s' overflowed: used $%lX bytes, declared size $%lX",
+                  seg->name, seg->pc, seg->size);
+      seg->overflow_warned = 1;
+   }
 }
 
 static void print_pass_stats(const asm_context_t *ctx, int pass_index, const char *phase)
@@ -631,8 +760,14 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    ctx->listing = listing;
    ctx->error_count = 0;
    ctx->imports = NULL;
+   ctx->segments = NULL;
 
+   assign_segments(prog);
    assign_scopes(prog);
+
+   gather_segment_uses(ctx);
+   gather_segment_defs(ctx);
+   validate_segment_defs(ctx);
 
    for (stmt = prog->head; stmt; stmt = stmt->next) {
       if (stmt->kind != STMT_INSN)
@@ -656,6 +791,8 @@ void asm_context_free(asm_context_t *ctx)
    symtab_free(&ctx->symbols);
    free_imports(ctx->imports);
    ctx->imports = NULL;
+   free_segments(ctx->segments);
+   ctx->segments = NULL;
 }
 
 static int declare_symbol_or_report(asm_context_t *ctx, const char *name, const stmt_t *stmt)
@@ -725,6 +862,21 @@ static void gather_imports(asm_context_t *ctx)
    }
 }
 
+static void validate_imports(asm_context_t *ctx)
+{
+   import_name_t *p;
+   const symbol_t *sym;
+
+   for (p = ctx->imports; p; p = p->next) {
+      sym = symtab_find_const(&ctx->symbols, p->name);
+      if (!sym || !sym->defined) {
+         ctx->error_count++;
+         fprintf(stderr, "%s:%d: imported symbol '%s' was not resolved\n",
+                 p->file ? p->file : "<input>", p->line, p->name);
+      }
+   }
+}
+
 static int resolve_constants(asm_context_t *ctx)
 {
    int iter;
@@ -778,25 +930,31 @@ static int resolve_constants(asm_context_t *ctx)
 int asm_pass1(asm_context_t *ctx, int pass_index)
 {
    stmt_t *stmt;
-   long pc;
-   long new_origin;
-   int sz;
-   symbol_t *sym;
 
    symtab_free(&ctx->symbols);
    symtab_init(&ctx->symbols);
 
    gather_imports(ctx);
-
-   pc = ctx->origin;
+   reset_segment_pcs(ctx);
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
-      stmt->address = pc;
+      asm_segment_t *seg;
+      long pc_abs;
+      symbol_t *sym;
+
+      seg = segment_find(ctx, stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME);
+      if (!seg) {
+         asm_error(ctx, stmt, "unknown segment '%s'", stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME);
+         continue;
+      }
+
+      pc_abs = seg->base + seg->pc;
+      stmt->address = pc_abs;
 
       if (stmt->label) {
          if (declare_symbol_or_report(ctx, stmt->label, stmt)) {
             sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->label);
-            symtab_set_value(sym, pc);
+            symtab_set_value(sym, pc_abs);
          }
       }
 
@@ -809,19 +967,104 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
             break;
 
          case STMT_INSN:
-            sz = stmt->u.insn.size;
-            if (sz >= 0)
-               pc += sz;
+            segment_advance(ctx, seg, stmt, stmt->u.insn.size);
             break;
 
          case STMT_DIR:
-            new_origin = pc;
-            sz = directive_size_pass1(ctx, stmt, stmt->u.dir, &new_origin);
+            if (!strcmp(stmt->u.dir->name, ".segment") ||
+                !strcmp(stmt->u.dir->name, ".segmentdef") ||
+                !strcmp(stmt->u.dir->name, ".global") ||
+                !strcmp(stmt->u.dir->name, ".export") ||
+                !strcmp(stmt->u.dir->name, ".import")) {
+               break;
+            }
 
-            if (!strcmp(stmt->u.dir->name, ".org"))
-               pc = new_origin;
-            else
-               pc += sz;
+            if (!strcmp(stmt->u.dir->name, ".org")) {
+               long new_abs;
+               long new_pc;
+
+               if (!stmt->u.dir->exprs || stmt->u.dir->exprs->next) {
+                  asm_error(ctx, stmt, ".org expects exactly one expression");
+                  break;
+               }
+
+               if (eval_or_report(ctx, stmt->u.dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->file, pc_abs, &new_abs, stmt))
+                  break;
+
+               new_pc = new_abs - seg->base;
+               if (new_pc < 0) {
+                  asm_error(ctx, stmt, ".org address $%lX is below base of segment '%s' ($%lX)",
+                            new_abs, seg->name, seg->base);
+                  break;
+               }
+
+               seg->pc = new_pc;
+               if (seg->size >= 0 && seg->pc > seg->size && !seg->overflow_warned) {
+                  asm_warning(stmt,
+                              "segment '%s' overflowed: used $%lX bytes, declared size $%lX",
+                              seg->name, seg->pc, seg->size);
+                  seg->overflow_warned = 1;
+               }
+               break;
+            }
+
+            if (!strcmp(stmt->u.dir->name, ".byte")) {
+               int count = 0;
+               const expr_list_node_t *node;
+
+               for (node = stmt->u.dir->exprs; node; node = node->next)
+                  count++;
+               segment_advance(ctx, seg, stmt, count);
+               break;
+            }
+
+            if (!strcmp(stmt->u.dir->name, ".word")) {
+               int count = 0;
+               const expr_list_node_t *node;
+
+               for (node = stmt->u.dir->exprs; node; node = node->next)
+                  count++;
+               segment_advance(ctx, seg, stmt, count * 2);
+               break;
+            }
+
+            if (!strcmp(stmt->u.dir->name, ".text") ||
+                !strcmp(stmt->u.dir->name, ".ascii")) {
+               long len = 0;
+               if (stmt->u.dir->string)
+                  len = (long)strlen(stmt->u.dir->string) - 2;
+               segment_advance(ctx, seg, stmt, len);
+               break;
+            }
+
+            if (!strcmp(stmt->u.dir->name, ".asciiz")) {
+               long len = 1;
+               if (stmt->u.dir->string)
+                  len = (long)strlen(stmt->u.dir->string) - 1;
+               segment_advance(ctx, seg, stmt, len);
+               break;
+            }
+
+            if (!strcmp(stmt->u.dir->name, ".res")) {
+               long value;
+
+               if (!stmt->u.dir->exprs || stmt->u.dir->exprs->next) {
+                  asm_error(ctx, stmt, ".res expects exactly one expression");
+                  break;
+               }
+
+               if (eval_or_report(ctx, stmt->u.dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->file, pc_abs, &value, stmt))
+                  break;
+
+               if (value < 0) {
+                  asm_error(ctx, stmt, ".res requires a non-negative size");
+                  break;
+               }
+
+               segment_advance(ctx, seg, stmt, value);
+               break;
+            }
+
             break;
       }
    }
@@ -829,6 +1072,42 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    resolve_constants(ctx);
    validate_imports(ctx);
    print_pass_stats(ctx, pass_index, "layout");
+   return 0;
+}
+
+static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_mode, emit_mode_t *relaxed_mode)
+{
+   unsigned char dummy;
+
+   if (insn->spec != MODE_SPEC_NONE)
+      return 0;
+
+   switch (current_mode) {
+      case EM_ABS:
+         if (opcode_lookup(insn->opcode, EM_ZP, &dummy)) {
+            *relaxed_mode = EM_ZP;
+            return 1;
+         }
+         break;
+
+      case EM_ABSX:
+         if (opcode_lookup(insn->opcode, EM_ZPX, &dummy)) {
+            *relaxed_mode = EM_ZPX;
+            return 1;
+         }
+         break;
+
+      case EM_ABSY:
+         if (opcode_lookup(insn->opcode, EM_ZPY, &dummy)) {
+            *relaxed_mode = EM_ZPY;
+            return 1;
+         }
+         break;
+
+      default:
+         break;
+   }
+
    return 0;
 }
 
@@ -901,35 +1180,23 @@ static int emit_word(asm_context_t *ctx, long addr, unsigned short w, const stmt
 /* returns 0 success, -1 statement error */
 static int directive_emit_pass2(asm_context_t *ctx,
                                 const stmt_t *stmt,
-                                const directive_info_t *dir,
-                                const symtab_t *symbols,
-                                long *pc)
+                                const directive_info_t *dir)
 {
    const expr_list_node_t *node;
    long value;
+   long pc;
    long start_pc;
    unsigned char rec[256];
    int rec_count;
 
-   start_pc = *pc;
+   start_pc = stmt->address;
+   pc = stmt->address;
    rec_count = 0;
 
-   if (!strcmp(dir->name, ".org")) {
-      if (!dir->exprs || dir->exprs->next) {
-         asm_error(ctx, stmt, ".org expects exactly one expression");
-         return -1;
-      }
-
-      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
-         return -1;
-
-      *pc = value;
-      if (ctx->listing)
-         listing_write_no_bytes(ctx->listing, stmt);
-      return 0;
-   }
-
-   if (!strcmp(dir->name, ".global") ||
+   if (!strcmp(dir->name, ".org") ||
+       !strcmp(dir->name, ".segment") ||
+       !strcmp(dir->name, ".segmentdef") ||
+       !strcmp(dir->name, ".global") ||
        !strcmp(dir->name, ".export") ||
        !strcmp(dir->name, ".import")) {
       if (ctx->listing)
@@ -939,13 +1206,13 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".byte")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
+         if (eval_or_report(ctx, node->expr, &ctx->symbols, stmt->scope, stmt->file, pc, &value, stmt))
             return -1;
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt))
+         if (!emit_byte(ctx, pc, (unsigned char)(value & 0xFF), stmt))
             return -1;
          if (rec_count < (int)sizeof(rec))
             rec[rec_count++] = (unsigned char)(value & 0xFF);
-         (*pc)++;
+         pc++;
       }
       if (ctx->listing)
          listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
@@ -954,15 +1221,15 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".word")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(ctx, node->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
+         if (eval_or_report(ctx, node->expr, &ctx->symbols, stmt->scope, stmt->file, pc, &value, stmt))
             return -1;
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt))
+         if (!emit_word(ctx, pc, (unsigned short)(value & 0xFFFF), stmt))
             return -1;
          if (rec_count + 1 < (int)sizeof(rec)) {
             rec[rec_count++] = (unsigned char)(value & 0xFF);
             rec[rec_count++] = (unsigned char)((value >> 8) & 0xFF);
          }
-         (*pc) += 2;
+         pc += 2;
       }
       if (ctx->listing)
          listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
@@ -983,13 +1250,48 @@ static int directive_emit_pass2(asm_context_t *ctx,
       n = strlen(s);
       if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
          for (i = 1; i + 1 < n; i++) {
-            if (!emit_byte(ctx, *pc, (unsigned char)s[i], stmt))
+            if (!emit_byte(ctx, pc, (unsigned char)s[i], stmt))
                return -1;
             if (rec_count < (int)sizeof(rec))
                rec[rec_count++] = (unsigned char)s[i];
-            (*pc)++;
+            pc++;
          }
       }
+
+      if (ctx->listing)
+         listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
+      return 0;
+   }
+
+   if (!strcmp(dir->name, ".asciiz")) {
+      const char *s;
+      size_t i, n;
+
+      if (!dir->string) {
+         if (!emit_byte(ctx, pc, 0x00, stmt))
+            return -1;
+         rec[rec_count++] = 0x00;
+         if (ctx->listing)
+            listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
+         return 0;
+      }
+
+      s = dir->string;
+      n = strlen(s);
+      if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
+         for (i = 1; i + 1 < n; i++) {
+            if (!emit_byte(ctx, pc, (unsigned char)s[i], stmt))
+               return -1;
+            if (rec_count < (int)sizeof(rec))
+               rec[rec_count++] = (unsigned char)s[i];
+            pc++;
+         }
+      }
+
+      if (!emit_byte(ctx, pc, 0x00, stmt))
+         return -1;
+      if (rec_count < (int)sizeof(rec))
+         rec[rec_count++] = 0x00;
 
       if (ctx->listing)
          listing_write_record(ctx->listing, stmt, start_pc, rec, rec_count);
@@ -1004,7 +1306,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
          return -1;
       }
 
-      if (eval_or_report(ctx, dir->exprs->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
+      if (eval_or_report(ctx, dir->exprs->expr, &ctx->symbols, stmt->scope, stmt->file, pc, &value, stmt))
          return -1;
 
       if (value < 0) {
@@ -1013,11 +1315,11 @@ static int directive_emit_pass2(asm_context_t *ctx,
       }
 
       for (i = 0; i < value; i++) {
-         if (!emit_byte(ctx, *pc, 0x00, stmt))
+         if (!emit_byte(ctx, pc, 0x00, stmt))
             return -1;
          if (rec_count < (int)sizeof(rec))
             rec[rec_count++] = 0x00;
-         (*pc)++;
+         pc++;
       }
 
       if (ctx->listing)
@@ -1032,19 +1334,19 @@ static int directive_emit_pass2(asm_context_t *ctx,
 /* returns 0 success, -1 statement error */
 static int insn_emit_pass2(asm_context_t *ctx,
                            const stmt_t *stmt,
-                           const insn_info_t *insn,
-                           const symtab_t *symbols,
-                           long *pc)
+                           const insn_info_t *insn)
 {
    long value;
    unsigned char opcode;
    unsigned char rec[8];
    int rec_count;
    long start_pc;
+   long pc;
    emit_mode_t emode;
 
    emode = insn->final_mode;
-   start_pc = *pc;
+   start_pc = stmt->address;
+   pc = stmt->address;
    rec_count = 0;
 
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
@@ -1053,10 +1355,10 @@ static int insn_emit_pass2(asm_context_t *ctx,
       return -1;
    }
 
-   if (!emit_byte(ctx, *pc, opcode, stmt))
+   if (!emit_byte(ctx, pc, opcode, stmt))
       return -1;
    rec[rec_count++] = opcode;
-   (*pc)++;
+   pc++;
 
    switch (emode) {
       case EM_IMPLIED:
@@ -1074,7 +1376,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
       return -1;
    }
 
-   if (eval_or_report(ctx, insn->expr, symbols, stmt->scope, stmt->file, *pc, &value, stmt))
+   if (eval_or_report(ctx, insn->expr, &ctx->symbols, stmt->scope, stmt->file, pc, &value, stmt))
       return -1;
 
    switch (emode) {
@@ -1109,25 +1411,25 @@ static int insn_emit_pass2(asm_context_t *ctx,
       case EM_ZPY:
       case EM_INDX:
       case EM_INDY:
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt))
+         if (!emit_byte(ctx, pc, (unsigned char)(value & 0xFF), stmt))
             return -1;
          rec[rec_count++] = (unsigned char)(value & 0xFF);
-         (*pc)++;
+         pc++;
          break;
 
       case EM_REL: {
          long disp;
 
-         disp = value - (*pc + 1);
+         disp = value - (pc + 1);
          if (disp < -128 || disp > 127) {
             asm_error(ctx, stmt, "branch out of range");
             return -1;
          }
 
-         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), stmt))
+         if (!emit_byte(ctx, pc, (unsigned char)(disp & 0xFF), stmt))
             return -1;
          rec[rec_count++] = (unsigned char)(disp & 0xFF);
-         (*pc)++;
+         pc++;
          break;
       }
 
@@ -1135,11 +1437,11 @@ static int insn_emit_pass2(asm_context_t *ctx,
       case EM_ABSX:
       case EM_ABSY:
       case EM_IND:
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt))
+         if (!emit_word(ctx, pc, (unsigned short)(value & 0xFFFF), stmt))
             return -1;
          rec[rec_count++] = (unsigned char)(value & 0xFF);
          rec[rec_count++] = (unsigned char)((value >> 8) & 0xFF);
-         (*pc) += 2;
+         pc += 2;
          break;
 
       default:
@@ -1156,12 +1458,9 @@ static int insn_emit_pass2(asm_context_t *ctx,
 int asm_pass2(asm_context_t *ctx)
 {
    stmt_t *stmt;
-   long pc;
    int rc;
 
    ihex_image_init(&ctx->image);
-   pc = ctx->origin;
-
    print_pass_stats(ctx, 999, "emit");
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
@@ -1177,12 +1476,12 @@ int asm_pass2(asm_context_t *ctx)
             break;
 
          case STMT_DIR:
-            rc = directive_emit_pass2(ctx, stmt, stmt->u.dir, &ctx->symbols, &pc);
+            rc = directive_emit_pass2(ctx, stmt, stmt->u.dir);
             (void)rc;
             break;
 
          case STMT_INSN:
-            rc = insn_emit_pass2(ctx, stmt, &stmt->u.insn, &ctx->symbols, &pc);
+            rc = insn_emit_pass2(ctx, stmt, &stmt->u.insn);
             (void)rc;
             break;
       }

@@ -51,6 +51,7 @@ struct stmt {
    long address;
    char *label;
    char *scope;
+   char *segment;
    union {
       insn_info_t insn;
       directive_info_t *dir;

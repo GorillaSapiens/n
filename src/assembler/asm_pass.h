@@ -13,6 +13,16 @@ typedef struct import_name {
    struct import_name *next;
 } import_name_t;
 
+typedef struct asm_segment {
+   char *name;
+   long base;
+   long size;
+   long pc;
+   int defined;
+   int overflow_warned;
+   struct asm_segment *next;
+} asm_segment_t;
+
 typedef struct asm_context {
    program_ir_t *prog;
    symtab_t symbols;
@@ -21,6 +31,7 @@ typedef struct asm_context {
    listing_writer_t *listing;
    int error_count;
    import_name_t *imports;
+   asm_segment_t *segments;
 } asm_context_t;
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing);

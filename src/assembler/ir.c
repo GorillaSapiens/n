@@ -112,6 +112,7 @@ static void stmt_free(stmt_t *stmt)
    free((char *)stmt->file);
    free(stmt->label);
    free(stmt->scope);
+   free(stmt->segment);
 
    switch (stmt->kind) {
       case STMT_LABEL:
@@ -167,6 +168,7 @@ stmt_t *stmt_make_label(const char *file, int line, char *label)
    stmt->address = 0;
    stmt->label = xstrdup(label);
    stmt->scope = NULL;
+   stmt->segment = NULL;
    return stmt;
 }
 
@@ -186,6 +188,7 @@ stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_tex
    stmt->address = 0;
    stmt->label = xstrdup(label);
    stmt->scope = NULL;
+   stmt->segment = NULL;
    split_opcode_text(opcode_text, &stmt->u.insn.opcode, &stmt->u.insn.spec);
    stmt->u.insn.mode = mode;
    stmt->u.insn.expr = expr;
@@ -211,6 +214,7 @@ stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t 
    stmt->address = 0;
    stmt->label = xstrdup(label);
    stmt->scope = NULL;
+   stmt->segment = NULL;
    stmt->u.dir = dir;
    return stmt;
 }
@@ -231,6 +235,7 @@ stmt_t *stmt_make_const(const char *file, int line, char *name, expr_t *expr)
    stmt->address = 0;
    stmt->label = NULL;
    stmt->scope = NULL;
+   stmt->segment = NULL;
    stmt->u.cnst.name = xstrdup(name);
    stmt->u.cnst.expr = expr;
    return stmt;
@@ -266,6 +271,8 @@ void stmt_print(const stmt_t *stmt)
       printf("label=%s ", stmt->label);
    if (stmt->scope)
       printf("scope=%s ", stmt->scope);
+   if (stmt->segment)
+      printf("segment=%s ", stmt->segment);
 
    switch (stmt->kind) {
       case STMT_LABEL:
