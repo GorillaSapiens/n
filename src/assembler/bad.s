@@ -15,5 +15,4 @@ illegal_tests:
    LDA (label1 + 4)
    LDA ((1 + 2) * 3)
 
-   LDA -(1 + 2)
    LDA (target + 3),X

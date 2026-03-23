@@ -121,6 +121,7 @@ expr_tests:
    LDA <target
    LDA >target
    LDA (target + 4),Y
+   LDA -(1 + 2)
    LDA #(1 + 2)
    LDA #((3 * 4) + 1)
    LDA #<($1234 + 2)
