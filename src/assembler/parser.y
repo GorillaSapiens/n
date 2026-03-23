@@ -17,6 +17,23 @@ typedef struct YYLTYPE {
    const char *filename;
 } YYLTYPE;
 #define YYLTYPE_IS_DECLARED 1
+
+#define YYLLOC_DEFAULT(Current, Rhs, N)                                \
+   do {                                                                \
+      if ((N) > 0) {                                                   \
+         (Current).first_line   = YYRHSLOC((Rhs), 1).first_line;       \
+         (Current).first_column = YYRHSLOC((Rhs), 1).first_column;     \
+         (Current).last_line    = YYRHSLOC((Rhs), (N)).last_line;      \
+         (Current).last_column  = YYRHSLOC((Rhs), (N)).last_column;    \
+         (Current).filename     = YYRHSLOC((Rhs), 1).filename;         \
+      } else {                                                         \
+         (Current).first_line   = (Current).last_line =                \
+            YYRHSLOC((Rhs), 0).last_line;                              \
+         (Current).first_column = (Current).last_column =              \
+            YYRHSLOC((Rhs), 0).last_column;                            \
+         (Current).filename     = YYRHSLOC((Rhs), 0).filename;         \
+      }                                                                \
+   } while (0)
 }
 
 %{
@@ -68,6 +85,7 @@ static void free_if(char *s)
 %type <expr_list> expr_list
 %type <directive> directive_stmt
 %type <stmt> instruction_stmt
+%type <stmt> const_stmt
 
 %start program
 
@@ -111,6 +129,18 @@ statement
    | instruction_stmt
      {
         program_ir_append(&g_program, $1);
+     }
+   | const_stmt
+     {
+        program_ir_append(&g_program, $1);
+     }
+   ;
+
+const_stmt
+   : IDENT '=' expr
+     {
+        $$ = stmt_make_const(@1.filename, @1.first_line, $1, $3);
+        free_if($1);
      }
    ;
 

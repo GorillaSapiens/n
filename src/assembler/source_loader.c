@@ -111,11 +111,6 @@ static int parse_include_line(const char *line, char *included_path, size_t incl
 
 static int emit_marker(FILE *out_fp, const char *path, long line_no)
 {
-   /*
-      These marker lines are consumed by the lexer and never seen by the parser.
-      They let us preserve original filename + line number through .include
-      expansion without turning the lexer into a nested include stack manager.
-   */
    return fprintf(out_fp, "@@FILE %ld %s\n", line_no, path) > 0;
 }
 

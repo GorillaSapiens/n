@@ -21,6 +21,4 @@ const symbol_t *symtab_find_const(const symtab_t *tab, const char *name);
 symbol_t *symtab_define(symtab_t *tab, const char *name, long value);
 symbol_t *symtab_reference(symtab_t *tab, const char *name);
 
-void symtab_dump(const symtab_t *tab);
-
 #endif

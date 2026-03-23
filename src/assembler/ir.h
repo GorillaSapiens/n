@@ -22,7 +22,8 @@ typedef enum mode_spec {
 typedef enum stmt_kind {
    STMT_INSN = 0,
    STMT_DIR,
-   STMT_LABEL
+   STMT_LABEL,
+   STMT_CONST
 } stmt_kind_t;
 
 typedef struct insn_info {
@@ -36,16 +37,23 @@ typedef struct insn_info {
    int size;
 } insn_info_t;
 
+typedef struct const_info {
+   char *name;
+   expr_t *expr;
+} const_info_t;
+
 typedef struct stmt stmt_t;
 
 struct stmt {
    stmt_kind_t kind;
    const char *file;
    int line;
+   long address;
    char *label;
    union {
       insn_info_t insn;
       directive_info_t *dir;
+      const_info_t cnst;
    } u;
    stmt_t *next;
 };
@@ -62,6 +70,7 @@ void program_ir_free(program_ir_t *prog);
 stmt_t *stmt_make_label(const char *file, int line, char *label);
 stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand);
 stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t *dir);
+stmt_t *stmt_make_const(const char *file, int line, char *name, expr_t *expr);
 
 const char *mode_spec_suffix(mode_spec_t spec);
 

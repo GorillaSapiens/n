@@ -89,6 +89,11 @@ static void render_stmt_text(FILE *fp, const stmt_t *stmt)
                break;
          }
          break;
+
+      case STMT_CONST:
+         fprintf(fp, "%s = ", stmt->u.cnst.name);
+         expr_fprint(fp, stmt->u.cnst.expr);
+         break;
    }
 }
 

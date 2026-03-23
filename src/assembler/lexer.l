@@ -59,7 +59,7 @@ WS           [ \t\r]+
 HEX          \$[0-9A-Fa-f]+
 BIN          %[01]+
 DEC          [0-9]+
-CHARBODY     ([^\\\n']|\\[0nrt'\"\\])
+CHARBODY     ([^\\\n']|\\[0nrt'"\\])
 CHARCONST    \'{CHARBODY}\'?
 STRING       \"([^\\\n]|\\.)*\"
 IDSTART      [A-Za-z_@?]

@@ -124,6 +124,11 @@ static void stmt_free(stmt_t *stmt)
       case STMT_DIR:
          directive_free(stmt->u.dir);
          break;
+
+      case STMT_CONST:
+         free(stmt->u.cnst.name);
+         expr_free(stmt->u.cnst.expr);
+         break;
    }
 
    free(stmt);
@@ -158,6 +163,7 @@ stmt_t *stmt_make_label(const char *file, int line, char *label)
    stmt->kind = STMT_LABEL;
    stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
+   stmt->address = 0;
    stmt->label = xstrdup(label);
    return stmt;
 }
@@ -175,6 +181,7 @@ stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_tex
    stmt->kind = STMT_INSN;
    stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
+   stmt->address = 0;
    stmt->label = xstrdup(label);
    split_opcode_text(opcode_text, &stmt->u.insn.opcode, &stmt->u.insn.spec);
    stmt->u.insn.mode = mode;
@@ -198,8 +205,29 @@ stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t 
    stmt->kind = STMT_DIR;
    stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
+   stmt->address = 0;
    stmt->label = xstrdup(label);
    stmt->u.dir = dir;
+   return stmt;
+}
+
+stmt_t *stmt_make_const(const char *file, int line, char *name, expr_t *expr)
+{
+   stmt_t *stmt;
+
+   stmt = (stmt_t *)calloc(1, sizeof(*stmt));
+   if (!stmt) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   stmt->kind = STMT_CONST;
+   stmt->file = xstrdup(file ? file : "<input>");
+   stmt->line = line;
+   stmt->address = 0;
+   stmt->label = NULL;
+   stmt->u.cnst.name = xstrdup(name);
+   stmt->u.cnst.expr = expr;
    return stmt;
 }
 
@@ -253,6 +281,11 @@ void stmt_print(const stmt_t *stmt)
       case STMT_DIR:
          directive_print(stmt->u.dir);
          return;
+
+      case STMT_CONST:
+         printf("const %s = ", stmt->u.cnst.name);
+         expr_print(stmt->u.cnst.expr);
+         break;
    }
 
    printf("\n");

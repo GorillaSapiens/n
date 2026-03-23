@@ -341,6 +341,7 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
    int insn_count;
    int dir_count;
    int label_count;
+   int const_count;
    int total_bytes;
    int zp_like;
    int abs_like;
@@ -348,6 +349,7 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
    insn_count = 0;
    dir_count = 0;
    label_count = 0;
+   const_count = 0;
    total_bytes = 0;
    zp_like = 0;
    abs_like = 0;
@@ -360,6 +362,10 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
 
          case STMT_DIR:
             dir_count++;
+            break;
+
+         case STMT_CONST:
+            const_count++;
             break;
 
          case STMT_INSN:
@@ -386,8 +392,8 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
       }
    }
 
-   printf("pass %d %-10s bytes=%d insns=%d dirs=%d labels=%d zp=%d abs=%d\n",
-          pass_index, phase, total_bytes, insn_count, dir_count, label_count, zp_like, abs_like);
+   printf("pass %d %-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d\n",
+          pass_index, phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing)
@@ -424,6 +430,59 @@ void asm_context_free(asm_context_t *ctx)
    symtab_free(&ctx->symbols);
 }
 
+static int resolve_constants(asm_context_t *ctx)
+{
+   int iter;
+   int changed;
+
+   for (iter = 0; iter < 64; iter++) {
+      stmt_t *stmt;
+
+      changed = 0;
+
+      for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+         const symbol_t *sym;
+         long value;
+
+         if (stmt->kind != STMT_CONST)
+            continue;
+
+         if (expr_eval(stmt->u.cnst.expr, &ctx->symbols, stmt->address, &value) != EXPR_EVAL_OK)
+            continue;
+
+         sym = symtab_find_const(&ctx->symbols, stmt->u.cnst.name);
+         if (!sym || !sym->defined || sym->value != value) {
+            symtab_define(&ctx->symbols, stmt->u.cnst.name, value);
+            changed = 1;
+         }
+      }
+
+      if (!changed)
+         break;
+   }
+
+   {
+      stmt_t *stmt;
+      for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+         const symbol_t *sym;
+
+         if (stmt->kind != STMT_CONST)
+            continue;
+
+         sym = symtab_find_const(&ctx->symbols, stmt->u.cnst.name);
+         if (!sym || !sym->defined) {
+            print_loc(stderr, stmt);
+            fprintf(stderr, ": could not resolve constant %s = ", stmt->u.cnst.name);
+            expr_fprint(stderr, stmt->u.cnst.expr);
+            fprintf(stderr, "\n");
+            return 1;
+         }
+      }
+   }
+
+   return 0;
+}
+
 int asm_pass1(asm_context_t *ctx, int pass_index)
 {
    stmt_t *stmt;
@@ -437,11 +496,16 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    pc = ctx->origin;
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      stmt->address = pc;
+
       if (stmt->label)
          symtab_define(&ctx->symbols, stmt->label, pc);
 
       switch (stmt->kind) {
          case STMT_LABEL:
+            break;
+
+         case STMT_CONST:
             break;
 
          case STMT_INSN:
@@ -464,6 +528,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
             break;
       }
    }
+
+   if (resolve_constants(ctx) != 0)
+      return 1;
 
    print_pass_stats(ctx, pass_index, "layout");
    return 0;
@@ -495,7 +562,7 @@ int asm_relax(asm_context_t *ctx)
          if (!stmt->u.insn.expr)
             continue;
 
-         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, 0, &value) != EXPR_EVAL_OK)
+         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->address, &value) != EXPR_EVAL_OK)
             continue;
 
          if (!expr_is_u8_value(value))
@@ -777,6 +844,11 @@ int asm_pass2(asm_context_t *ctx)
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {
          case STMT_LABEL:
+            if (ctx->listing)
+               listing_write_no_bytes(ctx->listing, stmt);
+            break;
+
+         case STMT_CONST:
             if (ctx->listing)
                listing_write_no_bytes(ctx->listing, stmt);
             break;
