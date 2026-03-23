@@ -27,6 +27,65 @@ static void asm_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt, .
    fprintf(stderr, "\n");
 }
 
+static void free_imports(import_name_t *head)
+{
+   import_name_t *p;
+   import_name_t *next;
+
+   for (p = head; p; p = next) {
+      next = p->next;
+      free(p->name);
+      free(p);
+   }
+}
+
+static int import_exists(const asm_context_t *ctx, const char *name)
+{
+   const import_name_t *p;
+
+   for (p = ctx->imports; p; p = p->next) {
+      if (!strcmp(p->name, name))
+         return 1;
+   }
+
+   return 0;
+}
+
+static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name)
+{
+   import_name_t *p;
+
+   if (import_exists(ctx, name))
+      return;
+
+   p = (import_name_t *)calloc(1, sizeof(*p));
+   if (!p) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   p->name = xstrdup(name);
+   p->file = stmt->file;
+   p->line = stmt->line;
+   p->next = ctx->imports;
+   ctx->imports = p;
+}
+
+static void validate_imports(asm_context_t *ctx)
+{
+   import_name_t *p;
+   const symbol_t *sym;
+
+   for (p = ctx->imports; p; p = p->next) {
+      sym = symtab_find_const(&ctx->symbols, p->name);
+      if (!sym || !sym->defined) {
+         ctx->error_count++;
+         fprintf(stderr, "%s:%d: imported symbol '%s' was not resolved\n",
+                 p->file ? p->file : "<input>", p->line, p->name);
+      }
+   }
+}
+
 static int is_branch_opcode(const char *opcode)
 {
    return !strcmp(opcode, "BCC") ||
@@ -387,6 +446,12 @@ static int directive_size_pass1(asm_context_t *ctx,
       return 0;
    }
 
+   if (!strcmp(dir->name, ".global") ||
+       !strcmp(dir->name, ".export") ||
+       !strcmp(dir->name, ".import")) {
+      return 0;
+   }
+
    if (!strcmp(dir->name, ".byte")) {
       count = 0;
       for (node = dir->exprs; node; node = node->next)
@@ -565,6 +630,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    ihex_image_init(&ctx->image);
    ctx->listing = listing;
    ctx->error_count = 0;
+   ctx->imports = NULL;
 
    assign_scopes(prog);
 
@@ -588,6 +654,8 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
 void asm_context_free(asm_context_t *ctx)
 {
    symtab_free(&ctx->symbols);
+   free_imports(ctx->imports);
+   ctx->imports = NULL;
 }
 
 static int declare_symbol_or_report(asm_context_t *ctx, const char *name, const stmt_t *stmt)
@@ -626,6 +694,35 @@ static symbol_t *find_declared_symbol(symtab_t *tab, const program_ir_t *prog, c
    sym = symtab_find(tab, lookup_name);
    free(owned);
    return sym;
+}
+
+static void gather_imports(asm_context_t *ctx)
+{
+   stmt_t *stmt;
+   const expr_list_node_t *node;
+
+   free_imports(ctx->imports);
+   ctx->imports = NULL;
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      if (stmt->kind != STMT_DIR)
+         continue;
+      if (strcmp(stmt->u.dir->name, ".import"))
+         continue;
+
+      for (node = stmt->u.dir->exprs; node; node = node->next) {
+         const char *name;
+         if (!directive_expr_is_ident(node->expr, &name)) {
+            asm_error(ctx, stmt, ".import expects identifier names");
+            continue;
+         }
+         if (is_local_name(name)) {
+            asm_error(ctx, stmt, ".import does not allow local labels");
+            continue;
+         }
+         add_import(ctx, stmt, name);
+      }
+   }
 }
 
 static int resolve_constants(asm_context_t *ctx)
@@ -689,6 +786,8 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    symtab_free(&ctx->symbols);
    symtab_init(&ctx->symbols);
 
+   gather_imports(ctx);
+
    pc = ctx->origin;
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
@@ -728,6 +827,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    }
 
    resolve_constants(ctx);
+   validate_imports(ctx);
    print_pass_stats(ctx, pass_index, "layout");
    return 0;
 }
@@ -829,7 +929,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
       return 0;
    }
 
-   if (!strcmp(dir->name, ".global") || !strcmp(dir->name, ".export")) {
+   if (!strcmp(dir->name, ".global") ||
+       !strcmp(dir->name, ".export") ||
+       !strcmp(dir->name, ".import")) {
       if (ctx->listing)
          listing_write_no_bytes(ctx->listing, stmt);
       return 0;
