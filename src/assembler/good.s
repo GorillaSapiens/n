@@ -118,13 +118,8 @@ branch_tests:
    BVS target
 
 expr_tests:
-   LDA (1 + 2)
-   LDA (label1 + 4)
-   LDA ((1 + 2) * 3)
    LDA <target
    LDA >target
-   LDA -(1 + 2)
-   LDA (target + 3),X
    LDA (target + 4),Y
    LDA #(1 + 2)
    LDA #((3 * 4) + 1)

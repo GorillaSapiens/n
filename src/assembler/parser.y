@@ -174,15 +174,12 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 
 %token REG_A REG_X REG_Y
 %token EOL
-%token INDIR_LPAREN
 %token UMINUS
 
 %left '+' '-'
 %left '*' '/'
-//%precedence UMINUS
-//%precedence '<' '>'
 
-%type <str> expr unary primary
+%type <str> expr unary simple_expr simple_unary primary
 %type <mode> operand
 
 %start program
@@ -204,24 +201,52 @@ line
    ;
 
 statement
-   : LABEL_DEF                 { free_if($1); }
-   | LABEL_DEF directive_stmt  { free_if($1); }
-   | LABEL_DEF instruction_stmt{ free_if($1); }
+   : LABEL_DEF
+     {
+        free_if($1);
+     }
+   | LABEL_DEF directive_stmt
+     {
+        free_if($1);
+     }
+   | LABEL_DEF instruction_stmt
+     {
+        free_if($1);
+     }
    | directive_stmt
    | instruction_stmt
    ;
 
 directive_stmt
-   : DIRECTIVE                 { free_if($1); }
-   | DIRECTIVE expr_list       { free_if($1); }
-   | DIRECTIVE STRING          { free_if($1); free_if($2); }
+   : DIRECTIVE
+     {
+        free_if($1);
+     }
+   | DIRECTIVE expr_list
+     {
+        free_if($1);
+     }
+   | DIRECTIVE STRING
+     {
+        free_if($1);
+        free_if($2);
+     }
    | DIRECTIVE STRING ',' expr_list
-                               { free_if($1); free_if($2); }
+     {
+        free_if($1);
+        free_if($2);
+     }
    ;
 
 expr_list
-   : expr                      { free_if($1); }
-   | expr_list ',' expr       { free_if($3); }
+   : expr
+     {
+        free_if($1);
+     }
+   | expr_list ',' expr
+     {
+        free_if($3);
+     }
    ;
 
 instruction_stmt
@@ -230,8 +255,12 @@ instruction_stmt
         addr_mode_t mode = AM_IMPLIED;
 
         if (!opcode_mode_is_legal($1, mode))
-           fprintf(stderr, "line %d: illegal addressing mode for %s ... %s\n",
+           fprintf(stderr,
+                   "line %d: illegal addressing mode for %s ... %s\n",
                    yylineno, $1, addr_mode_name(mode));
+        else
+           printf("line %d: %s ... %s\n",
+                  yylineno, $1, addr_mode_name(mode));
 
         free_if($1);
      }
@@ -240,47 +269,186 @@ instruction_stmt
         addr_mode_t mode = normalize_mode($1, $2);
 
         if (!opcode_mode_is_legal($1, mode))
-           fprintf(stderr, "line %d: illegal addressing mode for %s ... %s\n",
+           fprintf(stderr,
+                   "line %d: illegal addressing mode for %s ... %s\n",
                    yylineno, $1, addr_mode_name(mode));
+        else
+           printf("line %d: %s ... %s\n",
+                  yylineno, $1, addr_mode_name(mode));
 
         free_if($1);
      }
    ;
 
 operand
-   : REG_A                     { $$ = AM_ACCUMULATOR; }
-   | '#' expr                  { $$ = AM_IMMEDIATE; free_if($2); }
-   | expr                      { $$ = AM_ZP_OR_ABS; free_if($1); }
-   | expr ',' REG_X            { $$ = AM_ZPX_OR_ABSX; free_if($1); }
-   | expr ',' REG_Y            { $$ = AM_ZPY_OR_ABSY; free_if($1); }
-   | INDIR_LPAREN expr ')'     { $$ = AM_INDIRECT; free_if($2); }
-   | INDIR_LPAREN expr ',' REG_X ')'
-                               { $$ = AM_INDEXED_INDIRECT; free_if($2); }
-   | INDIR_LPAREN expr ')' ',' REG_Y
-                               { $$ = AM_INDIRECT_INDEXED; free_if($2); }
+   : REG_A
+     {
+        $$ = AM_ACCUMULATOR;
+     }
+   | '#' expr
+     {
+        $$ = AM_IMMEDIATE;
+        free_if($2);
+     }
+   | simple_expr
+     {
+        $$ = AM_ZP_OR_ABS;
+        free_if($1);
+     }
+   | simple_expr ',' REG_X
+     {
+        $$ = AM_ZPX_OR_ABSX;
+        free_if($1);
+     }
+   | simple_expr ',' REG_Y
+     {
+        $$ = AM_ZPY_OR_ABSY;
+        free_if($1);
+     }
+   | '(' expr ')'
+     {
+        $$ = AM_INDIRECT;
+        free_if($2);
+     }
+   | '(' expr ',' REG_X ')'
+     {
+        $$ = AM_INDEXED_INDIRECT;
+        free_if($2);
+     }
+   | '(' expr ')' ',' REG_Y
+     {
+        $$ = AM_INDIRECT_INDEXED;
+        free_if($2);
+     }
    ;
 
 expr
-   : unary                     { $$ = $1; }
-   | expr '+' expr             { $$ = xstrdup("<expr>"); free_if($1); free_if($3); }
-   | expr '-' expr             { $$ = xstrdup("<expr>"); free_if($1); free_if($3); }
-   | expr '*' expr             { $$ = xstrdup("<expr>"); free_if($1); free_if($3); }
-   | expr '/' expr             { $$ = xstrdup("<expr>"); free_if($1); free_if($3); }
+   : unary
+     {
+        $$ = $1;
+     }
+   | expr '+' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | expr '-' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | expr '*' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | expr '/' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
    ;
 
 unary
-   : primary                   { $$ = $1; }
-   | '(' expr ')'              { $$ = $2; }
-   | '-' unary %prec UMINUS    { $$ = xstrdup("<expr>"); free_if($2); }
-   | '<' unary                 { $$ = xstrdup("<expr>"); free_if($2); }
-   | '>' unary                 { $$ = xstrdup("<expr>"); free_if($2); }
+   : primary
+     {
+        $$ = $1;
+     }
+   | '(' expr ')'
+     {
+        $$ = $2;
+     }
+   | '-' unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
+   | '<' unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
+   | '>' unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
+   ;
+
+simple_expr
+   : simple_unary
+     {
+        $$ = $1;
+     }
+   | simple_expr '+' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | simple_expr '-' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | simple_expr '*' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   | simple_expr '/' expr
+     {
+        $$ = xstrdup("<expr>");
+        free_if($1);
+        free_if($3);
+     }
+   ;
+
+simple_unary
+   : primary
+     {
+        $$ = $1;
+     }
+   | '-' simple_unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
+   | '<' unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
+   | '>' unary
+     {
+        $$ = xstrdup("<expr>");
+        free_if($2);
+     }
    ;
 
 primary
-   : NUMBER                    { $$ = $1; }
-   | IDENT                     { $$ = $1; }
-   | CHARCONST                 { $$ = $1; }
-   | '*'                       { $$ = xstrdup("*"); }
+   : NUMBER
+     {
+        $$ = $1;
+     }
+   | IDENT
+     {
+        $$ = $1;
+     }
+   | CHARCONST
+     {
+        $$ = $1;
+     }
+   | '*'
+     {
+        $$ = xstrdup("*");
+     }
    ;
 
 %%

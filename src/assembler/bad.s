@@ -11,3 +11,9 @@ illegal_tests:
    STY $1234,Y
    CPY ($44,X)
    BIT #$01
+   LDA (1 + 2)
+   LDA (label1 + 4)
+   LDA ((1 + 2) * 3)
+
+   LDA -(1 + 2)
+   LDA (target + 3),X

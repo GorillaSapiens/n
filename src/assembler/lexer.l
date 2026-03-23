@@ -22,8 +22,6 @@ static char *xstrdup(const char *s)
 }
 %}
 
-%x OPERAND_START
-
 WS          [ \t\r]+
 HEX         \$[0-9A-Fa-f]+
 BIN         %[01]+
@@ -45,16 +43,10 @@ OPCODE6502  {OPC_BRANCH}|{OPC_FLAGS}|{OPC_LOADST}|{OPC_ALU}|{OPC_MISC}
 
 ";"[^\n]*                  { }
 {WS}                       { }
-\n                         { BEGIN(INITIAL); return EOL; }
+\n                         { return EOL; }
 
-{OPCODE6502}               { yylval.str = xstrdup(yytext); BEGIN(OPERAND_START); return OPCODE; }
+{OPCODE6502}               { yylval.str = xstrdup(yytext); return OPCODE; }
 {DIRECTIVE}                { yylval.str = xstrdup(yytext); return DIRECTIVE; }
-
-<OPERAND_START>{WS}        { }
-<OPERAND_START>\n          { BEGIN(INITIAL); return EOL; }
-<OPERAND_START>";"[^\n]*   { }
-<OPERAND_START>"("         { BEGIN(INITIAL); return INDIR_LPAREN; }
-<OPERAND_START>.           { BEGIN(INITIAL); yyless(0); }
 
 ","                        { return ','; }
 ":"                        { return ':'; }
