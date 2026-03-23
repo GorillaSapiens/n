@@ -184,10 +184,14 @@ static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, 
    if (rc == EXPR_EVAL_OK)
       return 0;
 
+   fprintf(stderr, "line %d: ", line);
+   expr_print(expr);
+   fprintf(stderr, " -> ");
+
    if (rc == EXPR_EVAL_DIVZERO)
-      fprintf(stderr, "line %d: divide by zero in expression\n", line);
+      fprintf(stderr, "divide by zero\n");
    else
-      fprintf(stderr, "line %d: unresolved expression\n", line);
+      fprintf(stderr, "unresolved expression\n");
 
    return 1;
 }
@@ -264,17 +268,22 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
       return 1;
    }
 
-   /*
-      Placeholder emitter:
-      byte 0 = fake opcode marker
-      remaining bytes = evaluated operand bytes
-      Replace this later with a real opcode table.
-   */
    emit_byte(0xEA);
    (*pc)++;
 
-   if (!insn->has_operand)
-      return 0;
+   switch (mode) {
+      case AM_IMPLIED:
+      case AM_ACCUMULATOR:
+         return 0;
+
+      default:
+         break;
+   }
+
+   if (!insn->has_operand) {
+      fprintf(stderr, "line %d: internal error: missing operand\n", line);
+      return 1;
+   }
 
    if (eval_or_report(insn->expr, symbols, *pc, &value, line))
       return 1;
@@ -304,10 +313,6 @@ static int insn_emit_pass2(const insn_info_t *insn, const symtab_t *symbols, lon
       case AM_INDIRECT:
          emit_word((unsigned short)(value & 0xFFFF));
          (*pc) += 2;
-         break;
-
-      case AM_ACCUMULATOR:
-      case AM_IMPLIED:
          break;
 
       default:

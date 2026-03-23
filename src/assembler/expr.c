@@ -143,9 +143,17 @@ static void expr_print_inner(const expr_t *expr)
       case EXPR_UNARY:
          printf("(");
          switch (expr->u.unary.op) {
-            case EXPR_UOP_NEG: printf("-"); break;
-            case EXPR_UOP_LO:  printf("<"); break;
-            case EXPR_UOP_HI:  printf(">"); break;
+            case EXPR_UOP_NEG:
+               printf("-");
+               break;
+
+            case EXPR_UOP_LO:
+               printf("<");
+               break;
+
+            case EXPR_UOP_HI:
+               printf(">");
+               break;
          }
          expr_print_inner(expr->u.unary.child);
          printf(")");
@@ -155,10 +163,21 @@ static void expr_print_inner(const expr_t *expr)
          printf("(");
          expr_print_inner(expr->u.binary.left);
          switch (expr->u.binary.op) {
-            case EXPR_BOP_ADD: printf(" + "); break;
-            case EXPR_BOP_SUB: printf(" - "); break;
-            case EXPR_BOP_MUL: printf(" * "); break;
-            case EXPR_BOP_DIV: printf(" / "); break;
+            case EXPR_BOP_ADD:
+               printf(" + ");
+               break;
+
+            case EXPR_BOP_SUB:
+               printf(" - ");
+               break;
+
+            case EXPR_BOP_MUL:
+               printf(" * ");
+               break;
+
+            case EXPR_BOP_DIV:
+               printf(" / ");
+               break;
          }
          expr_print_inner(expr->u.binary.right);
          printf(")");
@@ -202,14 +221,29 @@ int parse_charconst_token(const char *text)
    if (*text == '\\') {
       text++;
       switch (*text) {
-         case 'n': return '\n';
-         case 'r': return '\r';
-         case 't': return '\t';
-         case '0': return '\0';
-         case '\'': return '\'';
-         case '"': return '"';
-         case '\\': return '\\';
-         default: return (unsigned char)*text;
+         case 'n':
+            return '\n';
+
+         case 'r':
+            return '\r';
+
+         case 't':
+            return '\t';
+
+         case '0':
+            return '\0';
+
+         case '\'':
+            return '\'';
+
+         case '"':
+            return '"';
+
+         case '\\':
+            return '\\';
+
+         default:
+            return (unsigned char)*text;
       }
    }
 
@@ -236,10 +270,20 @@ expr_eval_status_t expr_eval(const expr_t *expr,
          return EXPR_EVAL_OK;
 
       case EXPR_IDENT:
-         if (!symtab)
+         if (!symtab) {
+#if 0
+            fprintf(stderr, "lookup %s: no symtab\n", expr->u.ident);
+#endif
             return EXPR_EVAL_UNRESOLVED;
+         }
 
          sym = symtab_find_const(symtab, expr->u.ident);
+#if 0
+         fprintf(stderr, "lookup %s: %s\n",
+                 expr->u.ident,
+                 (sym && sym->defined) ? "defined" : "missing");
+#endif
+
          if (!sym || !sym->defined)
             return EXPR_EVAL_UNRESOLVED;
 

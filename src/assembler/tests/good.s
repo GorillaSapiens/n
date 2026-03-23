@@ -108,14 +108,14 @@ indirect_tests:
    STA ($2F),Y
 
 branch_tests:
-   BCC target
-   BCS target
-   BEQ target
-   BMI target
-   BNE target
-   BPL target
-   BVC target
-   BVS target
+   BCC expr_tests
+   BCS expr_tests
+   BEQ expr_tests
+   BMI expr_tests
+   BNE expr_tests
+   BPL expr_tests
+   BVC expr_tests
+   BVS expr_tests
 
 expr_tests:
    LDA <target

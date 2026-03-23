@@ -109,3 +109,13 @@ symbol_t *symtab_reference(symtab_t *tab, const char *name)
    tab->head = sym;
    return sym;
 }
+
+void symtab_dump(const symtab_t *tab)
+{
+   const symbol_t *sym;
+
+   for (sym = tab->head; sym; sym = sym->next) {
+      printf("sym %-20s defined=%d value=$%04lX\n",
+             sym->name, sym->defined, sym->value & 0xFFFF);
+   }
+}

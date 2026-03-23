@@ -27,6 +27,12 @@ int main(void)
       return 1;
    }
 
+#if 0
+   printf("---- symbols after pass1 ----\n");
+   symtab_dump(&ctx.symbols);
+   printf("-----------------------------\n");
+#endif
+
    if (asm_pass2(&ctx) != 0) {
       asm_context_free(&ctx);
       program_ir_free(&g_program);
