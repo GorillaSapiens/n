@@ -2,6 +2,7 @@
 #include "addr_mode.h"
 #include "expr.h"
 #include "directive.h"
+#include "ir.h"
 
 typedef struct operand_info {
    addr_mode_t mode;
@@ -16,138 +17,17 @@ typedef struct operand_info {
 #include "addr_mode.h"
 #include "expr.h"
 #include "directive.h"
+#include "ir.h"
 
 int yylex(void);
 void yyerror(const char *s);
 
-typedef struct opcode_rule {
-   const char *name;
-   unsigned modes;
-} opcode_rule_t;
-
-#define MODEBIT(x)   (1u << (x))
+program_ir_t g_program;
 
 static void free_if(char *s)
 {
    if (s)
       free(s);
-}
-
-static const char *addr_mode_name(addr_mode_t mode)
-{
-   switch (mode) {
-      case AM_NONE: return "none";
-      case AM_IMPLIED: return "implied";
-      case AM_ACCUMULATOR: return "accumulator";
-      case AM_IMMEDIATE: return "immediate";
-      case AM_ZP_OR_ABS: return "zp/abs";
-      case AM_ZPX_OR_ABSX: return "zp,x/abs,x";
-      case AM_ZPY_OR_ABSY: return "zp,y/abs,y";
-      case AM_INDIRECT: return "indirect";
-      case AM_INDEXED_INDIRECT: return "(zp,x)";
-      case AM_INDIRECT_INDEXED: return "(zp),y";
-      case AM_RELATIVE: return "relative";
-   }
-
-   return "unknown";
-}
-
-static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
-{
-   if (!opcode)
-      return mode;
-
-   if (!strcmp(opcode, "BCC") ||
-       !strcmp(opcode, "BCS") ||
-       !strcmp(opcode, "BEQ") ||
-       !strcmp(opcode, "BMI") ||
-       !strcmp(opcode, "BNE") ||
-       !strcmp(opcode, "BPL") ||
-       !strcmp(opcode, "BVC") ||
-       !strcmp(opcode, "BVS")) {
-      if (mode == AM_ZP_OR_ABS)
-         return AM_RELATIVE;
-   }
-
-   return mode;
-}
-
-static const opcode_rule_t opcode_rules[] = {
-   { "ADC", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "AND", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "ASL", MODEBIT(AM_ACCUMULATOR) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "BCC", MODEBIT(AM_RELATIVE) },
-   { "BCS", MODEBIT(AM_RELATIVE) },
-   { "BEQ", MODEBIT(AM_RELATIVE) },
-   { "BIT", MODEBIT(AM_ZP_OR_ABS) },
-   { "BMI", MODEBIT(AM_RELATIVE) },
-   { "BNE", MODEBIT(AM_RELATIVE) },
-   { "BPL", MODEBIT(AM_RELATIVE) },
-   { "BRK", MODEBIT(AM_IMPLIED) },
-   { "BVC", MODEBIT(AM_RELATIVE) },
-   { "BVS", MODEBIT(AM_RELATIVE) },
-   { "CLC", MODEBIT(AM_IMPLIED) },
-   { "CLD", MODEBIT(AM_IMPLIED) },
-   { "CLI", MODEBIT(AM_IMPLIED) },
-   { "CLV", MODEBIT(AM_IMPLIED) },
-   { "CMP", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "CPX", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) },
-   { "CPY", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) },
-   { "DEC", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "DEX", MODEBIT(AM_IMPLIED) },
-   { "DEY", MODEBIT(AM_IMPLIED) },
-   { "EOR", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "INC", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "INX", MODEBIT(AM_IMPLIED) },
-   { "INY", MODEBIT(AM_IMPLIED) },
-   { "JMP", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_INDIRECT) },
-   { "JSR", MODEBIT(AM_ZP_OR_ABS) },
-   { "LDA", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "LDX", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPY_OR_ABSY) },
-   { "LDY", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "LSR", MODEBIT(AM_ACCUMULATOR) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "NOP", MODEBIT(AM_IMPLIED) },
-   { "ORA", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "PHA", MODEBIT(AM_IMPLIED) },
-   { "PHP", MODEBIT(AM_IMPLIED) },
-   { "PLA", MODEBIT(AM_IMPLIED) },
-   { "PLP", MODEBIT(AM_IMPLIED) },
-   { "ROL", MODEBIT(AM_ACCUMULATOR) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "ROR", MODEBIT(AM_ACCUMULATOR) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "RTI", MODEBIT(AM_IMPLIED) },
-   { "RTS", MODEBIT(AM_IMPLIED) },
-   { "SBC", MODEBIT(AM_IMMEDIATE) | MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "SEC", MODEBIT(AM_IMPLIED) },
-   { "SED", MODEBIT(AM_IMPLIED) },
-   { "SEI", MODEBIT(AM_IMPLIED) },
-   { "STA", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) | MODEBIT(AM_ZPY_OR_ABSY) | MODEBIT(AM_INDEXED_INDIRECT) | MODEBIT(AM_INDIRECT_INDEXED) },
-   { "STX", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPY_OR_ABSY) },
-   { "STY", MODEBIT(AM_ZP_OR_ABS) | MODEBIT(AM_ZPX_OR_ABSX) },
-   { "TAX", MODEBIT(AM_IMPLIED) },
-   { "TAY", MODEBIT(AM_IMPLIED) },
-   { "TSX", MODEBIT(AM_IMPLIED) },
-   { "TXA", MODEBIT(AM_IMPLIED) },
-   { "TXS", MODEBIT(AM_IMPLIED) },
-   { "TYA", MODEBIT(AM_IMPLIED) },
-   { NULL, 0 }
-};
-
-static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
-{
-   const opcode_rule_t *r;
-   unsigned mask;
-
-   if (!opcode)
-      return 0;
-
-   mask = MODEBIT(mode);
-
-   for (r = opcode_rules; r->name; ++r) {
-      if (!strcmp(r->name, opcode))
-         return (r->modes & mask) != 0;
-   }
-
-   return 0;
 }
 %}
 
@@ -155,11 +35,11 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 
 %union {
    char *str;
-   addr_mode_t mode;
    expr_t *expr;
    operand_info_t operand;
    expr_list_node_t *expr_list;
    directive_info_t *directive;
+   stmt_t *stmt;
 }
 
 %token <str> OPCODE
@@ -178,6 +58,7 @@ static int opcode_mode_is_legal(const char *opcode, addr_mode_t mode)
 %type <operand> operand_expr
 %type <expr_list> expr_list
 %type <directive> directive_stmt
+%type <stmt> instruction_stmt
 
 %start program
 
@@ -200,24 +81,28 @@ line
 statement
    : LABEL_DEF
      {
+        program_ir_append(&g_program, stmt_make_label(@1.first_line, $1));
         free_if($1);
      }
    | LABEL_DEF directive_stmt
      {
-        directive_print($2);
-        directive_free($2);
+        program_ir_append(&g_program, stmt_make_dir(@2.first_line, $1, $2));
         free_if($1);
      }
    | LABEL_DEF instruction_stmt
      {
+        $2->label = strdup($1);
+        program_ir_append(&g_program, $2);
         free_if($1);
      }
    | directive_stmt
      {
-        directive_print($1);
-        directive_free($1);
+        program_ir_append(&g_program, stmt_make_dir(@1.first_line, NULL, $1));
      }
    | instruction_stmt
+     {
+        program_ir_append(&g_program, $1);
+     }
    ;
 
 directive_stmt
@@ -259,39 +144,12 @@ expr_list
 instruction_stmt
    : OPCODE
      {
-        addr_mode_t mode = AM_IMPLIED;
-
-        if (!opcode_mode_is_legal($1, mode))
-           fprintf(stderr,
-                   "line %d: illegal addressing mode for %s ... %s\n",
-                   @1.first_line, $1, addr_mode_name(mode));
-        else
-           printf("line %d: %s ... %s\n",
-                  @1.first_line, $1, addr_mode_name(mode));
-
+        $$ = stmt_make_insn(@1.first_line, NULL, $1, AM_IMPLIED, NULL, 0);
         free_if($1);
      }
    | OPCODE operand_expr
      {
-        addr_mode_t mode = normalize_mode($1, $2.mode);
-
-        if (!opcode_mode_is_legal($1, mode)) {
-           fprintf(stderr,
-                   "line %d: illegal addressing mode for %s ... %s\n",
-                   @1.first_line, $1, addr_mode_name(mode));
-        } else {
-           printf("line %d: %s ... %s",
-                  @1.first_line, $1, addr_mode_name(mode));
-
-           if ($2.expr) {
-              printf("  expr=");
-              expr_print($2.expr);
-           }
-
-           printf("\n");
-        }
-
-        expr_free($2.expr);
+        $$ = stmt_make_insn(@1.first_line, NULL, $1, $2.mode, $2.expr, 1);
         free_if($1);
      }
    ;
