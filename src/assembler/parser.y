@@ -8,6 +8,15 @@ typedef struct operand_info {
    addr_mode_t mode;
    expr_t *expr;
 } operand_info_t;
+
+typedef struct YYLTYPE {
+   int first_line;
+   int first_column;
+   int last_line;
+   int last_column;
+   const char *filename;
+} YYLTYPE;
+#define YYLTYPE_IS_DECLARED 1
 }
 
 %{
@@ -81,12 +90,12 @@ line
 statement
    : LABEL_DEF
      {
-        program_ir_append(&g_program, stmt_make_label(@1.first_line, $1));
+        program_ir_append(&g_program, stmt_make_label(@1.filename, @1.first_line, $1));
         free_if($1);
      }
    | LABEL_DEF directive_stmt
      {
-        program_ir_append(&g_program, stmt_make_dir(@2.first_line, $1, $2));
+        program_ir_append(&g_program, stmt_make_dir(@2.filename, @2.first_line, $1, $2));
         free_if($1);
      }
    | LABEL_DEF instruction_stmt
@@ -97,7 +106,7 @@ statement
      }
    | directive_stmt
      {
-        program_ir_append(&g_program, stmt_make_dir(@1.first_line, NULL, $1));
+        program_ir_append(&g_program, stmt_make_dir(@1.filename, @1.first_line, NULL, $1));
      }
    | instruction_stmt
      {
@@ -144,12 +153,12 @@ expr_list
 instruction_stmt
    : OPCODE
      {
-        $$ = stmt_make_insn(@1.first_line, NULL, $1, AM_IMPLIED, NULL, 0);
+        $$ = stmt_make_insn(@1.filename, @1.first_line, NULL, $1, AM_IMPLIED, NULL, 0);
         free_if($1);
      }
    | OPCODE operand_expr
      {
-        $$ = stmt_make_insn(@1.first_line, NULL, $1, $2.mode, $2.expr, 1);
+        $$ = stmt_make_insn(@1.filename, @1.first_line, NULL, $1, $2.mode, $2.expr, 1);
         free_if($1);
      }
    ;
@@ -361,5 +370,8 @@ simple_primary
 
 void yyerror(const char *s)
 {
-   fprintf(stderr, "parse error at line %d: %s\n", yylloc.first_line, s);
+   if (yylloc.filename)
+      fprintf(stderr, "%s:%d: parse error: %s\n", yylloc.filename, yylloc.first_line, s);
+   else
+      fprintf(stderr, "line %d: parse error: %s\n", yylloc.first_line, s);
 }

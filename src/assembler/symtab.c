@@ -2,25 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "symtab.h"
-
-static char *xstrdup(const char *s)
-{
-   size_t n;
-   char *p;
-
-   if (!s)
-      return NULL;
-
-   n = strlen(s) + 1;
-   p = (char *)malloc(n);
-   if (!p) {
-      fprintf(stderr, "out of memory\n");
-      exit(1);
-   }
-
-   memcpy(p, s, n);
-   return p;
-}
+#include "util.h"
 
 void symtab_init(symtab_t *tab)
 {
@@ -108,14 +90,4 @@ symbol_t *symtab_reference(symtab_t *tab, const char *name)
    sym->next = tab->head;
    tab->head = sym;
    return sym;
-}
-
-void symtab_dump(const symtab_t *tab)
-{
-   const symbol_t *sym;
-
-   for (sym = tab->head; sym; sym = sym->next) {
-      printf("sym %-20s defined=%d value=$%04lX\n",
-             sym->name, sym->defined, sym->value & 0xFFFF);
-   }
 }

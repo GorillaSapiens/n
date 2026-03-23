@@ -3,25 +3,7 @@
 #include <string.h>
 #include "expr.h"
 #include "symtab.h"
-
-static char *xstrdup(const char *s)
-{
-   size_t n;
-   char *p;
-
-   if (!s)
-      return NULL;
-
-   n = strlen(s) + 1;
-   p = (char *)malloc(n);
-   if (!p) {
-      fprintf(stderr, "out of memory\n");
-      exit(1);
-   }
-
-   memcpy(p, s, n);
-   return p;
-}
+#include "util.h"
 
 static expr_t *expr_alloc(expr_kind_t kind)
 {

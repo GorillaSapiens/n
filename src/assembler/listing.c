@@ -117,7 +117,9 @@ void listing_write_record(listing_writer_t *lst,
    if (!lst || !lst->fp || !stmt)
       return;
 
-   fprintf(lst->fp, "%5d  %04lX  ", stmt->line, addr & 0xFFFF);
+   fprintf(lst->fp, "%-24s %04lX  ",
+           stmt->file ? stmt->file : "<input>",
+           addr & 0xFFFF);
 
    for (i = 0; i < 6; i++) {
       if (i < byte_count)
@@ -126,7 +128,7 @@ void listing_write_record(listing_writer_t *lst,
          fprintf(lst->fp, "   ");
    }
 
-   fprintf(lst->fp, " ");
+   fprintf(lst->fp, " %5d  ", stmt->line);
    render_stmt_text(lst->fp, stmt);
    fprintf(lst->fp, "\n");
 }
@@ -136,9 +138,10 @@ void listing_write_no_bytes(listing_writer_t *lst, const stmt_t *stmt)
    if (!lst || !lst->fp || !stmt)
       return;
 
-   fprintf(lst->fp, "%5d  ----  %-18s ",
-           stmt->line,
-           "");
+   fprintf(lst->fp, "%-24s ----  %-18s %5d  ",
+           stmt->file ? stmt->file : "<input>",
+           "",
+           stmt->line);
    render_stmt_text(lst->fp, stmt);
    fprintf(lst->fp, "\n");
 }

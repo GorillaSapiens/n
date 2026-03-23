@@ -4,6 +4,11 @@
 #include "asm_pass.h"
 #include "opcode.h"
 
+static void print_loc(FILE *fp, const stmt_t *stmt)
+{
+   fprintf(fp, "%s:%d", stmt->file ? stmt->file : "<input>", stmt->line);
+}
+
 static int is_branch_opcode(const char *opcode)
 {
    return !strcmp(opcode, "BCC") ||
@@ -81,23 +86,6 @@ static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
    return 0;
 }
 
-/*
-   Addressing-mode specifiers are allowed to override some surface syntax.
-
-   Examples:
-      LDA.ix $44    == LDA ($44,X)
-      LDA.iy $44    == LDA ($44),Y
-      JMP.i  $1234  == JMP ($1234)
-
-   Why:
-   - The suffix is a hard encoding selector, not a suggestion.
-   - Requiring both the suffix and the traditional punctuation is redundant.
-   - We still reject combinations that don't match the underlying operand
-     family at all, like LDA.ix foo,Y or LDA.ax (foo).
-
-   This lets the programmer force a specific encoding without turning the
-   assembler into a "maybe I will shrink it later" guessing machine.
-*/
 static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
 {
    parsed_mode = normalize_mode("", parsed_mode);
@@ -144,14 +132,6 @@ static int expr_is_s8_or_u8_value(long value)
    return value >= -128 && value <= 0xFF;
 }
 
-/*
-   Pick the initial, conservative encoding before relaxation.
-
-   Rules:
-   - explicit mode specifier wins and is never relaxed
-   - ambiguous no-spec families start wide when both wide/narrow exist
-   - if an opcode only has one concrete form in that family, choose it
-*/
 static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
@@ -298,7 +278,7 @@ static int directive_size_pass1(const directive_info_t *dir, long *new_origin)
    return 0;
 }
 
-static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, int line)
+static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, long *value, const stmt_t *stmt)
 {
    expr_eval_status_t rc;
 
@@ -306,7 +286,8 @@ static int eval_or_report(const expr_t *expr, const symtab_t *symbols, long pc, 
    if (rc == EXPR_EVAL_OK)
       return 0;
 
-   fprintf(stderr, "line %d: ", line);
+   print_loc(stderr, stmt);
+   fprintf(stderr, ": ");
    expr_fprint(stderr, expr);
    fprintf(stderr, " -> ");
 
@@ -425,9 +406,8 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
          continue;
 
       if (!choose_initial_emit_mode(&stmt->u.insn, &stmt->u.insn.final_mode, &why)) {
-         fprintf(stderr,
-                 "line %d: %s%s ... %s\n",
-                 stmt->line,
+         print_loc(stderr, stmt);
+         fprintf(stderr, ": %s%s ... %s\n",
                  stmt->u.insn.opcode,
                  mode_spec_suffix(stmt->u.insn.spec),
                  why);
@@ -503,7 +483,6 @@ int asm_relax(asm_context_t *ctx)
       changed = 0;
 
       for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
-         long pc;
          long value;
          emit_mode_t candidate;
 
@@ -513,16 +492,10 @@ int asm_relax(asm_context_t *ctx)
          if (!can_relax_to_zp_family(&stmt->u.insn, stmt->u.insn.final_mode, &candidate))
             continue;
 
-         /*
-            Evaluate with the current symbol table. Because we started wide and
-            only ever shrink, addresses move monotonically downward and the
-            process converges.
-         */
-         pc = 0; /* not used for zp-vs-abs choice */
          if (!stmt->u.insn.expr)
             continue;
 
-         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, pc, &value) != EXPR_EVAL_OK)
+         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, 0, &value) != EXPR_EVAL_OK)
             continue;
 
          if (!expr_is_u8_value(value))
@@ -545,20 +518,22 @@ int asm_relax(asm_context_t *ctx)
    return 1;
 }
 
-static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, int line)
+static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, const stmt_t *stmt)
 {
    if (!ihex_write_byte(&ctx->image, addr, b)) {
-      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      print_loc(stderr, stmt);
+      fprintf(stderr, ": output address out of range: $%lX\n", addr);
       return 0;
    }
 
    return 1;
 }
 
-static int emit_word(asm_context_t *ctx, long addr, unsigned short w, int line)
+static int emit_word(asm_context_t *ctx, long addr, unsigned short w, const stmt_t *stmt)
 {
    if (!ihex_write_word(&ctx->image, addr, w)) {
-      fprintf(stderr, "line %d: output address out of range: $%lX\n", line, addr);
+      print_loc(stderr, stmt);
+      fprintf(stderr, ": output address out of range: $%lX\n", addr);
       return 0;
    }
 
@@ -582,11 +557,12 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".org")) {
       if (!dir->exprs || dir->exprs->next) {
-         fprintf(stderr, "line %d: .org expects exactly one expression\n", stmt->line);
+         print_loc(stderr, stmt);
+         fprintf(stderr, ": .org expects exactly one expression\n");
          return 1;
       }
 
-      if (eval_or_report(dir->exprs->expr, symbols, *pc, &value, stmt->line))
+      if (eval_or_report(dir->exprs->expr, symbols, *pc, &value, stmt))
          return 1;
 
       *pc = value;
@@ -597,9 +573,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".byte")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(node->expr, symbols, *pc, &value, stmt->line))
+         if (eval_or_report(node->expr, symbols, *pc, &value, stmt))
             return 1;
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt->line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt))
             return 1;
          if (rec_count < (int)sizeof(rec))
             rec[rec_count++] = (unsigned char)(value & 0xFF);
@@ -612,9 +588,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
 
    if (!strcmp(dir->name, ".word")) {
       for (node = dir->exprs; node; node = node->next) {
-         if (eval_or_report(node->expr, symbols, *pc, &value, stmt->line))
+         if (eval_or_report(node->expr, symbols, *pc, &value, stmt))
             return 1;
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt->line))
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt))
             return 1;
          if (rec_count + 1 < (int)sizeof(rec)) {
             rec[rec_count++] = (unsigned char)(value & 0xFF);
@@ -641,7 +617,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
       n = strlen(s);
       if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
          for (i = 1; i + 1 < n; i++) {
-            if (!emit_byte(ctx, *pc, (unsigned char)s[i], stmt->line))
+            if (!emit_byte(ctx, *pc, (unsigned char)s[i], stmt))
                return 1;
             if (rec_count < (int)sizeof(rec))
                rec[rec_count++] = (unsigned char)s[i];
@@ -654,7 +630,8 @@ static int directive_emit_pass2(asm_context_t *ctx,
       return 0;
    }
 
-   fprintf(stderr, "line %d: unhandled directive %s\n", stmt->line, dir->name);
+   print_loc(stderr, stmt);
+   fprintf(stderr, ": unhandled directive %s\n", dir->name);
    return 1;
 }
 
@@ -676,13 +653,13 @@ static int insn_emit_pass2(asm_context_t *ctx,
    rec_count = 0;
 
    if (!opcode_lookup(insn->opcode, emode, &opcode)) {
-      fprintf(stderr,
-              "line %d: illegal addressing mode for %s%s\n",
-              stmt->line, insn->opcode, mode_spec_suffix(insn->spec));
+      print_loc(stderr, stmt);
+      fprintf(stderr, ": illegal addressing mode for %s%s\n",
+              insn->opcode, mode_spec_suffix(insn->spec));
       return 1;
    }
 
-   if (!emit_byte(ctx, *pc, opcode, stmt->line))
+   if (!emit_byte(ctx, *pc, opcode, stmt))
       return 1;
    rec[rec_count++] = opcode;
    (*pc)++;
@@ -699,19 +676,20 @@ static int insn_emit_pass2(asm_context_t *ctx,
    }
 
    if (!insn->has_operand || !insn->expr) {
-      fprintf(stderr, "line %d: internal error: missing operand expression\n", stmt->line);
+      print_loc(stderr, stmt);
+      fprintf(stderr, ": internal error: missing operand expression\n");
       return 1;
    }
 
-   if (eval_or_report(insn->expr, symbols, *pc, &value, stmt->line))
+   if (eval_or_report(insn->expr, symbols, *pc, &value, stmt))
       return 1;
 
    switch (emode) {
       case EM_IMMEDIATE:
          if (!expr_is_s8_or_u8_value(value)) {
-            fprintf(stderr,
-                    "line %d: %s%s immediate operand out of range: %ld\n",
-                    stmt->line, insn->opcode, mode_spec_suffix(insn->spec), value);
+            print_loc(stderr, stmt);
+            fprintf(stderr, ": %s%s immediate operand out of range: %ld\n",
+                    insn->opcode, mode_spec_suffix(insn->spec), value);
             return 1;
          }
          break;
@@ -722,9 +700,9 @@ static int insn_emit_pass2(asm_context_t *ctx,
       case EM_INDX:
       case EM_INDY:
          if (!expr_is_u8_value(value)) {
-            fprintf(stderr,
-                    "line %d: %s%s requires a zero-page operand, got $%lX\n",
-                    stmt->line, insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
+            print_loc(stderr, stmt);
+            fprintf(stderr, ": %s%s requires a zero-page operand, got $%lX\n",
+                    insn->opcode, mode_spec_suffix(insn->spec), value & 0xFFFF);
             return 1;
          }
          break;
@@ -740,7 +718,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
       case EM_ZPY:
       case EM_INDX:
       case EM_INDY:
-         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt->line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(value & 0xFF), stmt))
             return 1;
          rec[rec_count++] = (unsigned char)(value & 0xFF);
          (*pc)++;
@@ -751,11 +729,12 @@ static int insn_emit_pass2(asm_context_t *ctx,
 
          disp = value - (*pc + 1);
          if (disp < -128 || disp > 127) {
-            fprintf(stderr, "line %d: branch out of range\n", stmt->line);
+            print_loc(stderr, stmt);
+            fprintf(stderr, ": branch out of range\n");
             return 1;
          }
 
-         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), stmt->line))
+         if (!emit_byte(ctx, *pc, (unsigned char)(disp & 0xFF), stmt))
             return 1;
          rec[rec_count++] = (unsigned char)(disp & 0xFF);
          (*pc)++;
@@ -766,7 +745,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
       case EM_ABSX:
       case EM_ABSY:
       case EM_IND:
-         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt->line))
+         if (!emit_word(ctx, *pc, (unsigned short)(value & 0xFFFF), stmt))
             return 1;
          rec[rec_count++] = (unsigned char)(value & 0xFF);
          rec[rec_count++] = (unsigned char)((value >> 8) & 0xFF);
@@ -774,7 +753,8 @@ static int insn_emit_pass2(asm_context_t *ctx,
          break;
 
       default:
-         fprintf(stderr, "line %d: internal emitter error\n", stmt->line);
+         print_loc(stderr, stmt);
+         fprintf(stderr, ": internal emitter error\n");
          return 1;
    }
 

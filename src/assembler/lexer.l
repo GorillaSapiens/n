@@ -1,32 +1,57 @@
-%option noyywrap nounput noinput yylineno case-insensitive
+%option noyywrap nounput noinput case-insensitive
 
 %{
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "util.h"
 #include "addr_mode.h"
 #include "parser.tab.h"
 
-static char *xstrdup(const char *s)
-{
-   size_t n = strlen(s) + 1;
-   char *p = (char *)malloc(n);
+static char g_source_file[4096] = "<input>";
+static long g_source_line = 1;
 
-   if (!p) {
-      fprintf(stderr, "out of memory in lexer\n");
-      exit(1);
+static void parse_file_marker(const char *text)
+{
+   const char *p;
+   char *end;
+   long line_no;
+
+   p = text;
+
+   if (strncmp(p, "@@FILE ", 7) != 0)
+      return;
+
+   p += 7;
+   line_no = strtol(p, &end, 10);
+   if (end == p)
+      return;
+
+   while (*end == ' ' || *end == '\t')
+      end++;
+
+   strncpy(g_source_file, end, sizeof(g_source_file) - 1);
+   g_source_file[sizeof(g_source_file) - 1] = '\0';
+
+   {
+      size_t n = strlen(g_source_file);
+      while (n > 0 &&
+             (g_source_file[n - 1] == '\n' || g_source_file[n - 1] == '\r')) {
+         g_source_file[n - 1] = '\0';
+         n--;
+      }
    }
 
-   memcpy(p, s, n);
-   return p;
+   g_source_line = line_no;
 }
 
 #define YY_USER_ACTION                        \
    do {                                       \
-      yylloc.first_line = yylineno;           \
-      yylloc.last_line = yylineno;            \
+      yylloc.first_line = (int)g_source_line; \
+      yylloc.last_line = (int)g_source_line;  \
       yylloc.first_column = 1;                \
       yylloc.last_column = 1;                 \
+      yylloc.filename = g_source_file;        \
    } while (0);
 %}
 
@@ -53,9 +78,11 @@ OPCODETOK    {OPCODE6502}{MODE_SUFFIX}?
 
 %%
 
+^@@FILE[^\n]*\n             { parse_file_marker(yytext); }
+
 ";"[^\n]*                  { }
 {WS}                       { }
-\n                         { return EOL; }
+\n                         { g_source_line++; return EOL; }
 
 {OPCODETOK}                { yylval.str = xstrdup(yytext); return OPCODE; }
 {DIRECTIVE}                { yylval.str = xstrdup(yytext); return DIRECTIVE; }
@@ -107,8 +134,8 @@ OPCODETOK    {OPCODE6502}{MODE_SUFFIX}?
 
 .                          {
                               fprintf(stderr,
-                                      "lexer error at line %d: unexpected character '%s'\n",
-                                      yylineno, yytext);
+                                      "%s:%ld: lexer error: unexpected character '%s'\n",
+                                      g_source_file, g_source_line, yytext);
                            }
 
 <<EOF>>                    { return 0; }

@@ -40,6 +40,7 @@ typedef struct stmt stmt_t;
 
 struct stmt {
    stmt_kind_t kind;
+   const char *file;
    int line;
    char *label;
    union {
@@ -58,9 +59,9 @@ void program_ir_init(program_ir_t *prog);
 void program_ir_append(program_ir_t *prog, stmt_t *stmt);
 void program_ir_free(program_ir_t *prog);
 
-stmt_t *stmt_make_label(int line, char *label);
-stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand);
-stmt_t *stmt_make_dir(int line, char *label, directive_info_t *dir);
+stmt_t *stmt_make_label(const char *file, int line, char *label);
+stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand);
+stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t *dir);
 
 const char *mode_spec_suffix(mode_spec_t spec);
 

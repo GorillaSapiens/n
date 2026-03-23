@@ -4,6 +4,7 @@
 #include "asm_pass.h"
 #include "ihex.h"
 #include "listing.h"
+#include "source_loader.h"
 
 int yyparse(void);
 extern FILE *yyin;
@@ -26,11 +27,9 @@ int main(int argc, char **argv)
       return 1;
    }
 
-   yyin = fopen(argv[1], "r");
-   if (!yyin) {
-      perror(argv[1]);
+   yyin = source_loader_open_expanded(argv[1]);
+   if (!yyin)
       return 1;
-   }
 
    hexfp = fopen(argv[2], "w");
    if (!hexfp) {

@@ -3,25 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "ir.h"
-
-static char *xstrdup(const char *s)
-{
-   size_t n;
-   char *p;
-
-   if (!s)
-      return NULL;
-
-   n = strlen(s) + 1;
-   p = (char *)malloc(n);
-   if (!p) {
-      fprintf(stderr, "out of memory\n");
-      exit(1);
-   }
-
-   memcpy(p, s, n);
-   return p;
-}
+#include "util.h"
 
 static char *dup_upper(const char *s, size_t n)
 {
@@ -127,6 +109,7 @@ static void stmt_free(stmt_t *stmt)
    if (!stmt)
       return;
 
+   free((char *)stmt->file);
    free(stmt->label);
 
    switch (stmt->kind) {
@@ -162,7 +145,7 @@ void program_ir_free(program_ir_t *prog)
    prog->tail = NULL;
 }
 
-stmt_t *stmt_make_label(int line, char *label)
+stmt_t *stmt_make_label(const char *file, int line, char *label)
 {
    stmt_t *stmt;
 
@@ -173,12 +156,13 @@ stmt_t *stmt_make_label(int line, char *label)
    }
 
    stmt->kind = STMT_LABEL;
+   stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
    stmt->label = xstrdup(label);
    return stmt;
 }
 
-stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand)
+stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand)
 {
    stmt_t *stmt;
 
@@ -189,6 +173,7 @@ stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mod
    }
 
    stmt->kind = STMT_INSN;
+   stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
    stmt->label = xstrdup(label);
    split_opcode_text(opcode_text, &stmt->u.insn.opcode, &stmt->u.insn.spec);
@@ -200,7 +185,7 @@ stmt_t *stmt_make_insn(int line, char *label, char *opcode_text, addr_mode_t mod
    return stmt;
 }
 
-stmt_t *stmt_make_dir(int line, char *label, directive_info_t *dir)
+stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t *dir)
 {
    stmt_t *stmt;
 
@@ -211,6 +196,7 @@ stmt_t *stmt_make_dir(int line, char *label, directive_info_t *dir)
    }
 
    stmt->kind = STMT_DIR;
+   stmt->file = xstrdup(file ? file : "<input>");
    stmt->line = line;
    stmt->label = xstrdup(label);
    stmt->u.dir = dir;
@@ -241,7 +227,7 @@ void stmt_print(const stmt_t *stmt)
    if (!stmt)
       return;
 
-   printf("line %d: ", stmt->line);
+   printf("%s:%d: ", stmt->file ? stmt->file : "<input>", stmt->line);
 
    if (stmt->label)
       printf("label=%s ", stmt->label);
