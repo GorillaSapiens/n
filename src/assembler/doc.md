@@ -22,7 +22,7 @@ It is designed as a **final binary assembler**, not a relocatable object generat
 ## Command Line
 
 ```sh
-./na input.s output.hex output.lst
+./na input.s output.hex output.lst output.map
 ```
 
 Arguments:
@@ -30,6 +30,7 @@ Arguments:
 - `input.s` ... root assembly source file
 - `output.hex` ... Intel HEX output
 - `output.lst` ... listing output
+- `output.map` ... map file output
 
 If assembly fails, the assembler returns nonzero and suppresses final HEX output.
 
@@ -661,6 +662,348 @@ tests/symbols.s          ----                         7  here = *
 ```
 
 The listing currently reconstructs source from IR rather than preserving original formatting/comments exactly.
+
+---
+
+# Map File Output
+
+The assembler can write a map file with the extension `.map`.
+
+The map file is a plain text summary of the **final converged assembly layout** after:
+
+- segment placement
+- symbol resolution
+- constant evaluation
+- instruction relaxation
+
+This means the `.map` file reflects the same final addresses used for output generation.
+
+---
+## Map File Sections
+
+The map file currently contains two sections:
+
+1. `SEGMENTS`
+2. `SYMBOLS`
+
+---
+
+## `SEGMENTS` Section
+
+The `SEGMENTS` section lists every known segment in final sorted order.
+
+The columns are:
+
+- `NAME`
+- `BASE`
+- `SIZE`
+- `END`
+- `CAPACITY`
+
+Example:
+
+```text
+SEGMENTS
+========
+
+NAME                 BASE       SIZE       END        CAPACITY
+ZEROPAGE             $00000000  $00000002  $00000002  $00000100
+CODE                 $00008000  $0000000A  $0000800A  $00002000
+RODATA               $0000800A  $00000006  $00008010  $00001FF6
+```
+
+### Meaning of Each Column
+
+#### `NAME`
+
+The segment name.
+
+Examples:
+
+- `ZEROPAGE`
+- `CODE`
+- `RODATA`
+- `BSS`
+
+#### `BASE`
+
+The final absolute base address of the segment.
+
+This is the value established by `.segmentdef`, possibly derived from earlier segment symbols such as `CODE_END`.
+
+#### `SIZE`
+
+The actual number of bytes used in that segment after final layout and relaxation.
+
+This is the same value exported as the auto-generated symbol:
+
+```text
+NAME_SIZE
+```
+
+#### `END`
+
+The final end address of the used portion of the segment.
+
+This is computed as:
+
+```text
+END = BASE + SIZE
+```
+
+This is also the value exported as:
+
+```text
+NAME_END
+```
+
+#### `CAPACITY`
+
+The declared capacity of the segment from `.segmentdef`.
+
+This is the same value exported as:
+
+```text
+NAME_CAPACITY
+```
+
+Important distinction:
+
+- `SIZE` is the actual used byte count
+- `CAPACITY` is the declared maximum/planned space
+
+If `SIZE` exceeds `CAPACITY`, the assembler emits an overflow warning during assembly.
+
+---
+
+## `SYMBOLS` Section
+
+The `SYMBOLS` section lists all final symbols known to the assembler.
+
+The columns are:
+
+- `ADDRESS`
+- `NAME`
+
+Example:
+
+```text
+SYMBOLS
+=======
+
+ADDRESS    NAME
+$00000000  ZEROPAGE_BASE
+$00000002  ZEROPAGE_SIZE
+$00000002  ZEROPAGE_END
+$00000100  ZEROPAGE_CAPACITY
+$00008000  CODE_BASE
+$00008000  start
+$0000800A  CODE_END
+$0000800A  RODATA_BASE
+$00008010  RODATA_END
+```
+
+### Symbol Sorting
+
+Symbols are sorted as follows:
+
+1. defined symbols before undefined symbols
+2. defined symbols by ascending address
+3. ties broken by name
+
+Undefined symbols, if any remain, are shown as:
+
+```text
+???????? symbol_name
+```
+
+In a successful final assembly, all referenced/imported symbols should normally be resolved.
+
+---
+
+## Included Symbol Types
+
+The map file includes **all symbols currently present in the symbol table**, including:
+
+- user-defined labels
+- user-defined constants
+- exported/global symbols
+- file-local/internal symbols
+- auto-generated segment symbols
+
+### Auto-Generated Segment Symbols
+
+For every segment, the assembler generates:
+
+- `NAME_BASE`
+- `NAME_SIZE`
+- `NAME_END`
+- `NAME_CAPACITY`
+
+These appear in the map file just like ordinary symbols.
+
+Example:
+
+```text
+CODE_BASE
+CODE_SIZE
+CODE_END
+CODE_CAPACITY
+```
+
+This makes the map file useful both for human inspection and for debugging derived segment placement.
+
+---
+
+## Local and Internal Symbol Names
+
+Because the assembler supports scoped local labels and file-local symbol mangling, the map file may contain internal symbol names, such as:
+
+```text
+start::@loop
+main.s::helper
+```
+
+Examples:
+
+- `start::@loop` ... a local label scoped under `start`
+- `main.s::helper` ... a file-local top-level symbol in `main.s`
+
+Exported/global symbols appear with their plain public names.
+
+---
+
+## Relationship to the Listing File
+
+The `.lst` file is source-oriented.
+
+It shows:
+
+- source lines
+- addresses
+- emitted bytes
+- reconstructed source text
+
+The `.map` file is layout-oriented.
+
+It shows:
+
+- final segment placement
+- final used sizes
+- final symbol addresses
+
+So the listing answers:
+
+> what bytes came from what line?
+
+while the map answers:
+
+> where did everything finally land?
+
+---
+
+## Relationship to Segment Symbols
+
+The map file reflects the final values of the same segment symbols that can be used in expressions:
+
+- `NAME_BASE`
+- `NAME_SIZE`
+- `NAME_END`
+- `NAME_CAPACITY`
+
+So if source uses:
+
+```asm
+.segmentdef "CODE",   $8000, $2000
+.segmentdef "RODATA", CODE_END, $2000 - CODE_SIZE
+```
+
+the map file shows the final resolved values of those symbols after relaxation and layout convergence.
+
+---
+
+## Example
+
+Source:
+
+```asm
+.segmentdef "ZEROPAGE", $0000, $0100
+.segmentdef "CODE",     $8000, $2000
+.segmentdef "RODATA",   CODE_END, $2000 - CODE_SIZE
+
+.segment "ZEROPAGE"
+ptr:
+   .res 2
+
+.segment "CODE"
+start:
+   LDA #<msg
+   STA ptr
+   LDA #>msg
+   STA ptr+1
+   RTS
+
+.segment "RODATA"
+msg:
+   .asciiz "hello"
+```
+
+Possible map output:
+
+```text
+SEGMENTS
+========
+
+NAME                 BASE       SIZE       END        CAPACITY
+ZEROPAGE             $00000000  $00000002  $00000002  $00000100
+CODE                 $00008000  $00000009  $00008009  $00002000
+RODATA               $00008009  $00000006  $0000800F  $00001FF7
+
+SYMBOLS
+=======
+
+ADDRESS    NAME
+$00000000  ZEROPAGE_BASE
+$00000000  ptr
+$00000002  ZEROPAGE_SIZE
+$00000002  ZEROPAGE_END
+$00000100  ZEROPAGE_CAPACITY
+$00008000  CODE_BASE
+$00008000  start
+$00008009  CODE_SIZE
+$00008009  CODE_END
+$00008009  RODATA_BASE
+$00008009  msg
+$0000800F  RODATA_END
+```
+
+---
+
+## Practical Uses of the Map File
+
+The `.map` file is useful for:
+
+- checking final addresses of labels and constants
+- verifying segment placement
+- verifying that derived segment placement resolved the way you expected
+- spotting segment overflow conditions
+- confirming where local/file-scoped/internal names ended up
+- debugging code size changes caused by relaxation
+
+---
+
+## Current Limitations
+
+The map file currently includes **all** symbols in one flat symbol table dump.
+
+That means:
+
+- auto-generated segment symbols are mixed in with user symbols
+- internal/file-scoped names are shown directly
+- there is not yet a separate “public symbols only” view
+- there is not yet a separate subsection for imported/exported symbols
+
+Even so, the current output is complete and accurate, which is usually the part that matters when things are on fire.
 
 ---
 

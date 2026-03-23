@@ -1505,6 +1505,129 @@ static int insn_emit_pass2(asm_context_t *ctx,
    return 0;
 }
 
+static int cmp_segment_ptrs(const void *a, const void *b)
+{
+   const asm_segment_t *sa;
+   const asm_segment_t *sb;
+
+   sa = *(const asm_segment_t * const *)a;
+   sb = *(const asm_segment_t * const *)b;
+
+   if (sa->base < sb->base)
+      return -1;
+   if (sa->base > sb->base)
+      return 1;
+   return strcmp(sa->name, sb->name);
+}
+
+static int cmp_symbol_ptrs(const void *a, const void *b)
+{
+   const symbol_t *sa;
+   const symbol_t *sb;
+
+   sa = *(const symbol_t * const *)a;
+   sb = *(const symbol_t * const *)b;
+
+   if (sa->defined != sb->defined)
+      return sb->defined - sa->defined;
+
+   if (sa->defined) {
+      if (sa->value < sb->value)
+         return -1;
+      if (sa->value > sb->value)
+         return 1;
+   }
+
+   return strcmp(sa->name, sb->name);
+}
+
+int asm_write_map_file(FILE *fp, const asm_context_t *ctx)
+{
+   const asm_segment_t *seg;
+   const symbol_t *sym;
+   asm_segment_t **segv;
+   symbol_t **symv;
+   int segc;
+   int symc;
+   int i;
+
+   if (!fp || !ctx)
+      return 0;
+
+   segc = 0;
+   for (seg = ctx->segments; seg; seg = seg->next)
+      segc++;
+
+   symc = 0;
+   for (sym = ctx->symbols.head; sym; sym = sym->next)
+      symc++;
+
+   segv = NULL;
+   symv = NULL;
+
+   if (segc > 0) {
+      segv = (asm_segment_t **)malloc((size_t)segc * sizeof(*segv));
+      if (!segv) {
+         fprintf(stderr, "out of memory\n");
+         return 0;
+      }
+   }
+
+   if (symc > 0) {
+      symv = (symbol_t **)malloc((size_t)symc * sizeof(*symv));
+      if (!symv) {
+         free(segv);
+         fprintf(stderr, "out of memory\n");
+         return 0;
+      }
+   }
+
+   i = 0;
+   for (seg = ctx->segments; seg; seg = seg->next)
+      segv[i++] = (asm_segment_t *)seg;
+
+   i = 0;
+   for (sym = ctx->symbols.head; sym; sym = sym->next)
+      symv[i++] = (symbol_t *)sym;
+
+   if (segc > 1)
+      qsort(segv, (size_t)segc, sizeof(*segv), cmp_segment_ptrs);
+   if (symc > 1)
+      qsort(symv, (size_t)symc, sizeof(*symv), cmp_symbol_ptrs);
+
+   fprintf(fp, "SEGMENTS\n");
+   fprintf(fp, "========\n\n");
+   fprintf(fp, "%-20s %-10s %-10s %-10s %-10s\n",
+           "NAME", "BASE", "SIZE", "END", "CAPACITY");
+
+   for (i = 0; i < segc; i++) {
+      long end_addr;
+
+      end_addr = segv[i]->base + segv[i]->used_size;
+      fprintf(fp, "%-20s $%08lX $%08lX $%08lX $%08lX\n",
+              segv[i]->name,
+              segv[i]->base & 0xFFFFFFFFL,
+              segv[i]->used_size & 0xFFFFFFFFL,
+              end_addr & 0xFFFFFFFFL,
+              segv[i]->size & 0xFFFFFFFFL);
+   }
+
+   fprintf(fp, "\nSYMBOLS\n");
+   fprintf(fp, "=======\n\n");
+   fprintf(fp, "%-10s %s\n", "ADDRESS", "NAME");
+
+   for (i = 0; i < symc; i++) {
+      if (symv[i]->defined)
+         fprintf(fp, "$%08lX %s\n", symv[i]->value & 0xFFFFFFFFL, symv[i]->name);
+      else
+         fprintf(fp, "???????? %s\n", symv[i]->name);
+   }
+
+   free(segv);
+   free(symv);
+   return 1;
+}
+
 int asm_pass2(asm_context_t *ctx)
 {
    stmt_t *stmt;

@@ -12,7 +12,7 @@ extern program_ir_t g_program;
 
 static void usage(const char *argv0)
 {
-   fprintf(stderr, "usage: %s input.s output.hex output.lst\n", argv0);
+   fprintf(stderr, "usage: %s input.s output.hex output.lst output.map\n", argv0);
 }
 
 int main(int argc, char **argv)
@@ -20,9 +20,10 @@ int main(int argc, char **argv)
    asm_context_t ctx;
    listing_writer_t lst;
    FILE *hexfp;
+   FILE *mapfp;
    int rc;
 
-   if (argc != 4) {
+   if (argc != 5) {
       usage(argv[0]);
       return 1;
    }
@@ -45,12 +46,22 @@ int main(int argc, char **argv)
       return 1;
    }
 
+   mapfp = fopen(argv[4], "w");
+   if (!mapfp) {
+      perror(argv[4]);
+      listing_close(&lst);
+      fclose(hexfp);
+      fclose(yyin);
+      return 1;
+   }
+
    program_ir_init(&g_program);
 
    rc = yyparse();
    fclose(yyin);
 
    if (rc != 0) {
+      fclose(mapfp);
       listing_close(&lst);
       fclose(hexfp);
       program_ir_free(&g_program);
@@ -62,9 +73,19 @@ int main(int argc, char **argv)
    asm_relax(&ctx);
    asm_pass2(&ctx);
 
+   if (!asm_write_map_file(mapfp, &ctx)) {
+      asm_context_free(&ctx);
+      fclose(mapfp);
+      listing_close(&lst);
+      fclose(hexfp);
+      program_ir_free(&g_program);
+      return 1;
+   }
+
    if (ctx.error_count == 0) {
       if (!ihex_dump(hexfp, &ctx.image)) {
          asm_context_free(&ctx);
+         fclose(mapfp);
          listing_close(&lst);
          fclose(hexfp);
          program_ir_free(&g_program);
@@ -75,6 +96,7 @@ int main(int argc, char **argv)
    rc = ctx.error_count ? 1 : 0;
 
    asm_context_free(&ctx);
+   fclose(mapfp);
    listing_close(&lst);
    fclose(hexfp);
    program_ir_free(&g_program);

@@ -2,6 +2,9 @@
 .segmentdef "CODE",     $8000, $2000
 .segmentdef "RODATA",   CODE_END, $2000 - CODE_SIZE
 
+.global start
+.export start
+
 .segment "CODE"
 start:
    LDA #1

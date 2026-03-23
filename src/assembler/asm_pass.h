@@ -1,6 +1,7 @@
 #ifndef ASM_PASS_H
 #define ASM_PASS_H
 
+#include <stdio.h>
 #include "ir.h"
 #include "symtab.h"
 #include "ihex.h"
@@ -41,5 +42,7 @@ void asm_context_free(asm_context_t *ctx);
 int asm_relax(asm_context_t *ctx);
 int asm_pass1(asm_context_t *ctx, int pass_index);
 int asm_pass2(asm_context_t *ctx);
+
+int asm_write_map_file(FILE *fp, const asm_context_t *ctx);
 
 #endif
