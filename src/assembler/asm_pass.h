@@ -12,6 +12,7 @@ typedef struct asm_context {
    long origin;
    ihex_image_t image;
    listing_writer_t *listing;
+   int error_count;
 } asm_context_t;
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing);

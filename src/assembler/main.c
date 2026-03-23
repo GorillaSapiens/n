@@ -59,33 +59,24 @@ int main(int argc, char **argv)
 
    asm_context_init(&ctx, &g_program, &lst);
 
-   if (asm_relax(&ctx) != 0) {
-      asm_context_free(&ctx);
-      listing_close(&lst);
-      fclose(hexfp);
-      program_ir_free(&g_program);
-      return 1;
+   asm_relax(&ctx);
+   asm_pass2(&ctx);
+
+   if (ctx.error_count == 0) {
+      if (!ihex_dump(hexfp, &ctx.image)) {
+         asm_context_free(&ctx);
+         listing_close(&lst);
+         fclose(hexfp);
+         program_ir_free(&g_program);
+         return 1;
+      }
    }
 
-   if (asm_pass2(&ctx) != 0) {
-      asm_context_free(&ctx);
-      listing_close(&lst);
-      fclose(hexfp);
-      program_ir_free(&g_program);
-      return 1;
-   }
-
-   if (!ihex_dump(hexfp, &ctx.image)) {
-      asm_context_free(&ctx);
-      listing_close(&lst);
-      fclose(hexfp);
-      program_ir_free(&g_program);
-      return 1;
-   }
+   rc = ctx.error_count ? 1 : 0;
 
    asm_context_free(&ctx);
    listing_close(&lst);
    fclose(hexfp);
    program_ir_free(&g_program);
-   return 0;
+   return rc;
 }
