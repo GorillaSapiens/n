@@ -45,11 +45,23 @@ const char *search_includes(const char *filename) {
       sprintf(ret, "%s/%s", inclist[i], filename);
 
       if (access(ret, F_OK) == 0) {
+         debug("mapping %s -> %s", filename, ret);
          return ret;
       }
    }
 
    // an error...
+
+   if (!inclist_cnt) {
+      debug("could not find %s, no includes given", filename);
+   }
+   else {
+      debug("could not find %s, searched %d place%s", filename, inclist_cnt, inclist_cnt > 1 ? "s" : "");
+      for (int i = 0; i < inclist_cnt; i++) {
+         debug("   %s", inclist[i]);
+      }
+   }
+
    return filename;
 }
 
