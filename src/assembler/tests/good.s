@@ -3,7 +3,6 @@
 ; and comments.
 
 start:
-   ASL
    NOP
    CLC
    CLD
@@ -35,6 +34,11 @@ accum_tests:
    LSR A
    ROL A
    ROR A
+
+   ASL
+   LSR
+   ROL
+   ROR
 
 imm_tests:
    LDA #$10

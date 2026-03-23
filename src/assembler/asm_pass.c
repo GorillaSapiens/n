@@ -16,10 +16,21 @@ static int is_branch_opcode(const char *opcode)
           !strcmp(opcode, "BVS");
 }
 
+static int is_accum_shorthand_opcode(const char *opcode)
+{
+   return !strcmp(opcode, "ASL") ||
+          !strcmp(opcode, "LSR") ||
+          !strcmp(opcode, "ROL") ||
+          !strcmp(opcode, "ROR");
+}
+
 static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
 {
    if (is_branch_opcode(opcode) && mode == AM_ZP_OR_ABS)
       return AM_RELATIVE;
+
+   if (is_accum_shorthand_opcode(opcode) && mode == AM_IMPLIED)
+      return AM_ACCUMULATOR;
 
    return mode;
 }
