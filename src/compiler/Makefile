@@ -1,12 +1,13 @@
 LEX = flex
 YACC = bison
 CC = gcc
-CFLAGS = -Wall -g
-#CFLAGS = -Wall -O2
-#CFLAGS = -Wall -g -DYYDEBUG
+CFLAGS = -Wall -MMD -MP
+CFLAGS += -g        # for debugging
+CFLAGS += -DYYDEBUG # for yacc debugging
+#CFLAGS += -O2       # for obtimization
 
 TARGET = nc
-TEST=test
+TEST   = test
 
 GENSRC = parser.tab.c lex.yy.c
 GENHDR = delexer.h coverage_map.h
@@ -32,21 +33,20 @@ SRCSRC = \
 
 SRC = $(SRCSRC) $(GENSRC)
 OBJ = $(SRC:.c=.o)
+DEP = $(OBJ:.o=.d)
 
 all:
-	@make --no-print-directory depend
 	@make --no-print-directory $(TARGET)
 	@make --no-print-directory $(TEST)
 
 part:
 	@make --no-print-directory clean
-	@make --no-print-directory depend
 	@make --no-print-directory $(TARGET)
 
 test:
 	(cd ../test; ./test.pl)
 
-$(TARGET): $(OBJ)
+$(TARGET): $(GENHDR) $(GENSRC) $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
 
 %.o: %.c
@@ -65,11 +65,9 @@ delexer.h: lexer.l delexer.pl
 coverage_map.h: parser.y coverage.pl
 	./coverage.pl > coverage_map.h
 
-depend: $(GENSRC) $(GENHDR)
-	$(CC) $(CFLAGS) -MM $(SRC) > depend.mk
-
 clean:
-	rm -f $(TARGET) *.o delexer.h parser.tab.c parser.tab.h lex.yy.c depend.mk parser.output
+	rm -f $(TARGET) $(OBJ) $(DEP)
+	rm -f delexer.h parser.tab.c parser.tab.h lex.yy.c parser.output
 
--include depend.mk
+-include $(DEP)
 

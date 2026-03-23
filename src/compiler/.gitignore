@@ -1,5 +1,6 @@
 nc
 *.o
+*.d
 delexer.h
 parser.tab.c
 lex.yy.c
