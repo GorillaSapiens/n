@@ -1,6 +1,6 @@
 .segmentdef "ZEROPAGE", $0000, $0100
 .segmentdef "CODE",     $8000, $2000
-.segmentdef "RODATA",   $A000, $1000
+.segmentdef "RODATA",   CODE_END, $2000 - CODE_SIZE
 
 .segment "CODE"
 start:

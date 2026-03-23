@@ -18,6 +18,7 @@ typedef struct asm_segment {
    long base;
    long size;
    long pc;
+   long used_size;
    int defined;
    int overflow_warned;
    struct asm_segment *next;

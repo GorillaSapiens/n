@@ -140,6 +140,7 @@ static asm_segment_t *segment_get_or_create(asm_context_t *ctx, const char *name
    seg->base = 0;
    seg->size = 0x10000L;
    seg->pc = 0;
+   seg->used_size = 0;
    seg->defined = 0;
    seg->overflow_warned = 0;
    seg->next = ctx->segments;
@@ -167,6 +168,14 @@ static void reset_segment_pcs(asm_context_t *ctx)
       seg->pc = 0;
       seg->overflow_warned = 0;
    }
+}
+
+static void snapshot_segment_used_sizes(asm_context_t *ctx)
+{
+   asm_segment_t *seg;
+
+   for (seg = ctx->segments; seg; seg = seg->next)
+      seg->used_size = seg->pc;
 }
 
 static void ensure_default_segment(asm_context_t *ctx)
@@ -353,6 +362,38 @@ static void gather_segment_uses(asm_context_t *ctx)
    }
 }
 
+static void define_or_update_abs_symbol(symtab_t *tab, const char *name, long value)
+{
+   symbol_t *sym;
+
+   sym = symtab_find(tab, name);
+   if (!sym)
+      sym = symtab_declare(tab, name, "<segments>", 0);
+
+   if (sym)
+      symtab_set_value(sym, value);
+}
+
+static void publish_segment_symbols(asm_context_t *ctx)
+{
+   asm_segment_t *seg;
+   char buf[4096];
+
+   for (seg = ctx->segments; seg; seg = seg->next) {
+      snprintf(buf, sizeof(buf), "%s_BASE", seg->name);
+      define_or_update_abs_symbol(&ctx->symbols, buf, seg->base);
+
+      snprintf(buf, sizeof(buf), "%s_SIZE", seg->name);
+      define_or_update_abs_symbol(&ctx->symbols, buf, seg->used_size);
+
+      snprintf(buf, sizeof(buf), "%s_END", seg->name);
+      define_or_update_abs_symbol(&ctx->symbols, buf, seg->base + seg->used_size);
+
+      snprintf(buf, sizeof(buf), "%s_CAPACITY", seg->name);
+      define_or_update_abs_symbol(&ctx->symbols, buf, seg->size);
+   }
+}
+
 static void gather_segment_defs(asm_context_t *ctx)
 {
    stmt_t *stmt;
@@ -386,24 +427,18 @@ static void gather_segment_defs(asm_context_t *ctx)
       segname = unquote_string(dir->string);
       seg = segment_get_or_create(ctx, segname);
 
-      if (seg->defined && strcmp(seg->name, DEFAULT_SEGMENT_NAME)) {
-         asm_error(ctx, stmt, "duplicate .segmentdef for segment '%s'", segname);
-         free(segname);
-         continue;
-      }
-
       node = dir->exprs;
-      rc = expr_eval(node->expr, NULL, stmt->scope, stmt->file, 0, &base);
+      rc = expr_eval(node->expr, &ctx->symbols, stmt->scope, stmt->file, 0, &base);
       if (rc != EXPR_EVAL_OK) {
-         asm_error(ctx, stmt, ".segmentdef base must be absolute");
+         asm_error(ctx, stmt, ".segmentdef base could not be resolved");
          free(segname);
          continue;
       }
 
       node = node->next;
-      rc = expr_eval(node->expr, NULL, stmt->scope, stmt->file, 0, &size);
+      rc = expr_eval(node->expr, &ctx->symbols, stmt->scope, stmt->file, 0, &size);
       if (rc != EXPR_EVAL_OK) {
-         asm_error(ctx, stmt, ".segmentdef size must be absolute");
+         asm_error(ctx, stmt, ".segmentdef size could not be resolved");
          free(segname);
          continue;
       }
@@ -417,6 +452,8 @@ static void gather_segment_defs(asm_context_t *ctx)
       seg->base = base;
       seg->size = size;
       seg->defined = 1;
+
+      publish_segment_symbols(ctx);
       free(segname);
    }
 }
@@ -424,16 +461,9 @@ static void gather_segment_defs(asm_context_t *ctx)
 static void validate_segment_defs(asm_context_t *ctx)
 {
    asm_segment_t *seg;
-   stmt_t fake_stmt;
-
-   memset(&fake_stmt, 0, sizeof(fake_stmt));
-   fake_stmt.file = "<segments>";
-   fake_stmt.line = 0;
 
    for (seg = ctx->segments; seg; seg = seg->next) {
       if (!seg->defined) {
-         fake_stmt.file = "<segments>";
-         fake_stmt.line = 0;
          ctx->error_count++;
          fprintf(stderr, "segment '%s' was used but never defined with .segmentdef\n", seg->name);
       }
@@ -766,8 +796,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    assign_scopes(prog);
 
    gather_segment_uses(ctx);
-   gather_segment_defs(ctx);
-   validate_segment_defs(ctx);
+   ensure_default_segment(ctx);
 
    for (stmt = prog->head; stmt; stmt = stmt->next) {
       if (stmt->kind != STMT_INSN)
@@ -936,6 +965,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
 
    gather_imports(ctx);
    reset_segment_pcs(ctx);
+   publish_segment_symbols(ctx);
+   gather_segment_defs(ctx);
+   validate_segment_defs(ctx);
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       asm_segment_t *seg;
@@ -1069,6 +1101,8 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
       }
    }
 
+   snapshot_segment_used_sizes(ctx);
+   publish_segment_symbols(ctx);
    resolve_constants(ctx);
    validate_imports(ctx);
    print_pass_stats(ctx, pass_index, "layout");
@@ -1116,11 +1150,27 @@ int asm_relax(asm_context_t *ctx)
    int iter;
    int changed;
    stmt_t *stmt;
+   asm_segment_t *seg;
 
-   for (iter = 1; iter <= 20; iter++) {
+   for (iter = 1; iter <= 50; iter++) {
+      long segment_signature_before = 0;
+      long segment_signature_after = 0;
+
+      for (seg = ctx->segments; seg; seg = seg->next) {
+         segment_signature_before ^= seg->base;
+         segment_signature_before ^= (seg->size << 1);
+         segment_signature_before ^= (seg->used_size << 2);
+      }
+
       asm_pass1(ctx, iter);
 
-      changed = 0;
+      for (seg = ctx->segments; seg; seg = seg->next) {
+         segment_signature_after ^= seg->base;
+         segment_signature_after ^= (seg->size << 1);
+         segment_signature_after ^= (seg->used_size << 2);
+      }
+
+      changed = (segment_signature_before != segment_signature_after);
 
       for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
          long value;
