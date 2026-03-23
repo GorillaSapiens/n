@@ -2,9 +2,9 @@ LEX = flex
 YACC = bison
 CC = gcc
 CFLAGS = -Wall -MMD -MP
-CFLAGS += -g        # for debugging
+CFLAGS += -g # for debugging
 #CFLAGS += -DYYDEBUG # for yacc debugging
-#CFLAGS += -O2       # for obtimization
+#CFLAGS += -O2 # for obtimization
 
 TARGET = na
 
