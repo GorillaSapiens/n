@@ -8,6 +8,7 @@
 
 #include "ast.h"
 #include "lextern.h"
+#include "main.h"
 #include "md5seen.h"
 #include "memname.h"
 #include "messages.h"
@@ -46,6 +47,8 @@ int push_file(const char *filename) {
       fprintf(stderr, "include nesting too deep\n");
       return -1;
    }
+
+   filename = search_includes(filename);
 
    FILE *f = fopen(filename, "r");
    if (!f) {

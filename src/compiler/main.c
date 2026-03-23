@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include "ast.h"
 #include "compile.h"
@@ -23,6 +24,35 @@ static void opt_xray(char *n) {
    set_xray(i);
 }
 
+static char **inclist = NULL;
+static int inclist_cnt = 0;
+static void opt_include(char *n) {
+   inclist = (char **) realloc(inclist, sizeof(char *) * (inclist_cnt + 1));
+   inclist[inclist_cnt++] = strdup(n);
+}
+
+const char *search_includes(const char *filename) {
+   static char *ret = NULL;
+
+   if (access(filename, F_OK) == 0) {
+      return filename;
+   }
+
+   // hunt through list
+   for (int i = 0; i < inclist_cnt; i++) {
+      int l = strlen(filename) + 1 + strlen(inclist[i]) + 1;
+      ret = (char *) realloc(ret, sizeof(char) * l);
+      sprintf(ret, "%s/%s", inclist[i], filename);
+
+      if (access(ret, F_OK) == 0) {
+         return ret;
+      }
+   }
+
+   // an error...
+   return filename;
+}
+
 struct {
    char  short_char;
    char *long_name;
@@ -31,6 +61,7 @@ struct {
    void (*func)(char *);
 } options[] = {
    { 'X', "XRAY", "name",  "enable named XRAY option for compiler debugging ('list' will list them)", opt_xray },
+   { 'i', "include", "path",  "add path to include search list", opt_include },
    { '?', "help", NULL, "print usage information", opt_help }
 };
 

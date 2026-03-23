@@ -3,6 +3,8 @@
 // for code coverage, some is nonsensical
 
 include "machine_6502.n"
+include "map_ascii.n"
+include "map_cp437.n"
 
 mem nulspace { };
 
@@ -46,7 +48,7 @@ float fa := 3.1415;
 float fb := 3.1415`float;
 
 char *msg := "hello, world!";
-char *msg2 := "hello, world!"`nulxform;
+char *msg2 := "hello, world!"`ascii;
 
 int *pia;
 
@@ -173,6 +175,6 @@ label2:
    a := +a;
 
    a := 'x';
-   a := 'x'`nulxform;
+   a := 'x'`cp437;
 }
 
