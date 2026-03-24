@@ -13,8 +13,8 @@
 ; NB: ALSO WRITES TO THE STACK!!!
 
 .include "nlib.inc"
-tmpX  = _nl_tmp0 ;$0A
-carry = _nl_tmp1 ;$0B
+.def tmpX  _nl_tmp0
+.def carry _nl_tmp1
 
 .proc _divN
     ; copy dividend to the stack

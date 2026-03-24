@@ -36,8 +36,21 @@ typedef struct macro_table {
    long next_expansion_id;
 } macro_table_t;
 
+typedef struct def_alias {
+   char *name;
+   char *replacement;
+   char *def_file;
+   int def_line;
+   struct def_alias *next;
+} def_alias_t;
+
+typedef struct def_table {
+   def_alias_t *head;
+} def_table_t;
+
 typedef struct expand_ctx {
    macro_table_t macros;
+   def_table_t defs;
    int macro_depth;
 } expand_ctx_t;
 
@@ -105,6 +118,65 @@ static void macro_table_free(macro_table_t *tab)
    }
 
    tab->head = NULL;
+}
+
+static void def_table_init(def_table_t *tab)
+{
+   tab->head = NULL;
+}
+
+static void def_table_free(def_table_t *tab)
+{
+   def_alias_t *d;
+   def_alias_t *next;
+
+   for (d = tab->head; d; d = next) {
+      next = d->next;
+      free(d->name);
+      free(d->replacement);
+      free(d->def_file);
+      free(d);
+   }
+
+   tab->head = NULL;
+}
+
+static def_alias_t *def_find(def_table_t *tab, const char *name)
+{
+   def_alias_t *d;
+
+   for (d = tab->head; d; d = d->next) {
+      if (!strcmp(d->name, name))
+         return d;
+   }
+
+   return NULL;
+}
+
+static int def_add(def_table_t *tab, const char *name, const char *replacement, const char *file, int line)
+{
+   def_alias_t *d;
+
+   d = def_find(tab, name);
+   if (d) {
+      fprintf(stderr, "%s:%d: duplicate .def '%s' (first defined at %s:%d)\n",
+              file, line, name, d->def_file, d->def_line);
+      return 0;
+   }
+
+   d = (def_alias_t *)calloc(1, sizeof(*d));
+   if (!d) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   d->name = xstrdup(name);
+   d->replacement = xstrdup(replacement);
+   d->def_file = xstrdup(file);
+   d->def_line = line;
+   d->next = tab->head;
+   tab->head = d;
+   return 1;
 }
 
 static macro_def_t *macro_find(macro_table_t *tab, const char *name)
@@ -204,6 +276,116 @@ static int emit_marker(FILE *out_fp, const char *path, long line_no)
    return fprintf(out_fp, "@@FILE %ld %s\n", line_no, path) > 0;
 }
 
+
+static void rtrim_inplace(char *s)
+{
+   size_t n;
+
+   n = strlen(s);
+   while (n > 0 && (s[n - 1] == ' ' || s[n - 1] == '\t' || s[n - 1] == '\r' || s[n - 1] == '\n'))
+      s[--n] = '\0';
+}
+
+static int parse_def_line(const char *line, char *name_out, size_t name_out_sz, char *repl_out, size_t repl_out_sz)
+{
+   const char *p;
+   size_t n;
+
+   p = skip_ws(line);
+   if (strncmp(p, ".def", 4) != 0)
+      return 0;
+
+   p += 4;
+   if (!isspace((unsigned char)*p))
+      return 0;
+
+   p = skip_ws(p);
+   if (!is_ident_start((unsigned char)*p))
+      return 0;
+
+   n = 0;
+   while (is_ident_char((unsigned char)*p) && n + 1 < name_out_sz)
+      name_out[n++] = *p++;
+   name_out[n] = '\0';
+
+   if (n == 0)
+      return 0;
+
+   p = skip_ws(p);
+   if (*p == '\0' || *p == '\n' || *p == '\r' || *p == ';')
+      return 0;
+
+   n = 0;
+   while (*p && *p != '\n' && *p != '\r' && *p != ';') {
+      if (n + 1 < repl_out_sz)
+         repl_out[n++] = *p;
+      p++;
+   }
+   repl_out[n] = '\0';
+   rtrim_inplace(repl_out);
+
+   return repl_out[0] != '\0';
+}
+
+static int rewrite_with_defs(def_table_t *defs, const char *line, char *out, size_t out_sz)
+{
+   size_t oi;
+   size_t i;
+   int in_string;
+
+   oi = 0;
+   in_string = 0;
+
+   for (i = 0; line[i] != '\0' && oi + 2 < out_sz; ) {
+      if (!in_string && line[i] == ';')
+         break;
+
+      if (line[i] == '"') {
+         out[oi++] = line[i++];
+         in_string = !in_string;
+         continue;
+      }
+
+      if (!in_string && is_ident_start((unsigned char)line[i])) {
+         char tok[512];
+         size_t ti;
+         def_alias_t *d;
+
+         ti = 0;
+         while (is_ident_char((unsigned char)line[i]) && ti + 1 < sizeof(tok))
+            tok[ti++] = line[i++];
+         tok[ti] = '\0';
+
+         d = def_find(defs, tok);
+         if (d) {
+            size_t len = strlen(d->replacement);
+            if (oi + len + 1 >= out_sz)
+               return 0;
+            memcpy(out + oi, d->replacement, len);
+            oi += len;
+         } else {
+            if (oi + ti + 1 >= out_sz)
+               return 0;
+            memcpy(out + oi, tok, ti);
+            oi += ti;
+         }
+         continue;
+      }
+
+      out[oi++] = line[i++];
+   }
+
+   if (!in_string) {
+      while (line[i] != '\0') {
+         if (oi + 2 >= out_sz)
+            return 0;
+         out[oi++] = line[i++];
+      }
+   }
+
+   out[oi] = '\0';
+   return 1;
+}
 
 static int parse_addrsize_keyword(const char *text, size_t len)
 {
@@ -327,19 +509,23 @@ static int maybe_emit_addrsize_directive(FILE *out_fp, const char *line)
    return emitted;
 }
 
-static int emit_normalized_line(FILE *out_fp, const char *line)
+static int emit_normalized_line(FILE *out_fp, def_table_t *defs, const char *line)
 {
    int rc;
+   char rewritten[LINEBUF_SIZE * 4];
 
-   rc = maybe_emit_addrsize_directive(out_fp, line);
+   if (!rewrite_with_defs(defs, line, rewritten, sizeof(rewritten)))
+      return 0;
+
+   rc = maybe_emit_addrsize_directive(out_fp, rewritten);
    if (rc < 0)
       return 0;
    if (rc > 0)
       return 1;
 
-   if (fputs(line, out_fp) == EOF)
+   if (fputs(rewritten, out_fp) == EOF)
       return 0;
-   if (line[0] == '\0' || line[strlen(line) - 1] != '\n') {
+   if (rewritten[0] == '\0' || rewritten[strlen(rewritten) - 1] != '\n') {
       if (fputc('\n', out_fp) == EOF)
          return 0;
    }
@@ -721,7 +907,7 @@ static int expand_text_lines(expand_ctx_t *ctx,
 
       strlist_free(&args);
 
-      if (!emit_normalized_line(out_fp, lines->items[i]))
+      if (!emit_normalized_line(out_fp, &ctx->defs, lines->items[i]))
          return 0;
    }
 
@@ -812,6 +998,19 @@ static int expand_file_recursive(expand_ctx_t *ctx,
          continue;
       }
 
+      {
+         char def_name[256];
+         char def_repl[LINEBUF_SIZE];
+
+         if (parse_def_line(line, def_name, sizeof(def_name), def_repl, sizeof(def_repl))) {
+            if (!def_add(&ctx->defs, def_name, def_repl, path, line_no)) {
+               fclose(in_fp);
+               return 0;
+            }
+            continue;
+         }
+      }
+
       params = NULL;
       param_count = 0;
       if (parse_macro_header(line, macro_name, sizeof(macro_name), &params, &param_count)) {
@@ -848,7 +1047,7 @@ static int expand_file_recursive(expand_ctx_t *ctx,
          return 0;
       }
 
-      if (!emit_normalized_line(out_fp, line)) {
+      if (!emit_normalized_line(out_fp, &ctx->defs, line)) {
          fprintf(stderr, "write error while expanding input\n");
          fclose(in_fp);
          return 0;
@@ -871,15 +1070,18 @@ FILE *source_loader_open_expanded(const char *root_path)
    }
 
    macro_table_init(&ctx.macros);
+   def_table_init(&ctx.defs);
    ctx.macro_depth = 0;
 
    if (!expand_file_recursive(&ctx, root_path, tmp_fp, 0)) {
       macro_table_free(&ctx.macros);
+      def_table_free(&ctx.defs);
       fclose(tmp_fp);
       return NULL;
    }
 
    macro_table_free(&ctx.macros);
+   def_table_free(&ctx.defs);
    rewind(tmp_fp);
    return tmp_fp;
 }

@@ -23,10 +23,10 @@
 
 .include "nlib.inc"
 ; lslN lsrN asrN also use ptr2 and ptr3
-n_byte    = _nl_tmp0 ;$0A
-n_bit     = _nl_tmp1 ;$0B
-tmp       = _nl_tmp2 ;$0C
-swaptmp   = _nl_tmp3 ;$0D
+.def n_byte  _nl_tmp0
+.def n_bit   _nl_tmp1
+.def tmp     _nl_tmp2
+.def swaptmp _nl_tmp3
 
 .proc _lsl1
     ldx arg0

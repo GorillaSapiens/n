@@ -16,7 +16,8 @@ static void usage(FILE *fp)
    fprintf(fp,
       "Usage:\n"
       "  nar -c output.a65 obj1.o65 obj2.o65 ... objN.o65\n"
-      "  nar -x input.a65\n");
+      "  nar -x input.a65\n"
+      "  nar -l input.a65\n");
 }
 
 static const char *base_name(const char *path)
@@ -127,6 +128,29 @@ static int copy_n_bytes(FILE *in, FILE *out, uint32_t size)
    return 1;
 }
 
+static int skip_n_bytes(FILE *fp, uint32_t size)
+{
+   unsigned char buffer[COPY_BUFFER_SIZE];
+   uint32_t remaining;
+
+   remaining = size;
+   while (remaining > 0) {
+      size_t chunk;
+      size_t got;
+
+      chunk = remaining > COPY_BUFFER_SIZE ? COPY_BUFFER_SIZE : (size_t)remaining;
+      got = fread(buffer, 1, chunk, fp);
+      if (got != chunk) {
+         fprintf(stderr, "nar: unexpected end of file while skipping payload\n");
+         return 0;
+      }
+
+      remaining -= (uint32_t)got;
+   }
+
+   return 1;
+}
+
 static long file_size(FILE *fp)
 {
    long cur;
@@ -147,6 +171,33 @@ static long file_size(FILE *fp)
       return -1;
 
    return end;
+}
+
+static int open_archive_for_read(const char *archive_name, FILE **out_fp)
+{
+   FILE *archive;
+   unsigned char magic[NAR_MAGIC_SIZE];
+
+   archive = fopen(archive_name, "rb");
+   if (!archive) {
+      fprintf(stderr, "nar: cannot open '%s': %s\n", archive_name, strerror(errno));
+      return 0;
+   }
+
+   if (fread(magic, 1, NAR_MAGIC_SIZE, archive) != NAR_MAGIC_SIZE) {
+      fprintf(stderr, "nar: '%s' is too short to be a nar archive\n", archive_name);
+      fclose(archive);
+      return 0;
+   }
+
+   if (memcmp(magic, NAR_MAGIC, NAR_MAGIC_SIZE) != 0) {
+      fprintf(stderr, "nar: '%s' is not a nar archive\n", archive_name);
+      fclose(archive);
+      return 0;
+   }
+
+   *out_fp = archive;
+   return 1;
 }
 
 static int create_archive(const char *archive_name, int input_count, char **inputs)
@@ -241,25 +292,9 @@ static int create_archive(const char *archive_name, int input_count, char **inpu
 static int extract_archive(const char *archive_name)
 {
    FILE *archive;
-   unsigned char magic[NAR_MAGIC_SIZE];
 
-   archive = fopen(archive_name, "rb");
-   if (!archive) {
-      fprintf(stderr, "nar: cannot open '%s': %s\n", archive_name, strerror(errno));
+   if (!open_archive_for_read(archive_name, &archive))
       return 1;
-   }
-
-   if (fread(magic, 1, NAR_MAGIC_SIZE, archive) != NAR_MAGIC_SIZE) {
-      fprintf(stderr, "nar: '%s' is too short to be a nar archive\n", archive_name);
-      fclose(archive);
-      return 1;
-   }
-
-   if (memcmp(magic, NAR_MAGIC, NAR_MAGIC_SIZE) != 0) {
-      fprintf(stderr, "nar: '%s' is not a nar archive\n", archive_name);
-      fclose(archive);
-      return 1;
-   }
 
    for (;;) {
       uint16_t name_len;
@@ -339,6 +374,73 @@ static int extract_archive(const char *archive_name)
    return 0;
 }
 
+static int list_archive(const char *archive_name)
+{
+   FILE *archive;
+
+   if (!open_archive_for_read(archive_name, &archive))
+      return 1;
+
+   for (;;) {
+      uint16_t name_len;
+      uint32_t size;
+      char *name;
+      int c;
+
+      c = fgetc(archive);
+      if (c == EOF) {
+         if (feof(archive))
+            break;
+         fprintf(stderr, "nar: read error on '%s'\n", archive_name);
+         fclose(archive);
+         return 1;
+      }
+      if (ungetc(c, archive) == EOF) {
+         fprintf(stderr, "nar: internal read error on '%s'\n", archive_name);
+         fclose(archive);
+         return 1;
+      }
+
+      if (!read_u16_le(archive, &name_len) || !read_u32_le(archive, &size)) {
+         fprintf(stderr, "nar: truncated member header in '%s'\n", archive_name);
+         fclose(archive);
+         return 1;
+      }
+
+      if (name_len == 0) {
+         fprintf(stderr, "nar: invalid zero-length member name in '%s'\n", archive_name);
+         fclose(archive);
+         return 1;
+      }
+
+      name = (char *)malloc((size_t)name_len + 1u);
+      if (!name) {
+         fprintf(stderr, "nar: out of memory\n");
+         fclose(archive);
+         return 1;
+      }
+
+      if (fread(name, 1, name_len, archive) != name_len) {
+         fprintf(stderr, "nar: truncated member name in '%s'\n", archive_name);
+         free(name);
+         fclose(archive);
+         return 1;
+      }
+      name[name_len] = '\0';
+
+      puts(name);
+      free(name);
+
+      if (!skip_n_bytes(archive, size)) {
+         fclose(archive);
+         return 1;
+      }
+   }
+
+   fclose(archive);
+   return 0;
+}
+
 int main(int argc, char **argv)
 {
    if (argc < 3) {
@@ -360,6 +462,14 @@ int main(int argc, char **argv)
          return 1;
       }
       return extract_archive(argv[2]);
+   }
+
+   if (strcmp(argv[1], "-l") == 0) {
+      if (argc != 3) {
+         usage(stderr);
+         return 1;
+      }
+      return list_archive(argv[2]);
    }
 
    usage(stderr);

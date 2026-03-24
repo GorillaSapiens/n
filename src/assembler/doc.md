@@ -13,6 +13,7 @@ This assembler is a custom two-pass 6502 assembler with:
 - addressing-mode specifiers
 - relaxation from absolute-family encodings to zero-page-family encodings where legal
 - simple source-level macros
+- simple source-level textual aliases with `.def`
 - multi-error reporting
 
 It can operate in two modes:
@@ -396,6 +397,43 @@ Currently supported directives:
 - `.text`
 - `.ascii`
 - `.include`
+- `.def`
+
+### `.def`
+
+Defines a simple source-level textual alias.
+
+```asm
+.def sp _nl_sp
+.def ptr0 _nl_ptr0
+```
+
+This behaves like a lightweight `#define` on identifier boundaries during source expansion.
+It is intended for readable aliases of imported or exported symbols, especially zero-page runtime names.
+
+Example:
+
+```asm
+.importzp _nl_sp
+.def sp _nl_sp
+
+   lda sp
+```
+
+The alias is expanded before parsing and expression evaluation, so it can be used with imported symbols where `=` or `.equ` would require a fully resolved value.
+
+Current `.def` behavior:
+
+- applies during source expansion, before parsing
+- replaces whole identifiers only
+- does not replace inside quoted strings
+- does not replace inside comments
+- remains in effect for subsequent lines after it is defined
+- duplicate `.def` names are rejected
+
+`.def` is for textual aliases, not numeric constants. Use `=` for ordinary assembly-time constants.
+
+---
 
 ### `.org`
 
@@ -1780,7 +1818,7 @@ The assembler does **not** currently document support for:
 
 - ELF or other object formats besides o65
 - fully general linker semantics
-- `.equ` alias syntax
+- `.equ` directive
 - `.set`
 - conditional assembly
 - anonymous `+` / `-` labels
@@ -1816,6 +1854,7 @@ This assembler deliberately keeps the parser focused on ordinary assembly syntax
 
 - `.include` is source expansion
 - macros are source expansion
+- `.def` aliases are source expansion
 - file/line provenance is preserved with internal markers
 - parser builds IR
 - pass 1 lays out addresses and resolves symbols/constants
@@ -1834,4 +1873,4 @@ That keeps the real assembler logic smaller and avoids stuffing Flex/Bison with 
 - use macros for repeated instruction sequences
 - treat `name = *` as “capture address now,” not “re-evaluate later”
 
-If you later add `.equ`, map files, or anonymous labels, this document should be updated accordingly.
+If you later add true `.equ`, map files, or anonymous labels, this document should be updated accordingly.

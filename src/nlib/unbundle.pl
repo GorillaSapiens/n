@@ -1,27 +1,8 @@
 #!/usr/bin/perl
 
-sub rplreset() {
-%rpl = ();
-$rpl{"sp"}="_nl_sp";
-$rpl{"fp"}="_nl_fp";
-$rpl{"arg0"}="_nl_arg0";
-$rpl{"arg1"}="_nl_arg1";
-$rpl{"ptr0"}="_nl_ptr0";
-$rpl{"ptr1"}="_nl_ptr1";
-$rpl{"ptr2"}="_nl_ptr2";
-$rpl{"ptr3"}="_nl_ptr3";
-$rpl{"tmp0"}="_nl_tmp0";
-$rpl{"tmp1"}="_nl_tmp1";
-$rpl{"tmp2"}="_nl_tmp2";
-$rpl{"tmp3"}="_nl_tmp3";
-$rpl{"tmp4"}="_nl_tmp4";
-$rpl{"tmp5"}="_nl_tmp5";
-}
-
 `mkdir -p wrk`;
 `cp nlib.inc wrk`;
 foreach $file (`ls asm/*.asm`) {
-   rplreset();
    $file =~ s/[\x0a\x0d]//g;
 
    print "== $file\n";
@@ -33,13 +14,8 @@ foreach $file (`ls asm/*.asm`) {
    @constants = ();
    $mode = 0;
    foreach $line (@file) {
-      if ($line =~ /^[^;]*=/) {
-         $line =~ s/;.*//g;
-         $line =~ s/ //g;
-         $line =~ s/[\x0a\x0d]//g;
-         ($l,$r) = split /=/, $line;
-         $rpl{$l}=$r;
-         #push @constants, $line;
+      if ($line =~ /^[^;]*\.def/i) {
+         push @constants, $line;
       }
 
       if ($line =~ /^[a-zA-Z0-9_]+:/) {
@@ -97,19 +73,7 @@ foreach $file (`ls asm/*.asm`) {
             }
          }
 
-         if ($line =~ /=/) {
-            $line =~ s/;.*//g;
-            $line =~ s/ //g;
-            $line =~ s/[\x0a\x0d]//g;
-            ($l,$r) = split /=/, $line;
-            $rpl{$l}=$r;
-         }
-         else {
-            foreach $rpl(keys(%rpl)) {
-               $line =~ s/\b$rpl\b/$rpl{$rpl}/ge;
-            }
-            push @func, $line;
-         }
+         push @func, $line;
       }
    }
 }
