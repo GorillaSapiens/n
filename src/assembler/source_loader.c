@@ -204,6 +204,148 @@ static int emit_marker(FILE *out_fp, const char *path, long line_no)
    return fprintf(out_fp, "@@FILE %ld %s\n", line_no, path) > 0;
 }
 
+
+static int parse_addrsize_keyword(const char *text, size_t len)
+{
+   if (len == 2 && !strncasecmp(text, "zp", 2))
+      return 1;
+   if (len == 8 && !strncasecmp(text, "zeropage", 8))
+      return 1;
+   return 0;
+}
+
+static int maybe_emit_addrsize_directive(FILE *out_fp, const char *line)
+{
+   const char *p;
+   const char *dir_start;
+   const char *comment_start;
+   char indent[256];
+   char dir[32];
+   int indent_len;
+   int dir_len;
+   int emitted;
+
+   p = line;
+   indent_len = 0;
+   while (*p == ' ' || *p == '\t') {
+      if (indent_len + 1 < (int)sizeof(indent))
+         indent[indent_len++] = *p;
+      p++;
+   }
+   indent[indent_len] = '\0';
+
+   dir_start = p;
+   while (*p && !isspace((unsigned char)*p))
+      p++;
+   dir_len = (int)(p - dir_start);
+   if (dir_len <= 0 || dir_len >= (int)sizeof(dir))
+      return 0;
+
+   memcpy(dir, dir_start, (size_t)dir_len);
+   dir[dir_len] = '\0';
+
+   if (strcmp(dir, ".global") && strcmp(dir, ".import") && strcmp(dir, ".export"))
+      return 0;
+
+   while (*p == ' ' || *p == '\t')
+      p++;
+
+   comment_start = p;
+   while (*comment_start && *comment_start != ';' && *comment_start != '\n' && *comment_start != '\r')
+      comment_start++;
+
+   emitted = 0;
+   while (p < comment_start) {
+      const char *name_start;
+      const char *name_end;
+      int is_zp;
+
+      while (p < comment_start && isspace((unsigned char)*p))
+         p++;
+      if (p >= comment_start)
+         break;
+
+      if (!is_ident_start((unsigned char)*p))
+         return 0;
+      name_start = p;
+      p++;
+      while (p < comment_start && is_ident_char((unsigned char)*p))
+         p++;
+      name_end = p;
+
+      while (p < comment_start && isspace((unsigned char)*p))
+         p++;
+
+      is_zp = 0;
+      if (p < comment_start && *p == ':') {
+         const char *kw_start;
+         const char *kw_end;
+
+         p++;
+         while (p < comment_start && isspace((unsigned char)*p))
+            p++;
+         if (p >= comment_start || !is_ident_start((unsigned char)*p))
+            return 0;
+
+         kw_start = p;
+         p++;
+         while (p < comment_start && is_ident_char((unsigned char)*p))
+            p++;
+         kw_end = p;
+
+         if (!parse_addrsize_keyword(kw_start, (size_t)(kw_end - kw_start)))
+            return 0;
+
+         is_zp = 1;
+         while (p < comment_start && isspace((unsigned char)*p))
+            p++;
+      }
+
+      if (fprintf(out_fp, "%s.%s%s ", indent, dir + 1, is_zp ? "zp" : "") < 0)
+         return -1;
+      if (fwrite(name_start, 1, (size_t)(name_end - name_start), out_fp) != (size_t)(name_end - name_start))
+         return -1;
+      if (*comment_start == ';' && !emitted) {
+         if (fputc(' ', out_fp) == EOF)
+            return -1;
+         if (fputs(comment_start, out_fp) == EOF)
+            return -1;
+      } else if (fputc('\n', out_fp) == EOF) {
+         return -1;
+      }
+
+      emitted = 1;
+      while (p < comment_start && isspace((unsigned char)*p))
+         p++;
+      if (p >= comment_start)
+         break;
+      if (*p != ',')
+         return 0;
+      p++;
+   }
+
+   return emitted;
+}
+
+static int emit_normalized_line(FILE *out_fp, const char *line)
+{
+   int rc;
+
+   rc = maybe_emit_addrsize_directive(out_fp, line);
+   if (rc < 0)
+      return 0;
+   if (rc > 0)
+      return 1;
+
+   if (fputs(line, out_fp) == EOF)
+      return 0;
+   if (line[0] == '\0' || line[strlen(line) - 1] != '\n') {
+      if (fputc('\n', out_fp) == EOF)
+         return 0;
+   }
+   return 1;
+}
+
 static int parse_include_line(const char *line, char *included_path, size_t included_path_sz)
 {
    const char *p;
@@ -579,12 +721,8 @@ static int expand_text_lines(expand_ctx_t *ctx,
 
       strlist_free(&args);
 
-      if (fputs(lines->items[i], out_fp) == EOF)
+      if (!emit_normalized_line(out_fp, lines->items[i]))
          return 0;
-      if (lines->items[i][0] == '\0' || lines->items[i][strlen(lines->items[i]) - 1] != '\n') {
-         if (fputc('\n', out_fp) == EOF)
-            return 0;
-      }
    }
 
    return 1;
@@ -710,7 +848,7 @@ static int expand_file_recursive(expand_ctx_t *ctx,
          return 0;
       }
 
-      if (fputs(line, out_fp) == EOF) {
+      if (!emit_normalized_line(out_fp, line)) {
          fprintf(stderr, "write error while expanding input\n");
          fclose(in_fp);
          return 0;

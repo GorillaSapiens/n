@@ -147,24 +147,61 @@ static void free_imports(import_name_t *head)
    }
 }
 
-static int import_exists(const asm_context_t *ctx, const char *name)
+static import_name_t *find_import(asm_context_t *ctx, const char *name)
+{
+   import_name_t *p;
+
+   for (p = ctx->imports; p; p = p->next) {
+      if (!strcmp(p->name, name))
+         return p;
+   }
+
+   return NULL;
+}
+
+static const import_name_t *find_import_const(const asm_context_t *ctx, const char *name)
 {
    const import_name_t *p;
 
    for (p = ctx->imports; p; p = p->next) {
       if (!strcmp(p->name, name))
-         return 1;
+         return p;
    }
 
-   return 0;
+   return NULL;
 }
 
-static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name)
+static int import_is_zp(const asm_context_t *ctx, const char *name)
+{
+   const import_name_t *p = find_import_const(ctx, name);
+   return p ? p->addr_size_zp : 0;
+}
+
+static int directive_name_implies_zp(const char *name)
+{
+   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp"));
+}
+
+static int directive_is_import_family(const char *name)
+{
+   return name && (!strcmp(name, ".import") || !strcmp(name, ".importzp") || !strcmp(name, ".global") || !strcmp(name, ".globalzp"));
+}
+
+static int directive_is_export_family(const char *name)
+{
+   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp"));
+}
+
+static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name, int addr_size_zp)
 {
    import_name_t *p;
 
-   if (import_exists(ctx, name))
+   p = find_import(ctx, name);
+   if (p) {
+      if (addr_size_zp)
+         p->addr_size_zp = 1;
       return;
+   }
 
    p = (import_name_t *)calloc(1, sizeof(*p));
    if (!p) {
@@ -175,6 +212,7 @@ static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name)
    p->name = xstrdup(name);
    p->file = stmt->file;
    p->line = stmt->line;
+   p->addr_size_zp = addr_size_zp ? 1 : 0;
    p->next = ctx->imports;
    ctx->imports = p;
 }
@@ -350,7 +388,7 @@ static int is_exported_name(const program_ir_t *prog, const char *file, const ch
          continue;
       if (!stmt->file || strcmp(stmt->file, file))
          continue;
-      if (strcmp(stmt->u.dir->name, ".global") && strcmp(stmt->u.dir->name, ".export"))
+      if (!directive_is_export_family(stmt->u.dir->name))
          continue;
 
       for (node = stmt->u.dir->exprs; node; node = node->next) {
@@ -1024,20 +1062,22 @@ static void gather_imports(asm_context_t *ctx)
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       if (stmt->kind != STMT_DIR)
          continue;
-      if (strcmp(stmt->u.dir->name, ".import"))
+      if (!directive_is_import_family(stmt->u.dir->name))
          continue;
 
       for (node = stmt->u.dir->exprs; node; node = node->next) {
          const char *name;
+         int want_zp = directive_name_implies_zp(stmt->u.dir->name);
+
          if (!directive_expr_is_ident(node->expr, &name)) {
-            asm_error(ctx, stmt, ".import expects identifier names");
+            asm_error(ctx, stmt, "%s expects identifier names", stmt->u.dir->name);
             continue;
          }
          if (is_local_name(name)) {
-            asm_error(ctx, stmt, ".import does not allow local labels");
+            asm_error(ctx, stmt, "%s does not allow local labels", stmt->u.dir->name);
             continue;
          }
-         add_import(ctx, stmt, name);
+         add_import(ctx, stmt, name, want_zp);
       }
    }
 }
@@ -1185,6 +1225,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
                 !strcmp(stmt->u.dir->name, ".global") ||
                 !strcmp(stmt->u.dir->name, ".export") ||
                 !strcmp(stmt->u.dir->name, ".import") ||
+                !strcmp(stmt->u.dir->name, ".globalzp") ||
+                !strcmp(stmt->u.dir->name, ".exportzp") ||
+                !strcmp(stmt->u.dir->name, ".importzp") ||
                 !strcmp(stmt->u.dir->name, ".proc") ||
                 !strcmp(stmt->u.dir->name, ".endproc")) {
                break;
@@ -1296,6 +1339,15 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    return 0;
 }
 
+
+static int expr_is_imported_zp_reference(const asm_context_t *ctx, const expr_t *expr)
+{
+   if (!expr || expr->kind != EXPR_IDENT)
+      return 0;
+
+   return import_is_zp(ctx, expr->u.ident);
+}
+
 static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_mode, emit_mode_t *relaxed_mode)
 {
    unsigned char dummy;
@@ -1372,11 +1424,12 @@ int asm_relax(asm_context_t *ctx)
          if (!stmt->u.insn.expr)
             continue;
 
-         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value) != EXPR_EVAL_OK)
+         if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address, &value) != EXPR_EVAL_OK) {
+            if (!expr_is_imported_zp_reference(ctx, stmt->u.insn.expr))
+               continue;
+         } else if (!expr_is_u8_value(value)) {
             continue;
-
-         if (!expr_is_u8_value(value))
-            continue;
+         }
 
          if (candidate != stmt->u.insn.final_mode) {
             stmt->u.insn.final_mode = candidate;
@@ -1436,6 +1489,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
        !strcmp(dir->name, ".global") ||
        !strcmp(dir->name, ".export") ||
        !strcmp(dir->name, ".import") ||
+       !strcmp(dir->name, ".globalzp") ||
+       !strcmp(dir->name, ".exportzp") ||
+       !strcmp(dir->name, ".importzp") ||
        !strcmp(dir->name, ".proc") ||
        !strcmp(dir->name, ".endproc")) {
       if (ctx->listing)

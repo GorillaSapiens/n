@@ -48,11 +48,10 @@ lex.yy.c: lexer.l
 	$(LEX) lexer.l
 
 tarball:
-	rm -f *.gz
 	tar -czf na.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 tidy:
-	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d
+	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d *.gz
 	
 clean: tidy
 	rm -f $(GENSRC) $(GENHDR) parser.output

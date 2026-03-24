@@ -11,6 +11,7 @@ typedef struct import_name {
    char *name;
    const char *file;
    int line;
+   int addr_size_zp;
    struct import_name *next;
 } import_name_t;
 

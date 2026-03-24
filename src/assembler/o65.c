@@ -29,7 +29,6 @@ typedef struct o65_reloc {
    long offset;
    unsigned char type;
    unsigned char segid;
-   unsigned char lowbyte;
    unsigned short undef_index;
    struct o65_reloc *next;
 } o65_reloc_t;
@@ -70,7 +69,6 @@ typedef struct reloc_expr_info {
    int segid;
    unsigned short undef_index;
    long value;
-   long reloc_value;
    int part;
 } reloc_expr_info_t;
 
@@ -122,6 +120,17 @@ static int segment_name_to_o65(const char *name)
    if (str_ieq(name, "ZP") || str_ieq(name, "ZEROPAGE") || str_ieq(name, "ZERO"))
       return O65_SEG_ZP;
    return O65_SEG_TEXT;
+}
+
+
+static int directive_name_implies_zp(const char *name)
+{
+   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp"));
+}
+
+static int directive_is_export_family(const char *name)
+{
+   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp"));
 }
 
 static unsigned short segment_used_size(const asm_context_t *ctx, int segid)
@@ -193,7 +202,7 @@ static int buf_write_word(o65_segment_buf_t *buf, long offset, unsigned short v)
           buf_write_byte(buf, offset + 1, (unsigned char)((v >> 8) & 0xFF));
 }
 
-static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, unsigned char segid, unsigned char lowbyte, unsigned short undef_index)
+static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, unsigned char segid, unsigned short undef_index)
 {
    o65_reloc_t *r;
 
@@ -204,7 +213,6 @@ static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, un
    r->offset = offset;
    r->type = type;
    r->segid = segid;
-   r->lowbyte = lowbyte;
    r->undef_index = undef_index;
 
    if (!buf->relocs)
@@ -269,32 +277,6 @@ static unsigned short intern_undef(o65_writer_t *wr, const char *name)
    return idx;
 }
 
-
-static const symbol_t *find_symbol_for_expr(const asm_context_t *ctx,
-                                            const stmt_t *stmt,
-                                            const char *ident)
-{
-   char buf[4096];
-   const symbol_t *sym;
-
-   if (!ctx || !ident)
-      return NULL;
-
-   if (ident[0] == '@') {
-      snprintf(buf, sizeof(buf), "%s::%s", stmt && stmt->scope ? stmt->scope : "__root__", ident);
-      return symtab_find_const(&ctx->symbols, buf);
-   }
-
-   if (stmt && stmt->file && *stmt->file) {
-      snprintf(buf, sizeof(buf), "%s::%s", stmt->file, ident);
-      sym = symtab_find_const(&ctx->symbols, buf);
-      if (sym)
-         return sym;
-   }
-
-   return symtab_find_const(&ctx->symbols, ident);
-}
-
 static int is_imported(const asm_context_t *ctx, const char *name)
 {
    const import_name_t *p;
@@ -324,6 +306,11 @@ static int analyze_expr(o65_writer_t *wr,
       return 1;
    }
 
+   if (expr_eval(expr, &wr->ctx->symbols, stmt->scope, stmt->file, pc, &value) == EXPR_EVAL_OK) {
+      out->value = value;
+      return 1;
+   }
+
    switch (expr->kind) {
       case EXPR_NUMBER:
          out->value = expr->u.number;
@@ -338,12 +325,11 @@ static int analyze_expr(o65_writer_t *wr,
          return 1;
 
       case EXPR_IDENT:
-         sym = find_symbol_for_expr(wr->ctx, stmt, expr->u.ident);
+         sym = symtab_find_const(&wr->ctx->symbols, expr->u.ident);
          if (sym && sym->defined) {
             out->is_reloc = (sym->segment_id != O65_SEG_ABS);
             out->segid = sym->segment_id;
             out->value = sym->value;
-            out->reloc_value = sym->value;
             out->part = RELOC_PART_WORD;
             return 1;
          }
@@ -353,13 +339,7 @@ static int analyze_expr(o65_writer_t *wr,
             out->segid = O65_SEG_UNDEF;
             out->undef_index = intern_undef(wr, expr->u.ident);
             out->value = 0;
-            out->reloc_value = 0;
             out->part = RELOC_PART_WORD;
-            return 1;
-         }
-
-         if (expr_eval(expr, &wr->ctx->symbols, stmt->scope, stmt->file, pc, &value) == EXPR_EVAL_OK) {
-            out->value = value;
             return 1;
          }
 
@@ -409,13 +389,11 @@ static int analyze_expr(o65_writer_t *wr,
                if (left.is_reloc) {
                   *out = left;
                   out->value += right.value;
-                  out->reloc_value += right.value;
                   return 1;
                }
                if (right.is_reloc) {
                   *out = right;
                   out->value += left.value;
-                  out->reloc_value += left.value;
                   return 1;
                }
                out->value = left.value + right.value;
@@ -429,7 +407,6 @@ static int analyze_expr(o65_writer_t *wr,
                if (left.is_reloc) {
                   *out = left;
                   out->value -= right.value;
-                  out->reloc_value -= right.value;
                   return 1;
                }
                out->value = left.value - right.value;
@@ -461,7 +438,6 @@ static int maybe_add_expr_reloc(o65_writer_t *wr,
                                 int width)
 {
    unsigned char type;
-   unsigned char lowbyte = 0;
    int part;
 
    if (!info->is_reloc)
@@ -474,22 +450,15 @@ static int maybe_add_expr_reloc(o65_writer_t *wr,
       part = RELOC_PART_LOW;
 
    switch (part) {
-      case RELOC_PART_LOW:
-         type = O65_RTYPE_LOW;
-         break;
-      case RELOC_PART_HIGH:
-         type = O65_RTYPE_HIGH;
-         lowbyte = (unsigned char)(info->reloc_value & 0xFF);
-         break;
-      case RELOC_PART_WORD:
-         type = O65_RTYPE_WORD;
-         break;
+      case RELOC_PART_LOW:  type = O65_RTYPE_LOW; break;
+      case RELOC_PART_HIGH: type = O65_RTYPE_HIGH; break;
+      case RELOC_PART_WORD: type = O65_RTYPE_WORD; break;
       default:
          writer_error(wr->ctx, stmt, "unsupported relocation width/part combination");
          return 0;
    }
 
-   if (!add_reloc(buf, offset, type, (unsigned char)info->segid, lowbyte, info->undef_index)) {
+   if (!add_reloc(buf, offset, type, (unsigned char)info->segid, info->undef_index)) {
       writer_error(wr->ctx, stmt, "out of memory recording relocation");
       return 0;
    }
@@ -547,7 +516,7 @@ static void add_exports(o65_writer_t *wr)
    for (stmt = wr->ctx->prog->head; stmt; stmt = stmt->next) {
       if (stmt->kind != STMT_DIR || !stmt->u.dir)
          continue;
-      if (strcmp(stmt->u.dir->name, ".global") && strcmp(stmt->u.dir->name, ".export"))
+      if (!directive_is_export_family(stmt->u.dir->name))
          continue;
 
       for (node = stmt->u.dir->exprs; node; node = node->next) {
@@ -574,6 +543,8 @@ static void add_exports(o65_writer_t *wr)
          ex->name = xstrdup(name);
          ex->value = (unsigned short)(sym->value & 0xFFFF);
          ex->segid = (unsigned char)sym->segment_id;
+         if (directive_name_implies_zp(stmt->u.dir->name) && ex->segid == O65_SEG_ABS)
+            ex->segid = O65_SEG_ZP;
          ex->next = wr->exports;
          wr->exports = ex;
       }
@@ -608,7 +579,9 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
          if (!strcmp(stmt->u.dir->name, ".org") || !strcmp(stmt->u.dir->name, ".segment") ||
              !strcmp(stmt->u.dir->name, ".segmentdef") || !strcmp(stmt->u.dir->name, ".global") ||
              !strcmp(stmt->u.dir->name, ".export") || !strcmp(stmt->u.dir->name, ".import") ||
-             !strcmp(stmt->u.dir->name, ".proc") || !strcmp(stmt->u.dir->name, ".endproc"))
+             !strcmp(stmt->u.dir->name, ".globalzp") || !strcmp(stmt->u.dir->name, ".exportzp") ||
+             !strcmp(stmt->u.dir->name, ".importzp") || !strcmp(stmt->u.dir->name, ".proc") ||
+             !strcmp(stmt->u.dir->name, ".endproc"))
             return 1;
 
          if (!strcmp(stmt->u.dir->name, ".byte")) {
@@ -775,35 +748,20 @@ static int write_cstr(FILE *fp, const char *s)
 
 static int write_reloc_table(FILE *fp, const o65_reloc_t *r)
 {
-   unsigned short prev = 0;
+   long prev = -1;
    for (; r; r = r->next) {
-      unsigned short target;
-      unsigned short delta;
-      unsigned char control;
-
-      if (r->offset < 0 || r->offset > 0xFFFF)
-         return 0;
-
-      target = (unsigned short)r->offset;
-      if (target < prev)
-         return 0;
-      delta = (unsigned short)(target - prev);
-
+      long delta = r->offset - prev;
       while (delta > 254) {
          if (!write_u8(fp, 255))
             return 0;
-         delta = (unsigned short)(delta - 254);
-         prev = (unsigned short)(prev + 254);
+         delta -= 254;
+         prev += 254;
       }
-
-      control = (unsigned char)(r->type | (r->segid & 0x07));
-      if (!write_u8(fp, (unsigned char)delta) || !write_u8(fp, control))
-         return 0;
-      if (r->type == O65_RTYPE_HIGH && !write_u8(fp, r->lowbyte))
+      if (!write_u8(fp, (unsigned char)delta) || !write_u8(fp, r->type) || !write_u8(fp, r->segid))
          return 0;
       if (r->segid == O65_SEG_UNDEF && !write_u16(fp, r->undef_index))
          return 0;
-      prev = target;
+      prev = r->offset;
    }
    return write_u8(fp, 0);
 }
@@ -912,8 +870,8 @@ int o65_write_object_file(FILE *fp, asm_context_t *ctx)
    if ((wr.text.len && fwrite(wr.text.data, 1, wr.text.len, fp) != wr.text.len) ||
        (wr.data.len && fwrite(wr.data.data, 1, wr.data.len, fp) != wr.data.len) ||
        !write_undefs(fp, wr.undefs) ||
-       !write_reloc_table(fp, wr.data.relocs) ||
        !write_reloc_table(fp, wr.text.relocs) ||
+       !write_reloc_table(fp, wr.data.relocs) ||
        !write_exports(fp, wr.exports)) {
       fprintf(stderr, "failed writing o65 object contents\n");
       goto fail;
