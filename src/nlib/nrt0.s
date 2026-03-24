@@ -1,5 +1,14 @@
 ; nrt0.s
 
+.segmentdef "VECTORS", $FFFA, 6
+.segmentdef "CODE", $8000, $8000
+.segmentdef "DATA_LOAD", $8000 + CODE_SIZE, CODE_CAPACITY - CODE_SIZE
+.segmentdef "ZP", $0000, $0100
+.segmentdef "STACK", $0100, $0100
+.segmentdef "DATA_RUN", $0200, $0D00
+.segmentdef "ARGSTACK", $1000, $1000
+.segmentdef "BSS", $2000, $1000
+
 .global nrt0_reset
 .export nrt0_reset
 .export startup_segment_address
@@ -7,23 +16,13 @@
 .import _handle_irq
 .import _handle_nmi
 
-.import __DATA_LOAD__, __DATA_RUN__, __DATA_SIZE__
-.import __BSS_RUN__, __BSS_SIZE__
-.import __ARGSTACK_RUN__
+;.import DATA_LOAD_BASE, DATA_RUN_BASE, DATA_LOAD_SIZE
+;.import BSS_BASE, BSS_SIZE
+;.import ARGSTACK_BASE
 
 .include "nlib.inc"
 
-; sneaky trick; we need an argstack, but it can be empty!
-.segment "ARGSTACK"
-.res 0
-
-.segment "DATA"
-.res 0
-
-.segment "BSS"
-.res 0
-
-.segment "STARTUP"
+.segment "CODE"
 startup_segment_address: ; do not move, must come first !!!
 nrt0_reset:
     ; set interrupt disable flag (disable IRQs)
@@ -40,24 +39,24 @@ nrt0_reset:
 
 
     ; copy the DATA segment to RAM
-    lda #<__DATA_SIZE__
+    lda #<DATA_LOAD_SIZE
     bne _copy_data_hi
-    lda #>__DATA_SIZE__
+    lda #>DATA_LOAD_SIZE
     beq _copy_data_fini
 
 _copy_data_hi:
-    lda #<__DATA_LOAD__
+    lda #<DATA_LOAD_BASE
     sta ptr0
-    lda #>__DATA_LOAD__
+    lda #>DATA_LOAD_BASE
     sta ptr0+1
 
-    lda #<__DATA_RUN__
+    lda #<DATA_RUN_BASE
     sta ptr1
-    lda #>__DATA_RUN__
+    lda #>DATA_RUN_BASE
     sta ptr1+1
 
     ldy #0
-    ldx #>__DATA_SIZE__
+    ldx #>DATA_LOAD_SIZE
     beq _copy_data_lo
 
 _copy_data_hi_loop:
@@ -72,7 +71,7 @@ _copy_data_hi_loop:
 
 _copy_data_lo:
     ldy #0
-    ldx #<__DATA_SIZE__
+    ldx #<DATA_LOAD_SIZE
     beq _copy_data_fini
 
 _copy_data_lo_loop:
@@ -86,20 +85,20 @@ _copy_data_fini:
 
 
     ; clear the BSS segment
-    lda #<__BSS_SIZE__
+    lda #<BSS_SIZE
     bne _clear_bss_hi
-    lda #>__BSS_SIZE__
+    lda #>BSS_SIZE
     beq _clear_bss_fini
 
 _clear_bss_hi:
-    lda #<__BSS_RUN__
+    lda #<BSS_BASE
     sta ptr1
-    lda #>__BSS_RUN__
+    lda #>BSS_BASE
     sta ptr1+1
 
     lda #0
     ldy #0
-    ldx #>__BSS_SIZE__
+    ldx #>BSS_SIZE
     beq _clear_bss_lo
 
 _clear_bss_hi_loop:
@@ -112,7 +111,7 @@ _clear_bss_hi_loop:
 
 _clear_bss_lo:
     ldy #0
-    ldx #<__BSS_SIZE__
+    ldx #<BSS_SIZE
     beq _clear_bss_fini
 
 _clear_bss_lo_loop:
@@ -125,9 +124,9 @@ _clear_bss_fini:
 
 
     ; set up argument stack pointer
-    ldx #<__ARGSTACK_RUN__
+    ldx #<ARGSTACK_BASE
     stx sp
-    ldx #>__ARGSTACK_RUN__
+    ldx #>ARGSTACK_BASE
     stx sp+1
 
 
@@ -190,7 +189,6 @@ nrt0_irq:
     rti
 
 .segment "VECTORS"
-
 .word nrt0_nmi   ; @ $fffa - $fffb
 .word nrt0_reset ; @ $fffc - $fffd
 .word nrt0_irq   ; @ $fffe - $ffff
