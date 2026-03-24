@@ -19,20 +19,181 @@ It is designed as a **final binary assembler**, not a relocatable object generat
 
 ---
 
-## Command Line
+## Command Line Parameters
+
+This assembler uses flag-based command line options.
+
+### Usage
 
 ```sh
-./na input.s output.hex output.lst output.map
+assembler -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]]
 ```
 
-Arguments:
-
-- `input.s` ... root assembly source file
-- `output.hex` ... Intel HEX output
-- `output.lst` ... listing output
-- `output.map` ... map file output
-
 If assembly fails, the assembler returns nonzero and suppresses final HEX output.
+
+### Required Parameters
+
+#### `-i <file>`, `--input <file>`
+
+Specifies the input assembly source file.
+
+This parameter is required.
+
+##### Example
+
+```sh
+assembler -i program.s --hex
+```
+
+### Optional Output Parameters
+
+Each output type is disabled unless its flag is provided.
+
+#### `--hex[=file]`
+
+Enables Intel HEX output.
+
+- If a filename is provided, that exact file is used.
+- If no filename is provided, the output filename is derived from the input filename using the `.hex` extension.
+
+##### Examples
+
+```sh
+assembler -i program.s --hex
+assembler -i program.s --hex=program.hex
+assembler -i src/program.s --hex
+```
+
+Derived filename examples:
+
+- `program.s` -> `program.hex`
+- `src/program.s` -> `src/program.hex`
+
+#### `--lst[=file]`
+
+Enables listing output.
+
+- If a filename is provided, that exact file is used.
+- If no filename is provided, the output filename is derived from the input filename using the `.lst` extension.
+
+##### Examples
+
+```sh
+assembler -i program.s --lst
+assembler -i program.s --lst=program.lst
+```
+
+Derived filename examples:
+
+- `program.s` -> `program.lst`
+
+#### `--map[=file]`
+
+Enables map output.
+
+- If a filename is provided, that exact file is used.
+- If no filename is provided, the output filename is derived from the input filename using the `.map` extension.
+
+##### Examples
+
+```sh
+assembler -i program.s --map
+assembler -i program.s --map=program.map
+```
+
+Derived filename examples:
+
+- `program.s` -> `program.map`
+
+### Help Parameter
+
+#### `-h`, `--help`
+
+Displays command line usage information and exits.
+
+##### Example
+
+```sh
+assembler --help
+```
+
+### Behavior Notes
+
+#### Optional argument syntax
+
+For output options with optional filenames, use the `=` form when supplying a filename:
+
+```sh
+assembler -i program.s --hex=program.hex --lst=program.lst --map=program.map
+```
+
+Do not rely on this form:
+
+```sh
+assembler -i program.s --hex program.hex
+```
+
+That may be interpreted as a positional argument instead of an optional value, depending on how `getopt_long()` parses the command line.
+
+#### No positional output arguments
+
+This interface does not use positional output filenames. Output files are controlled entirely by flags.
+
+#### Output generation is selective
+
+Only the outputs explicitly requested are generated.
+
+For example:
+
+```sh
+assembler -i program.s --hex
+```
+
+generates only the HEX file.
+
+```sh
+assembler -i program.s --lst --map
+```
+
+generates only the listing and map files.
+
+### Examples
+
+#### Generate only HEX output
+
+```sh
+assembler -i test.s --hex
+```
+
+#### Generate HEX, listing, and map using default derived names
+
+```sh
+assembler -i test.s --hex --lst --map
+```
+
+#### Generate all outputs with explicit filenames
+
+```sh
+assembler -i test.s --hex=out.hex --lst=out.lst --map=out.map
+```
+
+#### Generate only a listing file
+
+```sh
+assembler --input test.s --lst
+```
+
+### Summary Table
+
+| Parameter | Meaning | Required |
+|---|---|---|
+| `-i <file>` | Input source file | Yes |
+| `--input <file>` | Input source file | Yes |
+| `--hex[=file]` | Enable HEX output, optional filename | No |
+| `--lst[=file]` | Enable listing output, optional filename | No |
+| `--map[=file]` | Enable map output, optional filename | No |
+| `-h` | Show help | No |
+| `--help` | Show help | No |
 
 ---
 

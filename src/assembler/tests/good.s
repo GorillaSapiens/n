@@ -2,6 +2,8 @@
 ; Mix of legal syntax, grouped expressions, labels, directives,
 ; and comments.
 
+.org $0200
+
 start:
    NOP
    CLC

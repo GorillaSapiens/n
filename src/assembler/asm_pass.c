@@ -836,8 +836,8 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
       }
    }
 
-   printf("pass %d %-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d errors=%d\n",
-          pass_index, phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, ctx->error_count);
+   printf("%-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d errors=%d\n",
+          phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, ctx->error_count);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing)
