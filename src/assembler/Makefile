@@ -47,7 +47,7 @@ lex.yy.c: lexer.l
 	$(LEX) lexer.l
 
 clean:
-	rm -f $(TARGET) nid $(OBJ) $(DEP)
+	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d
 	rm -f $(GENSRC) $(GENHDR) parser.output
 
 -include $(DEP)
