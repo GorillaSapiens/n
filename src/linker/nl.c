@@ -88,6 +88,8 @@ typedef struct {
    uint16_t place_bss_run;
    uint16_t place_zp_run;
    int selected_from_archive;
+   int selected;
+   int from_cmdline;
 } object_file_t;
 
 typedef struct {
@@ -104,11 +106,25 @@ typedef struct {
    size_t member_count;
 } archive_file_t;
 
+typedef enum {
+   INPUT_REF_OBJECT = 1,
+   INPUT_REF_ARCHIVE = 2
+} input_ref_kind_t;
+
+typedef struct {
+   input_ref_kind_t kind;
+   size_t index;
+} input_ref_t;
+
 typedef struct {
    object_file_t *objects;
    size_t object_count;
+   object_file_t *cmd_objects;
+   size_t cmd_object_count;
    archive_file_t *archives;
    size_t archive_count;
+   input_ref_t *order;
+   size_t order_count;
 } input_set_t;
 
 typedef struct {
@@ -845,64 +861,150 @@ static void add_unique_string(char ***items, size_t *count, const char *name)
    }
 }
 
-static void collect_unresolved(object_file_t *objs, size_t obj_count, char ***out, size_t *count_out)
+static int selected_objects_export_symbol(const input_set_t *in, const char *name)
 {
-   char **unres = NULL;
-   size_t unres_count = 0;
-   size_t i, j;
-   for (i = 0; i < obj_count; ++i) {
-      for (j = 0; j < objs[i].undef_count; ++j) {
-         const char *name = objs[i].undefs[j];
-         size_t k;
-         int found = 0;
-         for (k = 0; k < obj_count; ++k) {
-            if (object_exports_symbol_or_weak(&objs[k], name)) {
-               found = 1;
-               break;
-            }
-         }
-         if (!found)
-            add_unique_string(&unres, &unres_count, name);
-      }
+   size_t i;
+   for (i = 0; i < in->object_count; ++i) {
+      if (object_exports_symbol_or_weak(&in->objects[i], name))
+         return 1;
    }
-   *out = unres;
-   *count_out = unres_count;
+   return 0;
 }
 
-static void select_archive_members(input_set_t *in)
+static void collect_needed_symbols(const input_set_t *in, char ***out, size_t *count_out)
+{
+   char **needed = NULL;
+   size_t needed_count = 0;
+   size_t i, j;
+
+   add_unique_string(&needed, &needed_count, "__reset");
+   add_unique_string(&needed, &needed_count, "__nmi");
+   add_unique_string(&needed, &needed_count, "__irqbrk");
+
+   for (i = 0; i < in->object_count; ++i) {
+      for (j = 0; j < in->objects[i].undef_count; ++j)
+         add_unique_string(&needed, &needed_count, in->objects[i].undefs[j]);
+   }
+
+   *out = needed;
+   *count_out = needed_count;
+}
+
+static object_file_t *find_provider_in_archive(archive_file_t *arc, const char *symbol_name)
+{
+   size_t m;
+   for (m = 0; m < arc->member_count; ++m) {
+      archive_member_t *mem = &arc->members[m];
+      if (mem->selected)
+         continue;
+      if (object_exports_symbol(&mem->obj, symbol_name))
+         return &mem->obj;
+   }
+   return NULL;
+}
+
+static object_file_t *find_provider_in_object(object_file_t *obj, const char *symbol_name)
+{
+   if (obj->selected)
+      return NULL;
+   return object_exports_symbol(obj, symbol_name) ? obj : NULL;
+}
+
+static object_file_t *find_best_provider(input_set_t *in, const char *name)
+{
+   size_t i;
+   char *weak = make_weak_name(name);
+   object_file_t *provider = NULL;
+
+   for (i = 0; i < in->order_count; ++i) {
+      input_ref_t *ref = &in->order[i];
+      if (ref->kind == INPUT_REF_OBJECT) {
+         provider = find_provider_in_object(&in->cmd_objects[ref->index], name);
+      } else {
+         provider = find_provider_in_archive(&in->archives[ref->index], name);
+      }
+      if (provider) {
+         free(weak);
+         return provider;
+      }
+   }
+
+   for (i = 0; i < in->order_count; ++i) {
+      input_ref_t *ref = &in->order[i];
+      if (ref->kind == INPUT_REF_OBJECT) {
+         provider = find_provider_in_object(&in->cmd_objects[ref->index], weak);
+      } else {
+         provider = find_provider_in_archive(&in->archives[ref->index], weak);
+      }
+      if (provider) {
+         free(weak);
+         return provider;
+      }
+   }
+
+   free(weak);
+   return NULL;
+}
+
+static void include_object(input_set_t *in, object_file_t *obj)
+{
+   if (obj->selected)
+      return;
+   obj->selected = 1;
+   in->objects = (object_file_t *)xrealloc(in->objects,
+      (in->object_count + 1) * sizeof(*in->objects));
+   in->objects[in->object_count++] = *obj;
+}
+
+static void select_needed_objects(input_set_t *in)
 {
    int progress;
    do {
-      char **unres = NULL;
-      size_t unres_count = 0;
-      size_t a, m, u;
+      char **needed = NULL;
+      size_t needed_count = 0;
+      size_t i;
 
-      collect_unresolved(in->objects, in->object_count, &unres, &unres_count);
+      collect_needed_symbols(in, &needed, &needed_count);
       progress = 0;
 
-      for (a = 0; a < in->archive_count; ++a) {
-         archive_file_t *arc = &in->archives[a];
-         for (m = 0; m < arc->member_count; ++m) {
-            archive_member_t *mem = &arc->members[m];
-            if (mem->selected)
-               continue;
-            for (u = 0; u < unres_count; ++u) {
-               if (object_exports_symbol_or_weak(&mem->obj, unres[u])) {
-                  mem->selected = 1;
-                  in->objects = (object_file_t *)xrealloc(in->objects,
-                     (in->object_count + 1) * sizeof(*in->objects));
-                  in->objects[in->object_count++] = mem->obj;
-                  progress = 1;
-                  break;
-               }
-            }
+      for (i = 0; i < needed_count; ++i) {
+         object_file_t *provider;
+         if (selected_objects_export_symbol(in, needed[i]))
+            continue;
+         provider = find_best_provider(in, needed[i]);
+         if (provider) {
+            include_object(in, provider);
+            progress = 1;
          }
       }
 
-      for (u = 0; u < unres_count; ++u)
-         free(unres[u]);
-      free(unres);
+      for (i = 0; i < needed_count; ++i)
+         free(needed[i]);
+      free(needed);
    } while (progress);
+}
+
+static void warn_unused_cmdline_objects(const input_set_t *in)
+{
+   size_t i;
+   for (i = 0; i < in->cmd_object_count; ++i) {
+      if (!in->cmd_objects[i].selected)
+         fprintf(stderr, "nl: warning: unused object '%s' not linked\n", in->cmd_objects[i].origin);
+   }
+
+   for (i = 0; i < in->archive_count; ++i) {
+      const archive_file_t *arc = &in->archives[i];
+      size_t m;
+      int any_selected = 0;
+      for (m = 0; m < arc->member_count; ++m) {
+         if (arc->members[m].selected) {
+            any_selected = 1;
+            break;
+         }
+      }
+      if (!any_selected)
+         fprintf(stderr, "nl: warning: unused archive '%s' not linked\n", arc->path);
+   }
 }
 
 static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_t segid, const char *source)
@@ -1326,13 +1428,26 @@ int main(int argc, char **argv)
 
    while (argi < argc && !ends_with(argv[argi], ".hex")) {
       if (ends_with(argv[argi], ".o65")) {
-         inputs.objects = (object_file_t *)xrealloc(inputs.objects,
-            (inputs.object_count + 1) * sizeof(*inputs.objects));
-         load_object(argv[argi], &inputs.objects[inputs.object_count++]);
+         inputs.cmd_objects = (object_file_t *)xrealloc(inputs.cmd_objects,
+            (inputs.cmd_object_count + 1) * sizeof(*inputs.cmd_objects));
+         load_object(argv[argi], &inputs.cmd_objects[inputs.cmd_object_count]);
+         inputs.cmd_objects[inputs.cmd_object_count].from_cmdline = 1;
+         inputs.order = (input_ref_t *)xrealloc(inputs.order,
+            (inputs.order_count + 1) * sizeof(*inputs.order));
+         inputs.order[inputs.order_count].kind = INPUT_REF_OBJECT;
+         inputs.order[inputs.order_count].index = inputs.cmd_object_count;
+         inputs.order_count++;
+         inputs.cmd_object_count++;
       } else if (ends_with(argv[argi], ".a65")) {
          inputs.archives = (archive_file_t *)xrealloc(inputs.archives,
             (inputs.archive_count + 1) * sizeof(*inputs.archives));
-         load_archive(argv[argi], &inputs.archives[inputs.archive_count++]);
+         load_archive(argv[argi], &inputs.archives[inputs.archive_count]);
+         inputs.order = (input_ref_t *)xrealloc(inputs.order,
+            (inputs.order_count + 1) * sizeof(*inputs.order));
+         inputs.order[inputs.order_count].kind = INPUT_REF_ARCHIVE;
+         inputs.order[inputs.order_count].index = inputs.archive_count;
+         inputs.order_count++;
+         inputs.archive_count++;
       } else {
          fprintf(stderr, "nl: cannot classify input '%s'\n", argv[argi]);
          return 1;
@@ -1340,7 +1455,7 @@ int main(int argc, char **argv)
       argi++;
    }
 
-   if (inputs.object_count == 0 && inputs.archive_count == 0) {
+   if (inputs.cmd_object_count == 0 && inputs.archive_count == 0) {
       fprintf(stderr, "nl: no input objects or archives\n");
       return 1;
    }
@@ -1362,7 +1477,8 @@ int main(int argc, char **argv)
    else
       init_default_config(&cfg);
 
-   select_archive_members(&inputs);
+   select_needed_objects(&inputs);
+   warn_unused_cmdline_objects(&inputs);
    layout_objects(&cfg, &inputs, &layout);
    resolve_all(&inputs, &layout);
 
@@ -1378,6 +1494,8 @@ int main(int argc, char **argv)
    for (i = 0; i < inputs.object_count; ++i)
       free_object(&inputs.objects[i]);
    free(inputs.objects);
+   free(inputs.cmd_objects);
+   free(inputs.order);
    free(inputs.archives);
    for (i = 0; i < layout.global_count; ++i)
       free(layout.globals[i].name);

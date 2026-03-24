@@ -5,7 +5,7 @@
 ## Command line
 
 ```sh
-./nl [layout.cfg] input1.o65 [input2.o65 ... inputN.a65] output.hex [output.map]
+./nl [layout.cfg] input1.o65 [input2.a65 ... inputN.o65] output.hex [output.map]
 ```
 
 Rules:
@@ -25,7 +25,10 @@ Examples:
 
 - reads relocatable `.o65` object files
 - reads `.a65` archives created by `nar`
-- pulls archive members only when they satisfy unresolved symbols
+- treats both command-line `.o65` files and `.a65` archive members lazily
+- pulls in only objects that satisfy required symbols or later unresolved imports
+- warns when a command-line `.o65` file is not used
+- warns when a command-line `.a65` archive is completely unused
 - lays out `TEXT`, `DATA`, `BSS`, and `ZEROPAGE`
 - resolves imports against exports
 - writes Intel HEX output
@@ -35,6 +38,9 @@ Examples:
   - `__irqbrk`
 - generates linker-defined startup symbols for initialized data and BSS
 - optionally writes a map file
+
+Selection starts from the root symbols `__reset`, `__nmi`, and `__irqbrk`.
+From there, `nl` repeatedly scans inputs to satisfy unresolved imports, pulling in only the object files that define needed symbols, until no new objects are selected.
 
 Vector order is the normal 6502 order:
 - `$FFFA/$FFFB` ... NMI
@@ -159,5 +165,6 @@ make
 
 `nl` supports a custom weak-symbol convention.
 When a reference to `foo` cannot be satisfied by a strong exported `foo`, the linker falls back to `__weak_foo`.
-Archive member selection also treats `__weak_foo` as satisfying an unresolved `foo`.
+Resolution is symbol-driven and left-to-right over the command line, but strong definitions are preferred globally over weak fallbacks for the same symbol.
+For `.a65` inputs, only the single member object that defines the selected symbol is pulled in.
 This matches the assembler's `.weak foo` directive, which exports a weak definition under the external name `__weak_foo`.
