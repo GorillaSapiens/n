@@ -15,7 +15,12 @@ This assembler is a custom two-pass 6502 assembler with:
 - simple source-level macros
 - multi-error reporting
 
-It is designed as a **final binary assembler**, not a relocatable object generator.
+It can operate in two modes:
+
+- **final binary assembly** with Intel HEX output
+- **relocatable object generation** with o65 output
+
+The Intel HEX path still behaves like a final binary assembler. The o65 path emits relocatable object files with imported/exported symbols and relocation records.
 
 ---
 
@@ -26,7 +31,7 @@ This assembler uses flag-based command line options.
 ### Usage
 
 ```sh
-assembler -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]]
+assembler -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]
 ```
 
 If assembly fails, the assembler returns nonzero and suppresses final HEX output.
@@ -87,6 +92,24 @@ Derived filename examples:
 
 - `program.s` -> `program.lst`
 
+#### `--o65[=file]`
+
+Enables relocatable **o65 object** output.
+
+- If a filename is provided, that exact file is used.
+- If no filename is provided, the output filename is derived from the input filename using the `.o65` extension.
+
+##### Examples
+
+```sh
+assembler -i program.s --o65
+assembler -i program.s --o65=program.o65
+```
+
+Derived filename examples:
+
+- `program.s` -> `program.o65`
+
 #### `--map[=file]`
 
 Enables map output.
@@ -124,7 +147,7 @@ assembler --help
 For output options with optional filenames, use the `=` form when supplying a filename:
 
 ```sh
-assembler -i program.s --hex=program.hex --lst=program.lst --map=program.map
+assembler -i program.s --hex=program.hex --lst=program.lst --map=program.map --o65=program.o65
 ```
 
 Do not rely on this form:
@@ -174,7 +197,13 @@ assembler -i test.s --hex --lst --map
 #### Generate all outputs with explicit filenames
 
 ```sh
-assembler -i test.s --hex=out.hex --lst=out.lst --map=out.map
+assembler -i test.s --hex=out.hex --lst=out.lst --map=out.map --o65=out.o65
+```
+
+#### Generate only an o65 object file
+
+```sh
+assembler -i test.s --o65
 ```
 
 #### Generate only a listing file
@@ -192,6 +221,7 @@ assembler --input test.s --lst
 | `--hex[=file]` | Enable HEX output, optional filename | No |
 | `--lst[=file]` | Enable listing output, optional filename | No |
 | `--map[=file]` | Enable map output, optional filename | No |
+| `--o65[=file]` | Enable relocatable o65 object output, optional filename | No |
 | `-h` | Show help | No |
 | `--help` | Show help | No |
 
@@ -1193,6 +1223,102 @@ Before the first global label, locals belong to a root scope.
 
 ---
 
+# Cross-File Symbols and Object-Mode Directives
+
+The assembler supports cross-file symbol directives for relocatable o65 output.
+
+## `.import`
+
+Declares one or more symbols that are **referenced here but defined elsewhere**.
+
+```asm
+.import ext1, ext2
+```
+
+These symbols may remain undefined during assembly when writing o65 output. The undefined names are emitted in the o65 import table and referenced by relocation records.
+
+## `.export`
+
+Declares one or more symbols that are **defined in this file and should be visible to the linker**.
+
+```asm
+.export foo, bar
+```
+
+A symbol exported from this file must still be defined somewhere in the file.
+
+## `.global`
+
+Hybrid import/export declaration.
+
+```asm
+.global foo, bar
+```
+
+A symbol listed in `.global` behaves as follows:
+
+- if it is defined in this file, it is exported
+- if it is not defined in this file, it is treated as an import
+
+This matches the common ca65-style convenience behavior.
+
+## Zero-page forms
+
+The assembler also supports explicit zero-page forms:
+
+```asm
+.globalzp ptr
+.importzp extptr
+.exportzp localptr
+```
+
+These mark the symbol as zero-page-sized for relaxation and for o65 segment tagging.
+
+## Address-size annotations
+
+The assembler also accepts ca65-style address-size annotations on `.global`, `.import`, and `.export`:
+
+```asm
+.global ptr : zp
+.import extptr : zp
+.export localptr : zeropage
+```
+
+Accepted zero-page annotation spellings are:
+
+- `: zp`
+- `: zeropage`
+
+These annotations are treated the same as the corresponding `...zp` directive forms.
+
+## Relaxation of imported zero-page symbols
+
+When an imported symbol is declared as zero-page, the assembler may relax legal absolute-family instructions to zero-page-family encodings even though the symbol is unresolved in the current file.
+
+Example:
+
+```asm
+.import tableptr : zp
+
+   LDA tableptr
+```
+
+This may be emitted as a zero-page load in the final assembled instruction stream.
+
+## `.proc` and `.endproc`
+
+`.proc name` defines `name` at the current location and also opens a scope for local labels until the matching `.endproc`.
+
+```asm
+.proc foo
+   LDA #0
+.endproc
+```
+
+In object mode, `.proc` and `.endproc` do not create special object-file records on their own. They affect symbol definition and local-label scoping.
+
+---
+
 # Supported 6502 Opcode Coverage
 
 The assembler currently has opcode table coverage for these standard documented 6502 opcodes:
@@ -1639,12 +1765,12 @@ Segments are currently **assembler-placed**, not linker-placed.
 
 That means:
 
-- segment bases are resolved during assembly
-- output is still final absolute Intel HEX
-- there is no relocatable object format
-- there are no fixups or external relocation records
+- in Intel HEX mode, segment bases are resolved during assembly
+- in o65 mode, only the classic o65 segments are meaningful to the object writer: `TEXT`, `DATA`, `BSS`, and `ZEROPAGE`
+- `.segmentdef` is ignored in o65 mode, because final placement belongs to the linker
+- `.org` in o65 mode changes only the relative offset within the current segment and does not record an absolute placement
 
-So segment support is real and useful, but it is still **final-assembly segment layout**, not full linker semantics.
+So segment support is still useful in both modes, but only the final-assembly path treats segments as fully placed absolute regions.
 
 ---
 
@@ -1652,8 +1778,8 @@ So segment support is real and useful, but it is still **final-assembly segment 
 
 The assembler does **not** currently document support for:
 
-- relocatable object output
-- linker/fixups
+- ELF or other object formats besides o65
+- fully general linker semantics
 - `.equ` alias syntax
 - `.set`
 - conditional assembly
@@ -1666,6 +1792,21 @@ The assembler does **not** currently document support for:
 - typo suggestions for undefined symbols
 - map file output
 - binary output file directly
+
+
+## Current o65 Limitations
+
+The o65 writer is intentionally a practical subset, not a complete general-purpose linker front end. Current important limits are:
+
+- supported object segments are limited to `TEXT`, `DATA`, `BSS`, and `ZEROPAGE`
+- relocation support is limited to the common 6502 low-byte, high-byte, and 16-bit word cases
+- branch targets are not emitted as relocatable fixups
+- expressions with more than one relocatable term are rejected
+- relocation arithmetic such as multiplying or dividing relocatable values is rejected
+- `.segmentdef` is ignored in o65 mode and produces a warning
+- `.org` in o65 mode produces a warning because it affects only the segment-relative offset
+
+The intent is to support ordinary 6502 relocatable code and data cleanly, not to pretend every imaginable linker expression is safe or portable.
 
 ---
 
