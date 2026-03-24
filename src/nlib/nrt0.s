@@ -1,194 +1,153 @@
 ; nrt0.s
 
-.segmentdef "VECTORS", $FFFA, 6
-.segmentdef "CODE", $8000, $8000
-.segmentdef "DATA_LOAD", $8000 + CODE_SIZE, CODE_CAPACITY - CODE_SIZE
-.segmentdef "ZP", $0000, $0100
-.segmentdef "STACK", $0100, $0100
-.segmentdef "DATA_RUN", $0200, $0D00
-.segmentdef "ARGSTACK", $1000, $1000
-.segmentdef "BSS", $2000, $1000
+.global __reset
+.global __nmi
+.global __irqbrk
 
-.global nrt0_reset
-.export nrt0_reset
-.export startup_segment_address
+.export __reset
+.export __nmi
+.export __irqbrk
+
 .import _main
 .import _handle_irq
 .import _handle_nmi
 
-;.import DATA_LOAD_BASE, DATA_RUN_BASE, DATA_LOAD_SIZE
-;.import BSS_BASE, BSS_SIZE
-;.import ARGSTACK_BASE
+.import __data_load_start
+.import __data_run_start
+.import __data_size
+.import __bss_start
+.import __bss_size
 
 .include "nlib.inc"
 
 .segment "CODE"
-startup_segment_address: ; do not move, must come first !!!
-nrt0_reset:
-    ; set interrupt disable flag (disable IRQs)
-    sei
+
+__reset:
+   sei
+   cld
+
+   ; hardware stack at $01FF downward
+   ldx #$ff
+   txs
+
+   ; ptr0 = __data_load_start
+   lda #<__data_load_start
+   sta ptr0
+   lda #>__data_load_start
+   sta ptr0+1
+
+   ; ptr1 = __data_run_start
+   lda #<__data_run_start
+   sta ptr1
+   lda #>__data_run_start
+   sta ptr1+1
+
+   ; ptr2 = __data_size
+   lda #<__data_size
+   sta ptr2
+   lda #>__data_size
+   sta ptr2+1
+
+_copy_data:
+   lda ptr2
+   ora ptr2+1
+   beq _clear_bss_setup
+
+   ldy #0
+   lda (ptr0),y
+   sta (ptr1),y
+
+   inc ptr0
+   bne _copy_data_dst
+   inc ptr0+1
+
+_copy_data_dst:
+   inc ptr1
+   bne _copy_data_count
+   inc ptr1+1
+
+_copy_data_count:
+   lda ptr2
+   bne _copy_data_dec_lo
+   dec ptr2+1
+_copy_data_dec_lo:
+   dec ptr2
+   jmp _copy_data
+
+_clear_bss_setup:
+   ; ptr1 = __bss_start
+   lda #<__bss_start
+   sta ptr1
+   lda #>__bss_start
+   sta ptr1+1
+
+   ; ptr2 = __bss_size
+   lda #<__bss_size
+   sta ptr2
+   lda #>__bss_size
+   sta ptr2+1
+
+_clear_bss:
+   lda ptr2
+   ora ptr2+1
+   beq _start_main
+
+   ldy #0
+   lda #0
+   sta (ptr1),y
+
+   inc ptr1
+   bne _clear_bss_count
+   inc ptr1+1
+
+_clear_bss_count:
+   lda ptr2
+   bne _clear_bss_dec_lo
+   dec ptr2+1
+_clear_bss_dec_lo:
+   dec ptr2
+   jmp _clear_bss
+
+_start_main:
+   ; argument stack pointer
+   ldx #$00
+   stx sp
+   ldx #$10
+   stx sp+1
+
+   jsr _main
+
+_forever:
+   jmp _forever
 
 
-    ; clear decimal mode (ensure binary mode math)
-    cld
+__nmi:
+   php
+   pha
+   txa
+   pha
+   tya
+   pha
 
+   jsr _handle_nmi
 
-    ; hardware stack starts at $01FF and grows down
-    ldx #$FF
-    txs
+   jmp __nmi_irqbrk_common
 
+__irqbrk:
+   php
+   pha
+   txa
+   pha
+   tya
+   pha
 
-    ; copy the DATA segment to RAM
-    lda #<DATA_LOAD_SIZE
-    bne _copy_data_hi
-    lda #>DATA_LOAD_SIZE
-    beq _copy_data_fini
+   jsr _handle_irq
 
-_copy_data_hi:
-    lda #<DATA_LOAD_BASE
-    sta ptr0
-    lda #>DATA_LOAD_BASE
-    sta ptr0+1
-
-    lda #<DATA_RUN_BASE
-    sta ptr1
-    lda #>DATA_RUN_BASE
-    sta ptr1+1
-
-    ldy #0
-    ldx #>DATA_LOAD_SIZE
-    beq _copy_data_lo
-
-_copy_data_hi_loop:
-    lda (ptr0),y
-    sta (ptr1),y
-    iny
-    bne _copy_data_hi_loop
-    inc ptr0+1
-    inc ptr1+1
-    dex
-    bne _copy_data_hi_loop
-
-_copy_data_lo:
-    ldy #0
-    ldx #<DATA_LOAD_SIZE
-    beq _copy_data_fini
-
-_copy_data_lo_loop:
-    lda (ptr0),y
-    sta (ptr1),y
-    iny
-    dex
-    bne _copy_data_lo_loop
-
-_copy_data_fini:
-
-
-    ; clear the BSS segment
-    lda #<BSS_SIZE
-    bne _clear_bss_hi
-    lda #>BSS_SIZE
-    beq _clear_bss_fini
-
-_clear_bss_hi:
-    lda #<BSS_BASE
-    sta ptr1
-    lda #>BSS_BASE
-    sta ptr1+1
-
-    lda #0
-    ldy #0
-    ldx #>BSS_SIZE
-    beq _clear_bss_lo
-
-_clear_bss_hi_loop:
-    sta (ptr1),y
-    iny
-    bne _clear_bss_hi_loop
-    inc ptr1+1
-    dex
-    bne _clear_bss_hi_loop
-
-_clear_bss_lo:
-    ldy #0
-    ldx #<BSS_SIZE
-    beq _clear_bss_fini
-
-_clear_bss_lo_loop:
-    sta (ptr1),y
-    iny
-    dex
-    bne _clear_bss_lo_loop
-
-_clear_bss_fini:
-
-
-    ; set up argument stack pointer
-    ldx #<ARGSTACK_BASE
-    stx sp
-    ldx #>ARGSTACK_BASE
-    stx sp+1
-
-
-    ; init nlib dynamic memory
-    lda #0
-    sta startup_segment_address-2
-    sta startup_segment_address-1
-    lda #<(startup_segment_address-4)
-    sta startup_segment_address-4
-    lda #>(startup_segment_address-4)
-    sta startup_segment_address-3
-
-
-    ; jump to main program
-    jsr _main
-
-loop:
-    jmp loop
-
-nrt0_nmi:
-    ; push PAXY
-    php
-    pha
-    txa
-    pha
-    tya
-    pha
-
-    ; call the handler
-    jsr _handle_nmi
-
-    ; pop YXAP
-    pla
-    tay
-    pla
-    tax
-    pla
-    plp
-    rti
-
-nrt0_irq:
-    ; push PAXY
-    php
-    pha
-    txa
-    pha
-    tya
-    pha
-
-    ; call the handler
-    jsr _handle_irq
-
-    ; pop YXAP
-    pla
-    tay
-    pla
-    tax
-    pla
-    plp
-    rti
-
-.segment "VECTORS"
-.word nrt0_nmi   ; @ $fffa - $fffb
-.word nrt0_reset ; @ $fffc - $fffd
-.word nrt0_irq   ; @ $fffe - $ffff
+__nmi_irqbrk_common:
+   pla
+   tay
+   pla
+   tax
+   pla
+   plp
+   rti
