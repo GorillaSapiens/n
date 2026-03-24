@@ -33,12 +33,50 @@ Examples:
   - `__nmi`
   - `__reset`
   - `__irqbrk`
+- generates linker-defined startup symbols for initialized data and BSS
 - optionally writes a map file
 
 Vector order is the normal 6502 order:
 - `$FFFA/$FFFB` ... NMI
 - `$FFFC/$FFFD` ... RESET
 - `$FFFE/$FFFF` ... IRQ/BRK
+
+## Linker-generated symbols
+
+`nl` now generates these absolute symbols automatically:
+
+- `__data_load_start`
+- `__data_load_end`
+- `__data_run_start`
+- `__data_run_end`
+- `__data_size`
+- `__bss_start`
+- `__bss_end`
+- `__bss_size`
+
+These are intended for startup code.
+
+Typical usage:
+- copy initialized writable data from ROM at `__data_load_start` to RAM at `__data_run_start`
+- copy `__data_size` bytes
+- zero BSS starting at `__bss_start`
+- zero `__bss_size` bytes
+
+Conceptually:
+
+```asm
+; copy DATA from ROM load address to RAM run address
+src = __data_load_start
+src_end = __data_load_end
+
+dst = __data_run_start
+
+; zero BSS
+bss = __bss_start
+bss_end = __bss_end
+```
+
+If there is no initialized DATA or no BSS, the corresponding size symbol will be zero.
 
 ## Default memory layout
 
@@ -84,6 +122,14 @@ For the current object format subset, `nl` maps o65 segments like this:
 - o65 `ZP` -> linker `ZEROPAGE`
 
 `DATA` bytes are stored in ROM in the output image, but symbols and relocations referring to `DATA` use the RAM run address.
+
+## Map file
+
+When you request a map file, `nl` writes:
+- memory regions
+- object placement
+- linker-generated symbols
+- all resolved global symbols
 
 ## Supported o65 subset
 

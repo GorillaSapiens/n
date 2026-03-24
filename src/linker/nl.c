@@ -129,6 +129,12 @@ typedef struct {
    uint16_t data_run_end;
    uint16_t bss_run_end;
    uint16_t zp_run_end;
+   uint16_t data_load_start;
+   uint16_t data_load_size;
+   uint16_t data_run_start;
+   uint16_t data_run_size;
+   uint16_t bss_start;
+   uint16_t bss_size;
    global_symbol_t *globals;
    size_t global_count;
 } layout_t;
@@ -901,6 +907,19 @@ static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_
    layout->global_count++;
 }
 
+static void add_generated_symbols(layout_t *layout)
+{
+   add_global(layout, "__data_load_start", layout->data_load_start, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__data_load_end", (uint16_t)(layout->data_load_start + layout->data_load_size), O65_SEG_ABS, "<linker>");
+   add_global(layout, "__data_run_start", layout->data_run_start, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__data_run_end", (uint16_t)(layout->data_run_start + layout->data_run_size), O65_SEG_ABS, "<linker>");
+   add_global(layout, "__data_size", layout->data_run_size, O65_SEG_ABS, "<linker>");
+
+   add_global(layout, "__bss_start", layout->bss_start, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__bss_end", (uint16_t)(layout->bss_start + layout->bss_size), O65_SEG_ABS, "<linker>");
+   add_global(layout, "__bss_size", layout->bss_size, O65_SEG_ABS, "<linker>");
+}
+
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
 {
    size_t i;
@@ -941,6 +960,12 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    layout->bss_run_end = (uint16_t)(bss_run_mem->start + bss_run_mem->size);
    layout->zp_run_cur = zp_run_mem->start;
    layout->zp_run_end = (uint16_t)(zp_run_mem->start + zp_run_mem->size);
+   layout->data_load_start = 0;
+   layout->data_load_size = 0;
+   layout->data_run_start = layout->data_run_cur;
+   layout->data_run_size = 0;
+   layout->bss_start = layout->bss_run_cur;
+   layout->bss_size = 0;
 
    for (i = 0; i < in->object_count; ++i) {
       object_file_t *obj = &in->objects[i];
@@ -964,6 +989,7 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
          exit(1);
       }
       layout->data_run_cur = (uint16_t)(layout->data_run_cur + obj->data.length);
+      layout->data_run_size = (uint16_t)(layout->data_run_size + obj->data.length);
 
       if (layout->bss_run_cur < layout->data_run_cur)
          layout->bss_run_cur = layout->data_run_cur;
@@ -974,6 +1000,7 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
          exit(1);
       }
       layout->bss_run_cur = (uint16_t)(layout->bss_run_cur + obj->blen);
+      layout->bss_size = (uint16_t)(layout->bss_size + obj->blen);
 
       obj->place_zp_run = layout->zp_run_cur;
       if ((uint32_t)obj->place_zp_run + obj->zlen > layout->zp_run_end) {
@@ -995,6 +1022,8 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
          add_global(layout, obj->exports[j].name, addr, obj->exports[j].segid, obj->origin);
       }
    }
+
+   add_generated_symbols(layout);
 }
 
 static void patch_u8(uint8_t *buf, size_t len, uint32_t off, uint8_t v, const char *origin)
