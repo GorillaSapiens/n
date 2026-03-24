@@ -18,6 +18,7 @@ SRCSRC = \
    ihex.c \
    ir.c \
    listing.c \
+   o65.c \
    opcode.c \
    source_loader.c \
    symtab.c \
@@ -46,8 +47,10 @@ parser.tab.c parser.tab.h: parser.y
 lex.yy.c: lexer.l
 	$(LEX) lexer.l
 
-clean:
+tidy:
 	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d
+	
+clean: tidy
 	rm -f $(GENSRC) $(GENHDR) parser.output
 
 -include $(DEP)
