@@ -201,6 +201,15 @@ static void *xmalloc(size_t size)
    return p;
 }
 
+static char *make_weak_name(const char *name)
+{
+   size_t n = strlen(name);
+   char *out = (char *)xmalloc(n + 8);
+   memcpy(out, "__weak_", 7);
+   memcpy(out + 7, name, n + 1);
+   return out;
+}
+
 static void *xcalloc(size_t count, size_t size)
 {
    void *p = calloc(count ? count : 1, size ? size : 1);
@@ -810,6 +819,14 @@ static int object_exports_symbol(const object_file_t *obj, const char *name)
    return 0;
 }
 
+static int object_exports_symbol_or_weak(const object_file_t *obj, const char *name)
+{
+   char *weak = make_weak_name(name);
+   int found = object_exports_symbol(obj, name) || object_exports_symbol(obj, weak);
+   free(weak);
+   return found;
+}
+
 static int symbol_in_list(char **items, size_t count, const char *name)
 {
    size_t i;
@@ -839,7 +856,7 @@ static void collect_unresolved(object_file_t *objs, size_t obj_count, char ***ou
          size_t k;
          int found = 0;
          for (k = 0; k < obj_count; ++k) {
-            if (object_exports_symbol(&objs[k], name)) {
+            if (object_exports_symbol_or_weak(&objs[k], name)) {
                found = 1;
                break;
             }
@@ -870,7 +887,7 @@ static void select_archive_members(input_set_t *in)
             if (mem->selected)
                continue;
             for (u = 0; u < unres_count; ++u) {
-               if (object_exports_symbol(&mem->obj, unres[u])) {
+               if (object_exports_symbol_or_weak(&mem->obj, unres[u])) {
                   mem->selected = 1;
                   in->objects = (object_file_t *)xrealloc(in->objects,
                      (in->object_count + 1) * sizeof(*in->objects));
@@ -923,10 +940,23 @@ static void add_generated_symbols(layout_t *layout)
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
 {
    size_t i;
+   char *weak;
+
    for (i = 0; i < layout->global_count; ++i) {
       if (strcmp(layout->globals[i].name, name) == 0)
          return layout->globals[i].addr;
    }
+
+   weak = make_weak_name(name);
+   for (i = 0; i < layout->global_count; ++i) {
+      if (strcmp(layout->globals[i].name, weak) == 0) {
+         uint16_t addr = layout->globals[i].addr;
+         free(weak);
+         return addr;
+      }
+   }
+   free(weak);
+
    fprintf(stderr, "nl: unresolved symbol '%s'\n", name);
    exit(1);
 }

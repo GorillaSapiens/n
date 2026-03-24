@@ -232,6 +232,19 @@ static o65_undef_t *find_undef(o65_writer_t *wr, const char *name)
    }
    return NULL;
 }
+static char *make_weak_export_name(const char *name)
+{
+   size_t n = strlen(name);
+   char *out = (char *)malloc(n + 8);
+   if (!out) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+   memcpy(out, "__weak_", 7);
+   memcpy(out + 7, name, n + 1);
+   return out;
+}
+
 static o65_export_t *find_export(o65_writer_t *wr, const char *name)
 {
    o65_export_t *e;
@@ -527,20 +540,26 @@ static void add_exports(o65_writer_t *wr)
          if (!node->expr || node->expr->kind != EXPR_IDENT)
             continue;
 
+         char *export_name;
+
          name = node->expr->u.ident;
          sym = symtab_find_const(&wr->ctx->symbols, name);
          if (!sym || !sym->defined)
             continue;
 
-         if (find_export(wr, name))
+         export_name = asm_symbol_is_weak(wr->ctx, name) ? make_weak_export_name(name) : xstrdup(name);
+
+         if (find_export(wr, export_name)) {
+            free(export_name);
             continue;
+         }
 
          ex = (o65_export_t *)calloc(1, sizeof(*ex));
          if (!ex) {
             fprintf(stderr, "out of memory\n");
             exit(1);
          }
-         ex->name = xstrdup(name);
+         ex->name = export_name;
          ex->value = (unsigned short)(sym->value & 0xFFFF);
          ex->segid = (unsigned char)sym->segment_id;
          if (directive_name_implies_zp(stmt->u.dir->name) && ex->segid == O65_SEG_ABS)
@@ -580,7 +599,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
              !strcmp(stmt->u.dir->name, ".segmentdef") || !strcmp(stmt->u.dir->name, ".global") ||
              !strcmp(stmt->u.dir->name, ".export") || !strcmp(stmt->u.dir->name, ".import") ||
              !strcmp(stmt->u.dir->name, ".globalzp") || !strcmp(stmt->u.dir->name, ".exportzp") ||
-             !strcmp(stmt->u.dir->name, ".importzp") || !strcmp(stmt->u.dir->name, ".proc") ||
+             !strcmp(stmt->u.dir->name, ".importzp") || !strcmp(stmt->u.dir->name, ".weak") || !strcmp(stmt->u.dir->name, ".proc") ||
              !strcmp(stmt->u.dir->name, ".endproc"))
             return 1;
 

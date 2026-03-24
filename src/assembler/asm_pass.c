@@ -177,6 +177,63 @@ static int import_is_zp(const asm_context_t *ctx, const char *name)
    return p ? p->addr_size_zp : 0;
 }
 
+static void free_weaks(weak_name_t *head)
+{
+   weak_name_t *p;
+   weak_name_t *next;
+
+   for (p = head; p; p = next) {
+      next = p->next;
+      free(p->name);
+      free(p);
+   }
+}
+
+static weak_name_t *find_weak(asm_context_t *ctx, const char *name)
+{
+   weak_name_t *p;
+
+   for (p = ctx->weaks; p; p = p->next) {
+      if (!strcmp(p->name, name))
+         return p;
+   }
+
+   return NULL;
+}
+
+void asm_add_weak(asm_context_t *ctx, const stmt_t *stmt, const char *name)
+{
+   weak_name_t *p;
+
+   p = find_weak(ctx, name);
+   if (p)
+      return;
+
+   p = (weak_name_t *)calloc(1, sizeof(*p));
+   if (!p) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   p->name = xstrdup(name);
+   p->file = stmt->file;
+   p->line = stmt->line;
+   p->next = ctx->weaks;
+   ctx->weaks = p;
+}
+
+int asm_symbol_is_weak(const asm_context_t *ctx, const char *name)
+{
+   const weak_name_t *p;
+
+   for (p = ctx->weaks; p; p = p->next) {
+      if (!strcmp(p->name, name))
+         return 1;
+   }
+
+   return 0;
+}
+
 static int directive_name_implies_zp(const char *name)
 {
    return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp"));
@@ -1008,6 +1065,7 @@ void asm_context_free(asm_context_t *ctx)
 {
    symtab_free(&ctx->symbols);
    free_imports(ctx->imports);
+   free_weaks(ctx->weaks);
    ctx->imports = NULL;
    free_segments(ctx->segments);
    ctx->segments = NULL;
@@ -1057,11 +1115,30 @@ static void gather_imports(asm_context_t *ctx)
    const expr_list_node_t *node;
 
    free_imports(ctx->imports);
+   free_weaks(ctx->weaks);
    ctx->imports = NULL;
+   ctx->weaks = NULL;
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       if (stmt->kind != STMT_DIR)
          continue;
+
+      if (!strcmp(stmt->u.dir->name, ".weak")) {
+         for (node = stmt->u.dir->exprs; node; node = node->next) {
+            const char *name;
+            if (!directive_expr_is_ident(node->expr, &name)) {
+               asm_error(ctx, stmt, ".weak expects identifier names");
+               continue;
+            }
+            if (is_local_name(name)) {
+               asm_error(ctx, stmt, ".weak does not allow local labels");
+               continue;
+            }
+            asm_add_weak(ctx, stmt, name);
+         }
+         continue;
+      }
+
       if (!directive_is_import_family(stmt->u.dir->name))
          continue;
 
@@ -1228,6 +1305,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
                 !strcmp(stmt->u.dir->name, ".globalzp") ||
                 !strcmp(stmt->u.dir->name, ".exportzp") ||
                 !strcmp(stmt->u.dir->name, ".importzp") ||
+                !strcmp(stmt->u.dir->name, ".weak") ||
                 !strcmp(stmt->u.dir->name, ".proc") ||
                 !strcmp(stmt->u.dir->name, ".endproc")) {
                break;
@@ -1492,6 +1570,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
        !strcmp(dir->name, ".globalzp") ||
        !strcmp(dir->name, ".exportzp") ||
        !strcmp(dir->name, ".importzp") ||
+       !strcmp(dir->name, ".weak") ||
        !strcmp(dir->name, ".proc") ||
        !strcmp(dir->name, ".endproc")) {
       if (ctx->listing)

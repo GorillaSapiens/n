@@ -15,6 +15,13 @@ typedef struct import_name {
    struct import_name *next;
 } import_name_t;
 
+typedef struct weak_name {
+   char *name;
+   const char *file;
+   int line;
+   struct weak_name *next;
+} weak_name_t;
+
 typedef struct asm_segment {
    char *name;
    long base;
@@ -35,6 +42,7 @@ typedef struct asm_context {
    int error_count;
    int object_mode_o65;
    import_name_t *imports;
+   weak_name_t *weaks;
    asm_segment_t *segments;
 } asm_context_t;
 
@@ -48,3 +56,6 @@ int asm_pass2(asm_context_t *ctx);
 int asm_write_map_file(FILE *fp, const asm_context_t *ctx);
 
 #endif
+
+void asm_add_weak(asm_context_t *ctx, const stmt_t *stmt, const char *name);
+int asm_symbol_is_weak(const asm_context_t *ctx, const char *name);

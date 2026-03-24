@@ -1874,3 +1874,10 @@ That keeps the real assembler logic smaller and avoids stuffing Flex/Bison with 
 - treat `name = *` as “capture address now,” not “re-evaluate later”
 
 If you later add true `.equ`, map files, or anonymous labels, this document should be updated accordingly.
+
+
+## Weak symbols
+
+Use `.weak foo` to mark `foo` as a weak exported symbol.
+Within the source file the symbol is still written as `foo`, but when the symbol is exported to an o65 object file its external name becomes `__weak_foo`.
+The linker may use `__weak_foo` as a fallback definition for an unresolved `foo` when no strong `foo` is present.

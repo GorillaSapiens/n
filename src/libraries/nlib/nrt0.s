@@ -1,16 +1,10 @@
 ; nrt0.s
 
 .global __reset
-.global __nmi
-.global __irqbrk
 
 .export __reset
-.export __nmi
-.export __irqbrk
 
 .import _main
-.import _handle_irq
-.import _handle_nmi
 
 .import __data_load_start
 .import __data_run_start
@@ -120,34 +114,3 @@ _start_main:
 _forever:
    jmp _forever
 
-
-__nmi:
-   php
-   pha
-   txa
-   pha
-   tya
-   pha
-
-   jsr _handle_nmi
-
-   jmp __nmi_irqbrk_common
-
-__irqbrk:
-   php
-   pha
-   txa
-   pha
-   tya
-   pha
-
-   jsr _handle_irq
-
-__nmi_irqbrk_common:
-   pla
-   tay
-   pla
-   tax
-   pla
-   plp
-   rti
