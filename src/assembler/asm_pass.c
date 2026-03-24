@@ -1,12 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdarg.h>
 #include "asm_pass.h"
 #include "opcode.h"
 #include "util.h"
 
 #define DEFAULT_SEGMENT_NAME "__default__"
+#define O65_SEG_UNDEF 0
+#define O65_SEG_ABS   1
+#define O65_SEG_TEXT  2
+#define O65_SEG_DATA  3
+#define O65_SEG_BSS   4
+#define O65_SEG_ZP    5
 
 static void print_loc(FILE *fp, const stmt_t *stmt)
 {
@@ -172,6 +179,19 @@ static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name)
    ctx->imports = p;
 }
 
+static int segment_name_to_o65(const char *name)
+{
+   if (!name || !strcasecmp(name, DEFAULT_SEGMENT_NAME) || !strcasecmp(name, "TEXT") || !strcasecmp(name, "CODE"))
+      return O65_SEG_TEXT;
+   if (!strcasecmp(name, "DATA"))
+      return O65_SEG_DATA;
+   if (!strcasecmp(name, "BSS"))
+      return O65_SEG_BSS;
+   if (!strcasecmp(name, "ZP") || !strcasecmp(name, "ZEROPAGE") || !strcasecmp(name, "ZERO"))
+      return O65_SEG_ZP;
+   return O65_SEG_TEXT;
+}
+
 static asm_segment_t *segment_find(asm_context_t *ctx, const char *name)
 {
    asm_segment_t *seg;
@@ -305,6 +325,21 @@ static int directive_expr_is_ident(const expr_t *expr, const char **name_out)
    return 1;
 }
 
+static const char *proc_decl_name(const stmt_t *stmt)
+{
+   const char *name;
+
+   if (!stmt || stmt->kind != STMT_DIR || !stmt->u.dir)
+      return NULL;
+   if (strcmp(stmt->u.dir->name, ".proc"))
+      return NULL;
+   if (!stmt->u.dir->exprs || stmt->u.dir->exprs->next)
+      return NULL;
+   if (!directive_expr_is_ident(stmt->u.dir->exprs->expr, &name))
+      return NULL;
+   return name;
+}
+
 static int is_exported_name(const program_ir_t *prog, const char *file, const char *name)
 {
    const stmt_t *stmt;
@@ -377,12 +412,21 @@ static void assign_segments(program_ir_t *prog)
 
 static void assign_scopes(program_ir_t *prog)
 {
+   typedef struct scope_stack {
+      char *name;
+      struct scope_stack *next;
+   } scope_stack_t;
+
    stmt_t *stmt;
    char *current_scope;
+   scope_stack_t *proc_stack;
 
    current_scope = xstrdup("__root__");
+   proc_stack = NULL;
 
    for (stmt = prog->head; stmt; stmt = stmt->next) {
+      const char *proc_name;
+
       free(stmt->scope);
       stmt->scope = xstrdup(current_scope);
 
@@ -396,7 +440,10 @@ static void assign_scopes(program_ir_t *prog)
          free(stmt->scope);
          stmt->scope = xstrdup(current_scope);
          free(owned);
-      } else if (stmt->label && is_global_label_name(stmt->label)) {
+         continue;
+      }
+
+      if (stmt->label && is_global_label_name(stmt->label)) {
          char *owned;
          const char *name_key;
 
@@ -406,9 +453,50 @@ static void assign_scopes(program_ir_t *prog)
          free(stmt->scope);
          stmt->scope = xstrdup(current_scope);
          free(owned);
+         continue;
+      }
+
+      proc_name = proc_decl_name(stmt);
+      if (proc_name) {
+         scope_stack_t *frame;
+         char *owned;
+         const char *name_key;
+
+         frame = (scope_stack_t *)calloc(1, sizeof(*frame));
+         if (!frame) {
+            fprintf(stderr, "out of memory\n");
+            exit(1);
+         }
+         frame->name = current_scope;
+         frame->next = proc_stack;
+         proc_stack = frame;
+
+         name_key = symbol_storage_name(prog, stmt, proc_name, &owned);
+         current_scope = xstrdup(name_key);
+         free(owned);
+         continue;
+      }
+
+      if (stmt->kind == STMT_DIR && stmt->u.dir && !strcmp(stmt->u.dir->name, ".endproc")) {
+         if (proc_stack) {
+            scope_stack_t *frame = proc_stack;
+            free(current_scope);
+            current_scope = frame->name;
+            proc_stack = frame->next;
+            free(frame);
+         } else {
+            free(current_scope);
+            current_scope = xstrdup("__root__");
+         }
       }
    }
 
+   while (proc_stack) {
+      scope_stack_t *frame = proc_stack->next;
+      free(proc_stack->name);
+      free(proc_stack);
+      proc_stack = frame;
+   }
    free(current_scope);
 }
 
@@ -433,7 +521,7 @@ static void define_or_update_abs_symbol(symtab_t *tab, const char *name, long va
       sym = symtab_declare(tab, name, "<segments>", 0);
 
    if (sym)
-      symtab_set_value(sym, value);
+      symtab_set_value_segment(sym, value, O65_SEG_ABS);
 }
 
 static void publish_segment_symbols(asm_context_t *ctx)
@@ -840,7 +928,7 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
           phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, ctx->error_count);
 }
 
-void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing)
+void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65)
 {
    stmt_t *stmt;
    const char *why;
@@ -851,6 +939,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    ihex_image_init(&ctx->image);
    ctx->listing = listing;
    ctx->error_count = 0;
+   ctx->object_mode_o65 = object_mode_o65;
    ctx->imports = NULL;
    ctx->segments = NULL;
 
@@ -958,6 +1047,9 @@ static void validate_imports(asm_context_t *ctx)
    import_name_t *p;
    const symbol_t *sym;
 
+   if (ctx->object_mode_o65)
+      return;
+
    for (p = ctx->imports; p; p = p->next) {
       sym = symtab_find_const(&ctx->symbols, p->name);
       if (!sym || !sym->defined) {
@@ -994,7 +1086,7 @@ static int resolve_constants(asm_context_t *ctx)
 
          if (!sym->defined || sym->value != value) {
             mut = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->u.cnst.name);
-            symtab_set_value(mut, value);
+            symtab_set_value_segment(mut, value, O65_SEG_ABS);
             changed = 1;
          }
       }
@@ -1028,8 +1120,21 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    gather_imports(ctx);
    reset_segment_pcs(ctx);
    publish_segment_symbols(ctx);
-   gather_segment_defs(ctx);
-   validate_segment_defs(ctx);
+   if (ctx->object_mode_o65) {
+      stmt_t *wstmt;
+      for (wstmt = ctx->prog->head; wstmt; wstmt = wstmt->next) {
+         if (wstmt->kind != STMT_DIR || !wstmt->u.dir)
+            continue;
+         if (!strcmp(wstmt->u.dir->name, ".segmentdef")) {
+            asm_warning(wstmt, ".segmentdef is ignored when writing o65 object files");
+         } else if (!strcmp(wstmt->u.dir->name, ".org")) {
+            asm_warning(wstmt, ".org in o65 object mode changes the relative offset within the segment; no absolute placement is recorded");
+         }
+      }
+   } else {
+      gather_segment_defs(ctx);
+      validate_segment_defs(ctx);
+   }
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       asm_segment_t *seg;
@@ -1048,7 +1153,17 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
       if (stmt->label) {
          if (declare_symbol_or_report(ctx, stmt->label, stmt)) {
             sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->label);
-            symtab_set_value(sym, pc_abs);
+            symtab_set_value_segment(sym, pc_abs, segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME));
+         }
+      }
+
+      if (stmt->kind == STMT_DIR && stmt->u.dir && !strcmp(stmt->u.dir->name, ".proc")) {
+         const char *proc_name = proc_decl_name(stmt);
+         if (!proc_name) {
+            asm_error(ctx, stmt, ".proc expects exactly one identifier name");
+         } else if (declare_symbol_or_report(ctx, proc_name, stmt)) {
+            sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, proc_name);
+            symtab_set_value_segment(sym, pc_abs, segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME));
          }
       }
 
@@ -1069,7 +1184,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
                 !strcmp(stmt->u.dir->name, ".segmentdef") ||
                 !strcmp(stmt->u.dir->name, ".global") ||
                 !strcmp(stmt->u.dir->name, ".export") ||
-                !strcmp(stmt->u.dir->name, ".import")) {
+                !strcmp(stmt->u.dir->name, ".import") ||
+                !strcmp(stmt->u.dir->name, ".proc") ||
+                !strcmp(stmt->u.dir->name, ".endproc")) {
                break;
             }
 
@@ -1318,7 +1435,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
        !strcmp(dir->name, ".segmentdef") ||
        !strcmp(dir->name, ".global") ||
        !strcmp(dir->name, ".export") ||
-       !strcmp(dir->name, ".import")) {
+       !strcmp(dir->name, ".import") ||
+       !strcmp(dir->name, ".proc") ||
+       !strcmp(dir->name, ".endproc")) {
       if (ctx->listing)
          listing_write_no_bytes(ctx->listing, stmt);
       return 0;

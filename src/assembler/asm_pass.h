@@ -32,11 +32,12 @@ typedef struct asm_context {
    ihex_image_t image;
    listing_writer_t *listing;
    int error_count;
+   int object_mode_o65;
    import_name_t *imports;
    asm_segment_t *segments;
 } asm_context_t;
 
-void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing);
+void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65);
 void asm_context_free(asm_context_t *ctx);
 
 int asm_relax(asm_context_t *ctx);

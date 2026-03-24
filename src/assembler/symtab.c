@@ -69,6 +69,7 @@ symbol_t *symtab_declare(symtab_t *tab,
 
    sym->name = xstrdup(name);
    sym->defined = 0;
+   sym->segment_id = 1;
    sym->def_file = xstrdup(def_file ? def_file : "<input>");
    sym->def_line = def_line;
    sym->next = tab->head;
@@ -78,11 +79,17 @@ symbol_t *symtab_declare(symtab_t *tab,
 
 void symtab_set_value(symbol_t *sym, long value)
 {
+   symtab_set_value_segment(sym, value, 1);
+}
+
+void symtab_set_value_segment(symbol_t *sym, long value, int segment_id)
+{
    if (!sym)
       return;
 
    sym->value = value;
    sym->defined = 1;
+   sym->segment_id = segment_id;
 }
 
 symbol_t *symtab_reference(symtab_t *tab, const char *name)
@@ -101,6 +108,7 @@ symbol_t *symtab_reference(symtab_t *tab, const char *name)
 
    sym->name = xstrdup(name);
    sym->defined = 0;
+   sym->segment_id = 1;
    sym->def_file = NULL;
    sym->def_line = 0;
    sym->next = tab->head;

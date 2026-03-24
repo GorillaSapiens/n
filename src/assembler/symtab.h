@@ -5,6 +5,7 @@ typedef struct symbol {
    char *name;
    long value;
    int defined;
+   int segment_id;
    char *def_file;
    int def_line;
    struct symbol *next;
@@ -33,6 +34,7 @@ symbol_t *symtab_declare(symtab_t *tab,
                          int def_line);
 
 void symtab_set_value(symbol_t *sym, long value);
+void symtab_set_value_segment(symbol_t *sym, long value, int segment_id);
 
 symbol_t *symtab_reference(symtab_t *tab, const char *name);
 

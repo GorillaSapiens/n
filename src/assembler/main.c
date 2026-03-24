@@ -9,6 +9,7 @@
 #include "ihex.h"
 #include "listing.h"
 #include "source_loader.h"
+#include "o65.h"
 #include "util.h"
 
 int yyparse(void);
@@ -22,26 +23,30 @@ typedef struct
    bool want_hex;
    bool want_lst;
    bool want_map;
+   bool want_o65;
 
    const char *hex_path_arg;
    const char *lst_path_arg;
    const char *map_path_arg;
+   const char *o65_path_arg;
 
    char *hex_path;
    char *lst_path;
    char *map_path;
+   char *o65_path;
 } options_t;
 
 static void usage(const char *argv0)
 {
    fprintf(stderr,
-      "usage: %s -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]]\n"
+      "usage: %s -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]\n"
       "\n"
       "options:\n"
       "   -i, --input <file>   input assembly source (required)\n"
       "       --hex[=file]    write Intel HEX output\n"
       "       --lst[=file]    write listing output\n"
       "       --map[=file]    write map output\n"
+      "       --o65[=file]    write relocatable o65 object output\n"
       "   -h, --help          show this help\n"
       "\n"
       "examples:\n"
@@ -113,6 +118,7 @@ static bool parse_args(int argc, char **argv, options_t *opt)
       { "hex",   optional_argument, NULL, 1000 },
       { "lst",   optional_argument, NULL, 1001 },
       { "map",   optional_argument, NULL, 1002 },
+      { "o65",   optional_argument, NULL, 1003 },
       { "help",  no_argument,       NULL, 'h' },
       { NULL,    0,                 NULL, 0 }
    };
@@ -142,6 +148,11 @@ static bool parse_args(int argc, char **argv, options_t *opt)
       case 1002:
          opt->want_map = true;
          opt->map_path_arg = optarg;
+         break;
+
+      case 1003:
+         opt->want_o65 = true;
+         opt->o65_path_arg = optarg;
          break;
 
       default:
@@ -183,6 +194,13 @@ static bool parse_args(int argc, char **argv, options_t *opt)
          opt->map_path = make_output_path(opt->input_path, "map");
    }
 
+   if (opt->want_o65) {
+      if (opt->o65_path_arg)
+         opt->o65_path = xstrdup(opt->o65_path_arg);
+      else
+         opt->o65_path = make_output_path(opt->input_path, "o65");
+   }
+
    return true;
 }
 
@@ -191,6 +209,7 @@ static void free_options(options_t *opt)
    free(opt->hex_path);
    free(opt->lst_path);
    free(opt->map_path);
+   free(opt->o65_path);
 }
 
 int main(int argc, char **argv)
@@ -200,6 +219,7 @@ int main(int argc, char **argv)
    listing_writer_t lst;
    FILE *hexfp = NULL;
    FILE *mapfp = NULL;
+   FILE *o65fp = NULL;
    bool lst_open = false;
    bool ctx_init = false;
    bool ir_init = false;
@@ -239,6 +259,14 @@ int main(int argc, char **argv)
       }
    }
 
+   if (opt.want_o65) {
+      o65fp = fopen(opt.o65_path, "wb");
+      if (!o65fp) {
+         perror(opt.o65_path);
+         goto cleanup;
+      }
+   }
+
    program_ir_init(&g_program);
    ir_init = true;
 
@@ -249,11 +277,20 @@ int main(int argc, char **argv)
    if (rc != 0)
       goto cleanup;
 
-   asm_context_init(&ctx, &g_program, lst_open ? &lst : NULL);
+   asm_context_init(&ctx, &g_program, lst_open ? &lst : NULL, opt.want_o65);
    ctx_init = true;
 
    asm_relax(&ctx);
-   asm_pass2(&ctx);
+
+   if (!opt.want_o65)
+      asm_pass2(&ctx);
+
+   if (ctx.error_count == 0 && o65fp) {
+      if (!o65_write_object_file(o65fp, &ctx)) {
+         rc = 1;
+         goto cleanup;
+      }
+   }
 
    if (mapfp) {
       if (!asm_write_map_file(mapfp, &ctx)) {
@@ -277,6 +314,8 @@ cleanup:
 
    if (mapfp)
       fclose(mapfp);
+   if (o65fp)
+      fclose(o65fp);
 
    if (lst_open)
       listing_close(&lst);
