@@ -32,6 +32,7 @@ Pair *typesizes = NULL;
 
 Set *globals = NULL;
 Set *functions = NULL;
+Set *runtime_imports = NULL;
 
 typedef struct ContextEntry {
    const ASTNode *type;
@@ -53,6 +54,16 @@ static int declarator_storage_size(const ASTNode *type, const ASTNode *declarato
 
 static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
+}
+
+static void remember_runtime_import(const char *name) {
+   if (!runtime_imports) {
+      runtime_imports = new_set();
+   }
+   if (!set_get(runtime_imports, name)) {
+      set_add(runtime_imports, strdup(name), (void *)1);
+      emit(&es_import, ".import _%s\n", name);
+   }
 }
 
 // for parameterless flags (e.g. "$signed")
@@ -737,8 +748,54 @@ static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntr
    return compile_expr_to_slot(expr, ctx, ret);
 }
 
-static void compile_local_decl_item(ASTNode *node, Context *ctx) {
+static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
+   ASTNode *type       = node->children[1];
+   ASTNode *declarator = node->children[2];
+   const char *name    = declarator->children[1]->strval;
+   ASTNode *expression = node->children[node->count - 1];
+   int size            = declarator_storage_size(type, declarator);
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+
+   if (entry != NULL) {
+      return;
+   }
+
+   if (has_modifier(modifiers, "static")) {
+      ctx_static(ctx, type, name, is_empty(expression));
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+   }
+   else if (has_modifier(modifiers, "quick")) {
+      ctx_quick(ctx, type, name, is_empty(expression));
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+   }
+   else {
+      ctx_push(ctx, type, name);
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+   }
+
+   if (entry != NULL) {
+      entry->size = size;
+   }
+}
+
+static void predeclare_statement_list(ASTNode *node, Context *ctx) {
+   if (!node || is_empty(node)) {
+      return;
+   }
+
+   for (int i = 0; i < node->count; i++) {
+      ASTNode *stmt = node->children[i];
+      if (!strcmp(stmt->name, "defdecl_stmt")) {
+         ASTNode *list = stmt->children[0];
+         for (int j = 0; j < list->count; j++) {
+            predeclare_local_decl_item(list->children[j], ctx);
+         }
+      }
+   }
+}
+
+static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *type       = node->children[1];
    ASTNode *declarator = node->children[2];
    const char *name    = declarator->children[1]->strval;
@@ -746,19 +803,12 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    int size            = declarator_storage_size(type, declarator);
    ContextEntry *entry;
 
-   if (has_modifier(modifiers, "static")) {
-      ctx_static(ctx, type, name, is_empty(expression));
+   entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry == NULL) {
+      predeclare_local_decl_item(node, ctx);
       entry = (ContextEntry *) set_get(ctx->vars, name);
-      entry->size = size;
    }
-   else if (has_modifier(modifiers, "quick")) {
-      ctx_quick(ctx, type, name, is_empty(expression));
-      entry = (ContextEntry *) set_get(ctx->vars, name);
-      entry->size = size;
-   }
-   else {
-      ctx_push(ctx, type, name);
-      entry = (ContextEntry *) set_get(ctx->vars, name);
+   if (entry != NULL) {
       entry->size = size;
    }
 
@@ -905,11 +955,21 @@ static void compile_function_decl(ASTNode *node) {
    ctx.vars = new_set();
    build_function_context(node, &ctx);
 
+   if (!is_empty(body) && !strcmp(body->name, "statement_list")) {
+      predeclare_statement_list(body, &ctx);
+   }
+
    emit(&es_code, ".proc _%s\n", name);
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
    emit(&es_code, "    lda sp\n");
    emit(&es_code, "    sta fp\n");
+   if (ctx.locals > 0) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+   }
 
    if (!is_empty(body)) {
       if (!strcmp(body->name, "statement_list")) {
@@ -921,6 +981,12 @@ static void compile_function_decl(ASTNode *node) {
    }
 
    emit(&es_code, "@fini:\n");
+   if (ctx.locals > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
    emit(&es_code, "    rts\n");
    emit(&es_code, ".endproc\n");
 }
