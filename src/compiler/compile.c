@@ -34,6 +34,9 @@ Set *globals = NULL;
 Set *functions = NULL;
 Set *runtime_imports = NULL;
 static int label_counter = 0;
+static const char *loop_break_stack[128];
+static const char *loop_continue_stack[128];
+static int loop_depth = 0;
 
 typedef struct ContextEntry {
    const ASTNode *type;
@@ -48,6 +51,8 @@ typedef struct Context {
    int locals;
    int params;
    Set *vars;
+   const char *break_label;
+   const char *continue_label;
 } Context;
 
 static void remember_function(const ASTNode *node, const char *name);
@@ -60,6 +65,8 @@ static const char *next_label(const char *prefix);
 static void compile_if_stmt(ASTNode *node, Context *ctx);
 static void compile_while_stmt(ASTNode *node, Context *ctx);
 static void compile_for_stmt(ASTNode *node, Context *ctx);
+static void compile_break_stmt(ASTNode *node, Context *ctx);
+static void compile_continue_stmt(ASTNode *node, Context *ctx);
 static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
@@ -86,6 +93,43 @@ static void remember_symbol_import(const char *name) {
       set_add(globals, strdup(name), (void *)1);
       emit(&es_import, ".import _%s\n", name);
    }
+}
+
+static void push_loop_labels(const char *break_label, const char *continue_label) {
+   if (loop_depth < (int)(sizeof(loop_break_stack) / sizeof(loop_break_stack[0]))) {
+      loop_break_stack[loop_depth] = break_label;
+      loop_continue_stack[loop_depth] = continue_label;
+      loop_depth++;
+   }
+}
+
+static void pop_loop_labels(void) {
+   if (loop_depth > 0) {
+      loop_depth--;
+      loop_break_stack[loop_depth] = NULL;
+      loop_continue_stack[loop_depth] = NULL;
+   }
+}
+
+static const char *current_break_label(void) {
+   return loop_depth > 0 ? loop_break_stack[loop_depth - 1] : NULL;
+}
+
+static const char *current_continue_label(void) {
+   return loop_depth > 0 ? loop_continue_stack[loop_depth - 1] : NULL;
+}
+
+static const char *type_name_from_node(const ASTNode *type) {
+   if (!type) {
+      return "int";
+   }
+   if (type->strval) {
+      return type->strval;
+   }
+   if (type->count > 0 && type->children[0] && type->children[0]->strval) {
+      return type->children[0]->strval;
+   }
+   return "int";
 }
 
 // for parameterless flags (e.g. "$signed")
@@ -641,7 +685,7 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
 }
 
 static int expr_byte_index(const ASTNode *type, int size, int i) {
-   if (has_flag(type->strval, "$endian:big")) {
+   if (has_flag(type_name_from_node(type), "$endian:big")) {
       return size - 1 - i;
    }
    return i;
@@ -798,7 +842,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       declarator = function_declarator_node(fn);
       if (known_ret) {
          ret_type = known_ret;
-         ret_size = get_size(ret_type->strval);
+         ret_size = get_size(type_name_from_node(ret_type));
       }
       if (declarator && declarator->count > 2) {
          params = declarator->children[2];
@@ -910,7 +954,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
    if (expr->kind == AST_INTEGER) {
       unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-      if (has_flag(dst->type->strval, "$endian:big")) {
+      if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
          make_be_int(expr->strval, bytes, dst->size);
       }
       else {
@@ -1031,7 +1075,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
       if (rhs && rhs->kind == AST_INTEGER) {
          unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-         if (has_flag(dst->type->strval, "$endian:big")) {
+         if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
             make_be_int(rhs->strval, bytes, dst->size);
          }
          else {
@@ -1086,6 +1130,18 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return get_typename_node("int");
    }
 
+   if (expr->kind == AST_INTEGER) {
+      return get_typename_node("int");
+   }
+
+   if (expr->kind == AST_FLOAT) {
+      return get_typename_node("float");
+   }
+
+   if (expr->kind == AST_STRING) {
+      return get_typename_node("*");
+   }
+
    if (expr->kind == AST_IDENTIFIER) {
       ContextEntry *entry = ctx_lookup(ctx, expr->strval);
       if (entry) {
@@ -1121,9 +1177,22 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    return get_typename_node("int");
 }
 
+static int type_size_from_node(const ASTNode *type) {
+   if (!type) {
+      return get_size("int");
+   }
+   if (type->strval) {
+      return get_size(type->strval);
+   }
+   if (type->count > 0 && type->children[0] && type->children[0]->strval) {
+      return get_size(type->children[0]->strval);
+   }
+   return get_size("int");
+}
+
 static int expr_value_size(ASTNode *expr, Context *ctx) {
    const ASTNode *type = expr_value_type(expr, ctx);
-   return type ? get_size(type->strval) : get_size("int");
+   return type_size_from_node(type);
 }
 
 static const char *next_label(const char *prefix) {
@@ -1192,7 +1261,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       compare_size = size * 2;
       lhs = (ContextEntry){ type, false, false, ctx->locals, size };
       rhs = (ContextEntry){ type, false, false, ctx->locals + size, size };
-      is_signed = type && has_flag(type->strval, "$signed");
+      is_signed = type && has_flag(type_name_from_node(type), "$signed");
 
       remember_runtime_import("pushN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
@@ -1326,9 +1395,11 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
       return;
    }
 
+   push_loop_labels(end_label, start_label);
    emit(&es_code, "%s:\n", start_label);
    if (!compile_condition_branch_false(cond, ctx, end_label)) {
       warning("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
+      pop_loop_labels();
       free((void *) start_label);
       free((void *) end_label);
       return;
@@ -1336,6 +1407,7 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    compile_statement_list(body, ctx);
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
+   pop_loop_labels();
    free((void *) start_label);
    free((void *) end_label);
 }
@@ -1357,6 +1429,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
       return;
    }
 
+   push_loop_labels(end_label, step_label);
    if (init && !is_empty(init)) {
       compile_expr(init, ctx);
    }
@@ -1365,6 +1438,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    if (cond && !is_empty(cond)) {
       if (!compile_condition_branch_false(cond, ctx, end_label)) {
          warning("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
+         pop_loop_labels();
          free((void *) start_label);
          free((void *) step_label);
          free((void *) end_label);
@@ -1378,6 +1452,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    }
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
+   pop_loop_labels();
    free((void *) start_label);
    free((void *) step_label);
    free((void *) end_label);
@@ -1385,6 +1460,36 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
 
 static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
    return compile_expr_to_slot(expr, ctx, ret);
+}
+
+static void compile_break_stmt(ASTNode *node, Context *ctx) {
+   const char *target = current_break_label();
+
+   if (!target) {
+      warning("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
+      return;
+   }
+   if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
+      warning("[%s:%d.%d] labeled break not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   emit(&es_code, "    jmp %s\n", target);
+}
+
+static void compile_continue_stmt(ASTNode *node, Context *ctx) {
+   const char *target = current_continue_label();
+
+   if (!target) {
+      warning("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
+      return;
+   }
+   if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
+      warning("[%s:%d.%d] labeled continue not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   emit(&es_code, "    jmp %s\n", target);
 }
 
 static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
@@ -1577,6 +1682,12 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       else if (!strcmp(stmt->name, "for_stmt")) {
          compile_for_stmt(stmt, ctx);
       }
+      else if (!strcmp(stmt->name, "break_stmt")) {
+         compile_break_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "continue_stmt")) {
+         compile_continue_stmt(stmt, ctx);
+      }
       else {
          warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }
@@ -1600,6 +1711,8 @@ static void compile_function_decl(ASTNode *node) {
    ctx.locals = 0;
    ctx.params = 0;
    ctx.vars = new_set();
+   ctx.break_label = NULL;
+   ctx.continue_label = NULL;
    build_function_context(node, &ctx);
 
    if (!is_empty(body) && !strcmp(body->name, "statement_list")) {
@@ -1839,7 +1952,7 @@ static void compile_global_decl_item(ASTNode *node) {
 
    if (expression->kind == AST_INTEGER) {
       unsigned char *bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
-      if (has_flag(type->strval, "$endian:big")) {
+      if (has_flag(type_name_from_node(type), "$endian:big")) {
          make_be_int(expression->strval, bytes, size);
       }
       else {
