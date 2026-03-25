@@ -49,6 +49,11 @@ typedef struct Context {
 } Context;
 
 static void remember_function(const ASTNode *node, const char *name);
+static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
+
+static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
+   return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
+}
 
 // for parameterless flags (e.g. "$signed")
 // also for complete flags (e.g. "$endian:little")
@@ -509,19 +514,27 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          const ASTNode *type = parameter_type(parameter);
          const char *name = parameter_name(parameter, i);
          const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+         const ASTNode *param_decl = parameter_declarator(parameter);
+         int size;
 
          if (!type || parameter_is_void(parameter)) {
             continue;
          }
 
+         size = declarator_storage_size(type, param_decl);
          if (has_modifier((ASTNode *) decl_specs->children[0], "static")) {
             ctx_static(ctx, type, name, true);
+            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
          }
          else if (has_modifier((ASTNode *) decl_specs->children[0], "quick")) {
             ctx_quick(ctx, type, name, true);
+            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
          }
          else {
             ctx_shove(ctx, type, name);
+            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
+            ((ContextEntry *) set_get(ctx->vars, name))->offset = ctx->params + get_size(type->strval) - size;
+            ctx->params -= (size - get_size(type->strval));
          }
          i++;
       }
@@ -538,6 +551,104 @@ static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, i
    }
 }
 
+static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
+   for (int i = 0; i < size; i++) {
+      emit(&es_code, "    ldy #%d\n", src_offset + i);
+      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_offset + i);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
+static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
+   while (expr && expr->count == 1 && !strcmp(expr->name, "assign_expr")) {
+      expr = expr->children[0];
+   }
+
+   if (!expr || is_empty(expr)) {
+      return true;
+   }
+
+   if (expr->kind == AST_INTEGER) {
+      unsigned char *bytes = (unsigned char *) calloc(ret->size ? ret->size : 1, sizeof(unsigned char));
+      if (has_flag(ret->type->strval, "$endian:big")) {
+         make_be_int(expr->strval, bytes, ret->size);
+      }
+      else {
+         make_le_int(expr->strval, bytes, ret->size);
+      }
+      emit_store_immediate_to_fp(ret->offset, bytes, ret->size);
+      free(bytes);
+      return true;
+   }
+
+   if (expr->kind == AST_IDENTIFIER) {
+      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
+      if (entry && !entry->is_static && !entry->is_quick) {
+         emit_copy_fp_to_fp(ret->offset, entry->offset, entry->size);
+         return true;
+      }
+   }
+
+   if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
+      ASTNode *base = expr->children[0];
+      if (base && !strcmp(base->name, "lvalue_base") && base->count > 0 && base->children[0]->kind == AST_IDENTIFIER) {
+         ContextEntry *entry = ctx_lookup(ctx, base->children[0]->strval);
+         if (entry && !entry->is_static && !entry->is_quick) {
+            emit_copy_fp_to_fp(ret->offset, entry->offset, entry->size);
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+static void compile_local_decl_item(ASTNode *node, Context *ctx) {
+   ASTNode *modifiers  = node->children[0];
+   ASTNode *type       = node->children[1];
+   ASTNode *declarator = node->children[2];
+   const char *name    = declarator->children[1]->strval;
+   ASTNode *expression = node->children[node->count - 1];
+   int size            = declarator_storage_size(type, declarator);
+   ContextEntry *entry;
+
+   if (has_modifier(modifiers, "static")) {
+      ctx_static(ctx, type, name, is_empty(expression));
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+      entry->size = size;
+   }
+   else if (has_modifier(modifiers, "quick")) {
+      ctx_quick(ctx, type, name, is_empty(expression));
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+      entry->size = size;
+   }
+   else {
+      ctx_push(ctx, type, name);
+      entry = (ContextEntry *) set_get(ctx->vars, name);
+      entry->size = size;
+   }
+
+   while (expression && expression->count == 1 && !strcmp(expression->name, "assign_expr")) {
+      expression = expression->children[0];
+   }
+
+   if (!is_empty(expression) && !entry->is_static && !entry->is_quick && expression->kind == AST_INTEGER) {
+      unsigned char *bytes = (unsigned char *) calloc(entry->size ? entry->size : 1, sizeof(unsigned char));
+      if (has_flag(type->strval, "$endian:big")) {
+         make_be_int(expression->strval, bytes, entry->size);
+      }
+      else {
+         make_le_int(expression->strval, bytes, entry->size);
+      }
+      emit_store_immediate_to_fp(entry->offset, bytes, entry->size);
+      free(bytes);
+   }
+   else if (!is_empty(expression)) {
+      warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+   }
+}
+
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
    ContextEntry *ret = (ContextEntry *) set_get(ctx->vars, "$$");
    ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
@@ -551,25 +662,9 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
       return;
    }
 
-   while (expr && expr->count == 1 && !strcmp(expr->name, "assign_expr")) {
-      expr = expr->children[0];
+   if (!compile_expr_to_return_slot(expr, ctx, ret)) {
+      warning("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
    }
-
-   if (expr->kind == AST_INTEGER) {
-      unsigned char *bytes = (unsigned char *) calloc(ret->size ? ret->size : 1, sizeof(unsigned char));
-      if (has_flag(ret->type->strval, "$endian:big")) {
-         make_be_int(expr->strval, bytes, ret->size);
-      }
-      else {
-         make_le_int(expr->strval, bytes, ret->size);
-      }
-      emit_store_immediate_to_fp(ret->offset, bytes, ret->size);
-      free(bytes);
-      emit(&es_code, "    jmp @fini\n");
-      return;
-   }
-
-   warning("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
    emit(&es_code, "    jmp @fini\n");
 }
 
@@ -624,8 +719,11 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       else if (!strcmp(stmt->name, "expr")) {
          warning("[%s:%d.%d] expression statements not compiled yet", stmt->file, stmt->line, stmt->column);
       }
-      else if (!strcmp(stmt->name, "block_decl_stmt")) {
-         warning("[%s:%d.%d] block declarations not compiled yet", stmt->file, stmt->line, stmt->column);
+      else if (!strcmp(stmt->name, "defdecl_stmt")) {
+         ASTNode *list = stmt->children[0];
+         for (int j = 0; j < list->count; j++) {
+            compile_local_decl_item(list->children[j], ctx);
+         }
       }
       else {
          warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
