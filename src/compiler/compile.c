@@ -51,6 +51,9 @@ typedef struct Context {
 
 static void remember_function(const ASTNode *node, const char *name);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
+static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
+static const ASTNode *function_return_type(const ASTNode *fn);
+static const ASTNode *function_declarator_node(const ASTNode *fn);
 
 static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
@@ -721,11 +724,168 @@ static ContextEntry *ctx_lookup_lvalue(Context *ctx, ASTNode *node) {
    return ctx_lookup(ctx, base->children[0]->strval);
 }
 
+
+static const ASTNode *function_return_type(const ASTNode *fn) {
+   if (!fn) {
+      return NULL;
+   }
+   if (fn->count == 3) {
+      return fn->children[0]->children[1];
+   }
+   if (fn->count == 4) {
+      return fn->children[1];
+   }
+   return NULL;
+}
+
+static const ASTNode *function_declarator_node(const ASTNode *fn) {
+   if (!fn) {
+      return NULL;
+   }
+   if (fn->count == 3) {
+      return fn->children[1];
+   }
+   if (fn->count == 4) {
+      return fn->children[2];
+   }
+   return NULL;
+}
+
+static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
+   if (!expr || strcmp(expr->name, "()") || expr->count < 1) {
+      return false;
+   }
+
+   ASTNode *callee = expr->children[0];
+   ASTNode *args = (expr->count > 1) ? expr->children[1] : NULL;
+   const ASTNode *fn = NULL;
+   const ASTNode *ret_type = dst ? dst->type : NULL;
+   const ASTNode *declarator = NULL;
+   int ret_size = dst ? dst->size : 0;
+   int arg_total = 0;
+   int arg_count = (args && !is_empty(args)) ? args->count : 0;
+
+   if (!callee || callee->kind != AST_IDENTIFIER) {
+      return false;
+   }
+
+   if (functions) {
+      fn = (const ASTNode *) set_get(functions, callee->strval);
+   }
+   if (fn) {
+      const ASTNode *known_ret = function_return_type(fn);
+      const ASTNode *params = NULL;
+      declarator = function_declarator_node(fn);
+      if (known_ret) {
+         ret_type = known_ret;
+         ret_size = get_size(ret_type->strval);
+      }
+      if (declarator && declarator->count > 2) {
+         params = declarator->children[2];
+         if (params && !is_empty(params)) {
+            int fixed_params = 0;
+            for (int i = 0; i < params->count; i++) {
+               const ASTNode *parameter = params->children[i];
+               const ASTNode *ptype = parameter_type(parameter);
+               const ASTNode *pdecl = parameter_declarator(parameter);
+               if (!ptype || parameter_is_void(parameter)) {
+                  continue;
+               }
+               fixed_params++;
+               arg_total += declarator_storage_size(ptype, pdecl);
+            }
+            if (fixed_params != arg_count) {
+               warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
+                       expr->file, expr->line, expr->column,
+                       callee->strval, arg_count, fixed_params);
+            }
+         }
+      }
+   }
+   else if (!dst) {
+      ret_size = 0;
+   }
+
+   if (ret_size < 0) ret_size = 0;
+   int call_size = ret_size + arg_total;
+
+   if (call_size > 0) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+   }
+
+   if (fn && declarator && declarator->count > 2) {
+      const ASTNode *params = declarator->children[2];
+      int arg_offset = ret_size;
+      int actual_index = 0;
+      if (params && !is_empty(params)) {
+         for (int i = 0; i < params->count && actual_index < arg_count; i++) {
+            const ASTNode *parameter = params->children[i];
+            const ASTNode *ptype = parameter_type(parameter);
+            const ASTNode *pdecl = parameter_declarator(parameter);
+            ContextEntry tmp;
+            int psz;
+            if (!ptype || parameter_is_void(parameter)) {
+               continue;
+            }
+            psz = declarator_storage_size(ptype, pdecl);
+            tmp.type = ptype;
+            tmp.is_static = false;
+            tmp.is_quick = false;
+            tmp.offset = ctx->locals + arg_offset;
+            tmp.size = psz;
+            if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
+               if (call_size > 0) {
+                  remember_runtime_import("popN");
+                  emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                  emit(&es_code, "    sta arg0\n");
+                  emit(&es_code, "    jsr _popN\n");
+               }
+               return false;
+            }
+            arg_offset += psz;
+            actual_index++;
+         }
+      }
+   }
+   else if (arg_count > 0) {
+      if (call_size > 0) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+      }
+      warning("[%s:%d.%d] call to '%s' has no visible signature yet", expr->file, expr->line, expr->column, callee->strval);
+      return false;
+   }
+
+   emit(&es_code, "    jsr _%s\n", callee->strval);
+
+   if (dst && ret_size > 0) {
+      emit_copy_fp_to_fp(dst->offset, ctx->locals, dst->size < ret_size ? dst->size : ret_size);
+   }
+
+   if (call_size > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+
+   return true;
+}
+
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
    if (!expr || is_empty(expr)) {
       return true;
+   }
+
+   if (!strcmp(expr->name, "()")) {
+      return compile_call_expr_to_slot(expr, ctx, dst);
    }
 
    if (expr->kind == AST_INTEGER) {
@@ -884,16 +1044,10 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       expression = expression->children[0];
    }
 
-   if (!is_empty(expression) && !entry->is_static && !entry->is_quick && expression->kind == AST_INTEGER) {
-      unsigned char *bytes = (unsigned char *) calloc(entry->size ? entry->size : 1, sizeof(unsigned char));
-      if (has_flag(type->strval, "$endian:big")) {
-         make_be_int(expression->strval, bytes, entry->size);
+   if (!is_empty(expression) && !entry->is_static && !entry->is_quick) {
+      if (!compile_expr_to_slot(expression, ctx, entry)) {
+         warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
       }
-      else {
-         make_le_int(expression->strval, bytes, entry->size);
-      }
-      emit_store_immediate_to_fp(entry->offset, bytes, entry->size);
-      free(bytes);
    }
    else if (!is_empty(expression)) {
       warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
@@ -924,8 +1078,13 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   while (node && node->count == 1 && !strcmp(node->name, "expr")) {
-      node = node->children[0];
+   node = (ASTNode *) unwrap_expr_node(node);
+
+   if (!strcmp(node->name, "()")) {
+      if (!compile_call_expr_to_slot(node, ctx, NULL)) {
+         warning("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
+      }
+      return;
    }
 
    if (!node || strcmp(node->name, "assign_expr") || node->count != 3 || strcmp(node->children[0]->strval, ":=")) {
