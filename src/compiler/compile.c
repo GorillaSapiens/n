@@ -1820,12 +1820,48 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   if (!node || strcmp(node->name, "assign_expr") || node->count != 3 || strcmp(node->children[0]->strval, ":=")) {
+   if (!strcmp(node->name, "lvalue") && node->count >= 3 && node->children[2] &&
+       node->children[2]->kind == AST_IDENTIFIER &&
+       (!strcmp(node->children[2]->strval, "pre++") ||
+        !strcmp(node->children[2]->strval, "post++") ||
+        !strcmp(node->children[2]->strval, "pre--") ||
+        !strcmp(node->children[2]->strval, "post--"))) {
+      ContextEntry *dst = ctx_lookup_lvalue(ctx, node);
+      unsigned char *one;
+      bool inc;
+      if (!dst) {
+         warning("[%s:%d.%d] increment/decrement target not compiled yet", node->file, node->line, node->column);
+         return;
+      }
+      if (dst->is_static || dst->is_quick) {
+         warning("[%s:%d.%d] increment/decrement of static/quick '%s' not compiled yet", node->file, node->line, node->column,
+                 node->children[0]->children[0]->strval);
+         return;
+      }
+      one = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (!one) {
+         return;
+      }
+      one[0] = 1;
+      inc = !strcmp(node->children[2]->strval, "pre++") || !strcmp(node->children[2]->strval, "post++");
+      if (inc) {
+         emit_add_immediate_to_fp(dst->type, dst->offset, one, dst->size);
+      }
+      else {
+         emit_sub_immediate_from_fp(dst->type, dst->offset, one, dst->size);
+      }
+      free(one);
+      return;
+   }
+
+   if (!node || strcmp(node->name, "assign_expr") || node->count != 3) {
       warning("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
       return;
    }
 
    ContextEntry *dst = ctx_lookup_lvalue(ctx, node->children[1]);
+   const char *op = node->children[0] ? node->children[0]->strval : NULL;
+   ASTNode *rhs = node->children[2];
    if (!dst) {
       warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
       return;
@@ -1837,9 +1873,69 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   if (!compile_expr_to_slot(node->children[2], ctx, dst)) {
-      warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+   if (!op || !strcmp(op, ":=")) {
+      if (!compile_expr_to_slot(rhs, ctx, dst)) {
+         warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+      }
+      return;
    }
+
+   rhs = (ASTNode *) unwrap_expr_node(rhs);
+   if (!rhs) {
+      warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   if (!strcmp(op, "+=") || !strcmp(op, "-=")) {
+      if (rhs->kind == AST_INTEGER) {
+         unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+         if (!bytes) {
+            return;
+         }
+         if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+            make_be_int(rhs->strval, bytes, dst->size);
+         }
+         else {
+            make_le_int(rhs->strval, bytes, dst->size);
+         }
+         if (!strcmp(op, "+=")) {
+            emit_add_immediate_to_fp(dst->type, dst->offset, bytes, dst->size);
+         }
+         else {
+            emit_sub_immediate_from_fp(dst->type, dst->offset, bytes, dst->size);
+         }
+         free(bytes);
+         return;
+      }
+
+      if (rhs->kind == AST_IDENTIFIER) {
+         ContextEntry *src = ctx_lookup(ctx, rhs->strval);
+         if (src && !src->is_static && !src->is_quick) {
+            if (!strcmp(op, "+=")) {
+               emit_add_fp_to_fp(dst->type, dst->offset, src->offset, src->size < dst->size ? src->size : dst->size);
+            }
+            else {
+               emit_sub_fp_from_fp(dst->type, dst->offset, src->offset, src->size < dst->size ? src->size : dst->size);
+            }
+            return;
+         }
+      }
+
+      if (!strcmp(rhs->name, "lvalue") && rhs->count > 0) {
+         ContextEntry *src = ctx_lookup_lvalue(ctx, rhs);
+         if (src && !src->is_static && !src->is_quick) {
+            if (!strcmp(op, "+=")) {
+               emit_add_fp_to_fp(dst->type, dst->offset, src->offset, src->size < dst->size ? src->size : dst->size);
+            }
+            else {
+               emit_sub_fp_from_fp(dst->type, dst->offset, src->offset, src->size < dst->size ? src->size : dst->size);
+            }
+            return;
+         }
+      }
+   }
+
+   warning("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
 }
 
 #if 0
