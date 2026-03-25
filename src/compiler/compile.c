@@ -554,20 +554,56 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    ctx_shove(ctx, node->children[0]->children[1], "$$");
 }
 
+static void emit_prepare_fp_ptr(int ptrno, int offset) {
+   int abs_offset = offset < 0 ? -offset : offset;
+
+   emit(&es_code, "    lda #$%02x\n", abs_offset & 0xff);
+   emit(&es_code, "    sta arg0\n");
+
+   if (offset < 0) {
+      remember_runtime_import(ptrno == 0 ? "fp2ptr0m" : "fp2ptr1m");
+      emit(&es_code, "    jsr _%s\n", ptrno == 0 ? "fp2ptr0m" : "fp2ptr1m");
+   }
+   else {
+      remember_runtime_import(ptrno == 0 ? "fp2ptr0p" : "fp2ptr1p");
+      emit(&es_code, "    jsr _%s\n", ptrno == 0 ? "fp2ptr0p" : "fp2ptr1p");
+   }
+}
+
 static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, int size) {
+   if (offset >= 0 && offset + size <= 256) {
+      for (int i = 0; i < size; i++) {
+         emit(&es_code, "    ldy #%d\n", offset + i);
+         emit(&es_code, "    lda #$%02x\n", bytes[i]);
+         emit(&es_code, "    sta (fp),y\n");
+      }
+      return;
+   }
+
+   emit_prepare_fp_ptr(0, offset);
    for (int i = 0; i < size; i++) {
-      emit(&es_code, "    ldy #%d\n", offset + i);
+      emit(&es_code, "    ldy #%d\n", i);
       emit(&es_code, "    lda #$%02x\n", bytes[i]);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    sta (ptr0),y\n");
    }
 }
 
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
+   bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
+   bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+
+   if (!src_direct) {
+      emit_prepare_fp_ptr(0, src_offset);
+   }
+   if (!dst_direct) {
+      emit_prepare_fp_ptr(1, dst_offset);
+   }
+
    for (int i = 0; i < size; i++) {
-      emit(&es_code, "    ldy #%d\n", src_offset + i);
-      emit(&es_code, "    lda (fp),y\n");
-      emit(&es_code, "    ldy #%d\n", dst_offset + i);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
+      emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
    }
 }
 
@@ -589,50 +625,82 @@ static int expr_byte_index(const ASTNode *type, int size, int i) {
 }
 
 static void emit_add_immediate_to_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
+   bool direct = offset >= 0 && offset + size <= 256;
+
+   if (!direct) {
+      emit_prepare_fp_ptr(0, offset);
+   }
+
    emit(&es_code, "    clc\n");
    for (int i = 0; i < size; i++) {
       int j = expr_byte_index(type, size, i);
-      emit(&es_code, "    ldy #%d\n", offset + j);
-      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", direct ? (offset + j) : j);
+      emit(&es_code, "    lda %s,y\n", direct ? "(fp)" : "(ptr0)");
       emit(&es_code, "    adc #$%02x\n", bytes[j]);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    sta %s,y\n", direct ? "(fp)" : "(ptr0)");
    }
 }
 
 static void emit_sub_immediate_from_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
+   bool direct = offset >= 0 && offset + size <= 256;
+
+   if (!direct) {
+      emit_prepare_fp_ptr(0, offset);
+   }
+
    emit(&es_code, "    sec\n");
    for (int i = 0; i < size; i++) {
       int j = expr_byte_index(type, size, i);
-      emit(&es_code, "    ldy #%d\n", offset + j);
-      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", direct ? (offset + j) : j);
+      emit(&es_code, "    lda %s,y\n", direct ? "(fp)" : "(ptr0)");
       emit(&es_code, "    sbc #$%02x\n", bytes[j]);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    sta %s,y\n", direct ? "(fp)" : "(ptr0)");
    }
 }
 
 static void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
+   bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+
+   if (!dst_direct) {
+      emit_prepare_fp_ptr(0, dst_offset);
+   }
+   if (!src_direct) {
+      emit_prepare_fp_ptr(1, src_offset);
+   }
+
    emit(&es_code, "    clc\n");
    for (int i = 0; i < size; i++) {
       int j = expr_byte_index(type, size, i);
-      emit(&es_code, "    ldy #%d\n", dst_offset + j);
-      emit(&es_code, "    lda (fp),y\n");
-      emit(&es_code, "    ldy #%d\n", src_offset + j);
-      emit(&es_code, "    adc (fp),y\n");
-      emit(&es_code, "    ldy #%d\n", dst_offset + j);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr0)");
+      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + j) : j);
+      emit(&es_code, "    adc %s,y\n", src_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr0)");
    }
 }
 
 static void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
+   bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+
+   if (!dst_direct) {
+      emit_prepare_fp_ptr(0, dst_offset);
+   }
+   if (!src_direct) {
+      emit_prepare_fp_ptr(1, src_offset);
+   }
+
    emit(&es_code, "    sec\n");
    for (int i = 0; i < size; i++) {
       int j = expr_byte_index(type, size, i);
-      emit(&es_code, "    ldy #%d\n", dst_offset + j);
-      emit(&es_code, "    lda (fp),y\n");
-      emit(&es_code, "    ldy #%d\n", src_offset + j);
-      emit(&es_code, "    sbc (fp),y\n");
-      emit(&es_code, "    ldy #%d\n", dst_offset + j);
-      emit(&es_code, "    sta (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr0)");
+      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + j) : j);
+      emit(&es_code, "    sbc %s,y\n", src_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr0)");
    }
 }
 
