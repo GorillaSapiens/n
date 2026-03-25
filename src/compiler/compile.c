@@ -33,6 +33,7 @@ Pair *typesizes = NULL;
 Set *globals = NULL;
 Set *functions = NULL;
 Set *runtime_imports = NULL;
+static int label_counter = 0;
 
 typedef struct ContextEntry {
    const ASTNode *type;
@@ -53,6 +54,9 @@ static void remember_function(const ASTNode *node, const char *name);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
+static void compile_statement_list(ASTNode *node, Context *ctx);
+static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label);
+static void compile_if_stmt(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
 
@@ -983,6 +987,204 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
    return false;
 }
 
+
+static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr || is_empty(expr)) {
+      return get_typename_node("int");
+   }
+
+   if (expr->kind == AST_IDENTIFIER) {
+      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
+      if (entry) {
+         return entry->type;
+      }
+   }
+
+   if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
+      ContextEntry *entry = ctx_lookup_lvalue(ctx, expr);
+      if (entry) {
+         return entry->type;
+      }
+   }
+
+   if (!strcmp(expr->name, "()")) {
+      ASTNode *callee = expr->children[0];
+      const ASTNode *fn = NULL;
+      if (callee && callee->kind == AST_IDENTIFIER && functions) {
+         fn = (const ASTNode *) set_get(functions, callee->strval);
+      }
+      if (fn) {
+         const ASTNode *ret = function_return_type(fn);
+         if (ret) {
+            return ret;
+         }
+      }
+   }
+
+   if (expr->count >= 1) {
+      return expr_value_type(expr->children[0], ctx);
+   }
+
+   return get_typename_node("int");
+}
+
+static int expr_value_size(ASTNode *expr, Context *ctx) {
+   const ASTNode *type = expr_value_type(expr, ctx);
+   return type ? get_size(type->strval) : get_size("int");
+}
+
+static const char *next_label(const char *prefix) {
+   char buf[64];
+   snprintf(buf, sizeof(buf), "@%s_%d", prefix, label_counter++);
+   return strdup(buf);
+}
+
+static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr || is_empty(expr)) {
+      emit(&es_code, "    jmp %s\n", false_label);
+      return true;
+   }
+
+   if (expr->count == 2 &&
+       (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+        !strcmp(expr->name, "<")  || !strcmp(expr->name, ">")  ||
+        !strcmp(expr->name, "<=") || !strcmp(expr->name, ">="))) {
+      const ASTNode *type = expr_value_type(expr->children[0], ctx);
+      int size = expr_value_size(expr->children[0], ctx);
+      int compare_size;
+      ContextEntry lhs;
+      ContextEntry rhs;
+      const char *helper = NULL;
+      bool invert = false;
+      bool is_signed;
+
+      if (size <= 0) {
+         size = get_size("int");
+      }
+      compare_size = size * 2;
+      lhs = (ContextEntry){ type, false, false, ctx->locals, size };
+      rhs = (ContextEntry){ type, false, false, ctx->locals + size, size };
+      is_signed = type && has_flag(type->strval, "$signed");
+
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+
+      if (!compile_expr_to_slot(expr->children[0], ctx, &lhs) ||
+          !compile_expr_to_slot(expr->children[1], ctx, &rhs)) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+
+      if (!strcmp(expr->name, "==")) {
+         helper = "eqN";
+      }
+      else if (!strcmp(expr->name, "!=")) {
+         helper = "eqN";
+         invert = true;
+      }
+      else if (!strcmp(expr->name, "<")) {
+         helper = is_signed ? "ltNs" : "ltNu";
+      }
+      else if (!strcmp(expr->name, ">")) {
+         helper = is_signed ? "ltNs" : "ltNu";
+         ContextEntry t = lhs; lhs = rhs; rhs = t;
+      }
+      else if (!strcmp(expr->name, "<=")) {
+         helper = is_signed ? "leNs" : "leNu";
+      }
+      else if (!strcmp(expr->name, ">=")) {
+         helper = is_signed ? "leNs" : "leNu";
+         ContextEntry t = lhs; lhs = rhs; rhs = t;
+      }
+
+      emit_prepare_fp_ptr(0, lhs.offset);
+      emit_prepare_fp_ptr(1, rhs.offset);
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      remember_runtime_import(helper);
+      emit(&es_code, "    jsr _%s\n", helper);
+
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      emit(&es_code, "    lda arg1\n");
+      emit(&es_code, "    %s %s\n", invert ? "bne" : "beq", false_label);
+      return true;
+   }
+
+   {
+      const ASTNode *type = expr_value_type(expr, ctx);
+      int size = expr_value_size(expr, ctx);
+      ContextEntry tmp;
+
+      if (size <= 0) {
+         size = get_size("int");
+      }
+      tmp = (ContextEntry){ type, false, false, ctx->locals, size };
+
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+
+      if (!compile_expr_to_slot(expr, ctx, &tmp)) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+
+      emit(&es_code, "    lda #0\n");
+      for (int i = 0; i < size; i++) {
+         emit(&es_code, "    ldy #%d\n", tmp.offset + i);
+         emit(&es_code, "    ora (fp),y\n");
+      }
+      emit(&es_code, "    sta arg1\n");
+
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      emit(&es_code, "    lda arg1\n");
+      emit(&es_code, "    beq %s\n", false_label);
+      return true;
+   }
+}
+
+static void compile_if_stmt(ASTNode *node, Context *ctx) {
+   const char *false_label = next_label("if_false");
+   const char *end_label = next_label("if_end");
+   ASTNode *cond = node->children[0];
+   ASTNode *then_block = node->children[1];
+   ASTNode *else_block = (node->count > 2) ? node->children[2] : NULL;
+
+   if (!compile_condition_branch_false(cond, ctx, false_label)) {
+      warning("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   compile_statement_list(then_block, ctx);
+   if (else_block && !is_empty(else_block)) {
+      emit(&es_code, "    jmp %s\n", end_label);
+   }
+   emit(&es_code, "%s:\n", false_label);
+   if (else_block && !is_empty(else_block)) {
+      compile_statement_list(else_block, ctx);
+      emit(&es_code, "%s:\n", end_label);
+   }
+}
+
 static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
    return compile_expr_to_slot(expr, ctx, ret);
 }
@@ -1167,6 +1369,9 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
          for (int j = 0; j < list->count; j++) {
             compile_local_decl_item(list->children[j], ctx);
          }
+      }
+      else if (!strcmp(stmt->name, "if_stmt")) {
+         compile_if_stmt(stmt, ctx);
       }
       else {
          warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
