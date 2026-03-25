@@ -1,3 +1,5 @@
+// nc
+
 type void      { $size:0 };
 type char      { $size:1    $signed };
 type uchar     { $size:1  $unsigned };
