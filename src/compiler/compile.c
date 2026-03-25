@@ -70,6 +70,7 @@ static void compile_continue_stmt(ASTNode *node, Context *ctx);
 static void compile_do_stmt(ASTNode *node, Context *ctx);
 static void compile_label_stmt(ASTNode *node, Context *ctx);
 static void compile_goto_stmt(ASTNode *node, Context *ctx);
+static void compile_switch_stmt(ASTNode *node, Context *ctx);
 static void compile_return_stmt(ASTNode *node, Context *ctx);
 static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
@@ -1631,6 +1632,9 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
       else if (!strcmp(stmt->name, "goto_stmt")) {
          compile_goto_stmt(stmt, ctx);
       }
+      else if (!strcmp(stmt->name, "switch_stmt")) {
+         compile_switch_stmt(stmt, ctx);
+      }
       else if (!strcmp(stmt->name, "label_stmt")) {
          compile_label_stmt(stmt, ctx);
       }
@@ -1651,6 +1655,136 @@ static void compile_goto_stmt(ASTNode *node, Context *ctx) {
    if (node->count > 0 && !is_empty(node->children[0])) {
       emit(&es_code, "    jmp @user_%s\n", node->children[0]->strval);
    }
+}
+
+static void compile_switch_stmt(ASTNode *node, Context *ctx) {
+   ASTNode *expr;
+   ASTNode *sections;
+   const ASTNode *type;
+   int size;
+   int compare_size;
+   ContextEntry lhs;
+   ContextEntry rhs;
+   const char *cleanup_label;
+   const char *default_label = NULL;
+   const char *end_label = NULL;
+   const char **case_labels = NULL;
+   int section_count;
+
+   if (!node || node->count < 2) {
+      return;
+   }
+
+   expr = node->children[0];
+   sections = node->children[1];
+   if (!sections || is_empty(sections) || sections->count <= 0) {
+      return;
+   }
+
+   type = expr_value_type(expr, ctx);
+   size = expr_value_size(expr, ctx);
+   if (size <= 0) {
+      size = get_size("int");
+   }
+   compare_size = size * 2;
+   lhs = (ContextEntry){ type, false, false, ctx->locals, size };
+   rhs = (ContextEntry){ type, false, false, ctx->locals + size, size };
+   cleanup_label = next_label("switch_cleanup");
+   end_label = next_label("switch_end");
+   if (!cleanup_label || !end_label) {
+      free((void *) cleanup_label);
+      free((void *) end_label);
+      warning("[%s:%d.%d] switch label generation failed", node->file, node->line, node->column);
+      return;
+   }
+
+   section_count = sections->count;
+   case_labels = calloc((size_t)section_count, sizeof(*case_labels));
+   if (!case_labels) {
+      free((void *) cleanup_label);
+      free((void *) end_label);
+      error("out of memory");
+   }
+
+   remember_runtime_import("pushN");
+   emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    jsr _pushN\n");
+
+   if (!compile_expr_to_slot(expr, ctx, &lhs)) {
+      warning("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      free(case_labels);
+      free((void *) cleanup_label);
+      free((void *) end_label);
+      return;
+   }
+
+   for (int i = 0; i < section_count; i++) {
+      ASTNode *section = sections->children[i];
+      case_labels[i] = next_label("case");
+      if (!case_labels[i]) {
+         warning("[%s:%d.%d] switch case label generation failed", node->file, node->line, node->column);
+         default_label = cleanup_label;
+         break;
+      }
+      if (section->children[0] && is_empty(section->children[0])) {
+         default_label = case_labels[i];
+      }
+   }
+
+   for (int i = 0; i < section_count; i++) {
+      ASTNode *section = sections->children[i];
+      ASTNode *case_expr = section->children[0];
+      if (!case_labels[i] || (case_expr && is_empty(case_expr))) {
+         continue;
+      }
+      if (!compile_expr_to_slot(case_expr, ctx, &rhs)) {
+         warning("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+         continue;
+      }
+      emit_prepare_fp_ptr(0, lhs.offset);
+      emit_prepare_fp_ptr(1, rhs.offset);
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      remember_runtime_import("eqN");
+      emit(&es_code, "    jsr _eqN\n");
+      emit(&es_code, "    lda arg1\n");
+      emit(&es_code, "    bne %s\n", case_labels[i]);
+   }
+
+   emit(&es_code, "    jmp %s\n", default_label ? default_label : cleanup_label);
+
+   push_loop_labels(cleanup_label, current_continue_label());
+   for (int i = 0; i < section_count; i++) {
+      ASTNode *section = sections->children[i];
+      ASTNode *body = (section->count > 1) ? section->children[1] : NULL;
+      if (!case_labels[i]) {
+         continue;
+      }
+      emit(&es_code, "%s:\n", case_labels[i]);
+      if (body && !is_empty(body)) {
+         compile_statement_list(body, ctx);
+      }
+   }
+   pop_loop_labels();
+
+   emit(&es_code, "%s:\n", cleanup_label);
+   remember_runtime_import("popN");
+   emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    jsr _popN\n");
+   emit(&es_code, "%s:\n", end_label);
+
+   for (int i = 0; i < section_count; i++) {
+      free((void *) case_labels[i]);
+   }
+   free(case_labels);
+   free((void *) cleanup_label);
+   free((void *) end_label);
 }
 
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
