@@ -48,6 +48,8 @@ typedef struct Context {
    Set *vars;
 } Context;
 
+static void remember_function(const ASTNode *node, const char *name);
+
 // for parameterless flags (e.g. "$signed")
 // also for complete flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
@@ -361,7 +363,6 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
-#if 0
 static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -383,7 +384,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
 
    // TODO FIX increment the stack pointer.
 }
-#endif
+
 
 static void ctx_static(Context *ctx, const ASTNode *type, const char *name, bool bss) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -456,39 +457,121 @@ static const char *missing_argname(int i) {
    return ret;
 }
 
-#if 0
-static void build_function_context(const ASTNode *node, Context *ctx) {
-   int i = 0;
+static const ASTNode *parameter_decl_specifiers(const ASTNode *parameter) {
+   return parameter->count > 0 ? parameter->children[0] : NULL;
+}
 
-   // first the arguments, in order
-   for (ASTNode *arg = node->children[3]; arg; arg = arg->children[1]) {
-      ASTNode *type = arg->children[0]->children[1];
-      const char *name = arg->children[0]->children[2] ? arg->children[0]->children[2]->strval : missing_argname(i);
-      if (has_modifier(arg->children[0]->children[0], "static")) {
-         ctx_static(ctx, type, name, true);
-      }
-      else if (has_modifier(arg->children[0]->children[0], "quick")) {
-         ctx_quick(ctx, type, name, true);
-      }
-      else {
-         ctx_shove(ctx, type, name);
-      }
-      i++;
+static const ASTNode *parameter_decl_item(const ASTNode *parameter) {
+   return parameter->count > 1 ? parameter->children[1] : NULL;
+}
+
+static const ASTNode *parameter_type(const ASTNode *parameter) {
+   const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+   return (decl_specs && decl_specs->count > 1) ? decl_specs->children[1] : NULL;
+}
+
+static const ASTNode *parameter_declarator(const ASTNode *parameter) {
+   const ASTNode *decl_item = parameter_decl_item(parameter);
+   return (decl_item && decl_item->count > 0) ? decl_item->children[0] : NULL;
+}
+
+static const char *parameter_name(const ASTNode *parameter, int i) {
+   const ASTNode *declarator = parameter_declarator(parameter);
+   if (!declarator || declarator->count < 2 || is_empty(declarator->children[1])) {
+      return missing_argname(i);
+   }
+   return declarator->children[1]->strval;
+}
+
+static bool parameter_is_void(const ASTNode *parameter) {
+   const ASTNode *type = parameter_type(parameter);
+   const ASTNode *declarator = parameter_declarator(parameter);
+
+   if (!type || strcmp(type->strval, "void")) {
+      return false;
    }
 
-   // then the return value
-   ctx_shove(ctx, node->children[1], "$$");
-}
-#endif
+   if (!declarator || declarator->count < 2 || !is_empty(declarator->children[1])) {
+      return false;
+   }
 
-#if 0
+   return true;
+}
+
+static void build_function_context(const ASTNode *node, Context *ctx) {
+   const ASTNode *declarator = node->children[1];
+   const ASTNode *params = (declarator->count > 2) ? declarator->children[2] : NULL;
+   int i = 0;
+
+   if (params && !is_empty(params)) {
+      for (int j = 0; j < params->count; j++) {
+         const ASTNode *parameter = params->children[j];
+         const ASTNode *type = parameter_type(parameter);
+         const char *name = parameter_name(parameter, i);
+         const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+
+         if (!type || parameter_is_void(parameter)) {
+            continue;
+         }
+
+         if (has_modifier((ASTNode *) decl_specs->children[0], "static")) {
+            ctx_static(ctx, type, name, true);
+         }
+         else if (has_modifier((ASTNode *) decl_specs->children[0], "quick")) {
+            ctx_quick(ctx, type, name, true);
+         }
+         else {
+            ctx_shove(ctx, type, name);
+         }
+         i++;
+      }
+   }
+
+   ctx_shove(ctx, node->children[0]->children[1], "$$");
+}
+
+static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, int size) {
+   for (int i = 0; i < size; i++) {
+      emit(&es_code, "    ldy #%d\n", offset + i);
+      emit(&es_code, "    lda #$%02x\n", bytes[i]);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   parse_dump_node(node);
+   ContextEntry *ret = (ContextEntry *) set_get(ctx->vars, "$$");
+   ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
 
-   debug("TODO FIX");
+   if (!ret) {
+      error("[%s:%d.%d] internal missing return slot", node->file, node->line, node->column);
+   }
+
+   if (!expr || is_empty(expr)) {
+      emit(&es_code, "    jmp @fini\n");
+      return;
+   }
+
+   while (expr && expr->count == 1 && !strcmp(expr->name, "assign_expr")) {
+      expr = expr->children[0];
+   }
+
+   if (expr->kind == AST_INTEGER) {
+      unsigned char *bytes = (unsigned char *) calloc(ret->size ? ret->size : 1, sizeof(unsigned char));
+      if (has_flag(ret->type->strval, "$endian:big")) {
+         make_be_int(expr->strval, bytes, ret->size);
+      }
+      else {
+         make_le_int(expr->strval, bytes, ret->size);
+      }
+      emit_store_immediate_to_fp(ret->offset, bytes, ret->size);
+      free(bytes);
+      emit(&es_code, "    jmp @fini\n");
+      return;
+   }
+
+   warning("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
+   emit(&es_code, "    jmp @fini\n");
 }
-#endif
 
 #if 0
 static void compile_expr(ASTNode *node, Context *ctx) {
@@ -528,68 +611,40 @@ static void compile_block_decl_stmt(ASTNode *node, Context *ctx) {
 }
 #endif
 
-#if 0
 static void compile_statement_list(ASTNode *node, Context *ctx) {
-   while(node) {
-      if (!strcmp(node->children[0]->name, "return_stmt")) {
-         compile_return_stmt(node->children[0], ctx);
-      }
-      else if (!strcmp(node->children[0]->name, "expr")) {
-         compile_expr(node->children[0], ctx);
-      }
-      else if (!strcmp(node->children[0]->name, "block_decl_stmt")) {
-         compile_block_decl_stmt(node->children[0], ctx);
-      }
-      else {
-         parse_dump_node(node);
-         error("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-      }
-      node = node->children[1];
-   }
-}
-#endif
-
-#if 0
-static void compile_function_decl(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   parse_dump_node(node);
-
-   const char *name = node->children[2]->strval;
-
-   if (!functions) {
-      functions = new_set();
-   }
-   const ASTNode *value = set_get(functions, name);
-   if (value == NULL) {
-      set_add(functions, name, node);
-   }
-   else {
-      if (!function_prototype_match(node, value)) {
-         error("[%s:%d.%d] vs [%s:%d.%d] function prototype mismatch for '%s'",
-               node->file, node->line, node->column,
-               value->file, value->line, value->column,
-               name);
-      }
-   }
-
-   if (!node->children[4]) {
-      // just a declaration, no body
+   if (!node || is_empty(node)) {
       return;
    }
 
-   // we have a body!
-   if (value && value->children[4]) {
-      error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
-            node->file, node->line, node->column,
-            value->file, value->line, value->column,
-            name);
+   for (int i = 0; i < node->count; i++) {
+      ASTNode *stmt = node->children[i];
+      if (!strcmp(stmt->name, "return_stmt")) {
+         compile_return_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "expr")) {
+         warning("[%s:%d.%d] expression statements not compiled yet", stmt->file, stmt->line, stmt->column);
+      }
+      else if (!strcmp(stmt->name, "block_decl_stmt")) {
+         warning("[%s:%d.%d] block declarations not compiled yet", stmt->file, stmt->line, stmt->column);
+      }
+      else {
+         warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+      }
    }
-   else {
-      set_rm(functions, name);
-      set_add(functions, name, node);
+}
+
+static void compile_function_decl(ASTNode *node) {
+   ASTNode *modifiers  = node->children[0]->children[0];
+   ASTNode *declarator = node->children[1];
+   ASTNode *body       = node->children[2];
+   const char *name    = declarator->children[1]->strval;
+
+   remember_function(node, name);
+
+   if (!has_modifier(modifiers, "static")) {
+      emit(&es_export, ".export _%s\n", name);
    }
 
-   // build the context
    Context ctx;
    ctx.name = name;
    ctx.locals = 0;
@@ -598,67 +653,29 @@ static void compile_function_decl(ASTNode *node) {
    build_function_context(node, &ctx);
 
    emit(&es_code, ".proc _%s\n", name);
-
-   // prologue
-
-   // ;push frame pointer onto HARDWARE stack
-   emit(&es_code, "    lda fp+1\n");
-   emit(&es_code, "    pha\n");
-   emit(&es_code, "    lda fp\n");
-   emit(&es_code, "    pha\n");
-   emit(&es_code, "\n");
-
-   // ;transfer stack pointer to frame pointer
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
    emit(&es_code, "    lda sp\n");
    emit(&es_code, "    sta fp\n");
-   emit(&es_code, "\n");
 
-   // body
-
-   if (!strcmp(node->children[4]->name, "statement_list")) {
-      compile_statement_list(node->children[4], &ctx);
-   }
-   else {
-      if (node->children[4]->kind != AST_EMPTY) {
-         error("[%s:%d.%d] unknown body node type '%s'",
-               node->children[4]->file, node->children[4]->line, node->children[4]->column,
-               node->children[4]->name);
+   if (!is_empty(body)) {
+      if (!strcmp(body->name, "statement_list")) {
+         compile_statement_list(body, &ctx);
+      }
+      else {
+         warning("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
       }
    }
 
-   // epilogue
-
-   // ;pop frame pointer
    emit(&es_code, "@fini:\n");
-   emit(&es_code, "    pla\n");
-   emit(&es_code, "    sta fp\n");
-   emit(&es_code, "    pla\n");
-   emit(&es_code, "    sta fp+1\n");
-   emit(&es_code, "\n");
-
-   // ;pop stack pointer
-   emit(&es_code, "    pla\n");
-   emit(&es_code, "    sta sp\n");
-   emit(&es_code, "    pla\n");
-   emit(&es_code, "    sta sp+1\n");
    emit(&es_code, "    rts\n");
-
    emit(&es_code, ".endproc\n");
-
-   return;
 }
-#endif
-
-////////////////////////////////////////
 
 static void compile_mem_decl_stmt(ASTNode *node) {
-   // TODO FIX sanity check the flags!
    attach_memname(node->children[0]->strval, node);
 }
 
-// check type_decl_stmt for existence of $size and $endian
 static void compile_type_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
@@ -938,13 +955,7 @@ static void compile_defdecl_stmt(ASTNode *node) {
    }
 
    if (node->count == 3) {
-      ASTNode *synthetic = make_node("decl_item",
-         node->children[0]->children[0],
-         node->children[0]->children[1],
-         node->children[1],
-         node->children[2],
-         NULL);
-      compile_function_signature(synthetic);
+      compile_function_decl(node);
       return;
    }
 
