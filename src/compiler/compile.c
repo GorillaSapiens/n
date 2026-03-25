@@ -56,7 +56,11 @@ static int declarator_storage_size(const ASTNode *type, const ASTNode *declarato
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 static void compile_statement_list(ASTNode *node, Context *ctx);
 static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label);
+static const char *next_label(const char *prefix);
 static void compile_if_stmt(ASTNode *node, Context *ctx);
+static void compile_while_stmt(ASTNode *node, Context *ctx);
+static void compile_for_stmt(ASTNode *node, Context *ctx);
+static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
 
@@ -629,7 +633,8 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
    while (expr && expr->count == 1 &&
           (!strcmp(expr->name, "expr") ||
            !strcmp(expr->name, "assign_expr") ||
-           !strcmp(expr->name, "initializer"))) {
+           !strcmp(expr->name, "initializer") ||
+           !strcmp(expr->name, "opt_expr"))) {
       expr = expr->children[0];
    }
    return expr;
@@ -932,6 +937,92 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
    }
 
+   if (expr->count == 2 && (!strcmp(expr->name, "&&") || !strcmp(expr->name, "||"))) {
+      const char *false_label = next_label(!strcmp(expr->name, "&&") ? "and_false" : "or_false");
+      const char *end_label = next_label(!strcmp(expr->name, "&&") ? "and_end" : "or_end");
+      unsigned char *zeroes;
+      unsigned char *ones;
+
+      if (!false_label || !end_label) {
+         free((void *) false_label);
+         free((void *) end_label);
+         return false;
+      }
+
+      zeroes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      ones = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (!zeroes || !ones) {
+         free(zeroes);
+         free(ones);
+         free((void *) false_label);
+         free((void *) end_label);
+         return false;
+      }
+      ones[0] = 1;
+
+      if (!strcmp(expr->name, "&&")) {
+         if (!compile_condition_branch_false(expr->children[0], ctx, false_label) ||
+             !compile_condition_branch_false(expr->children[1], ctx, false_label)) {
+            free(zeroes);
+            free(ones);
+            free((void *) false_label);
+            free((void *) end_label);
+            return false;
+         }
+      }
+      else {
+         const char *rhs_label = next_label("or_rhs");
+         if (!rhs_label) {
+            free(zeroes);
+            free(ones);
+            free((void *) false_label);
+            free((void *) end_label);
+            return false;
+         }
+         if (!compile_condition_branch_false(expr->children[0], ctx, rhs_label)) {
+            free(zeroes);
+            free(ones);
+            free((void *) rhs_label);
+            free((void *) false_label);
+            free((void *) end_label);
+            return false;
+         }
+         emit_store_immediate_to_fp(dst->offset, ones, dst->size);
+         emit(&es_code, "    jmp %s\n", end_label);
+         emit(&es_code, "%s:\n", rhs_label);
+         if (!compile_condition_branch_false(expr->children[1], ctx, false_label)) {
+            free(zeroes);
+            free(ones);
+            free((void *) rhs_label);
+            free((void *) false_label);
+            free((void *) end_label);
+            return false;
+         }
+         free((void *) rhs_label);
+         emit_store_immediate_to_fp(dst->offset, ones, dst->size);
+         emit(&es_code, "    jmp %s\n", end_label);
+         emit(&es_code, "%s:\n", false_label);
+         emit_store_immediate_to_fp(dst->offset, zeroes, dst->size);
+         emit(&es_code, "%s:\n", end_label);
+         free(zeroes);
+         free(ones);
+         free((void *) false_label);
+         free((void *) end_label);
+         return true;
+      }
+
+      emit_store_immediate_to_fp(dst->offset, ones, dst->size);
+      emit(&es_code, "    jmp %s\n", end_label);
+      emit(&es_code, "%s:\n", false_label);
+      emit_store_immediate_to_fp(dst->offset, zeroes, dst->size);
+      emit(&es_code, "%s:\n", end_label);
+      free(zeroes);
+      free(ones);
+      free((void *) false_label);
+      free((void *) end_label);
+      return true;
+   }
+
    if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
       const ASTNode *rhs = unwrap_expr_node(expr->children[1]);
       if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
@@ -1046,6 +1137,39 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
 
    if (!expr || is_empty(expr)) {
       emit(&es_code, "    jmp %s\n", false_label);
+      return true;
+   }
+
+   if (expr->count == 2 && !strcmp(expr->name, "&&")) {
+      if (!compile_condition_branch_false(expr->children[0], ctx, false_label)) {
+         return false;
+      }
+      return compile_condition_branch_false(expr->children[1], ctx, false_label);
+   }
+
+   if (expr->count == 2 && !strcmp(expr->name, "||")) {
+      const char *rhs_label = next_label("or_rhs");
+      const char *end_label = next_label("or_end");
+      if (!rhs_label || !end_label) {
+         free((void *) rhs_label);
+         free((void *) end_label);
+         return false;
+      }
+      if (!compile_condition_branch_false(expr->children[0], ctx, rhs_label)) {
+         free((void *) rhs_label);
+         free((void *) end_label);
+         return false;
+      }
+      emit(&es_code, "    jmp %s\n", end_label);
+      emit(&es_code, "%s:\n", rhs_label);
+      if (!compile_condition_branch_false(expr->children[1], ctx, false_label)) {
+         free((void *) rhs_label);
+         free((void *) end_label);
+         return false;
+      }
+      emit(&es_code, "%s:\n", end_label);
+      free((void *) rhs_label);
+      free((void *) end_label);
       return true;
    }
 
@@ -1171,6 +1295,8 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
 
    if (!compile_condition_branch_false(cond, ctx, false_label)) {
       warning("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
+      free((void *) false_label);
+      free((void *) end_label);
       return;
    }
 
@@ -1183,6 +1309,78 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
       compile_statement_list(else_block, ctx);
       emit(&es_code, "%s:\n", end_label);
    }
+   free((void *) false_label);
+   free((void *) end_label);
+}
+
+static void compile_while_stmt(ASTNode *node, Context *ctx) {
+   const char *start_label = next_label("while_start");
+   const char *end_label = next_label("while_end");
+   ASTNode *cond = node->children[0];
+   ASTNode *body = node->children[1];
+
+   if (!start_label || !end_label) {
+      free((void *) start_label);
+      free((void *) end_label);
+      warning("[%s:%d.%d] while label generation failed", node->file, node->line, node->column);
+      return;
+   }
+
+   emit(&es_code, "%s:\n", start_label);
+   if (!compile_condition_branch_false(cond, ctx, end_label)) {
+      warning("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
+      free((void *) start_label);
+      free((void *) end_label);
+      return;
+   }
+   compile_statement_list(body, ctx);
+   emit(&es_code, "    jmp %s\n", start_label);
+   emit(&es_code, "%s:\n", end_label);
+   free((void *) start_label);
+   free((void *) end_label);
+}
+
+static void compile_for_stmt(ASTNode *node, Context *ctx) {
+   const char *start_label = next_label("for_start");
+   const char *step_label = next_label("for_step");
+   const char *end_label = next_label("for_end");
+   ASTNode *init = node->children[0];
+   ASTNode *cond = node->children[1];
+   ASTNode *step = node->children[2];
+   ASTNode *body = node->children[3];
+
+   if (!start_label || !step_label || !end_label) {
+      free((void *) start_label);
+      free((void *) step_label);
+      free((void *) end_label);
+      warning("[%s:%d.%d] for label generation failed", node->file, node->line, node->column);
+      return;
+   }
+
+   if (init && !is_empty(init)) {
+      compile_expr(init, ctx);
+   }
+
+   emit(&es_code, "%s:\n", start_label);
+   if (cond && !is_empty(cond)) {
+      if (!compile_condition_branch_false(cond, ctx, end_label)) {
+         warning("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
+         free((void *) start_label);
+         free((void *) step_label);
+         free((void *) end_label);
+         return;
+      }
+   }
+   compile_statement_list(body, ctx);
+   emit(&es_code, "%s:\n", step_label);
+   if (step && !is_empty(step)) {
+      compile_expr(step, ctx);
+   }
+   emit(&es_code, "    jmp %s\n", start_label);
+   emit(&es_code, "%s:\n", end_label);
+   free((void *) start_label);
+   free((void *) step_label);
+   free((void *) end_label);
 }
 
 static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
@@ -1372,6 +1570,12 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       }
       else if (!strcmp(stmt->name, "if_stmt")) {
          compile_if_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "while_stmt")) {
+         compile_while_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "for_stmt")) {
+         compile_for_stmt(stmt, ctx);
       }
       else {
          warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
