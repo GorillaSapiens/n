@@ -67,6 +67,10 @@ static void compile_while_stmt(ASTNode *node, Context *ctx);
 static void compile_for_stmt(ASTNode *node, Context *ctx);
 static void compile_break_stmt(ASTNode *node, Context *ctx);
 static void compile_continue_stmt(ASTNode *node, Context *ctx);
+static void compile_do_stmt(ASTNode *node, Context *ctx);
+static void compile_label_stmt(ASTNode *node, Context *ctx);
+static void compile_goto_stmt(ASTNode *node, Context *ctx);
+static void compile_return_stmt(ASTNode *node, Context *ctx);
 static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
@@ -1570,6 +1574,85 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 }
 
+
+static void compile_do_stmt(ASTNode *node, Context *ctx) {
+   const char *start_label = next_label("do_start");
+   const char *end_label = next_label("do_end");
+   if (!start_label || !end_label) {
+      free((void *) start_label);
+      free((void *) end_label);
+      warning("[%s:%d.%d] failed to allocate labels for do statement", node->file, node->line, node->column);
+      return;
+   }
+
+   emit(&es_code, "%s:\n", start_label);
+   push_loop_labels(end_label, start_label);
+   compile_statement_list(node->children[0], ctx);
+   pop_loop_labels();
+   if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
+      warning("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
+   }
+   emit(&es_code, "    jmp %s\n", start_label);
+   emit(&es_code, "%s:\n", end_label);
+
+   free((void *) start_label);
+   free((void *) end_label);
+}
+
+static void compile_label_stmt(ASTNode *node, Context *ctx) {
+   (void) ctx;
+   emit(&es_code, "@user_%s:\n", node->children[0]->strval);
+   if (node->count > 1) {
+      ASTNode *stmt = node->children[1];
+      if (!strcmp(stmt->name, "return_stmt")) {
+         compile_return_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "expr") || !strcmp(stmt->name, "assign_expr")) {
+         compile_expr(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "if_stmt")) {
+         compile_if_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "while_stmt")) {
+         compile_while_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "for_stmt")) {
+         compile_for_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "do_stmt")) {
+         compile_do_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "break_stmt")) {
+         compile_break_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "continue_stmt")) {
+         compile_continue_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "goto_stmt")) {
+         compile_goto_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "label_stmt")) {
+         compile_label_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "defdecl_stmt")) {
+         ASTNode *list = stmt->children[0];
+         for (int j = 0; j < list->count; j++) {
+            compile_local_decl_item(list->children[j], ctx);
+         }
+      }
+      else {
+         warning("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+      }
+   }
+}
+
+static void compile_goto_stmt(ASTNode *node, Context *ctx) {
+   (void) ctx;
+   if (node->count > 0 && !is_empty(node->children[0])) {
+      emit(&es_code, "    jmp @user_%s\n", node->children[0]->strval);
+   }
+}
+
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
    ContextEntry *ret = (ContextEntry *) set_get(ctx->vars, "$$");
    ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
@@ -1687,6 +1770,15 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       }
       else if (!strcmp(stmt->name, "continue_stmt")) {
          compile_continue_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "do_stmt")) {
+         compile_do_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "label_stmt")) {
+         compile_label_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "goto_stmt")) {
+         compile_goto_stmt(stmt, ctx);
       }
       else {
          warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
