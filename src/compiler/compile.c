@@ -560,6 +560,71 @@ static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    }
 }
 
+static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
+   while (expr && expr->count == 1 &&
+          (!strcmp(expr->name, "expr") ||
+           !strcmp(expr->name, "assign_expr") ||
+           !strcmp(expr->name, "initializer"))) {
+      expr = expr->children[0];
+   }
+   return expr;
+}
+
+static int expr_byte_index(const ASTNode *type, int size, int i) {
+   if (has_flag(type->strval, "$endian:big")) {
+      return size - 1 - i;
+   }
+   return i;
+}
+
+static void emit_add_immediate_to_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
+   emit(&es_code, "    clc\n");
+   for (int i = 0; i < size; i++) {
+      int j = expr_byte_index(type, size, i);
+      emit(&es_code, "    ldy #%d\n", offset + j);
+      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    adc #$%02x\n", bytes[j]);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
+static void emit_sub_immediate_from_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
+   emit(&es_code, "    sec\n");
+   for (int i = 0; i < size; i++) {
+      int j = expr_byte_index(type, size, i);
+      emit(&es_code, "    ldy #%d\n", offset + j);
+      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    sbc #$%02x\n", bytes[j]);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
+static void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   emit(&es_code, "    clc\n");
+   for (int i = 0; i < size; i++) {
+      int j = expr_byte_index(type, size, i);
+      emit(&es_code, "    ldy #%d\n", dst_offset + j);
+      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", src_offset + j);
+      emit(&es_code, "    adc (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_offset + j);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
+static void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   emit(&es_code, "    sec\n");
+   for (int i = 0; i < size; i++) {
+      int j = expr_byte_index(type, size, i);
+      emit(&es_code, "    ldy #%d\n", dst_offset + j);
+      emit(&es_code, "    lda (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", src_offset + j);
+      emit(&es_code, "    sbc (fp),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_offset + j);
+      emit(&es_code, "    sta (fp),y\n");
+   }
+}
+
 static ContextEntry *ctx_lookup_lvalue(Context *ctx, ASTNode *node) {
    if (!node || strcmp(node->name, "lvalue") || node->count == 0) {
       return NULL;
@@ -578,9 +643,7 @@ static ContextEntry *ctx_lookup_lvalue(Context *ctx, ASTNode *node) {
 }
 
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
-   while (expr && expr->count == 1 && !strcmp(expr->name, "assign_expr")) {
-      expr = expr->children[0];
-   }
+   expr = (ASTNode *) unwrap_expr_node(expr);
 
    if (!expr || is_empty(expr)) {
       return true;
@@ -612,6 +675,58 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       if (entry && !entry->is_static && !entry->is_quick) {
          emit_copy_fp_to_fp(dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
          return true;
+      }
+   }
+
+   if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
+      const ASTNode *rhs = unwrap_expr_node(expr->children[1]);
+      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+         return false;
+      }
+
+      if (rhs && rhs->kind == AST_INTEGER) {
+         unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+         if (has_flag(dst->type->strval, "$endian:big")) {
+            make_be_int(rhs->strval, bytes, dst->size);
+         }
+         else {
+            make_le_int(rhs->strval, bytes, dst->size);
+         }
+
+         if (!strcmp(expr->name, "+")) {
+            emit_add_immediate_to_fp(dst->type, dst->offset, bytes, dst->size);
+         }
+         else {
+            emit_sub_immediate_from_fp(dst->type, dst->offset, bytes, dst->size);
+         }
+         free(bytes);
+         return true;
+      }
+
+      if (rhs && rhs->kind == AST_IDENTIFIER) {
+         ContextEntry *entry = ctx_lookup(ctx, rhs->strval);
+         if (entry && !entry->is_static && !entry->is_quick) {
+            if (!strcmp(expr->name, "+")) {
+               emit_add_fp_to_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
+            }
+            else {
+               emit_sub_fp_from_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
+            }
+            return true;
+         }
+      }
+
+      if (rhs && !strcmp(rhs->name, "lvalue") && rhs->count > 0) {
+         ContextEntry *entry = ctx_lookup_lvalue(ctx, (ASTNode *) rhs);
+         if (entry && !entry->is_static && !entry->is_quick) {
+            if (!strcmp(expr->name, "+")) {
+               emit_add_fp_to_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
+            }
+            else {
+               emit_sub_fp_from_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
+            }
+            return true;
+         }
       }
    }
 
