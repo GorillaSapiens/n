@@ -48,50 +48,52 @@ typedef struct Context {
    Set *vars;
 } Context;
 
-#if 0
-
-#if 0
 // for parameterless flags (e.g. "$signed")
-// also for compleate flags (e.g. "$endian:little")
+// also for complete flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
-   const ASTNode *node = set_get(types, type);
-   for (const ASTNode *list = node->children[1];
-         list != NULL;
-         list = list->children[1]) {
-      if (!strcmp(list->children[0]->strval, flag)) {
+   const ASTNode *node = get_typename_node(type);
+   if (!node || node->count < 2 || is_empty(node->children[1])) {
+      return false;
+   }
+
+   const ASTNode *flags = node->children[1];
+   for (int i = 0; i < flags->count; i++) {
+      if (!strcmp(flags->children[i]->strval, flag)) {
          return true;
       }
    }
    return false;
 }
-#endif
 
-#if 0
 static bool has_modifier(ASTNode *node, const char *modifier) {
-   if (node && node->kind != AST_EMPTY) {
-      while (node) {
-         if (!strcmp(modifier, node->children[0]->strval)) {
-            return true;
-         }
-         node = node->children[1];
+   if (!node || is_empty(node)) {
+      return false;
+   }
+
+   for (int i = 0; i < node->count; i++) {
+      if (!strcmp(modifier, node->children[i]->strval)) {
+         return true;
       }
    }
    return false;
 }
 
 static int get_size(const char *type) {
-   const ASTNode *node = set_get(types, type);
-   for (const ASTNode *list = node->children[1];
-         list != NULL;
-         list = list->children[1]) {
-      if (!strncmp(list->children[0]->strval, "$size:", 6)) {
-         return atoi(list->children[0]->strval + 6);
+   const ASTNode *node = get_typename_node(type);
+   if (!node || node->count < 2 || is_empty(node->children[1])) {
+      error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+   }
+
+   const ASTNode *flags = node->children[1];
+   for (int i = 0; i < flags->count; i++) {
+      if (!strncmp(flags->children[i]->strval, "$size:", 6)) {
+         return atoi(flags->children[i]->strval + 6);
       }
    }
+
    error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
-   return -1; // unreachable
+   return -1;
 }
-#endif
 
 #if 0
 // decl_stmt is a free floating variable declaration
@@ -649,8 +651,6 @@ static void compile_function_decl(ASTNode *node) {
 }
 #endif
 
-#endif
-
 ////////////////////////////////////////
 
 static void compile_mem_decl_stmt(ASTNode *node) {
@@ -748,11 +748,207 @@ static void compile_union_decl_stmt(ASTNode *node) {
    debug("========================================\n");
 }
 
+static bool declarator_is_function(const ASTNode *declarator) {
+   return declarator && declarator->count >= 3 &&
+          !strcmp(declarator->children[2]->name, "parameter_list");
+}
+
+static int declarator_array_multiplier(const ASTNode *declarator) {
+   int mult = 1;
+
+   if (!declarator_is_function(declarator)) {
+      for (int i = 2; i < declarator->count; i++) {
+         mult *= atoi(declarator->children[i]->strval);
+      }
+   }
+
+   return mult;
+}
+
+static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator) {
+   int size;
+
+   if (atoi(declarator->children[0]->strval) > 0) {
+      size = get_size("*");
+   }
+   else {
+      size = get_size(type->strval);
+   }
+
+   return size * declarator_array_multiplier(declarator);
+}
+
+static void compile_global_decl_item(ASTNode *node) {
+   ASTNode *modifiers  = node->children[0];
+   ASTNode *type       = node->children[1];
+   ASTNode *declarator = node->children[2];
+   const char *name    = declarator->children[1]->strval;
+   ASTNode *expression = node->children[node->count - 1];
+
+   if (!globals) {
+      globals = new_set();
+   }
+
+   const ASTNode *value = set_get(globals, name);
+   if (value != NULL) {
+      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+            node->file, node->line, node->column,
+            name,
+            value->file, value->line, value->column);
+   }
+   set_add(globals, strdup(name), node);
+
+   bool is_extern = has_modifier(modifiers, "extern");
+   bool is_const  = has_modifier(modifiers, "const");
+   bool is_static = has_modifier(modifiers, "static");
+   bool is_quick  = has_modifier(modifiers, "quick");
+   bool is_ref    = has_modifier(modifiers, "ref");
+
+   if (is_ref) {
+      error("[%s:%d.%d] 'ref' not allowed in global declaration",
+            node->file, node->line, node->column);
+   }
+
+   int size = declarator_storage_size(type, declarator);
+
+   if (is_extern) {
+      if (is_static) {
+         error("[%s:%d.%d] 'extern' and 'static' don't mix",
+               node->file, node->line, node->column);
+      }
+
+      if (is_quick) {
+         emit(&es_import, ".zpimport _%s\n", name);
+      }
+      else {
+         emit(&es_import, ".import _%s\n", name);
+      }
+      return;
+   }
+
+   if (!is_static) {
+      if (is_quick) {
+         emit(&es_export, ".zpexport _%s\n", name);
+      }
+      else {
+         emit(&es_export, ".export _%s\n", name);
+      }
+   }
+
+   if (is_empty(expression)) {
+      if (is_const) {
+         error("[%s:%d.%d] 'const' missing initializer",
+               node->file, node->line, node->column);
+      }
+      if (is_quick) {
+         emit(&es_zp, "_%s:\n", name);
+         emit(&es_zp, "\t.res %d\n", size);
+      }
+      else {
+         emit(&es_bss, "_%s:\n", name);
+         emit(&es_bss, "\t.res %d\n", size);
+      }
+      return;
+   }
+
+   EmitSink *es = is_const ? &es_rodata : (is_quick ? &es_zpdata : &es_data);
+   emit(es, "_%s:\n", name);
+
+   if (expression->kind == AST_INTEGER) {
+      unsigned char *bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
+      if (has_flag(type->strval, "$endian:big")) {
+         make_be_int(expression->strval, bytes, size);
+      }
+      else {
+         make_le_int(expression->strval, bytes, size);
+      }
+      emit(es, "\t.byte $%02x", bytes[0]);
+      for (int i = 1; i < size; i++) {
+         emit(es, ", $%02x", bytes[i]);
+      }
+      emit(es, "\n");
+      free(bytes);
+   }
+   else {
+      warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
+            node->file, node->line, node->column, name);
+      emit(es, "\t.res %d, $00\n", size);
+   }
+}
+
+static void remember_function(const ASTNode *node, const char *name) {
+   if (!functions) {
+      functions = new_set();
+   }
+
+   const ASTNode *value = set_get(functions, name);
+   if (value != NULL) {
+      if (value->count >= 4 && node->count >= 4) {
+         error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+               node->file, node->line, node->column,
+               value->file, value->line, value->column,
+               name);
+      }
+      return;
+   }
+
+   set_add(functions, strdup(name), (void *) node);
+}
+
+static void compile_function_signature(ASTNode *node) {
+   ASTNode *modifiers  = node->children[0];
+   ASTNode *declarator = node->children[2];
+   const char *name    = declarator->children[1]->strval;
+
+   remember_function(node, name);
+
+   if (node->count < 4) {
+      return;
+   }
+
+   if (!has_modifier(modifiers, "static")) {
+      emit(&es_export, ".export _%s\n", name);
+   }
+
+   emit(&es_code, ".proc _%s\n", name);
+   emit(&es_code, "@fini:\n");
+   emit(&es_code, "    rts\n");
+   emit(&es_code, ".endproc\n");
+
+   if (node->children[3]->count > 0) {
+      warning("[%s:%d.%d] function body for '%s' not compiled yet; emitting stub",
+            node->file, node->line, node->column, name);
+   }
+}
+
 static void compile_defdecl_stmt(ASTNode *node) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
+   if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
+      ASTNode *list = node->children[0];
+      for (int i = 0; i < list->count; i++) {
+         ASTNode *item = list->children[i];
+         ASTNode *declarator = item->children[2];
+         if (declarator_is_function(declarator)) {
+            compile_function_signature(item);
+         }
+         else {
+            compile_global_decl_item(item);
+         }
+      }
+      return;
+   }
+
+   if (node->count == 3) {
+      ASTNode *synthetic = make_node("decl_item",
+         node->children[0]->children[0],
+         node->children[0]->children[1],
+         node->children[1],
+         node->children[2],
+         NULL);
+      compile_function_signature(synthetic);
+      return;
+   }
+
+   error("[%s:%d.%d] unsupported defdecl_stmt shape", node->file, node->line, node->column);
 }
 
 static void check_struct_union_undefined(ASTNode *program) {
