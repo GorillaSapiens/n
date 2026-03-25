@@ -610,7 +610,7 @@ static void compile_function_decl(ASTNode *node) {
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
    emit(&es_code, "    lda sp\n");
-   emit(&es_code, "    sta sp\n");
+   emit(&es_code, "    sta fp\n");
    emit(&es_code, "\n");
 
    // body
