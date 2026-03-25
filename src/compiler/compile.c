@@ -50,6 +50,7 @@ typedef struct Context {
 } Context;
 
 static void remember_function(const ASTNode *node, const char *name);
+static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 static const ASTNode *function_return_type(const ASTNode *fn);
@@ -65,6 +66,16 @@ static void remember_runtime_import(const char *name) {
    }
    if (!set_get(runtime_imports, name)) {
       set_add(runtime_imports, strdup(name), (void *)1);
+      emit(&es_import, ".import _%s\n", name);
+   }
+}
+
+static void remember_symbol_import(const char *name) {
+   if (!globals) {
+      globals = new_set();
+   }
+   if (!set_get(globals, name)) {
+      set_add(globals, strdup(name), (void *)1);
       emit(&es_import, ".import _%s\n", name);
    }
 }
@@ -1458,6 +1469,34 @@ static void remember_function(const ASTNode *node, const char *name) {
    set_add(functions, strdup(name), (void *) node);
 }
 
+static void predeclare_top_level_functions(ASTNode *program) {
+   if (!functions) {
+      functions = new_set();
+   }
+
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (strcmp(node->name, "defdecl_stmt")) {
+         continue;
+      }
+
+      if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
+         ASTNode *list = node->children[0];
+         for (int j = 0; j < list->count; j++) {
+            ASTNode *item = list->children[j];
+            ASTNode *declarator = item->children[2];
+            if (declarator_is_function(declarator)) {
+               remember_function(item, declarator->children[1]->strval);
+            }
+         }
+      }
+      else if (node->count == 3) {
+         ASTNode *declarator = node->children[1];
+         remember_function(node, declarator->children[1]->strval);
+      }
+   }
+}
+
 static void compile_function_signature(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *declarator = node->children[2];
@@ -1465,24 +1504,11 @@ static void compile_function_signature(ASTNode *node) {
 
    remember_function(node, name);
 
-   if (node->count < 4) {
-      return;
-   }
-
-   if (!has_modifier(modifiers, "static")) {
-      emit(&es_export, ".export _%s\n", name);
-   }
-
-   emit(&es_code, ".proc _%s\n", name);
-   emit(&es_code, "@fini:\n");
-   emit(&es_code, "    rts\n");
-   emit(&es_code, ".endproc\n");
-
-   if (node->children[3]->count > 0) {
-      warning("[%s:%d.%d] function body for '%s' not compiled yet; emitting stub",
-            node->file, node->line, node->column, name);
+   if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
+      remember_symbol_import(name);
    }
 }
+
 
 static void compile_defdecl_stmt(ASTNode *node) {
    if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
@@ -1744,6 +1770,7 @@ static void compile(ASTNode *program) {
    check_struct_union_undefined(program);
    crosscheck_struct_union_nesting(program);
    calculate_struct_union_sizes(program);
+   predeclare_top_level_functions(program);
 
    for (int i = 0; i < program->count; i++) {
       ASTNode *node = program->children[i];
