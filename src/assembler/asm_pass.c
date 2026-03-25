@@ -1036,6 +1036,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    ctx->error_count = 0;
    ctx->object_mode_o65 = object_mode_o65;
    ctx->imports = NULL;
+   ctx->weaks = NULL;
    ctx->segments = NULL;
 
    assign_segments(prog);

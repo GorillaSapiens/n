@@ -1,4 +1,4 @@
-; nrt0.s
+; nrt0_int.s
 
 .global __nmi
 .global __irqbrk
