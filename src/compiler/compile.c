@@ -560,7 +560,24 @@ static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    }
 }
 
-static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
+static ContextEntry *ctx_lookup_lvalue(Context *ctx, ASTNode *node) {
+   if (!node || strcmp(node->name, "lvalue") || node->count == 0) {
+      return NULL;
+   }
+
+   ASTNode *base = node->children[0];
+   if (!base || strcmp(base->name, "lvalue_base") || base->count == 0) {
+      return NULL;
+   }
+
+   if (base->children[0]->kind != AST_IDENTIFIER) {
+      return NULL;
+   }
+
+   return ctx_lookup(ctx, base->children[0]->strval);
+}
+
+static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    while (expr && expr->count == 1 && !strcmp(expr->name, "assign_expr")) {
       expr = expr->children[0];
    }
@@ -570,14 +587,14 @@ static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntr
    }
 
    if (expr->kind == AST_INTEGER) {
-      unsigned char *bytes = (unsigned char *) calloc(ret->size ? ret->size : 1, sizeof(unsigned char));
-      if (has_flag(ret->type->strval, "$endian:big")) {
-         make_be_int(expr->strval, bytes, ret->size);
+      unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (has_flag(dst->type->strval, "$endian:big")) {
+         make_be_int(expr->strval, bytes, dst->size);
       }
       else {
-         make_le_int(expr->strval, bytes, ret->size);
+         make_le_int(expr->strval, bytes, dst->size);
       }
-      emit_store_immediate_to_fp(ret->offset, bytes, ret->size);
+      emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
       free(bytes);
       return true;
    }
@@ -585,23 +602,24 @@ static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntr
    if (expr->kind == AST_IDENTIFIER) {
       ContextEntry *entry = ctx_lookup(ctx, expr->strval);
       if (entry && !entry->is_static && !entry->is_quick) {
-         emit_copy_fp_to_fp(ret->offset, entry->offset, entry->size);
+         emit_copy_fp_to_fp(dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
          return true;
       }
    }
 
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
-      ASTNode *base = expr->children[0];
-      if (base && !strcmp(base->name, "lvalue_base") && base->count > 0 && base->children[0]->kind == AST_IDENTIFIER) {
-         ContextEntry *entry = ctx_lookup(ctx, base->children[0]->strval);
-         if (entry && !entry->is_static && !entry->is_quick) {
-            emit_copy_fp_to_fp(ret->offset, entry->offset, entry->size);
-            return true;
-         }
+      ContextEntry *entry = ctx_lookup_lvalue(ctx, expr);
+      if (entry && !entry->is_static && !entry->is_quick) {
+         emit_copy_fp_to_fp(dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
+         return true;
       }
    }
 
    return false;
+}
+
+static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
+   return compile_expr_to_slot(expr, ctx, ret);
 }
 
 static void compile_local_decl_item(ASTNode *node, Context *ctx) {
@@ -668,14 +686,36 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp @fini\n");
 }
 
-#if 0
 static void compile_expr(ASTNode *node, Context *ctx) {
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
-   parse_dump_node(node);
+   if (!node || is_empty(node)) {
+      return;
+   }
 
-   error("%s:%d %s exiting", __FILE__, __LINE__,  __FUNCTION__);
+   while (node && node->count == 1 && !strcmp(node->name, "expr")) {
+      node = node->children[0];
+   }
+
+   if (!node || strcmp(node->name, "assign_expr") || node->count != 3 || strcmp(node->children[0]->strval, ":=")) {
+      warning("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   ContextEntry *dst = ctx_lookup_lvalue(ctx, node->children[1]);
+   if (!dst) {
+      warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+      return;
+   }
+
+   if (dst->is_static || dst->is_quick) {
+      warning("[%s:%d.%d] assignment to static/quick '%s' not compiled yet", node->file, node->line, node->column,
+              node->children[1]->children[0]->children[0]->strval);
+      return;
+   }
+
+   if (!compile_expr_to_slot(node->children[2], ctx, dst)) {
+      warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+   }
 }
-#endif
 
 #if 0
 static void compile_block_decl_stmt(ASTNode *node, Context *ctx) {
@@ -716,8 +756,8 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       if (!strcmp(stmt->name, "return_stmt")) {
          compile_return_stmt(stmt, ctx);
       }
-      else if (!strcmp(stmt->name, "expr")) {
-         warning("[%s:%d.%d] expression statements not compiled yet", stmt->file, stmt->line, stmt->column);
+      else if (!strcmp(stmt->name, "expr") || !strcmp(stmt->name, "assign_expr")) {
+         compile_expr(stmt, ctx);
       }
       else if (!strcmp(stmt->name, "defdecl_stmt")) {
          ASTNode *list = stmt->children[0];
