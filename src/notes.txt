@@ -1,2 +1,0 @@
-
-~/cc65/bin/cl65 -C nlib/n.cfg -m map.txt -u _nrt0_reset --target none -o foo.bin 0.s nlib/nlib.a
