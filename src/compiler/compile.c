@@ -89,6 +89,7 @@ static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
 static bool declarator_is_function(const ASTNode *declarator);
 static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
+static void calculate_struct_union_sizes(ASTNode *program);
 
 static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
@@ -182,15 +183,37 @@ static bool has_modifier(ASTNode *node, const char *modifier) {
 }
 
 static int get_size(const char *type) {
-   const ASTNode *node = get_typename_node(type);
-   if (!node || node->count < 2 || is_empty(node->children[1])) {
+   const ASTNode *node;
+
+   if (!type) {
+      error("[%s:%d] internal could not find NULL type", __FILE__, __LINE__);
+   }
+
+   if (typesizes && pair_exists(typesizes, type)) {
+      return (int)(intptr_t) pair_get(typesizes, type);
+   }
+
+   node = get_typename_node(type);
+   if (!node) {
       error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
    }
 
-   const ASTNode *flags = node->children[1];
-   for (int i = 0; i < flags->count; i++) {
-      if (!strncmp(flags->children[i]->strval, "$size:", 6)) {
-         return atoi(flags->children[i]->strval + 6);
+   if (!strcmp(node->name, "type_decl_stmt")) {
+      if (node->count < 2 || is_empty(node->children[1])) {
+         error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+      }
+
+      const ASTNode *flags = node->children[1];
+      for (int i = 0; i < flags->count; i++) {
+         if (!strncmp(flags->children[i]->strval, "$size:", 6)) {
+            return atoi(flags->children[i]->strval + 6);
+         }
+      }
+   }
+   else if (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt")) {
+      calculate_struct_union_sizes(root);
+      if (typesizes && pair_exists(typesizes, type)) {
+         return (int)(intptr_t) pair_get(typesizes, type);
       }
    }
 
@@ -841,6 +864,7 @@ static int declarator_first_element_size(const ASTNode *type, const ASTNode *dec
 static bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
    const ASTNode *agg;
    int offset = 0;
+   bool is_union = false;
    if (!type || !type_name_from_node(type)) {
       return false;
    }
@@ -848,6 +872,7 @@ static bool find_aggregate_member(const ASTNode *type, const char *member, const
    if (!agg || agg->count < 2) {
       return false;
    }
+   is_union = !strcmp(agg->name, "union_decl_stmt");
    for (int i = 1; i < agg->count; i++) {
       const ASTNode *field = agg->children[i];
       const ASTNode *ftype;
@@ -867,10 +892,12 @@ static bool find_aggregate_member(const ASTNode *type, const char *member, const
       if (!strcmp(fname, member)) {
          if (member_type) *member_type = ftype;
          if (member_declarator) *member_declarator = fdecl;
-         if (member_offset) *member_offset = offset;
+         if (member_offset) *member_offset = is_union ? 0 : offset;
          return true;
       }
-      offset += fsize;
+      if (!is_union) {
+         offset += fsize;
+      }
    }
    return false;
 }
@@ -898,6 +925,29 @@ static void emit_add_immediate_to_ptr(int ptrno, int adjust) {
    emit(&es_code, "    lda ptr%d+1\n", ptrno);
    emit(&es_code, "    adc #$%02x\n", (adjust >> 8) & 0xff);
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
+}
+
+static void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
+   bool direct = dst_offset >= 0 && dst_offset + size <= 256;
+
+   if (size <= 0) {
+      return;
+   }
+
+   if (!direct) {
+      emit_prepare_fp_ptr(ptrno == 0 ? 1 : 0, dst_offset);
+   }
+
+   for (int i = 0; i < size; i++) {
+      if (i < get_size("*")) {
+         emit(&es_code, "    lda ptr%d%s\n", ptrno, i == 0 ? "" : "+1");
+      }
+      else {
+         emit(&es_code, "    lda #0\n");
+      }
+      emit(&es_code, "    ldy #%d\n", direct ? (dst_offset + i) : i);
+      emit(&es_code, "    sta %s,y\n", direct ? "(fp)" : (ptrno == 0 ? "(ptr1)" : "(ptr0)"));
+   }
 }
 
 static void emit_copy_lvalue_to_fp(int dst_offset, const LValueRef *src, int size) {
@@ -1254,6 +1304,22 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
    }
 
+   if (expr->count == 1 && !strcmp(expr->name, "&")) {
+      LValueRef lv;
+      ASTNode *inner = (ASTNode *) unwrap_expr_node(expr->children[0]);
+      if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv) && !lv.is_static && !lv.is_quick) {
+         if (lv.indirect) {
+            emit_load_ptr_from_fpvar(0, lv.offset);
+            emit_add_immediate_to_ptr(0, lv.ptr_adjust);
+         }
+         else {
+            emit_prepare_fp_ptr(0, lv.offset);
+         }
+         emit_store_ptr_to_fp(dst->offset, 0, dst->size);
+         return true;
+      }
+   }
+
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv) && !lv.is_static && !lv.is_quick) {
@@ -1428,6 +1494,10 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       if (entry) {
          return entry->type;
       }
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "&")) {
+      return get_typename_node("*");
    }
 
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
