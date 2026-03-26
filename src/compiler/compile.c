@@ -167,6 +167,17 @@ static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size)
    }
 }
 
+static void emit_bytes_direct(EmitSink *es, const unsigned char *bytes, int size) {
+   if (!es || !bytes || size <= 0) {
+      return;
+   }
+   emit(es, "	.byte $%02x", bytes[0]);
+   for (int i = 1; i < size; i++) {
+      emit(es, ", $%02x", bytes[i]);
+   }
+   emit(es, "\n");
+}
+
 static void emit_add_immediate_to_symbol(const ASTNode *type, const char *symbol, const unsigned char *bytes, int size) {
    emit(&es_code, "    clc\n");
    for (int i = 0; i < size; i++) {
@@ -2881,7 +2892,23 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       }
    }
    else if (!is_empty(expression)) {
-      warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+      char sym[256];
+      unsigned char *bytes;
+      EmitSink *sink;
+      if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
+         warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         return;
+      }
+      sink = entry->is_quick ? &es_zpdata : &es_data;
+      bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
+      if (bytes && build_initializer_bytes(bytes, size, 0, expression, type, declarator, size)) {
+         emit_bytes_direct(sink, bytes, size);
+      }
+      else {
+         warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         emit(sink, "	.res %d\n", size);
+      }
+      free(bytes);
    }
 }
 
@@ -3207,7 +3234,27 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    }
 
    if (!node || strcmp(node->name, "assign_expr") || node->count != 3) {
-      warning("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+      const ASTNode *type = expr_value_type(node, ctx);
+      int size = expr_value_size(node, ctx);
+      if (size <= 0) {
+         size = get_size("int");
+      }
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      if (!compile_expr_to_slot(node, ctx, &(ContextEntry){ .name = "$tmp", .type = type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = size })) {
+         remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+         warning("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+         return;
+      }
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
       return;
    }
 
@@ -3525,8 +3572,14 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       else if (!strcmp(stmt->name, "goto_stmt")) {
          compile_goto_stmt(stmt, ctx);
       }
+      else if (!strcmp(stmt->name, "switch_stmt")) {
+         compile_switch_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "statement_list")) {
+         compile_statement_list(stmt, ctx);
+      }
       else {
-         warning("[%s:%d.%d] statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+         compile_expr(stmt, ctx);
       }
    }
 }
