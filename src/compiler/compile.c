@@ -1120,6 +1120,40 @@ static void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
    }
 }
 
+static void emit_load_lowbyte_fp_to_arg1(int src_offset) {
+   bool direct = src_offset >= 0 && src_offset + 1 <= 256;
+   if (!direct) {
+      emit_prepare_fp_ptr(0, src_offset);
+      emit(&es_code, "    ldy #0\n");
+      emit(&es_code, "    lda (ptr0),y\n");
+   }
+   else {
+      emit(&es_code, "    ldy #%d\n", src_offset);
+      emit(&es_code, "    lda (fp),y\n");
+   }
+   emit(&es_code, "    sta arg1\n");
+}
+
+static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size) {
+   emit_prepare_fp_ptr(0, lhs_offset);
+   emit_prepare_fp_ptr(1, rhs_offset);
+   emit_prepare_fp_ptr(2, dst_offset);
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   remember_runtime_import(helper);
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset, int size) {
+   emit_prepare_fp_ptr(0, value_offset);
+   emit_prepare_fp_ptr(1, scratch_offset);
+   emit_load_lowbyte_fp_to_arg1(count_offset);
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   remember_runtime_import(helper);
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
 static void emit_add_fp_to_symbol(const ASTNode *type, const char *dst_symbol, int src_offset, int size) {
    bool src_direct = src_offset >= 0 && src_offset + size <= 256;
    if (!src_direct) {
@@ -1975,6 +2009,97 @@ unary_not_done:
          emit(&es_code, "    jsr _popN\n");
          return true;
       }
+   }
+
+   if (expr->count == 2 && (!strcmp(expr->name, "&") || !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
+                            !strcmp(expr->name, "*") || !strcmp(expr->name, "/") || !strcmp(expr->name, "%") ||
+                            !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>"))) {
+      const char *op = expr->name;
+      int op_size = dst->size > 0 ? dst->size : expr_value_size(expr, ctx);
+      int tmp_total;
+      int rhs_offset;
+      int aux_offset;
+      unsigned char *zeroes;
+      const ASTNode *lhs_type;
+      const char *helper = NULL;
+
+      if (op_size <= 0) {
+         op_size = get_size("int");
+      }
+      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+         return false;
+      }
+
+      tmp_total = op_size;
+      if (!strcmp(op, "*")) {
+         tmp_total += op_size * 2;
+      }
+      else if (!strcmp(op, "/") || !strcmp(op, "%")) {
+         tmp_total += op_size * 2;
+      }
+      else if (!strcmp(op, "<<") || !strcmp(op, ">>")) {
+         tmp_total += op_size;
+      }
+
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+
+      rhs_offset = ctx->locals;
+      aux_offset = ctx->locals + op_size;
+      zeroes = (unsigned char *) calloc(op_size ? op_size : 1, sizeof(unsigned char));
+      if (!zeroes) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+      emit_store_immediate_to_fp(rhs_offset, zeroes, op_size);
+      free(zeroes);
+      if (!compile_expr_to_slot(expr->children[1], ctx, &(ContextEntry){ .name = "$tmp_rhs", .type = expr_value_type(expr->children[1], ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = op_size })) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+
+      if (!strcmp(op, "&")) helper = "bit_andN";
+      else if (!strcmp(op, "|")) helper = "bit_orN";
+      else if (!strcmp(op, "^")) helper = "bit_xorN";
+
+      if (helper) {
+         emit_runtime_binary_fp_fp(helper, dst->offset, dst->offset, rhs_offset, op_size);
+      }
+      else if (!strcmp(op, "*")) {
+         emit_runtime_binary_fp_fp("mulN", aux_offset, dst->offset, rhs_offset, op_size);
+         emit_copy_fp_to_fp(dst->offset, aux_offset, op_size);
+      }
+      else if (!strcmp(op, "/") || !strcmp(op, "%")) {
+         int rem_offset = aux_offset + op_size;
+         emit_prepare_fp_ptr(0, dst->offset);
+         emit_prepare_fp_ptr(1, rhs_offset);
+         emit_prepare_fp_ptr(2, aux_offset);
+         emit_prepare_fp_ptr(3, rem_offset);
+         emit(&es_code, "    lda #$%02x\n", op_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         remember_runtime_import("divN");
+         emit(&es_code, "    jsr _divN\n");
+         emit_copy_fp_to_fp(dst->offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
+      }
+      else if (!strcmp(op, "<<") || !strcmp(op, ">>")) {
+         lhs_type = expr_value_type(expr->children[0], ctx);
+         helper = !strcmp(op, "<<") ? "lslN" : (lhs_type && has_flag(type_name_from_node(lhs_type), "$signed") ? "asrN" : "lsrN");
+         emit_runtime_shift_fp(helper, dst->offset, aux_offset, rhs_offset, op_size);
+      }
+
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      return true;
    }
 
    return false;
@@ -3146,9 +3271,12 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   if (!strcmp(op, "+=") || !strcmp(op, "-=")) {
+   if (!strcmp(op, "+=") || !strcmp(op, "-=") || !strcmp(op, "&=") || !strcmp(op, "|=") ||
+       !strcmp(op, "^=") || !strcmp(op, "*=") || !strcmp(op, "/=") || !strcmp(op, "%=") ||
+       !strcmp(op, "<<=") || !strcmp(op, ">>=")) {
       char dst_sym[256];
       bool dst_symbol = (dst->is_static || dst->is_quick || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
+      if (!strcmp(op, "+=") || !strcmp(op, "-=")) {
       if (rhs->kind == AST_INTEGER) {
          unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
          if (!bytes) {
@@ -3228,6 +3356,98 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             }
             return;
          }
+      }
+      }
+      else {
+         int tmp_total = dst->size * 2;
+         int lhs_tmp_offset = ctx->locals;
+         int rhs_tmp_offset = ctx->locals + dst->size;
+         ContextEntry lhs_tmp = { .name = "$lhs_tmp", .type = dst->type, .declarator = dst->declarator, .is_static = false, .is_quick = false, .is_global = false, .offset = lhs_tmp_offset, .size = dst->size };
+         ContextEntry rhs_tmp = { .name = "$rhs_tmp", .type = expr_value_type(rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_tmp_offset, .size = dst->size };
+         unsigned char *zeroes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+         if (!zeroes) {
+            return;
+         }
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         emit_store_immediate_to_fp(lhs_tmp_offset, zeroes, dst->size);
+         emit_store_immediate_to_fp(rhs_tmp_offset, zeroes, dst->size);
+         free(zeroes);
+         if (dst_symbol) {
+            emit_copy_symbol_to_fp(lhs_tmp_offset, dst_sym, dst->size);
+         }
+         else if (lv.indirect) {
+            emit_copy_lvalue_to_fp(lhs_tmp_offset, &lv, dst->size);
+         }
+         else {
+            emit_copy_fp_to_fp(lhs_tmp_offset, dst->offset, dst->size);
+         }
+         if (!compile_expr_to_slot(rhs, ctx, &rhs_tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            return;
+         }
+         if (!strcmp(op, "&=")) {
+            emit_runtime_binary_fp_fp("bit_andN", lhs_tmp_offset, lhs_tmp_offset, rhs_tmp_offset, dst->size);
+         }
+         else if (!strcmp(op, "|=")) {
+            emit_runtime_binary_fp_fp("bit_orN", lhs_tmp_offset, lhs_tmp_offset, rhs_tmp_offset, dst->size);
+         }
+         else if (!strcmp(op, "^=")) {
+            emit_runtime_binary_fp_fp("bit_xorN", lhs_tmp_offset, lhs_tmp_offset, rhs_tmp_offset, dst->size);
+         }
+         else if (!strcmp(op, "*=")) {
+            emit_runtime_binary_fp_fp("mulN", rhs_tmp_offset, lhs_tmp_offset, rhs_tmp_offset, dst->size);
+            emit_copy_fp_to_fp(lhs_tmp_offset, rhs_tmp_offset, dst->size);
+         }
+         else if (!strcmp(op, "/=") || !strcmp(op, "%=")) {
+            int rem_offset = rhs_tmp_offset;
+            int quo_offset = lhs_tmp_offset;
+            emit_prepare_fp_ptr(0, lhs_tmp_offset);
+            emit_prepare_fp_ptr(1, rhs_tmp_offset);
+            emit_prepare_fp_ptr(2, quo_offset);
+            emit_prepare_fp_ptr(3, rem_offset);
+            emit(&es_code, "    lda #$%02x\n", dst->size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import("divN");
+            emit(&es_code, "    jsr _divN\n");
+            if (!strcmp(op, "%=")) {
+               emit_copy_fp_to_fp(lhs_tmp_offset, rem_offset, dst->size);
+            }
+         }
+         else if (!strcmp(op, "<<=") || !strcmp(op, ">>=")) {
+            int scratch_offset = rhs_tmp_offset;
+            const ASTNode *lhs_type = dst->type;
+            const char *helper = !strcmp(op, "<<=") ? "lslN" : (lhs_type && has_flag(type_name_from_node(lhs_type), "$signed") ? "asrN" : "lsrN");
+            emit_runtime_shift_fp(helper, lhs_tmp_offset, scratch_offset, rhs_tmp_offset, dst->size);
+         }
+         else {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
+            return;
+         }
+         if (dst_symbol) {
+            emit_copy_fp_to_symbol(dst_sym, lhs_tmp_offset, dst->size);
+         }
+         else if (lv.indirect) {
+            emit_copy_fp_to_lvalue(&lv, lhs_tmp_offset, dst->size);
+         }
+         else {
+            emit_copy_fp_to_fp(dst->offset, lhs_tmp_offset, dst->size);
+         }
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return;
       }
    }
 
