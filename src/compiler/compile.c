@@ -895,6 +895,7 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
    while (expr && expr->count == 1 &&
           (!strcmp(expr->name, "expr") ||
            !strcmp(expr->name, "assign_expr") ||
+           !strcmp(expr->name, "conditional_expr") ||
            !strcmp(expr->name, "initializer") ||
            !strcmp(expr->name, "opt_expr"))) {
       expr = expr->children[0];
@@ -1616,6 +1617,58 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
    }
 
+   if (!strcmp(expr->name, "lvalue") && expr->count > 0 && expr->count >= 3 && expr->children[2] &&
+       expr->children[2]->kind == AST_IDENTIFIER &&
+       (!strcmp(expr->children[2]->strval, "pre++") || !strcmp(expr->children[2]->strval, "post++") ||
+        !strcmp(expr->children[2]->strval, "pre--") || !strcmp(expr->children[2]->strval, "post--"))) {
+      LValueRef lv;
+      bool inc;
+      bool pre;
+      int tmp_size;
+      ContextEntry tmp;
+      unsigned char *one;
+      if (!resolve_lvalue(ctx, expr, &lv)) {
+         return false;
+      }
+      inc = !strcmp(expr->children[2]->strval, "pre++") || !strcmp(expr->children[2]->strval, "post++");
+      pre = !strcmp(expr->children[2]->strval, "pre++") || !strcmp(expr->children[2]->strval, "pre--");
+      tmp_size = lv.size > 0 ? lv.size : dst->size;
+      tmp = (ContextEntry){ .name = "$tmp", .type = lv.type, .declarator = lv.declarator, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = tmp_size };
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      emit_copy_lvalue_to_fp(tmp.offset, &lv, tmp.size);
+      if (!pre) {
+         emit_copy_fp_to_fp(dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+      }
+      one = (unsigned char *) calloc(tmp.size ? tmp.size : 1, sizeof(unsigned char));
+      if (!one) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+      one[0] = 1;
+      if (inc) {
+         emit_add_immediate_to_fp(tmp.type, tmp.offset, one, tmp.size);
+      }
+      else {
+         emit_sub_immediate_from_fp(tmp.type, tmp.offset, one, tmp.size);
+      }
+      free(one);
+      emit_copy_fp_to_lvalue(&lv, tmp.offset, tmp.size);
+      if (pre) {
+         emit_copy_fp_to_fp(dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+      }
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      return true;
+   }
+
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
@@ -1652,6 +1705,107 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             return true;
          }
       }
+   }
+
+   if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {
+      for (int i = 0; i < expr->count - 1; i++) {
+         compile_expr(expr->children[i], ctx);
+      }
+      return compile_expr_to_slot(expr->children[expr->count - 1], ctx, dst);
+   }
+
+   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
+      const char *false_label = next_label("ternary_false");
+      const char *end_label = next_label("ternary_end");
+      bool ok;
+      if (!false_label || !end_label) {
+         free((void *) false_label);
+         free((void *) end_label);
+         return false;
+      }
+      if (!compile_condition_branch_false(expr->children[1], ctx, false_label)) {
+         free((void *) false_label);
+         free((void *) end_label);
+         return false;
+      }
+      ok = compile_expr_to_slot(expr->children[2], ctx, dst);
+      emit(&es_code, "    jmp %s\n", end_label);
+      emit(&es_code, "%s:\n", false_label);
+      if (ok) {
+         ok = compile_expr_to_slot(expr->children[3], ctx, dst);
+      }
+      emit(&es_code, "%s:\n", end_label);
+      free((void *) false_label);
+      free((void *) end_label);
+      return ok;
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "+")) {
+      return compile_expr_to_slot(expr->children[0], ctx, dst);
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "!")) {
+      const char *false_label = next_label("not_false");
+      const char *end_label = next_label("not_end");
+      unsigned char *zeroes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      unsigned char *ones = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      bool ok = false;
+      if (!false_label || !end_label || !zeroes || !ones) {
+         free(zeroes);
+         free(ones);
+         free((void *) false_label);
+         free((void *) end_label);
+         return false;
+      }
+      ones[0] = 1;
+      if (!compile_condition_branch_false(expr->children[0], ctx, false_label)) {
+         goto unary_not_done;
+      }
+      emit_store_immediate_to_fp(dst->offset, zeroes, dst->size);
+      emit(&es_code, "    jmp %s\n", end_label);
+      emit(&es_code, "%s:\n", false_label);
+      emit_store_immediate_to_fp(dst->offset, ones, dst->size);
+      emit(&es_code, "%s:\n", end_label);
+      ok = true;
+unary_not_done:
+      free(zeroes);
+      free(ones);
+      free((void *) false_label);
+      free((void *) end_label);
+      return ok;
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "~")) {
+      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+         return false;
+      }
+      for (int i = 0; i < dst->size; i++) {
+         emit(&es_code, "    ldy #%d\n", dst->offset + i);
+         emit(&es_code, "    lda (fp),y\n");
+         emit(&es_code, "    eor #$ff\n");
+         emit(&es_code, "    sta (fp),y\n");
+      }
+      return true;
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "-")) {
+      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+         return false;
+      }
+      for (int i = 0; i < dst->size; i++) {
+         emit(&es_code, "    ldy #%d\n", dst->offset + i);
+         emit(&es_code, "    lda (fp),y\n");
+         emit(&es_code, "    eor #$ff\n");
+         emit(&es_code, "    sta (fp),y\n");
+      }
+      emit(&es_code, "    clc\n");
+      for (int i = 0; i < dst->size; i++) {
+         emit(&es_code, "    ldy #%d\n", dst->offset + i);
+         emit(&es_code, "    lda (fp),y\n");
+         emit(&es_code, "    adc #%d\n", i == 0 ? 1 : 0);
+         emit(&es_code, "    sta (fp),y\n");
+      }
+      return true;
    }
 
    if (expr->count == 2 && (!strcmp(expr->name, "&&") || !strcmp(expr->name, "||"))) {
@@ -1884,6 +2038,20 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       }
    }
 
+   if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {
+      return expr_value_type(expr->children[expr->count - 1], ctx);
+   }
+
+   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
+      return expr_value_type(expr->children[2], ctx);
+   }
+
+   if (expr->count == 1 && (!strcmp(expr->name, "!") || !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+       !strcmp(expr->name, "<") || !strcmp(expr->name, ">") || !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=") ||
+       !strcmp(expr->name, "&&") || !strcmp(expr->name, "||"))) {
+      return get_typename_node("int");
+   }
+
    if (expr->count >= 1) {
       return expr_value_type(expr->children[0], ctx);
    }
@@ -1920,6 +2088,21 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
 
    if (!expr || is_empty(expr)) {
       emit(&es_code, "    jmp %s\n", false_label);
+      return true;
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "!")) {
+      const char *end_label = next_label("not_cond_end");
+      if (!end_label) {
+         return false;
+      }
+      if (!compile_condition_branch_false(expr->children[0], ctx, end_label)) {
+         free((void *) end_label);
+         return false;
+      }
+      emit(&es_code, "    jmp %s\n", false_label);
+      emit(&es_code, "%s:\n", end_label);
+      free((void *) end_label);
       return true;
    }
 
