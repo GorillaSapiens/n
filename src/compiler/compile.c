@@ -90,6 +90,10 @@ static const ASTNode *function_declarator_node(const ASTNode *fn);
 static bool declarator_is_function(const ASTNode *declarator);
 static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
 static void calculate_struct_union_sizes(ASTNode *program);
+static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size);
+static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size);
+static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
+static int expr_value_size(ASTNode *expr, Context *ctx);
 
 static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
@@ -1464,6 +1468,37 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             return true;
          }
       }
+
+      {
+         int rhs_size = expr_value_size((ASTNode *) rhs, ctx);
+         ContextEntry tmp;
+         if (rhs_size <= 0) {
+            rhs_size = dst->size;
+         }
+         tmp = (ContextEntry){ expr_value_type((ASTNode *) rhs, ctx), NULL, false, false, ctx->locals, rhs_size };
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_expr_to_slot((ASTNode *) rhs, ctx, &tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
+         if (!strcmp(expr->name, "+")) {
+            emit_add_fp_to_fp(dst->type, dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+         }
+         else {
+            emit_sub_fp_from_fp(dst->type, dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+         }
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return true;
+      }
    }
 
    return false;
@@ -1875,6 +1910,255 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    }
 }
 
+
+static bool type_is_aggregate(const ASTNode *type) {
+   const ASTNode *node;
+   if (!type) {
+      return false;
+   }
+   node = get_typename_node(type_name_from_node(type));
+   return node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"));
+}
+
+static bool initializer_is_list(const ASTNode *init) {
+   if (!init || is_empty(init)) {
+      return false;
+   }
+   return !strcmp(init->name, "expr_list") || !strcmp(init->name, "named_expr");
+}
+
+static int initializer_item_count(const ASTNode *node) {
+   if (!node || is_empty(node)) {
+      return 0;
+   }
+   if (!strcmp(node->name, "expr_list")) {
+      int total = 0;
+      for (int i = 0; i < node->count; i++) {
+         total += initializer_item_count(node->children[i]);
+      }
+      return total;
+   }
+   return 1;
+}
+
+static void initializer_collect_items(const ASTNode *node, const ASTNode **items, int *index) {
+   if (!node || is_empty(node)) {
+      return;
+   }
+   if (!strcmp(node->name, "expr_list")) {
+      for (int i = 0; i < node->count; i++) {
+         initializer_collect_items(node->children[i], items, index);
+      }
+      return;
+   }
+   items[(*index)++] = node;
+}
+
+static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, int total_size) {
+   if (total_size > 0) {
+      return total_size;
+   }
+   if (declarator) {
+      return declarator_storage_size(type, declarator);
+   }
+   return get_size(type_name_from_node(type));
+}
+
+static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size) {
+   const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
+   int size = scalar_storage_size(type, declarator, total_size);
+
+   if (!uinit || is_empty(uinit)) {
+      return true;
+   }
+
+   if (!initializer_is_list(uinit)) {
+      ContextEntry dst = { type, declarator, false, false, base_offset, size };
+      return compile_expr_to_slot((ASTNode *) uinit, ctx, &dst);
+   }
+
+   if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {
+      int item_count = initializer_item_count(uinit);
+      const ASTNode **items = (const ASTNode **) calloc(item_count ? item_count : 1, sizeof(*items));
+      int index = 0;
+      int elem_count = atoi(declarator->children[2]->strval);
+      int elem_size = declarator_first_element_size(type, declarator);
+      bool ok = true;
+      initializer_collect_items(uinit, items, &index);
+      for (int i = 0; i < index && i < elem_count; i++) {
+         const ASTNode *item = items[i];
+         if (!item || item->count < 2) {
+            continue;
+         }
+         if (!is_empty(item->children[0])) {
+            ok = false;
+            break;
+         }
+         ok = compile_initializer_to_fp(item->children[1], ctx, type, NULL, base_offset + i * elem_size, elem_size);
+         if (!ok) {
+            break;
+         }
+      }
+      free(items);
+      return ok;
+   }
+
+   if (type_is_aggregate(type)) {
+      const ASTNode *agg = get_typename_node(type_name_from_node(type));
+      int item_count = initializer_item_count(uinit);
+      const ASTNode **items = (const ASTNode **) calloc(item_count ? item_count : 1, sizeof(*items));
+      int index = 0;
+      int field_pos = 1;
+      bool is_union = agg && !strcmp(agg->name, "union_decl_stmt");
+      bool ok = true;
+
+      initializer_collect_items(uinit, items, &index);
+      for (int i = 0; i < index; i++) {
+         const ASTNode *item = items[i];
+         const ASTNode *ftype = NULL;
+         const ASTNode *fdecl = NULL;
+         int offset = 0;
+         if (!item || item->count < 2) {
+            continue;
+         }
+         if (!is_empty(item->children[0])) {
+            if (!find_aggregate_member(type, item->children[0]->strval, &ftype, &fdecl, &offset)) {
+               ok = false;
+               break;
+            }
+         }
+         else {
+            for (; agg && field_pos < agg->count; field_pos++) {
+               const ASTNode *field = agg->children[field_pos];
+               if (!field || field->count < 3) {
+                  continue;
+               }
+               ftype = field->children[1];
+               fdecl = field->children[2];
+               find_aggregate_member(type, fdecl->children[1]->strval, NULL, NULL, &offset);
+               field_pos++;
+               break;
+            }
+            if (!ftype || !fdecl) {
+               ok = false;
+               break;
+            }
+         }
+         ok = compile_initializer_to_fp(item->children[1], ctx, ftype, fdecl, base_offset + offset, declarator_storage_size(ftype, fdecl));
+         if (!ok || is_union) {
+            break;
+         }
+      }
+      free(items);
+      return ok;
+   }
+
+   return false;
+}
+
+static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size) {
+   const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
+   int size = scalar_storage_size(type, declarator, total_size);
+
+   if (!uinit || is_empty(uinit)) {
+      return true;
+   }
+   if (base_offset < 0 || base_offset + size > buf_size) {
+      return false;
+   }
+
+   if (!initializer_is_list(uinit)) {
+      if (uinit->kind != AST_INTEGER) {
+         return false;
+      }
+      if (has_flag(type_name_from_node(type), "$endian:big")) {
+         make_be_int(uinit->strval, buf + base_offset, size);
+      }
+      else {
+         make_le_int(uinit->strval, buf + base_offset, size);
+      }
+      return true;
+   }
+
+   if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {
+      int item_count = initializer_item_count(uinit);
+      const ASTNode **items = (const ASTNode **) calloc(item_count ? item_count : 1, sizeof(*items));
+      int index = 0;
+      int elem_count = atoi(declarator->children[2]->strval);
+      int elem_size = declarator_first_element_size(type, declarator);
+      bool ok = true;
+      initializer_collect_items(uinit, items, &index);
+      for (int i = 0; i < index && i < elem_count; i++) {
+         const ASTNode *item = items[i];
+         if (!item || item->count < 2) {
+            continue;
+         }
+         if (!is_empty(item->children[0])) {
+            ok = false;
+            break;
+         }
+         ok = build_initializer_bytes(buf, buf_size, base_offset + i * elem_size, item->children[1], type, NULL, elem_size);
+         if (!ok) {
+            break;
+         }
+      }
+      free(items);
+      return ok;
+   }
+
+   if (type_is_aggregate(type)) {
+      const ASTNode *agg = get_typename_node(type_name_from_node(type));
+      int item_count = initializer_item_count(uinit);
+      const ASTNode **items = (const ASTNode **) calloc(item_count ? item_count : 1, sizeof(*items));
+      int index = 0;
+      int field_pos = 1;
+      bool is_union = agg && !strcmp(agg->name, "union_decl_stmt");
+      bool ok = true;
+
+      initializer_collect_items(uinit, items, &index);
+      for (int i = 0; i < index; i++) {
+         const ASTNode *item = items[i];
+         const ASTNode *ftype = NULL;
+         const ASTNode *fdecl = NULL;
+         int offset = 0;
+         if (!item || item->count < 2) {
+            continue;
+         }
+         if (!is_empty(item->children[0])) {
+            if (!find_aggregate_member(type, item->children[0]->strval, &ftype, &fdecl, &offset)) {
+               ok = false;
+               break;
+            }
+         }
+         else {
+            for (; agg && field_pos < agg->count; field_pos++) {
+               const ASTNode *field = agg->children[field_pos];
+               if (!field || field->count < 3) {
+                  continue;
+               }
+               ftype = field->children[1];
+               fdecl = field->children[2];
+               find_aggregate_member(type, fdecl->children[1]->strval, NULL, NULL, &offset);
+               field_pos++;
+               break;
+            }
+            if (!ftype || !fdecl) {
+               ok = false;
+               break;
+            }
+         }
+         ok = build_initializer_bytes(buf, buf_size, base_offset + offset, item->children[1], ftype, fdecl, declarator_storage_size(ftype, fdecl));
+         if (!ok || is_union) {
+            break;
+         }
+      }
+      free(items);
+      return ok;
+   }
+
+   return false;
+}
+
 static void predeclare_statement_list(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;
@@ -1914,7 +2198,17 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 
    if (!is_empty(expression) && !entry->is_static && !entry->is_quick) {
-      if (!compile_expr_to_slot(expression, ctx, entry)) {
+      if (initializer_is_list(unwrap_expr_node(expression)) || declarator_array_count(declarator) > 0 || type_is_aggregate(type)) {
+         unsigned char *zeroes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
+         if (zeroes) {
+            emit_store_immediate_to_fp(entry->offset, zeroes, size);
+            free(zeroes);
+         }
+         if (!compile_initializer_to_fp(expression, ctx, type, declarator, entry->offset, size)) {
+            warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         }
+      }
+      else if (!compile_expr_to_slot(expression, ctx, entry)) {
          warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
       }
    }
@@ -2653,7 +2947,7 @@ static void compile_global_decl_item(ASTNode *node) {
       else {
          make_le_int(expression->strval, bytes, size);
       }
-      emit(es, "\t.byte $%02x", bytes[0]);
+      emit(es, "	.byte $%02x", bytes[0]);
       for (int i = 1; i < size; i++) {
          emit(es, ", $%02x", bytes[i]);
       }
@@ -2661,9 +2955,20 @@ static void compile_global_decl_item(ASTNode *node) {
       free(bytes);
    }
    else {
-      warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
-            node->file, node->line, node->column, name);
-      emit(es, "\t.res %d, $00\n", size);
+      unsigned char *bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
+      if (bytes && build_initializer_bytes(bytes, size, 0, expression, type, declarator, size)) {
+         emit(es, "	.byte $%02x", bytes[0]);
+         for (int i = 1; i < size; i++) {
+            emit(es, ", $%02x", bytes[i]);
+         }
+         emit(es, "\n");
+      }
+      else {
+         warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
+               node->file, node->line, node->column, name);
+         emit(es, "	.res %d, $00\n", size);
+      }
+      free(bytes);
    }
 }
 
