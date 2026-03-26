@@ -37,6 +37,11 @@ static int label_counter = 0;
 static const char *loop_break_stack[128];
 static const char *loop_continue_stack[128];
 static int loop_depth = 0;
+static const char *named_loop_names[128];
+static const char *named_loop_break_stack[128];
+static const char *named_loop_continue_stack[128];
+static int named_loop_depth = 0;
+static const char *pending_loop_label_name = NULL;
 
 typedef struct ContextEntry {
    const char *name;
@@ -248,6 +253,51 @@ static const char *current_break_label(void) {
 
 static const char *current_continue_label(void) {
    return loop_depth > 0 ? loop_continue_stack[loop_depth - 1] : NULL;
+}
+
+static void push_named_loop_labels(const char *name, const char *break_label, const char *continue_label) {
+   if (!name) {
+      return;
+   }
+   if (named_loop_depth < (int)(sizeof(named_loop_names) / sizeof(named_loop_names[0]))) {
+      named_loop_names[named_loop_depth] = name;
+      named_loop_break_stack[named_loop_depth] = break_label;
+      named_loop_continue_stack[named_loop_depth] = continue_label;
+      named_loop_depth++;
+   }
+}
+
+static void pop_named_loop_labels(void) {
+   if (named_loop_depth > 0) {
+      named_loop_depth--;
+      named_loop_names[named_loop_depth] = NULL;
+      named_loop_break_stack[named_loop_depth] = NULL;
+      named_loop_continue_stack[named_loop_depth] = NULL;
+   }
+}
+
+static const char *lookup_named_break_label(const char *name) {
+   if (!name) {
+      return NULL;
+   }
+   for (int i = named_loop_depth - 1; i >= 0; i--) {
+      if (named_loop_names[i] && !strcmp(named_loop_names[i], name)) {
+         return named_loop_break_stack[i];
+      }
+   }
+   return NULL;
+}
+
+static const char *lookup_named_continue_label(const char *name) {
+   if (!name) {
+      return NULL;
+   }
+   for (int i = named_loop_depth - 1; i >= 0; i--) {
+      if (named_loop_names[i] && !strcmp(named_loop_names[i], name)) {
+         return named_loop_continue_stack[i];
+      }
+   }
+   return NULL;
 }
 
 static const char *type_name_from_node(const ASTNode *type) {
@@ -2049,8 +2099,11 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
 static void compile_while_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("while_start");
    const char *end_label = next_label("while_end");
+   const char *named_loop = pending_loop_label_name;
    ASTNode *cond = node->children[0];
    ASTNode *body = node->children[1];
+
+   pending_loop_label_name = NULL;
 
    if (!start_label || !end_label) {
       free((void *) start_label);
@@ -2060,10 +2113,16 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    }
 
    push_loop_labels(end_label, start_label);
+   if (named_loop) {
+      push_named_loop_labels(named_loop, end_label, start_label);
+   }
    emit(&es_code, "%s:\n", start_label);
    if (!compile_condition_branch_false(cond, ctx, end_label)) {
       warning("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
       pop_loop_labels();
+      if (named_loop) {
+         pop_named_loop_labels();
+      }
       free((void *) start_label);
       free((void *) end_label);
       return;
@@ -2072,6 +2131,9 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
    pop_loop_labels();
+   if (named_loop) {
+      pop_named_loop_labels();
+   }
    free((void *) start_label);
    free((void *) end_label);
 }
@@ -2080,10 +2142,13 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("for_start");
    const char *step_label = next_label("for_step");
    const char *end_label = next_label("for_end");
+   const char *named_loop = pending_loop_label_name;
    ASTNode *init = node->children[0];
    ASTNode *cond = node->children[1];
    ASTNode *step = node->children[2];
    ASTNode *body = node->children[3];
+
+   pending_loop_label_name = NULL;
 
    if (!start_label || !step_label || !end_label) {
       free((void *) start_label);
@@ -2094,6 +2159,9 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    }
 
    push_loop_labels(end_label, step_label);
+   if (named_loop) {
+      push_named_loop_labels(named_loop, end_label, step_label);
+   }
    if (init && !is_empty(init)) {
       compile_expr(init, ctx);
    }
@@ -2103,6 +2171,9 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
       if (!compile_condition_branch_false(cond, ctx, end_label)) {
          warning("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
          pop_loop_labels();
+         if (named_loop) {
+            pop_named_loop_labels();
+         }
          free((void *) start_label);
          free((void *) step_label);
          free((void *) end_label);
@@ -2117,6 +2188,9 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
    pop_loop_labels();
+   if (named_loop) {
+      pop_named_loop_labels();
+   }
    free((void *) start_label);
    free((void *) step_label);
    free((void *) end_label);
@@ -2129,12 +2203,16 @@ static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntr
 static void compile_break_stmt(ASTNode *node, Context *ctx) {
    const char *target = current_break_label();
 
-   if (!target) {
-      warning("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
-      return;
-   }
+   (void) ctx;
    if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
-      warning("[%s:%d.%d] labeled break not compiled yet", node->file, node->line, node->column);
+      target = lookup_named_break_label(node->children[0]->strval);
+      if (!target) {
+         warning("[%s:%d.%d] labeled break target '%s' not found", node->file, node->line, node->column, node->children[0]->strval);
+         return;
+      }
+   }
+   else if (!target) {
+      warning("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
       return;
    }
 
@@ -2144,12 +2222,16 @@ static void compile_break_stmt(ASTNode *node, Context *ctx) {
 static void compile_continue_stmt(ASTNode *node, Context *ctx) {
    const char *target = current_continue_label();
 
-   if (!target) {
-      warning("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
-      return;
-   }
+   (void) ctx;
    if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
-      warning("[%s:%d.%d] labeled continue not compiled yet", node->file, node->line, node->column);
+      target = lookup_named_continue_label(node->children[0]->strval);
+      if (!target) {
+         warning("[%s:%d.%d] labeled continue target '%s' not found", node->file, node->line, node->column, node->children[0]->strval);
+         return;
+      }
+   }
+   else if (!target) {
+      warning("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
       return;
    }
 
@@ -2498,25 +2580,37 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
 
 static void compile_do_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("do_start");
+   const char *cond_label = next_label("do_cond");
    const char *end_label = next_label("do_end");
-   if (!start_label || !end_label) {
+   const char *named_loop = pending_loop_label_name;
+   pending_loop_label_name = NULL;
+   if (!start_label || !cond_label || !end_label) {
       free((void *) start_label);
+      free((void *) cond_label);
       free((void *) end_label);
       warning("[%s:%d.%d] failed to allocate labels for do statement", node->file, node->line, node->column);
       return;
    }
 
    emit(&es_code, "%s:\n", start_label);
-   push_loop_labels(end_label, start_label);
+   push_loop_labels(end_label, cond_label);
+   if (named_loop) {
+      push_named_loop_labels(named_loop, end_label, cond_label);
+   }
    compile_statement_list(node->children[0], ctx);
-   pop_loop_labels();
+   emit(&es_code, "%s:\n", cond_label);
    if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
       warning("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
+   pop_loop_labels();
+   if (named_loop) {
+      pop_named_loop_labels();
+   }
 
    free((void *) start_label);
+   free((void *) cond_label);
    free((void *) end_label);
 }
 
@@ -2525,6 +2619,10 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "@user_%s:\n", node->children[0]->strval);
    if (node->count > 1) {
       ASTNode *stmt = node->children[1];
+      const char *saved_pending = pending_loop_label_name;
+      if (!strcmp(stmt->name, "while_stmt") || !strcmp(stmt->name, "for_stmt") || !strcmp(stmt->name, "do_stmt") || !strcmp(stmt->name, "switch_stmt")) {
+         pending_loop_label_name = node->children[0]->strval;
+      }
       if (!strcmp(stmt->name, "return_stmt")) {
          compile_return_stmt(stmt, ctx);
       }
@@ -2567,6 +2665,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
       else {
          warning("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }
+      pending_loop_label_name = saved_pending;
    }
 }
 
@@ -2578,6 +2677,7 @@ static void compile_goto_stmt(ASTNode *node, Context *ctx) {
 }
 
 static void compile_switch_stmt(ASTNode *node, Context *ctx) {
+   const char *named_loop = pending_loop_label_name;
    ASTNode *expr;
    ASTNode *sections;
    const ASTNode *type;
@@ -2590,6 +2690,8 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    const char *end_label = NULL;
    const char **case_labels = NULL;
    int section_count;
+
+   pending_loop_label_name = NULL;
 
    if (!node || node->count < 2) {
       return;
@@ -2679,6 +2781,9 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp %s\n", default_label ? default_label : cleanup_label);
 
    push_loop_labels(cleanup_label, current_continue_label());
+   if (named_loop) {
+      push_named_loop_labels(named_loop, cleanup_label, current_continue_label());
+   }
    for (int i = 0; i < section_count; i++) {
       ASTNode *section = sections->children[i];
       ASTNode *body = (section->count > 1) ? section->children[1] : NULL;
@@ -2691,6 +2796,9 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       }
    }
    pop_loop_labels();
+   if (named_loop) {
+      pop_named_loop_labels();
+   }
 
    emit(&es_code, "%s:\n", cleanup_label);
    remember_runtime_import("popN");
