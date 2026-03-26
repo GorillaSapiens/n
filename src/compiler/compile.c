@@ -3362,7 +3362,6 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          int tmp_total = dst->size * 2;
          int lhs_tmp_offset = ctx->locals;
          int rhs_tmp_offset = ctx->locals + dst->size;
-         ContextEntry lhs_tmp = { .name = "$lhs_tmp", .type = dst->type, .declarator = dst->declarator, .is_static = false, .is_quick = false, .is_global = false, .offset = lhs_tmp_offset, .size = dst->size };
          ContextEntry rhs_tmp = { .name = "$rhs_tmp", .type = expr_value_type(rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_tmp_offset, .size = dst->size };
          unsigned char *zeroes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
          if (!zeroes) {
