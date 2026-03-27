@@ -1,0 +1,20 @@
+// nc -i .
+include "machine_6502.n"
+
+type bool { $size:1 };
+struct box { int v; };
+
+bool operator{}(box b) {
+   bool r;
+   return r;
+}
+
+int test(box b) {
+   if (b) {
+      return 1;
+   }
+   if (!b) {
+      return 2;
+   }
+   return 0;
+}

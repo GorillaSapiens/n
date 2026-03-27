@@ -44,6 +44,14 @@ static const char *named_loop_continue_stack[128];
 static int named_loop_depth = 0;
 static const char *pending_loop_label_name = NULL;
 
+typedef struct OperatorOverload {
+   const char *name;
+   const ASTNode *node;
+} OperatorOverload;
+
+static OperatorOverload *operator_overloads = NULL;
+static int operator_overload_count = 0;
+
 typedef struct ContextEntry {
    const char *name;
    const ASTNode *type;
@@ -84,6 +92,16 @@ static bool has_flag(const char *type, const char *flag);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
 
 static void remember_function(const ASTNode *node, const char *name);
+static bool is_operator_function_name(const char *name);
+static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize);
+static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc);
+static const ASTNode *resolve_function_call_target(const char *name, ASTNode *args, Context *ctx);
+static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx);
+static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx);
+static const ASTNode *parameter_type(const ASTNode *parameter);
+static const ASTNode *parameter_declarator(const ASTNode *parameter);
+static bool parameter_is_void(const ASTNode *parameter);
+static const ASTNode *unwrap_expr_node(const ASTNode *expr);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
 static int declarator_pointer_depth(const ASTNode *declarator);
@@ -215,6 +233,376 @@ static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
 }
 
+
+
+static bool is_operator_function_name(const char *name) {
+   return name && !strncmp(name, "operator", 8);
+}
+
+static int function_fixed_param_count(const ASTNode *fn) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+   int count = 0;
+
+   if (params && !is_empty(params)) {
+      for (int i = 0; i < params->count; i++) {
+         const ASTNode *parameter = params->children[i];
+         if (!parameter || parameter_is_void(parameter)) {
+            continue;
+         }
+         if (parameter_type(parameter)) {
+            count++;
+         }
+      }
+   }
+
+   return count;
+}
+
+static bool declarator_signature_matches(const ASTNode *actual, const ASTNode *formal) {
+   if (declarator_pointer_depth(actual) != declarator_pointer_depth(formal)) {
+      return false;
+   }
+   if (declarator_array_count(actual) != declarator_array_count(formal)) {
+      return false;
+   }
+   return true;
+}
+
+static bool function_signature_matches_args(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+   int seen = 0;
+
+   if (!declarator) {
+      return false;
+   }
+
+   if (function_fixed_param_count(fn) != arg_count) {
+      return false;
+   }
+
+   if (params && !is_empty(params)) {
+      for (int i = 0; i < params->count; i++) {
+         const ASTNode *parameter = params->children[i];
+         const ASTNode *ptype;
+         const ASTNode *pdecl;
+         const char *pname;
+         const char *aname;
+
+         if (!parameter || parameter_is_void(parameter)) {
+            continue;
+         }
+
+         ptype = parameter_type(parameter);
+         pdecl = parameter_declarator(parameter);
+         if (!ptype || seen >= arg_count || !arg_types[seen]) {
+            return false;
+         }
+
+         pname = type_name_from_node(ptype);
+         aname = type_name_from_node(arg_types[seen]);
+         if (!pname || !aname || strcmp(pname, aname)) {
+            return false;
+         }
+         if (!declarator_signature_matches(arg_decls[seen], pdecl)) {
+            return false;
+         }
+         seen++;
+      }
+   }
+
+   return seen == arg_count;
+}
+
+static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
+   if (!a || !b) {
+      return false;
+   }
+   if (function_fixed_param_count(a) != function_fixed_param_count(b)) {
+      return false;
+   }
+
+   {
+      const ASTNode *adecl = function_declarator_node(a);
+      const ASTNode *bdecl = function_declarator_node(b);
+      const ASTNode *aparams = (adecl && adecl->count > 2) ? adecl->children[2] : NULL;
+      const ASTNode *bparams = (bdecl && bdecl->count > 2) ? bdecl->children[2] : NULL;
+      int ai = 0;
+      int bi = 0;
+
+      while ((aparams && !is_empty(aparams) && ai < aparams->count) ||
+             (bparams && !is_empty(bparams) && bi < bparams->count)) {
+         const ASTNode *aparam = NULL;
+         const ASTNode *bparam = NULL;
+         while (aparams && !is_empty(aparams) && ai < aparams->count) {
+            aparam = aparams->children[ai++];
+            if (aparam && !parameter_is_void(aparam) && parameter_type(aparam)) {
+               break;
+            }
+            aparam = NULL;
+         }
+         while (bparams && !is_empty(bparams) && bi < bparams->count) {
+            bparam = bparams->children[bi++];
+            if (bparam && !parameter_is_void(bparam) && parameter_type(bparam)) {
+               break;
+            }
+            bparam = NULL;
+         }
+         if (!aparam && !bparam) {
+            break;
+         }
+         if (!aparam || !bparam) {
+            return false;
+         }
+         if (strcmp(type_name_from_node(parameter_type(aparam)), type_name_from_node(parameter_type(bparam)))) {
+            return false;
+         }
+         if (!declarator_signature_matches(parameter_declarator(aparam), parameter_declarator(bparam))) {
+            return false;
+         }
+      }
+   }
+
+   return true;
+}
+
+static void remember_operator_overload(const ASTNode *node, const char *name) {
+   for (int i = 0; i < operator_overload_count; i++) {
+      const ASTNode *value = operator_overloads[i].node;
+      if (strcmp(operator_overloads[i].name, name)) {
+         continue;
+      }
+      if (!function_same_signature(value, node)) {
+         continue;
+      }
+      if (value->count >= 4 && node->count >= 4) {
+         error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+               node->file, node->line, node->column,
+               value->file, value->line, value->column,
+               name);
+      }
+      if (value->count < 4 && node->count >= 4) {
+         operator_overloads[i].node = node;
+      }
+      return;
+   }
+
+   operator_overloads = (OperatorOverload *) realloc(operator_overloads,
+         sizeof(*operator_overloads) * (operator_overload_count + 1));
+   if (!operator_overloads) {
+      error("out of memory");
+   }
+   operator_overloads[operator_overload_count].name = strdup(name);
+   operator_overloads[operator_overload_count].node = node;
+   operator_overload_count++;
+}
+
+static void append_mangled_text(char *buf, size_t bufsize, const char *text) {
+   size_t len = strlen(buf);
+   if (!text) {
+      return;
+   }
+   for (size_t i = 0; text[i] && len + 1 < bufsize; i++) {
+      unsigned char c = (unsigned char) text[i];
+      if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+          (c >= '0' && c <= '9')) {
+         buf[len++] = (char) c;
+      }
+      else if (len + 3 < bufsize) {
+         sprintf(buf + len, "x%02X", c);
+         len += 3;
+      }
+      else {
+         break;
+      }
+   }
+   buf[len] = 0;
+}
+
+static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   const char *name = fallback_name;
+
+   if (!buf || bufsize == 0) {
+      return false;
+   }
+   buf[0] = 0;
+
+   if (!name && declarator && declarator->count > 1 && declarator->children[1]) {
+      name = declarator->children[1]->strval;
+   }
+   if (!name) {
+      return false;
+   }
+
+   if (!is_operator_function_name(name)) {
+      snprintf(buf, bufsize, "%s", name);
+      return true;
+   }
+
+   append_mangled_text(buf, bufsize, name);
+   if (!fn) {
+      return true;
+   }
+
+   {
+      const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+      if (params && !is_empty(params)) {
+         for (int i = 0; i < params->count; i++) {
+            const ASTNode *parameter = params->children[i];
+            const ASTNode *ptype;
+            const ASTNode *pdecl;
+            char tmp[64];
+            if (!parameter || parameter_is_void(parameter)) {
+               continue;
+            }
+            ptype = parameter_type(parameter);
+            pdecl = parameter_declarator(parameter);
+            strncat(buf, "__", bufsize - strlen(buf) - 1);
+            append_mangled_text(buf, bufsize, type_name_from_node(ptype));
+            snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(pdecl), declarator_array_count(pdecl));
+            strncat(buf, tmp, bufsize - strlen(buf) - 1);
+         }
+      }
+      else {
+         strncat(buf, "__void", bufsize - strlen(buf) - 1);
+      }
+   }
+
+   return true;
+}
+
+static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc) {
+   ASTNode *call;
+   ASTNode *arglist;
+
+   if (!origin || !callee_name) {
+      return NULL;
+   }
+
+   call = calloc(1, sizeof(ASTNode) + sizeof(ASTNode *) * 2);
+   arglist = calloc(1, sizeof(ASTNode) + sizeof(ASTNode *) * (argc > 0 ? argc : 1));
+   if (!call || !arglist) {
+      free(call);
+      free(arglist);
+      return NULL;
+   }
+
+   call->name = "()";
+   call->file = origin->file;
+   call->line = origin->line;
+   call->column = origin->column;
+   call->handled = false;
+   call->kind = AST_GENERIC;
+   call->count = 2;
+   call->children[0] = make_identifier_leaf(callee_name);
+   call->children[0]->file = origin->file;
+   call->children[0]->line = origin->line;
+   call->children[0]->column = origin->column;
+
+   arglist->name = "expr_args";
+   arglist->file = origin->file;
+   arglist->line = origin->line;
+   arglist->column = origin->column;
+   arglist->handled = false;
+   arglist->kind = argc > 0 ? AST_GENERIC : AST_EMPTY;
+   arglist->count = argc;
+   for (int i = 0; i < argc; i++) {
+      arglist->children[i] = args[i];
+   }
+   call->children[1] = arglist;
+   return call;
+}
+
+static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls) {
+   for (int i = 0; i < operator_overload_count; i++) {
+      if (strcmp(operator_overloads[i].name, name)) {
+         continue;
+      }
+      if (function_signature_matches_args(operator_overloads[i].node, arg_count, arg_types, arg_decls)) {
+         return operator_overloads[i].node;
+      }
+   }
+   return NULL;
+}
+
+static const ASTNode *resolve_function_call_target(const char *name, ASTNode *args, Context *ctx) {
+   if (is_operator_function_name(name)) {
+      int arg_count = (args && !is_empty(args)) ? args->count : 0;
+      const ASTNode *arg_types[8];
+      const ASTNode *arg_decls[8];
+      if (arg_count > (int) (sizeof(arg_types) / sizeof(arg_types[0]))) {
+         return NULL;
+      }
+      for (int i = 0; i < arg_count; i++) {
+         arg_types[i] = expr_value_type(args->children[i], ctx);
+         arg_decls[i] = expr_value_declarator(args->children[i], ctx);
+      }
+      return lookup_operator_overload(name, arg_count, arg_types, arg_decls);
+   }
+
+   if (functions) {
+      return (const ASTNode *) set_get(functions, name);
+   }
+   return NULL;
+}
+
+static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx) {
+   const char *op = NULL;
+   const char *name = NULL;
+   const ASTNode *arg_types[2];
+   const ASTNode *arg_decls[2];
+   int arg_count;
+   char buf[64];
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+
+   if (expr->count == 1 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") || !strcmp(expr->name, "~"))) {
+      op = expr->name;
+   }
+   else if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") || !strcmp(expr->name, "*") ||
+             !strcmp(expr->name, "/") || !strcmp(expr->name, "%") || !strcmp(expr->name, "&") ||
+             !strcmp(expr->name, "|") || !strcmp(expr->name, "^") || !strcmp(expr->name, "<<") ||
+             !strcmp(expr->name, ">>") || !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+             !strcmp(expr->name, "<") || !strcmp(expr->name, ">") || !strcmp(expr->name, "<=") ||
+             !strcmp(expr->name, ">="))) {
+      op = expr->name;
+   }
+   else {
+      return NULL;
+   }
+
+   snprintf(buf, sizeof(buf), "operator%s", op);
+   name = buf;
+   arg_count = expr->count;
+   for (int i = 0; i < arg_count; i++) {
+      arg_types[i] = expr_value_type(expr->children[i], ctx);
+      arg_decls[i] = expr_value_declarator(expr->children[i], ctx);
+      if (!arg_types[i]) {
+         return NULL;
+      }
+   }
+   return lookup_operator_overload(name, arg_count, arg_types, arg_decls);
+}
+
+static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
+   const ASTNode *arg_type;
+   const ASTNode *arg_decl;
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+   arg_type = expr_value_type(expr, ctx);
+   if (!arg_type) {
+      return NULL;
+   }
+   arg_decl = expr_value_declarator(expr, ctx);
+   return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl);
+}
 
 static const ASTNode *global_decl_lookup(const char *name) {
    const void *value;
@@ -1839,9 +2227,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       return false;
    }
 
-   if (functions) {
-      fn = (const ASTNode *) set_get(functions, callee->strval);
-   }
+   fn = resolve_function_call_target(callee->strval, args, ctx);
    if (fn) {
       const ASTNode *known_ret = function_return_type(fn);
       const ASTNode *params = NULL;
@@ -1931,7 +2317,13 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       return false;
    }
 
-   emit(&es_code, "    jsr _%s\n", callee->strval);
+   {
+      char callee_sym[256];
+      if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
+         return false;
+      }
+      emit(&es_code, "    jsr _%s\n", callee_sym);
+   }
 
    if (dst && ret_size > 0) {
       emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, ret_size, function_return_type(fn));
@@ -2166,6 +2558,20 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       free((void *) false_label);
       free((void *) end_label);
       return ok;
+   }
+
+   {
+      const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
+      if (ofn) {
+         ASTNode *argv[2] = { NULL, NULL };
+         ASTNode *call;
+         argv[0] = expr->children[0];
+         if (expr->count > 1) {
+            argv[1] = expr->children[1];
+         }
+         call = make_synthetic_call_expr(expr, function_declarator_node(ofn)->children[1]->strval, argv, expr->count);
+         return call ? compile_call_expr_to_slot(call, ctx, dst) : false;
+      }
    }
 
    if (expr->count == 1 && !strcmp(expr->name, "+")) {
@@ -2641,9 +3047,10 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
 
    if (!strcmp(expr->name, "()")) {
       ASTNode *callee = expr->children[0];
+      ASTNode *args = (expr->count > 1) ? expr->children[1] : NULL;
       const ASTNode *fn = NULL;
-      if (callee && callee->kind == AST_IDENTIFIER && functions) {
-         fn = (const ASTNode *) set_get(functions, callee->strval);
+      if (callee && callee->kind == AST_IDENTIFIER) {
+         fn = resolve_function_call_target(callee->strval, args, ctx);
       }
       if (fn) {
          const ASTNode *ret = function_return_type(fn);
@@ -2706,6 +3113,18 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
          return lv.declarator;
+      }
+   }
+
+   if (!strcmp(expr->name, "()")) {
+      ASTNode *callee = expr->children[0];
+      ASTNode *args = (expr->count > 1) ? expr->children[1] : NULL;
+      const ASTNode *fn = NULL;
+      if (callee && callee->kind == AST_IDENTIFIER) {
+         fn = resolve_function_call_target(callee->strval, args, ctx);
+      }
+      if (fn) {
+         return function_declarator_node(fn);
       }
    }
 
@@ -2798,6 +3217,103 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       free((void *) rhs_label);
       free((void *) end_label);
       return true;
+   }
+
+   {
+      const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
+      if (ofn) {
+         const ASTNode *rtype = function_return_type(ofn);
+         const ASTNode *rdecl = function_declarator_node(ofn);
+         int rsize = declarator_storage_size(rtype, rdecl);
+         ContextEntry tmp;
+         ASTNode *argv[2] = { NULL, NULL };
+         ASTNode *call;
+         if (rsize <= 0) {
+            rsize = get_size(type_name_from_node(rtype));
+         }
+         if (rsize <= 0) {
+            rsize = get_size("int");
+         }
+         argv[0] = expr->children[0];
+         if (expr->count > 1) {
+            argv[1] = expr->children[1];
+         }
+         call = make_synthetic_call_expr(expr, function_declarator_node(ofn)->children[1]->strval, argv, expr->count);
+         if (!call) {
+            return false;
+         }
+         tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = rsize };
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_call_expr_to_slot(call, ctx, &tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
+         emit(&es_code, "    lda #0\n");
+         for (int i = 0; i < rsize; i++) {
+            emit(&es_code, "    ldy #%d\n", tmp.offset + i);
+            emit(&es_code, "    ora (fp),y\n");
+         }
+         emit(&es_code, "    sta arg1\n");
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         emit(&es_code, "    lda arg1\n");
+         emit(&es_code, "    beq %s\n", false_label);
+         return true;
+      }
+   }
+
+   {
+      const ASTNode *tfn = resolve_truthiness_overload(expr, ctx);
+      if (tfn) {
+         ASTNode *argv[1] = { expr };
+         ASTNode *call = make_synthetic_call_expr(expr, function_declarator_node(tfn)->children[1]->strval, argv, 1);
+         const ASTNode *rtype = function_return_type(tfn);
+         const ASTNode *rdecl = function_declarator_node(tfn);
+         int rsize = declarator_storage_size(rtype, rdecl);
+         ContextEntry tmp;
+         if (!call) {
+            return false;
+         }
+         if (rsize <= 0) {
+            rsize = get_size(type_name_from_node(rtype));
+         }
+         if (rsize <= 0) {
+            rsize = get_size("int");
+         }
+         tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = rsize };
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_call_expr_to_slot(call, ctx, &tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
+         emit(&es_code, "    lda #0\n");
+         for (int i = 0; i < rsize; i++) {
+            emit(&es_code, "    ldy #%d\n", tmp.offset + i);
+            emit(&es_code, "    ora (fp),y\n");
+         }
+         emit(&es_code, "    sta arg1\n");
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         emit(&es_code, "    lda arg1\n");
+         emit(&es_code, "    beq %s\n", false_label);
+         return true;
+      }
    }
 
    if (expr->count == 2 &&
@@ -4225,15 +4741,19 @@ static void compile_function_decl(ASTNode *node) {
    ASTNode *declarator = node->children[1];
    ASTNode *body       = node->children[2];
    const char *name    = declarator->children[1]->strval;
+   char sym[256];
 
    remember_function(node, name);
+   if (!function_symbol_name(node, name, sym, sizeof(sym))) {
+      error("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
+   }
 
    if (!has_modifier(modifiers, "static")) {
-      emit(&es_export, ".export _%s\n", name);
+      emit(&es_export, ".export _%s\n", sym);
    }
 
    Context ctx;
-   ctx.name = name;
+   ctx.name = strdup(sym);
    ctx.locals = 0;
    ctx.params = 0;
    ctx.vars = new_set();
@@ -4245,7 +4765,7 @@ static void compile_function_decl(ASTNode *node) {
       predeclare_statement_list(body, &ctx);
    }
 
-   emit(&es_code, ".proc _%s\n", name);
+   emit(&es_code, ".proc _%s\n", sym);
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
    emit(&es_code, "    lda sp\n");
@@ -4520,6 +5040,11 @@ static void compile_global_decl_item(ASTNode *node) {
 }
 
 static void remember_function(const ASTNode *node, const char *name) {
+   if (is_operator_function_name(name)) {
+      remember_operator_overload(node, name);
+      return;
+   }
+
    if (!functions) {
       functions = new_set();
    }
@@ -4570,11 +5095,15 @@ static void compile_function_signature(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *declarator = node->children[2];
    const char *name    = declarator->children[1]->strval;
+   char sym[256];
 
    remember_function(node, name);
 
    if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
-      remember_symbol_import(name);
+      if (!function_symbol_name(node, name, sym, sizeof(sym))) {
+         error("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
+      }
+      remember_symbol_import(sym);
    }
 }
 

@@ -1,0 +1,36 @@
+// nc -i .
+include "machine_6502.n"
+
+type bool { $size:1 };
+char operator+(char,char) {
+   char r;
+   return r;
+}
+int operator+(int,int) {
+   int r;
+   return r;
+}
+char operator-(char,char) {
+   char r;
+   return r;
+}
+int operator-(int,int) {
+   int r;
+   return r;
+}
+
+char addc(char a, char b) {
+   return a + b;
+}
+
+int addi(int a, int b) {
+   return a + b;
+}
+
+char subc(char a, char b) {
+   return a - b;
+}
+
+int subi(int a, int b) {
+   return a - b;
+}
