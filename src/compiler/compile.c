@@ -1646,6 +1646,32 @@ static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, i
    }
 }
 
+static bool make_incdec_delta_bytes(const ASTNode *type, const ASTNode *declarator, int size, unsigned char *bytes) {
+   int step = 1;
+   char step_buf[64];
+
+   if (!bytes || size <= 0) {
+      return false;
+   }
+
+   memset(bytes, 0, (size_t) size);
+   if (declarator && declarator_pointer_depth(declarator) > 0) {
+      step = declarator_first_element_size(type, declarator);
+      if (step <= 0) {
+         step = 1;
+      }
+   }
+
+   snprintf(step_buf, sizeof(step_buf), "%d", step);
+   if (type && has_flag(type_name_from_node(type), "$endian:big")) {
+      make_be_int(step_buf, bytes, size);
+   }
+   else {
+      make_le_int(step_buf, bytes, size);
+   }
+   return true;
+}
+
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    bool dst_direct;
    bool src_direct;
@@ -2475,7 +2501,14 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          emit(&es_code, "    jsr _popN\n");
          return false;
       }
-      one[0] = 1;
+      if (!make_incdec_delta_bytes(tmp.type, lv.declarator, tmp.size, one)) {
+         free(one);
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
       if (inc) {
          emit_add_immediate_to_fp(tmp.type, tmp.offset, one, tmp.size);
       }
@@ -4283,16 +4316,8 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          return;
       }
       {
-         int step = 1;
-         if (dst->declarator && declarator_pointer_depth(dst->declarator) > 0) {
-            step = declarator_first_element_size(dst->type, dst->declarator);
-            if (step <= 0) {
-               step = 1;
-            }
-         }
          if (dst->is_static || dst->is_quick || dst->is_global) {
             char sym[256];
-            char step_buf[64];
             if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
                warning("[%s:%d.%d] increment/decrement target not compiled yet", node->file, node->line, node->column);
                return;
@@ -4301,12 +4326,9 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             if (!one) {
                return;
             }
-            snprintf(step_buf, sizeof(step_buf), "%d", step);
-            if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
-               make_be_int(step_buf, one, dst->size);
-            }
-            else {
-               make_le_int(step_buf, one, dst->size);
+            if (!make_incdec_delta_bytes(dst->type, dst->declarator, dst->size, one)) {
+               free(one);
+               return;
             }
             inc = !strcmp(node->children[2]->strval, "pre++") || !strcmp(node->children[2]->strval, "post++");
             if (inc) {
@@ -4322,15 +4344,9 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          if (!one) {
             return;
          }
-         {
-            char step_buf[64];
-            snprintf(step_buf, sizeof(step_buf), "%d", step);
-            if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
-               make_be_int(step_buf, one, dst->size);
-            }
-            else {
-               make_le_int(step_buf, one, dst->size);
-            }
+         if (!make_incdec_delta_bytes(dst->type, dst->declarator, dst->size, one)) {
+            free(one);
+            return;
          }
          inc = !strcmp(node->children[2]->strval, "pre++") || !strcmp(node->children[2]->strval, "post++");
          if (inc) {
