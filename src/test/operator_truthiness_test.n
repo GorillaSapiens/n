@@ -1,7 +1,6 @@
 // nc -i .
 include "machine_6502.n"
 
-type bool { $size:1 };
 struct box { int v; };
 
 bool operator{}(box b) {

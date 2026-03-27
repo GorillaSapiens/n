@@ -1,7 +1,6 @@
 // nc -i .
 include "machine_6502.n"
 
-type bool { $size:1 };
 char operator+(char,char) {
    char r;
    return r;
