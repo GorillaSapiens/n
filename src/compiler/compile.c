@@ -119,6 +119,93 @@ static int expr_byte_index(const ASTNode *type, int size, int i);
 static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type);
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type);
+static unsigned char hex_value(unsigned char c) {
+   if (c >= '0' && c <= '9') return (unsigned char) (c - '0');
+   if (c >= 'a' && c <= 'f') return (unsigned char) (10 + c - 'a');
+   if (c >= 'A' && c <= 'F') return (unsigned char) (10 + c - 'A');
+   return 0xff;
+}
+
+static unsigned char *decode_string_literal_bytes(const char *text, int *out_len) {
+   size_t raw_len;
+   unsigned char *buf;
+   int j = 0;
+
+   if (!text) {
+      text = "";
+   }
+   raw_len = strlen(text);
+   buf = (unsigned char *) malloc(raw_len + 1);
+   if (!buf) {
+      error("out of memory");
+   }
+
+   for (size_t i = 0; i < raw_len; i++) {
+      unsigned char c = (unsigned char) text[i];
+      if (c != '\\' || i + 1 >= raw_len) {
+         buf[j++] = c;
+         continue;
+      }
+
+      c = (unsigned char) text[++i];
+      switch (c) {
+         case 'a': buf[j++] = 0x07; break;
+         case 'b': buf[j++] = 0x08; break;
+         case 'e': buf[j++] = 0x1b; break;
+         case 'f': buf[j++] = 0x0c; break;
+         case 'n': buf[j++] = 0x0a; break;
+         case 'r': buf[j++] = 0x0d; break;
+         case 't': buf[j++] = 0x09; break;
+         case 'v': buf[j++] = 0x0b; break;
+         case '\\': buf[j++] = '\\'; break;
+         case '\'': buf[j++] = '\''; break;
+         case '"': buf[j++] = '"'; break;
+         case '?': buf[j++] = '?'; break;
+         case '\n':
+            break;
+         case 'x': {
+            unsigned char v1 = 0xff;
+            unsigned char v2 = 0xff;
+            if (i + 1 < raw_len) v1 = hex_value((unsigned char) text[i + 1]);
+            if (i + 2 < raw_len) v2 = hex_value((unsigned char) text[i + 2]);
+            if (v1 != 0xff) {
+               i++;
+               if (v2 != 0xff) {
+                  i++;
+                  buf[j++] = (unsigned char) ((v1 << 4) | v2);
+               }
+               else {
+                  buf[j++] = v1;
+               }
+            }
+            else {
+               buf[j++] = 'x';
+            }
+            break;
+         }
+         case '0': case '1': case '2': case '3':
+         case '4': case '5': case '6': case '7': {
+            unsigned int value = (unsigned int) (c - '0');
+            int digits = 1;
+            while (digits < 3 && i + 1 < raw_len && text[i + 1] >= '0' && text[i + 1] <= '7') {
+               value = (value << 3) | (unsigned int) (text[++i] - '0');
+               digits++;
+            }
+            buf[j++] = (unsigned char) value;
+            break;
+         }
+         default:
+            buf[j++] = c;
+            break;
+      }
+   }
+
+   if (out_len) {
+      *out_len = j;
+   }
+   return buf;
+}
+
 static const char *remember_string_literal(const char *text);
 static void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label);
 static bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size, const char *text);
@@ -185,7 +272,9 @@ static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size)
 static const char *remember_string_literal(const char *text) {
    const char *existing;
    char *label;
-   size_t n;
+   unsigned char *bytes;
+   int n = 0;
+
    if (!text) {
       text = "";
    }
@@ -203,17 +292,19 @@ static const char *remember_string_literal(const char *text) {
    snprintf(label, 64, "@str_%d", label_counter++);
    set_add(string_literals, strdup(text), label);
    emit(&es_rodata, "%s:\n", label);
-   n = strlen(text);
-   if (n == 0) {
+
+   bytes = decode_string_literal_bytes(text, &n);
+   if (n <= 0) {
       emit(&es_rodata, "\t.byte $00\n");
    }
    else {
-      emit(&es_rodata, "\t.byte $%02x", (unsigned int) ((unsigned char) text[0]));
-      for (size_t i = 1; i < n; i++) {
-         emit(&es_rodata, ", $%02x", (unsigned int) ((unsigned char) text[i]));
+      emit(&es_rodata, "\t.byte $%02x", (unsigned int) bytes[0]);
+      for (int i = 1; i < n; i++) {
+         emit(&es_rodata, ", $%02x", (unsigned int) bytes[i]);
       }
       emit(&es_rodata, ", $00\n");
    }
+   free(bytes);
    return label;
 }
 
@@ -267,30 +358,38 @@ static bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *de
 }
 
 static bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *type, const ASTNode *declarator, int total_size, const char *text) {
-   int elem_count, elem_size, copy_len;
+   int elem_count, elem_size, copy_len, bytes_len = 0;
+   unsigned char *bytes;
    (void) total_size;
    if (!buf || !text) {
       return false;
    }
+   bytes = decode_string_literal_bytes(text, &bytes_len);
    if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {
       elem_count = atoi(declarator->children[2]->strval);
       elem_size = declarator_first_element_size(type, declarator);
       if (elem_size != 1 || elem_count <= 0) {
+         free(bytes);
          return false;
       }
-      copy_len = (int) strlen(text) + 1;
+      copy_len = bytes_len + 1;
       if (copy_len > elem_count) {
          copy_len = elem_count;
       }
       if (base_offset < 0 || base_offset + elem_count > buf_size) {
+         free(bytes);
          return false;
       }
-      memcpy(buf + base_offset, text, (size_t) (copy_len > 0 ? copy_len - 1 : 0));
+      if (copy_len > 1) {
+         memcpy(buf + base_offset, bytes, (size_t) (copy_len - 1));
+      }
       if (copy_len > 0) {
          buf[base_offset + copy_len - 1] = 0;
       }
+      free(bytes);
       return true;
    }
+   free(bytes);
    return false;
 }
 
