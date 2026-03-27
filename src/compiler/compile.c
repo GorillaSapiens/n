@@ -106,6 +106,7 @@ static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const A
 static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size);
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
 static int expr_value_size(ASTNode *expr, Context *ctx);
+static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
 static void emit_prepare_fp_ptr(int ptrno, int offset);
 static int expr_byte_index(const ASTNode *type, int size, int i);
 
@@ -1941,17 +1942,34 @@ unary_not_done:
 
    if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
       const ASTNode *rhs = unwrap_expr_node(expr->children[1]);
+      const ASTNode *lhs_type = expr_value_type(expr->children[0], ctx);
+      const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
+      int pointer_scale = 1;
+      bool scaled_pointer_arith = lhs_decl && declarator_pointer_depth(lhs_decl) > 0;
+      if (scaled_pointer_arith) {
+         pointer_scale = declarator_first_element_size(lhs_type, lhs_decl);
+         if (pointer_scale <= 0) {
+            pointer_scale = 1;
+         }
+      }
       if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
          return false;
       }
 
       if (rhs && rhs->kind == AST_INTEGER) {
          unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+         const char *ival = rhs->strval;
+         char scaled_buf[64];
+         if (scaled_pointer_arith && pointer_scale != 1) {
+            long long value = strtoll(rhs->strval, NULL, 0);
+            snprintf(scaled_buf, sizeof(scaled_buf), "%lld", value * (long long) pointer_scale);
+            ival = scaled_buf;
+         }
          if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
-            make_be_int(rhs->strval, bytes, dst->size);
+            make_be_int(ival, bytes, dst->size);
          }
          else {
-            make_le_int(rhs->strval, bytes, dst->size);
+            make_le_int(ival, bytes, dst->size);
          }
 
          if (!strcmp(expr->name, "+")) {
@@ -1964,7 +1982,7 @@ unary_not_done:
          return true;
       }
 
-      if (rhs && rhs->kind == AST_IDENTIFIER) {
+      if (!scaled_pointer_arith && rhs && rhs->kind == AST_IDENTIFIER) {
          ContextEntry *entry = ctx_lookup(ctx, rhs->strval);
          if (entry && !entry->is_static && !entry->is_quick) {
             if (!strcmp(expr->name, "+")) {
@@ -1977,7 +1995,7 @@ unary_not_done:
          }
       }
 
-      if (rhs && !strcmp(rhs->name, "lvalue") && rhs->count > 0) {
+      if (!scaled_pointer_arith && rhs && !strcmp(rhs->name, "lvalue") && rhs->count > 0) {
          ContextEntry *entry = ctx_lookup_lvalue(ctx, (ASTNode *) rhs);
          if (entry && !entry->is_static && !entry->is_quick) {
             if (!strcmp(expr->name, "+")) {
@@ -1991,36 +2009,63 @@ unary_not_done:
       }
 
       {
-         int rhs_size = expr_value_size((ASTNode *) rhs, ctx);
+         int rhs_size = scaled_pointer_arith ? dst->size : expr_value_size((ASTNode *) rhs, ctx);
+         int tmp_total;
+         int rhs_offset = ctx->locals;
+         int factor_offset = 0;
+         int scaled_offset = 0;
+         int value_offset = rhs_offset;
          ContextEntry tmp;
          if (rhs_size <= 0) {
             rhs_size = dst->size;
          }
-         tmp = (ContextEntry){ .name = "$tmp", .type = expr_value_type((ASTNode *) rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = rhs_size };
+         tmp_total = rhs_size;
+         if (scaled_pointer_arith && pointer_scale != 1) {
+            tmp_total += rhs_size * 2;
+            factor_offset = ctx->locals + rhs_size;
+            scaled_offset = ctx->locals + rhs_size * 2;
+         }
+         tmp = (ContextEntry){ .name = "$tmp", .type = expr_value_type((ASTNode *) rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = rhs_size };
          remember_runtime_import("pushN");
-         emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _pushN\n");
          if (!compile_expr_to_slot((ASTNode *) rhs, ctx, &tmp)) {
             remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
             return false;
          }
+         if (scaled_pointer_arith && pointer_scale != 1) {
+            unsigned char *factor_bytes = (unsigned char *) calloc(rhs_size ? rhs_size : 1, sizeof(unsigned char));
+            char scaled_buf[64];
+            snprintf(scaled_buf, sizeof(scaled_buf), "%d", pointer_scale);
+            if (has_flag(type_name_from_node(tmp.type), "$endian:big")) {
+               make_be_int(scaled_buf, factor_bytes, rhs_size);
+            }
+            else {
+               make_le_int(scaled_buf, factor_bytes, rhs_size);
+            }
+            emit_store_immediate_to_fp(factor_offset, factor_bytes, rhs_size);
+            free(factor_bytes);
+            emit_runtime_binary_fp_fp("mulN", scaled_offset, rhs_offset, factor_offset, rhs_size);
+            value_offset = scaled_offset;
+         }
          if (!strcmp(expr->name, "+")) {
-            emit_add_fp_to_fp(dst->type, dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+            emit_add_fp_to_fp(dst->type, dst->offset, value_offset, rhs_size < dst->size ? rhs_size : dst->size);
          }
          else {
-            emit_sub_fp_from_fp(dst->type, dst->offset, tmp.offset, tmp.size < dst->size ? tmp.size : dst->size);
+            emit_sub_fp_from_fp(dst->type, dst->offset, value_offset, rhs_size < dst->size ? rhs_size : dst->size);
          }
          remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", rhs_size & 0xff);
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
          return true;
       }
    }
+
 
    if (expr->count == 2 && (!strcmp(expr->name, "&") || !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
                             !strcmp(expr->name, "*") || !strcmp(expr->name, "/") || !strcmp(expr->name, "%") ||
@@ -2193,6 +2238,44 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    }
 
    return get_typename_node("int");
+}
+
+static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+
+   if (expr->kind == AST_IDENTIFIER) {
+      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
+      if (entry) {
+         return entry->declarator;
+      }
+      {
+         const ASTNode *g = global_decl_lookup(expr->strval);
+         if (g && g->count >= 3) {
+            return g->children[2];
+         }
+      }
+   }
+
+   if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
+      LValueRef lv;
+      if (resolve_lvalue(ctx, expr, &lv)) {
+         return lv.declarator;
+      }
+   }
+
+   if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {
+      return expr_value_declarator(expr->children[expr->count - 1], ctx);
+   }
+
+   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
+      return expr_value_declarator(expr->children[2], ctx);
+   }
+
+   return NULL;
 }
 
 static int type_size_from_node(const ASTNode *type) {
