@@ -3384,6 +3384,36 @@ static void predeclare_statement_list(ASTNode *node, Context *ctx) {
             predeclare_local_decl_item(list->children[j], ctx);
          }
       }
+      else if (!strcmp(stmt->name, "statement_list")) {
+         predeclare_statement_list(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "if_stmt")) {
+         predeclare_statement_list(stmt->children[1], ctx);
+         if (stmt->count > 2) {
+            predeclare_statement_list(stmt->children[2], ctx);
+         }
+      }
+      else if (!strcmp(stmt->name, "while_stmt")) {
+         predeclare_statement_list(stmt->children[1], ctx);
+      }
+      else if (!strcmp(stmt->name, "for_stmt")) {
+         if (stmt->count > 3) {
+            predeclare_statement_list(stmt->children[3], ctx);
+         }
+      }
+      else if (!strcmp(stmt->name, "do_stmt")) {
+         predeclare_statement_list(stmt->children[0], ctx);
+      }
+      else if (!strcmp(stmt->name, "label_stmt")) {
+         if (stmt->count > 1) {
+            predeclare_statement_list(stmt->children[1], ctx);
+         }
+      }
+      else if (!strcmp(stmt->name, "switch_stmt")) {
+         if (stmt->count > 1) {
+            predeclare_statement_list(stmt->children[1], ctx);
+         }
+      }
    }
 }
 
