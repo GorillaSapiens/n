@@ -3108,9 +3108,10 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return expr_value_type(expr->children[2], ctx);
    }
 
-   if (expr->count == 1 && (!strcmp(expr->name, "!") || !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
-       !strcmp(expr->name, "<") || !strcmp(expr->name, ">") || !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=") ||
-       !strcmp(expr->name, "&&") || !strcmp(expr->name, "||"))) {
+   if ((expr->count == 1 && !strcmp(expr->name, "!")) ||
+       (expr->count == 2 && (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+        !strcmp(expr->name, "<") || !strcmp(expr->name, ">") || !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=") ||
+        !strcmp(expr->name, "&&") || !strcmp(expr->name, "||")))) {
       return get_typename_node("int");
    }
 
