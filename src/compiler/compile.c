@@ -115,6 +115,8 @@ static int expr_byte_index(const ASTNode *type, int size, int i);
 static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type);
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type);
+static const ASTNode *common_arith_type(const ASTNode *lhs_type, int lhs_size, const ASTNode *rhs_type, int rhs_size);
+static int common_arith_size(const ASTNode *lhs_type, int lhs_size, const ASTNode *rhs_type, int rhs_size);
 
 static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
@@ -2100,7 +2102,10 @@ unary_not_done:
    if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
       const ASTNode *rhs = unwrap_expr_node(expr->children[1]);
       const ASTNode *lhs_type = expr_value_type(expr->children[0], ctx);
+      const ASTNode *rhs_type = expr_value_type(expr->children[1], ctx);
       const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
+      int lhs_size = expr_value_size(expr->children[0], ctx);
+      int rhs_size = expr_value_size(expr->children[1], ctx);
       int pointer_scale = 1;
       bool scaled_pointer_arith = lhs_decl && declarator_pointer_depth(lhs_decl) > 0;
       if (scaled_pointer_arith) {
@@ -2108,9 +2113,6 @@ unary_not_done:
          if (pointer_scale <= 0) {
             pointer_scale = 1;
          }
-      }
-      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
-         return false;
       }
 
       if (!strcmp(expr->name, "-") && lhs_decl && rhs && expr_value_declarator((ASTNode *) rhs, ctx) && declarator_pointer_depth(expr_value_declarator((ASTNode *) rhs, ctx)) > 0) {
@@ -2165,14 +2167,18 @@ unary_not_done:
          return true;
       }
 
-      if (rhs && rhs->kind == AST_INTEGER) {
+      if (scaled_pointer_arith && rhs && rhs->kind == AST_INTEGER) {
          unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
          const char *ival = rhs->strval;
          char scaled_buf[64];
-         if (scaled_pointer_arith && pointer_scale != 1) {
+         if (pointer_scale != 1) {
             long long value = strtoll(rhs->strval, NULL, 0);
             snprintf(scaled_buf, sizeof(scaled_buf), "%lld", value * (long long) pointer_scale);
             ival = scaled_buf;
+         }
+         if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+            free(bytes);
+            return false;
          }
          if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
             make_be_int(ival, bytes, dst->size);
@@ -2191,50 +2197,60 @@ unary_not_done:
          return true;
       }
 
-      if (!scaled_pointer_arith && rhs && rhs->kind == AST_IDENTIFIER) {
-         ContextEntry *entry = ctx_lookup(ctx, rhs->strval);
-         if (entry && !entry->is_static && !entry->is_quick) {
-            if (!strcmp(expr->name, "+")) {
-               emit_add_fp_to_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
-            }
-            else {
-               emit_sub_fp_from_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
-            }
-            return true;
+      if (!scaled_pointer_arith) {
+         const ASTNode *work_type = common_arith_type(lhs_type, lhs_size, rhs_type, rhs_size);
+         int work_size = common_arith_size(lhs_type, lhs_size, rhs_type, rhs_size);
+         int tmp_total = work_size * 2;
+         int lhs_off = ctx->locals;
+         int rhs_off = lhs_off + work_size;
+         ContextEntry lhs_tmp = { .name = "$lhs", .type = work_type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = lhs_off, .size = work_size };
+         ContextEntry rhs_tmp = { .name = "$rhs", .type = work_type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_off, .size = work_size };
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_expr_to_slot(expr->children[0], ctx, &lhs_tmp) || !compile_expr_to_slot((ASTNode *) rhs, ctx, &rhs_tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
          }
-      }
-
-      if (!scaled_pointer_arith && rhs && !strcmp(rhs->name, "lvalue") && rhs->count > 0) {
-         ContextEntry *entry = ctx_lookup_lvalue(ctx, (ASTNode *) rhs);
-         if (entry && !entry->is_static && !entry->is_quick) {
-            if (!strcmp(expr->name, "+")) {
-               emit_add_fp_to_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
-            }
-            else {
-               emit_sub_fp_from_fp(dst->type, dst->offset, entry->offset, entry->size < dst->size ? entry->size : dst->size);
-            }
-            return true;
+         if (!strcmp(expr->name, "+")) {
+            emit_add_fp_to_fp(work_type, lhs_off, rhs_off, work_size);
          }
+         else {
+            emit_sub_fp_from_fp(work_type, lhs_off, rhs_off, work_size);
+         }
+         emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, lhs_off, work_size, work_type);
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return true;
       }
 
       {
-         int rhs_size = scaled_pointer_arith ? dst->size : expr_value_size((ASTNode *) rhs, ctx);
+         int rhs_work_size = expr_value_size((ASTNode *) rhs, ctx);
          int tmp_total;
          int rhs_offset = ctx->locals;
          int factor_offset = 0;
          int scaled_offset = 0;
          int value_offset = rhs_offset;
          ContextEntry tmp;
-         if (rhs_size <= 0) {
-            rhs_size = dst->size;
+         if (rhs_work_size <= 0) {
+            rhs_work_size = dst->size;
          }
-         tmp_total = rhs_size;
-         if (scaled_pointer_arith && pointer_scale != 1) {
-            tmp_total += rhs_size * 2;
-            factor_offset = ctx->locals + rhs_size;
-            scaled_offset = ctx->locals + rhs_size * 2;
+         tmp_total = rhs_work_size;
+         if (pointer_scale != 1) {
+            tmp_total += rhs_work_size * 2;
+            factor_offset = ctx->locals + rhs_work_size;
+            scaled_offset = ctx->locals + rhs_work_size * 2;
          }
-         tmp = (ContextEntry){ .name = "$tmp", .type = expr_value_type((ASTNode *) rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = rhs_size };
+         if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
+            return false;
+         }
+         tmp = (ContextEntry){ .name = "$tmp", .type = expr_value_type((ASTNode *) rhs, ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = rhs_work_size };
          remember_runtime_import("pushN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
@@ -2246,26 +2262,26 @@ unary_not_done:
             emit(&es_code, "    jsr _popN\n");
             return false;
          }
-         if (scaled_pointer_arith && pointer_scale != 1) {
-            unsigned char *factor_bytes = (unsigned char *) calloc(rhs_size ? rhs_size : 1, sizeof(unsigned char));
+         if (pointer_scale != 1) {
+            unsigned char *factor_bytes = (unsigned char *) calloc(rhs_work_size ? rhs_work_size : 1, sizeof(unsigned char));
             char scaled_buf[64];
             snprintf(scaled_buf, sizeof(scaled_buf), "%d", pointer_scale);
             if (has_flag(type_name_from_node(tmp.type), "$endian:big")) {
-               make_be_int(scaled_buf, factor_bytes, rhs_size);
+               make_be_int(scaled_buf, factor_bytes, rhs_work_size);
             }
             else {
-               make_le_int(scaled_buf, factor_bytes, rhs_size);
+               make_le_int(scaled_buf, factor_bytes, rhs_work_size);
             }
-            emit_store_immediate_to_fp(factor_offset, factor_bytes, rhs_size);
+            emit_store_immediate_to_fp(factor_offset, factor_bytes, rhs_work_size);
             free(factor_bytes);
-            emit_runtime_binary_fp_fp("mulN", scaled_offset, rhs_offset, factor_offset, rhs_size);
+            emit_runtime_binary_fp_fp("mulN", scaled_offset, rhs_offset, factor_offset, rhs_work_size);
             value_offset = scaled_offset;
          }
          if (!strcmp(expr->name, "+")) {
-            emit_add_fp_to_fp(dst->type, dst->offset, value_offset, rhs_size < dst->size ? rhs_size : dst->size);
+            emit_add_fp_to_fp(dst->type, dst->offset, value_offset, rhs_work_size < dst->size ? rhs_work_size : dst->size);
          }
          else {
-            emit_sub_fp_from_fp(dst->type, dst->offset, value_offset, rhs_size < dst->size ? rhs_size : dst->size);
+            emit_sub_fp_from_fp(dst->type, dst->offset, value_offset, rhs_work_size < dst->size ? rhs_work_size : dst->size);
          }
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
@@ -2276,30 +2292,29 @@ unary_not_done:
    }
 
 
+
    if (expr->count == 2 && (!strcmp(expr->name, "&") || !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
                             !strcmp(expr->name, "*") || !strcmp(expr->name, "/") || !strcmp(expr->name, "%") ||
                             !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>"))) {
       const char *op = expr->name;
-      int op_size = dst->size > 0 ? dst->size : expr_value_size(expr, ctx);
+      const ASTNode *lhs_type = expr_value_type(expr->children[0], ctx);
+      const ASTNode *rhs_type = expr_value_type(expr->children[1], ctx);
+      const ASTNode *work_type = common_arith_type(lhs_type, expr_value_size(expr->children[0], ctx), rhs_type, expr_value_size(expr->children[1], ctx));
+      int op_size = common_arith_size(lhs_type, expr_value_size(expr->children[0], ctx), rhs_type, expr_value_size(expr->children[1], ctx));
       int tmp_total;
+      int lhs_offset;
       int rhs_offset;
       int aux_offset;
+      int rem_offset;
       unsigned char *zeroes;
-      const ASTNode *lhs_type;
       const char *helper = NULL;
 
       if (op_size <= 0) {
-         op_size = get_size("int");
-      }
-      if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
-         return false;
+         op_size = dst->size > 0 ? dst->size : get_size("int");
       }
 
-      tmp_total = op_size;
-      if (!strcmp(op, "*")) {
-         tmp_total += op_size * 2;
-      }
-      else if (!strcmp(op, "/") || !strcmp(op, "%")) {
+      tmp_total = op_size * 2;
+      if (!strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "%")) {
          tmp_total += op_size * 2;
       }
       else if (!strcmp(op, "<<") || !strcmp(op, ">>")) {
@@ -2311,8 +2326,10 @@ unary_not_done:
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _pushN\n");
 
-      rhs_offset = ctx->locals;
-      aux_offset = ctx->locals + op_size;
+      lhs_offset = ctx->locals;
+      rhs_offset = lhs_offset + op_size;
+      aux_offset = rhs_offset + op_size;
+      rem_offset = aux_offset + op_size;
       zeroes = (unsigned char *) calloc(op_size ? op_size : 1, sizeof(unsigned char));
       if (!zeroes) {
          remember_runtime_import("popN");
@@ -2321,9 +2338,17 @@ unary_not_done:
          emit(&es_code, "    jsr _popN\n");
          return false;
       }
+      emit_store_immediate_to_fp(lhs_offset, zeroes, op_size);
       emit_store_immediate_to_fp(rhs_offset, zeroes, op_size);
+      if (!strcmp(op, "*") || !strcmp(op, "/") || !strcmp(op, "%") || !strcmp(op, "<<") || !strcmp(op, ">>")) {
+         emit_store_immediate_to_fp(aux_offset, zeroes, op_size);
+      }
+      if (!strcmp(op, "/") || !strcmp(op, "%")) {
+         emit_store_immediate_to_fp(rem_offset, zeroes, op_size);
+      }
       free(zeroes);
-      if (!compile_expr_to_slot(expr->children[1], ctx, &(ContextEntry){ .name = "$tmp_rhs", .type = expr_value_type(expr->children[1], ctx), .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = op_size })) {
+      if (!compile_expr_to_slot(expr->children[0], ctx, &(ContextEntry){ .name = "$tmp_lhs", .type = work_type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = lhs_offset, .size = op_size }) ||
+          !compile_expr_to_slot(expr->children[1], ctx, &(ContextEntry){ .name = "$tmp_rhs", .type = work_type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = rhs_offset, .size = op_size })) {
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
@@ -2336,15 +2361,14 @@ unary_not_done:
       else if (!strcmp(op, "^")) helper = "bit_xorN";
 
       if (helper) {
-         emit_runtime_binary_fp_fp(helper, dst->offset, dst->offset, rhs_offset, op_size);
+         emit_runtime_binary_fp_fp(helper, lhs_offset, lhs_offset, rhs_offset, op_size);
       }
       else if (!strcmp(op, "*")) {
-         emit_runtime_binary_fp_fp("mulN", aux_offset, dst->offset, rhs_offset, op_size);
-         emit_copy_fp_to_fp(dst->offset, aux_offset, op_size);
+         emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_offset, rhs_offset, op_size);
+         emit_copy_fp_to_fp(lhs_offset, aux_offset, op_size);
       }
       else if (!strcmp(op, "/") || !strcmp(op, "%")) {
-         int rem_offset = aux_offset + op_size;
-         emit_prepare_fp_ptr(0, dst->offset);
+         emit_prepare_fp_ptr(0, lhs_offset);
          emit_prepare_fp_ptr(1, rhs_offset);
          emit_prepare_fp_ptr(2, aux_offset);
          emit_prepare_fp_ptr(3, rem_offset);
@@ -2352,20 +2376,21 @@ unary_not_done:
          emit(&es_code, "    sta arg0\n");
          remember_runtime_import("divN");
          emit(&es_code, "    jsr _divN\n");
-         emit_copy_fp_to_fp(dst->offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
+         emit_copy_fp_to_fp(lhs_offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
       }
       else if (!strcmp(op, "<<") || !strcmp(op, ">>")) {
-         lhs_type = expr_value_type(expr->children[0], ctx);
          helper = !strcmp(op, "<<") ? "lslN" : (lhs_type && has_flag(type_name_from_node(lhs_type), "$signed") ? "asrN" : "lsrN");
-         emit_runtime_shift_fp(helper, dst->offset, aux_offset, rhs_offset, op_size);
+         emit_runtime_shift_fp(helper, lhs_offset, aux_offset, rhs_offset, op_size);
       }
 
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, lhs_offset, op_size, work_type);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _popN\n");
       return true;
    }
+
 
    return false;
 }
@@ -2506,6 +2531,39 @@ static int type_size_from_node(const ASTNode *type) {
       return get_size(type->children[0]->strval);
    }
    return get_size("int");
+}
+
+static const ASTNode *common_arith_type(const ASTNode *lhs_type, int lhs_size, const ASTNode *rhs_type, int rhs_size) {
+   if (!lhs_type) {
+      return rhs_type ? rhs_type : get_typename_node("int");
+   }
+   if (!rhs_type) {
+      return lhs_type;
+   }
+   if (lhs_size > rhs_size) {
+      return lhs_type;
+   }
+   if (rhs_size > lhs_size) {
+      return rhs_type;
+   }
+   if (has_flag(type_name_from_node(lhs_type), "$signed") && !has_flag(type_name_from_node(rhs_type), "$signed")) {
+      return lhs_type;
+   }
+   if (has_flag(type_name_from_node(rhs_type), "$signed") && !has_flag(type_name_from_node(lhs_type), "$signed")) {
+      return rhs_type;
+   }
+   return lhs_type;
+}
+
+static int common_arith_size(const ASTNode *lhs_type, int lhs_size, const ASTNode *rhs_type, int rhs_size) {
+   int size = lhs_size > rhs_size ? lhs_size : rhs_size;
+   if (size <= 0) {
+      size = type_size_from_node(common_arith_type(lhs_type, lhs_size, rhs_type, rhs_size));
+   }
+   if (size <= 0) {
+      size = get_size("int");
+   }
+   return size;
 }
 
 static int expr_value_size(ASTNode *expr, Context *ctx) {
