@@ -1,0 +1,17 @@
+// nc
+
+type void      { $size:0 };
+type char      { $size:1    $signed };
+type uchar     { $size:1  $unsigned };
+type *         { $size:2  $unsigned $endian:little };
+type int       { $size:3    $signed $endian:little };
+type uint      { $size:3  $unsigned $endian:little };
+
+int main(void) {
+   int a[4];
+   int *p := &a[0];
+   int *q := &a[3];
+   p := p + 2;
+   q--;
+   return q - p;
+}

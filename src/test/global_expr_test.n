@@ -1,0 +1,18 @@
+// nc
+
+type void      { $size:0 };
+type char      { $size:1    $signed };
+type uchar     { $size:1  $unsigned };
+type *         { $size:2  $unsigned $endian:little };
+type int       { $size:4    $signed $endian:little };
+type uint      { $size:4  $unsigned $endian:little };
+
+int g := 3;
+int h := 9;
+
+int main(void) {
+   int x := g;
+   g += 4;
+   h := g + h;
+   return h - x;
+}
