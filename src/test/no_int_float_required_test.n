@@ -1,0 +1,26 @@
+// nc
+
+type void { $size:0 };
+type bool { $size:1 };
+type char { $size:1 $signed };
+type *    { $size:2 $unsigned $endian:little };
+
+bool less(char a, char b) {
+   return a < b;
+}
+
+bool both(char a, char b) {
+   return a && b;
+}
+
+bool neg(char a) {
+   return !a;
+}
+
+char main(char argc, char **argv) {
+   bool ok := less(argc, argc);
+   if (both(ok, !neg(argc))) {
+      return argc;
+   }
+   return 0;
+}

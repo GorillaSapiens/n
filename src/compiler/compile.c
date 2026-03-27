@@ -88,6 +88,12 @@ typedef struct Context {
 static const ASTNode *global_decl_lookup(const char *name);
 static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
 static const char *type_name_from_node(const ASTNode *type);
+static const ASTNode *required_typename_node(const char *name);
+static const ASTNode *bool_type_node(void);
+static bool type_is_bool(const ASTNode *type);
+static const ASTNode *literal_annotation_type(const ASTNode *expr);
+static int type_size_from_node(const ASTNode *type);
+static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
 
@@ -1076,7 +1082,7 @@ static const char *lookup_named_continue_label(const char *name) {
 
 static const char *type_name_from_node(const ASTNode *type) {
    if (!type) {
-      return "int";
+      return NULL;
    }
    if (type->strval) {
       return type->strval;
@@ -1084,13 +1090,74 @@ static const char *type_name_from_node(const ASTNode *type) {
    if (type->count > 0 && type->children[0] && type->children[0]->strval) {
       return type->children[0]->strval;
    }
-   return "int";
+   return NULL;
+}
+
+static const ASTNode *required_typename_node(const char *name) {
+   const ASTNode *node;
+
+   if (!name) {
+      error("[%s:%d] internal missing required type name", __FILE__, __LINE__);
+   }
+
+   node = get_typename_node(name);
+   if (!node) {
+      error("type %s is not defined", name);
+   }
+
+   return node;
+}
+
+static const ASTNode *bool_type_node(void) {
+   return required_typename_node("bool");
+}
+
+static bool type_is_bool(const ASTNode *type) {
+   const char *name = type_name_from_node(type);
+   return name && !strcmp(name, "bool");
+}
+
+static const ASTNode *literal_annotation_type(const ASTNode *expr) {
+   if (!expr) {
+      return NULL;
+   }
+   if ((expr->kind == AST_INTEGER || expr->kind == AST_FLOAT) && expr->count > 0 && expr->children[0]) {
+      return expr->children[0];
+   }
+   return NULL;
+}
+
+static int integer_literal_min_size(const ASTNode *expr) {
+   unsigned long long value;
+   int size = 1;
+   char *end = NULL;
+
+   if (!expr || expr->kind != AST_INTEGER || !expr->strval) {
+      return 0;
+   }
+
+   value = strtoull(expr->strval, &end, 0);
+   if (end == expr->strval || (end && *end != 0)) {
+      return 1;
+   }
+
+   while (size < (int) sizeof(value) && value > ((1ULL << (size * 8)) - 1ULL)) {
+      size++;
+   }
+
+   return size;
 }
 
 // for parameterless flags (e.g. "$signed")
 // also for complete flags (e.g. "$endian:little")
 static bool has_flag(const char *type, const char *flag) {
-   const ASTNode *node = get_typename_node(type);
+   const ASTNode *node;
+
+   if (!type || !flag) {
+      return false;
+   }
+
+   node = get_typename_node(type);
    if (!node || node->count < 2 || is_empty(node->children[1])) {
       return false;
    }
@@ -1280,7 +1347,7 @@ static void compile_decl_stmt(ASTNode *node) {
                neg = true;
                expression = expression->children[0];
             }
-            if (!strcmp(expression->name, "int")) {
+            if (expression->kind == AST_INTEGER) {
                unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
 
                if (has_flag(type, "$endian:big")) {
@@ -1322,7 +1389,7 @@ static void compile_decl_stmt(ASTNode *node) {
                neg = true;
                expression = expression->children[0];
             }
-            if (!strcmp(expression->name, "float")) {
+            if (expression->kind == AST_FLOAT) {
                unsigned char *bytes = (unsigned char *) malloc(sizeof(unsigned char) * size);
 
                if (has_flag(type, "$endian:big")) {
@@ -2396,6 +2463,19 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return true;
    }
 
+   if (expr->kind == AST_FLOAT) {
+      unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+         make_be_float(expr->strval, bytes, dst->size);
+      }
+      else {
+         make_le_float(expr->strval, bytes, dst->size);
+      }
+      emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
+      free(bytes);
+      return true;
+   }
+
    if (expr->kind == AST_STRING) {
       const char *label = remember_string_literal(expr->strval);
       emit_store_label_address_to_fp(dst->offset, dst->size, label);
@@ -2828,7 +2908,7 @@ unary_not_done:
          emit(&es_code, "    sta arg0\n");
          remember_runtime_import("divN");
          emit(&es_code, "    jsr _divN\n");
-         emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, quo_off, ptr_size, get_typename_node("int"));
+         emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, quo_off, ptr_size, dst->type ? dst->type : lhs_type);
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
@@ -2960,7 +3040,13 @@ unary_not_done:
       const char *helper = NULL;
 
       if (op_size <= 0) {
-         op_size = get_size("int");
+         op_size = expr_value_size(expr->children[0], ctx);
+      }
+      if (op_size <= 0 && expr->count > 1) {
+         op_size = expr_value_size(expr->children[1], ctx);
+      }
+      if (op_size <= 0) {
+         op_size = 1;
       }
       if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
          return false;
@@ -3043,22 +3129,21 @@ unary_not_done:
 
 
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
+   const ASTNode *lhs_type;
+   const ASTNode *rhs_type;
+
    expr = (ASTNode *) unwrap_expr_node(expr);
 
    if (!expr || is_empty(expr)) {
-      return get_typename_node("int");
+      return NULL;
    }
 
-   if (expr->kind == AST_INTEGER) {
-      return get_typename_node("int");
-   }
-
-   if (expr->kind == AST_FLOAT) {
-      return get_typename_node("float");
+   if (expr->kind == AST_INTEGER || expr->kind == AST_FLOAT) {
+      return literal_annotation_type(expr);
    }
 
    if (expr->kind == AST_STRING) {
-      return get_typename_node("*");
+      return required_typename_node("*");
    }
 
    if (expr->kind == AST_IDENTIFIER) {
@@ -3075,7 +3160,7 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    }
 
    if (expr->count == 1 && !strcmp(expr->name, "&")) {
-      return get_typename_node("*");
+      return required_typename_node("*");
    }
 
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
@@ -3105,29 +3190,43 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    }
 
    if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
-      return expr_value_type(expr->children[2], ctx);
+      lhs_type = expr_value_type(expr->children[2], ctx);
+      rhs_type = expr_value_type(expr->children[3], ctx);
+      return lhs_type ? lhs_type : rhs_type;
    }
 
    if ((expr->count == 1 && !strcmp(expr->name, "!")) ||
        (expr->count == 2 && (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
         !strcmp(expr->name, "<") || !strcmp(expr->name, ">") || !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=") ||
         !strcmp(expr->name, "&&") || !strcmp(expr->name, "||")))) {
-      return get_typename_node("int");
+      return bool_type_node();
    }
 
    if (expr->count == 2 && !strcmp(expr->name, "-")) {
       const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
       const ASTNode *rhs_decl = expr_value_declarator(expr->children[1], ctx);
       if (lhs_decl && rhs_decl && declarator_pointer_depth(lhs_decl) > 0 && declarator_pointer_depth(rhs_decl) > 0) {
-         return get_typename_node("int");
+         lhs_type = expr_value_type(expr->children[0], ctx);
+         rhs_type = expr_value_type(expr->children[1], ctx);
+         return lhs_type ? lhs_type : rhs_type;
       }
    }
 
    if (expr->count >= 1) {
-      return expr_value_type(expr->children[0], ctx);
+      lhs_type = expr_value_type(expr->children[0], ctx);
+      if (lhs_type) {
+         return lhs_type;
+      }
    }
 
-   return get_typename_node("int");
+   if (expr->count >= 2) {
+      rhs_type = expr_value_type(expr->children[1], ctx);
+      if (rhs_type) {
+         return rhs_type;
+      }
+   }
+
+   return NULL;
 }
 
 static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
@@ -3181,21 +3280,49 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
 }
 
 static int type_size_from_node(const ASTNode *type) {
-   if (!type) {
-      return get_size("int");
+   const char *name = type_name_from_node(type);
+
+   if (!name) {
+      return 0;
    }
-   if (type->strval) {
-      return get_size(type_name_from_node(type));
-   }
-   if (type->count > 0 && type->children[0] && type->children[0]->strval) {
-      return get_size(type->children[0]->strval);
-   }
-   return get_size("int");
+
+   return get_size(name);
 }
 
 static int expr_value_size(ASTNode *expr, Context *ctx) {
-   const ASTNode *type = expr_value_type(expr, ctx);
-   return type_size_from_node(type);
+   const ASTNode *type;
+   int lhs_size;
+   int rhs_size;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return 0;
+   }
+
+   if (expr->kind == AST_INTEGER) {
+      type = literal_annotation_type(expr);
+      return type ? type_size_from_node(type) : integer_literal_min_size(expr);
+   }
+
+   if (expr->kind == AST_FLOAT) {
+      type = literal_annotation_type(expr);
+      return type ? type_size_from_node(type) : 0;
+   }
+
+   type = expr_value_type(expr, ctx);
+   if (type) {
+      return type_size_from_node(type);
+   }
+
+   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
+      lhs_size = expr_value_size(expr->children[2], ctx);
+      rhs_size = expr_value_size(expr->children[3], ctx);
+      return lhs_size > rhs_size ? lhs_size : rhs_size;
+   }
+
+   lhs_size = (expr->count >= 1) ? expr_value_size(expr->children[0], ctx) : 0;
+   rhs_size = (expr->count >= 2) ? expr_value_size(expr->children[1], ctx) : 0;
+   return lhs_size > rhs_size ? lhs_size : rhs_size;
 }
 
 static const char *next_label(const char *prefix) {
@@ -3260,6 +3387,13 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       return true;
    }
 
+   if (expr->kind == AST_INTEGER) {
+      if (!expr->strval || !strcmp(expr->strval, "0")) {
+         emit(&es_code, "    jmp %s\n", false_label);
+      }
+      return true;
+   }
+
    {
       const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
       if (ofn) {
@@ -3270,10 +3404,10 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          ASTNode *argv[2] = { NULL, NULL };
          ASTNode *call;
          if (rsize <= 0) {
-            rsize = get_size(type_name_from_node(rtype));
+            rsize = type_size_from_node(rtype);
          }
          if (rsize <= 0) {
-            rsize = get_size("int");
+            error("[%s:%d.%d] overloaded operator '%s' has unknown return size", expr->file, expr->line, expr->column, expr->name);
          }
          argv[0] = expr->children[0];
          if (expr->count > 1) {
@@ -3324,10 +3458,13 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
             return false;
          }
          if (rsize <= 0) {
-            rsize = get_size(type_name_from_node(rtype));
+            rsize = type_size_from_node(rtype);
          }
          if (rsize <= 0) {
-            rsize = get_size("int");
+            error("[%s:%d.%d] truthiness overload has unknown return size", expr->file, expr->line, expr->column);
+         }
+         if (!type_is_bool(rtype)) {
+            error("[%s:%d.%d] operator{} must return bool", expr->file, expr->line, expr->column);
          }
          tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = rsize };
          remember_runtime_import("pushN");
@@ -3371,7 +3508,10 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       bool is_signed;
 
       if (size <= 0) {
-         size = get_size("int");
+         size = expr_value_size(expr->children[1], ctx);
+      }
+      if (size <= 0) {
+         size = 1;
       }
       compare_size = size * 2;
       lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = size };
@@ -3436,7 +3576,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       ContextEntry tmp;
 
       if (size <= 0) {
-         size = get_size("int");
+         size = 1;
       }
       tmp = (ContextEntry){ .name = "$tmp", .type = type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = size };
 
@@ -4161,7 +4301,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    type = expr_value_type(expr, ctx);
    size = expr_value_size(expr, ctx);
    if (size <= 0) {
-      size = get_size("int");
+      size = 1;
    }
    compare_size = size * 2;
    lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = size };
@@ -4365,7 +4505,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       const ASTNode *type = expr_value_type(node, ctx);
       int size = expr_value_size(node, ctx);
       if (size <= 0) {
-         size = get_size("int");
+         size = 1;
       }
       remember_runtime_import("pushN");
       emit(&es_code, "    lda #$%02x\n", size & 0xff);
@@ -4414,7 +4554,10 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          return;
       }
       if (lv.indirect) {
-         int tmp_size = dst->size > 0 ? dst->size : get_size("int");
+         int tmp_size = dst->size > 0 ? dst->size : expr_value_size(rhs, ctx);
+         if (tmp_size <= 0) {
+            tmp_size = 1;
+         }
          ContextEntry tmp = { .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_quick = false, .is_global = false, .offset = ctx->locals, .size = tmp_size };
          remember_runtime_import("pushN");
          emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
@@ -5375,6 +5518,10 @@ static void compile(ASTNode *program) {
          node->handled = true;
          compile_type_decl_stmt(node);
       }
+   }
+
+   if (!typename_exists("bool")) {
+      error("type bool is not defined");
    }
 
    for (int i = 0; i < program->count; i++) {

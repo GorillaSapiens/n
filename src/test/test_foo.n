@@ -1,5 +1,6 @@
 // nc -X dumpast -X parseonly
 
+type bool     { $size:1 };
 type void     { $size:0 };
 type *        { $size:2 $endian:little};
 

@@ -64,7 +64,7 @@ ASTNode *prepend_children_from(ASTNode *parent, ASTNode *other) {
 
 ASTNode *make_integer_leaf(const char *intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
-   ret->name = "int";
+   ret->name = "integer_literal";
    ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;
@@ -127,7 +127,7 @@ ASTNode *make_typename_leaf(const char *strval) {
 
 ASTNode *make_float_leaf(const char *dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
-   ret->name = "float";
+   ret->name = "float_literal";
    ret->file = strdup(current_filename);
    ret->line = yylineno;
    ret->column = yycolumn;

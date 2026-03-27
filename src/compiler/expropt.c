@@ -13,7 +13,7 @@
 #include "xray.h"
 
 static double parse_node_to_double(ASTNode *node) {
-   if (!strcmp(node->name, "int")) {
+   if (node && node->kind == AST_INTEGER) {
       return parse_int(node->strval);
    }
    else {
@@ -22,7 +22,7 @@ static double parse_node_to_double(ASTNode *node) {
 }
 
 static bool is_int(ASTNode *node) {
-   if (!strcmp(node->name, "int")) {
+   if (node && node->kind == AST_INTEGER) {
       if (node->count == 0) { // backtick casting is done on the processor
          return true;
       }
@@ -31,7 +31,7 @@ static bool is_int(ASTNode *node) {
 }
 
 static bool is_float_or_int(ASTNode *node) {
-   if (!strcmp(node->name, "int") || !strcmp(node->name, "float")) {
+   if (node && (node->kind == AST_INTEGER || node->kind == AST_FLOAT)) {
       if (node->count == 0) { // backtick casting is done on the processor
          return true;
       }

@@ -5,6 +5,7 @@
 /* Block comment over
    multiple lines */
 
+type bool     { $size:1 };
 type void { $size:0 };
 type uint8 { $size:1 $unsigned };
 type * { $size:2 $endian:little };
