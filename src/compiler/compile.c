@@ -1647,8 +1647,15 @@ static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, i
 }
 
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
-   bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
-   bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+   bool dst_direct;
+   bool src_direct;
+
+   if (size <= 0 || dst_offset == src_offset) {
+      return;
+   }
+
+   dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
+   src_direct = src_offset >= 0 && src_offset + size <= 256;
 
    if (!src_direct) {
       emit_prepare_fp_ptr(0, src_offset);
