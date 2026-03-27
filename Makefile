@@ -5,4 +5,4 @@ tarball:
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 tools:
-	tar -czvf tools.tar.gz /usr/bin/flex /usr/bin/bison /lib/libfl.a
+	tar -czvf tools.tar.gz /usr/share/bison/* /usr/bin/flex /usr/bin/bison /lib/libfl.a
