@@ -113,6 +113,8 @@ static bool type_is_signed_integer(const ASTNode *type);
 static bool type_is_unsigned_integer(const ASTNode *type);
 static bool type_is_promotable_integer(const ASTNode *type);
 static const char *type_endian_name(const ASTNode *type);
+static bool type_is_big_endian(const ASTNode *type);
+static int endian_mem_index_for_significance(int size, bool big_endian, int significance_index);
 static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, const ASTNode *rhs_type, ASTNode *origin);
 static const ASTNode *literal_annotation_type(const ASTNode *expr);
 static int type_size_from_node(const ASTNode *type);
@@ -941,138 +943,128 @@ static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned ch
 }
 
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
-   bool big_endian = src_type && has_flag(type_name_from_node(src_type), "$endian:big");
+   bool src_big_endian = type_is_big_endian(src_type);
+   bool dst_big_endian = type_is_big_endian(dst_type);
    bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
-   int copy_size;
-   int dst_copy_start;
-   int src_copy_start;
+   bool dst_direct;
+   bool src_direct;
+   int sign_src_mem;
 
    if (dst_size <= 0 || src_size <= 0) {
       return;
    }
 
-   copy_size = dst_size < src_size ? dst_size : src_size;
-   dst_copy_start = big_endian && dst_size > copy_size ? dst_size - copy_size : 0;
-   src_copy_start = big_endian && src_size > copy_size ? src_size - copy_size : 0;
-   emit_copy_fp_to_fp(dst_offset + dst_copy_start, src_offset + src_copy_start, copy_size);
+   dst_direct = dst_offset >= 0 && dst_offset + dst_size <= 256;
+   src_direct = src_offset >= 0 && src_offset + src_size <= 256;
+   sign_src_mem = endian_mem_index_for_significance(src_size, src_big_endian, src_size - 1);
 
-   if (dst_size > copy_size) {
-      if (big_endian) {
-         if (is_signed) {
-            int sign_src = src_offset + src_copy_start;
-            bool dst_direct = dst_offset >= 0 && dst_offset + (dst_size - copy_size) <= 256;
-            bool src_direct = sign_src >= 0 && sign_src < 256;
-            if (!src_direct) {
-               emit_prepare_fp_ptr(0, sign_src);
-            }
-            if (!dst_direct) {
-               emit_prepare_fp_ptr(1, dst_offset);
-            }
-            emit(&es_code, "    ldy #%d\n", src_direct ? sign_src : 0);
+   if (!src_direct) {
+      emit_prepare_fp_ptr(0, src_offset);
+   }
+   if (!dst_direct) {
+      emit_prepare_fp_ptr(1, dst_offset);
+   }
+
+   if (dst_offset == src_offset) {
+      for (int j = dst_size - 1; j >= 0; j--) {
+         int sig = dst_big_endian ? (dst_size - 1 - j) : j;
+         if (sig < src_size) {
+            int src_mem = endian_mem_index_for_significance(src_size, src_big_endian, sig);
+            emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + src_mem) : src_mem);
+            emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
+         }
+         else if (is_signed) {
+            emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + sign_src_mem) : sign_src_mem);
             emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
             emit(&es_code, "    and #$80\n");
             emit(&es_code, "    beq :+\n");
             emit(&es_code, "    lda #$ff\n");
+            emit(&es_code, "    bne :++\n");
             emit(&es_code, ":\n");
-            for (int i = 0; i < dst_size - copy_size; i++) {
-               emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-               emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-            }
+            emit(&es_code, "    lda #$00\n");
+            emit(&es_code, ":\n");
          }
          else {
-            emit_fill_fp_bytes(dst_offset, 0, dst_size - copy_size, 0x00);
+            emit(&es_code, "    lda #$00\n");
          }
+         emit(&es_code, "    pha\n");
+      }
+      for (int j = 0; j < dst_size; j++) {
+         emit(&es_code, "    pla\n");
+         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      }
+      return;
+   }
+
+   for (int j = 0; j < dst_size; j++) {
+      int sig = dst_big_endian ? (dst_size - 1 - j) : j;
+      if (sig < src_size) {
+         int src_mem = endian_mem_index_for_significance(src_size, src_big_endian, sig);
+         emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + src_mem) : src_mem);
+         emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
+      }
+      else if (is_signed) {
+         emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + sign_src_mem) : sign_src_mem);
+         emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
+         emit(&es_code, "    and #$80\n");
+         emit(&es_code, "    beq :+\n");
+         emit(&es_code, "    lda #$ff\n");
+         emit(&es_code, "    bne :++\n");
+         emit(&es_code, ":\n");
+         emit(&es_code, "    lda #$00\n");
+         emit(&es_code, ":\n");
       }
       else {
-         if (is_signed) {
-            int sign_src = src_offset + copy_size - 1;
-            bool dst_direct = dst_offset >= 0 && dst_offset + dst_size <= 256;
-            bool src_direct = sign_src >= 0 && sign_src < 256;
-            if (!src_direct) {
-               emit_prepare_fp_ptr(0, sign_src);
-            }
-            if (!dst_direct) {
-               emit_prepare_fp_ptr(1, dst_offset);
-            }
-            emit(&es_code, "    ldy #%d\n", src_direct ? sign_src : 0);
-            emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
-            emit(&es_code, "    and #$80\n");
-            emit(&es_code, "    beq :+\n");
-            emit(&es_code, "    lda #$ff\n");
-            emit(&es_code, ":\n");
-            for (int i = copy_size; i < dst_size; i++) {
-               emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-               emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-            }
-         }
-         else {
-            emit_fill_fp_bytes(dst_offset, copy_size, dst_size - copy_size, 0x00);
-         }
+         emit(&es_code, "    lda #$00\n");
       }
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
    }
 }
 
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type) {
-   int copy_size;
-   int dst_copy_start;
-   int src_copy_start;
-   bool big_endian = src_type && has_flag(type_name_from_node(src_type), "$endian:big");
+   bool src_big_endian = type_is_big_endian(src_type);
+   bool dst_big_endian = type_is_big_endian(dst_type);
    bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
    bool dst_direct;
+   int sign_src_mem;
+
    if (dst_size <= 0 || src_size <= 0) {
       return;
    }
-   copy_size = dst_size < src_size ? dst_size : src_size;
-   dst_copy_start = big_endian && dst_size > copy_size ? dst_size - copy_size : 0;
-   src_copy_start = big_endian && src_size > copy_size ? src_size - copy_size : 0;
+
    dst_direct = dst_offset >= 0 && dst_offset + dst_size <= 256;
+   sign_src_mem = endian_mem_index_for_significance(src_size, src_big_endian, src_size - 1);
    if (!dst_direct) {
       emit_prepare_fp_ptr(1, dst_offset);
    }
-   for (int i = 0; i < copy_size; i++) {
-      emit(&es_code, "    ldy #%d\n", src_copy_start + i);
-      emit(&es_code, "    lda %s,y\n", symbol);
-      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + dst_copy_start + i) : (dst_copy_start + i));
-      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-   }
-   if (dst_size > copy_size) {
-      if (big_endian) {
-         if (is_signed) {
-            emit(&es_code, "    ldy #%d\n", src_copy_start);
-            emit(&es_code, "    lda %s,y\n", symbol);
-            emit(&es_code, "    and #$80\n");
-            emit(&es_code, "    beq :+\n");
-            emit(&es_code, "    lda #$ff\n");
-            emit(&es_code, ":\n");
-            for (int i = 0; i < dst_size - copy_size; i++) {
-               emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-               emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-            }
-         }
-         else {
-            emit_fill_fp_bytes(dst_offset, 0, dst_size - copy_size, 0x00);
-         }
+
+   for (int j = 0; j < dst_size; j++) {
+      int sig = dst_big_endian ? (dst_size - 1 - j) : j;
+      if (sig < src_size) {
+         int src_mem = endian_mem_index_for_significance(src_size, src_big_endian, sig);
+         emit(&es_code, "    ldy #%d\n", src_mem);
+         emit(&es_code, "    lda %s,y\n", symbol);
+      }
+      else if (is_signed) {
+         emit(&es_code, "    ldy #%d\n", sign_src_mem);
+         emit(&es_code, "    lda %s,y\n", symbol);
+         emit(&es_code, "    and #$80\n");
+         emit(&es_code, "    beq :+\n");
+         emit(&es_code, "    lda #$ff\n");
+         emit(&es_code, "    bne :++\n");
+         emit(&es_code, ":\n");
+         emit(&es_code, "    lda #$00\n");
+         emit(&es_code, ":\n");
       }
       else {
-         if (is_signed) {
-            emit(&es_code, "    ldy #%d\n", src_copy_start + copy_size - 1);
-            emit(&es_code, "    lda %s,y\n", symbol);
-            emit(&es_code, "    and #$80\n");
-            emit(&es_code, "    beq :+\n");
-            emit(&es_code, "    lda #$ff\n");
-            emit(&es_code, ":\n");
-            for (int i = copy_size; i < dst_size; i++) {
-               emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-               emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-            }
-         }
-         else {
-            emit_fill_fp_bytes(dst_offset, copy_size, dst_size - copy_size, 0x00);
-         }
+         emit(&es_code, "    lda #$00\n");
       }
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
    }
 }
-
 
 static void remember_runtime_import(const char *name) {
    if (!runtime_imports) {
@@ -1228,6 +1220,20 @@ static const char *type_endian_name(const ASTNode *type) {
    return NULL;
 }
 
+static bool type_is_big_endian(const ASTNode *type) {
+   return type && has_flag(type_name_from_node(type), "$endian:big");
+}
+
+static int endian_mem_index_for_significance(int size, bool big_endian, int significance_index) {
+   if (significance_index < 0) {
+      return 0;
+   }
+   if (significance_index >= size) {
+      significance_index = size - 1;
+   }
+   return big_endian ? (size - 1 - significance_index) : significance_index;
+}
+
 static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, const ASTNode *rhs_type, ASTNode *origin) {
    bool lhs_signed;
    bool rhs_signed;
@@ -1263,17 +1269,24 @@ static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, 
       required_size = signed_size > (unsigned_size + 1) ? signed_size : (unsigned_size + 1);
    }
 
-   if (lhs_size >= rhs_size) {
-      preferred_endian = type_endian_name(lhs_type);
-   }
-   else {
-      preferred_endian = type_endian_name(rhs_type);
-   }
-   if (!preferred_endian) {
-      preferred_endian = type_endian_name(lhs_type);
-   }
-   if (!preferred_endian) {
-      preferred_endian = type_endian_name(rhs_type);
+   {
+      const char *lhs_endian = type_endian_name(lhs_type);
+      const char *rhs_endian = type_endian_name(rhs_type);
+      if (lhs_endian && rhs_endian && strcmp(lhs_endian, rhs_endian)) {
+         preferred_endian = "little";
+      }
+      else if (lhs_size >= rhs_size) {
+         preferred_endian = lhs_endian;
+      }
+      else {
+         preferred_endian = rhs_endian;
+      }
+      if (!preferred_endian) {
+         preferred_endian = lhs_endian;
+      }
+      if (!preferred_endian) {
+         preferred_endian = rhs_endian;
+      }
    }
 
    for (int i = 0; root && i < root->count; i++) {
