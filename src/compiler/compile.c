@@ -1046,7 +1046,7 @@ static const char *remember_string_literal(const char *text) {
    if (!label) {
       error("out of memory");
    }
-   snprintf(label, 64, "@str_%d", label_counter++);
+   snprintf(label, 64, "__str_%d", label_counter++);
    set_add(string_literals, strdup(text), label);
    emit(&es_rodata, "%s:\n", label);
 
