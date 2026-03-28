@@ -183,6 +183,9 @@ static void calculate_struct_union_sizes(ASTNode *program);
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size);
 static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size);
 static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
+static int constant_shift_width_bits(ASTNode *expr);
+static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits);
+static long long arithmetic_right_shift_ll(long long value, unsigned int count);
 static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type);
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type);
 static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend);
@@ -3611,6 +3614,8 @@ unary_not_done:
          rhs_size = 1;
       }
 
+      diagnose_constant_shift_count(expr->children[1], lhs_size * 8);
+
       tmp_total = lhs_size + rhs_size + lhs_size;
       lhs_offset = ctx->locals;
       rhs_offset = lhs_offset + lhs_size;
@@ -4547,6 +4552,56 @@ static bool init_const_truthy(const InitConstValue *value) {
    return false;
 }
 
+static int constant_shift_width_bits(ASTNode *expr) {
+   int size = expr_value_size(expr, NULL);
+
+   if (size <= 0) {
+      size = (int) sizeof(long long);
+   }
+   if (size > (int) sizeof(long long)) {
+      size = (int) sizeof(long long);
+   }
+   return size * 8;
+}
+
+static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits) {
+   InitConstValue value = {0};
+
+   if (!count_expr) {
+      return;
+   }
+   if (lhs_bits <= 0) {
+      lhs_bits = (int) (sizeof(long long) * 8);
+   }
+   if (!eval_constant_initializer_expr(count_expr, &value) || value.kind != INIT_CONST_INT) {
+      return;
+   }
+
+   if (value.i < 0) {
+      error("[%s:%d.%d] negative shift count %lld", count_expr->file, count_expr->line, count_expr->column, value.i);
+   }
+   if (value.i >= lhs_bits) {
+      error("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", count_expr->file, count_expr->line, count_expr->column, value.i, lhs_bits);
+   }
+}
+
+static long long arithmetic_right_shift_ll(long long value, unsigned int count) {
+   unsigned long long bits;
+
+   if (count == 0) {
+      return value;
+   }
+   if (count >= sizeof(long long) * 8U) {
+      return value < 0 ? -1LL : 0LL;
+   }
+   if (value >= 0) {
+      return (long long) (((unsigned long long) value) >> count);
+   }
+
+   bits = (unsigned long long) value;
+   return (long long) (~((~bits) >> count));
+}
+
 static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    InitConstValue lhs = {0};
    InitConstValue rhs = {0};
@@ -4576,15 +4631,21 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
       return true;
    }
 
-   if (!strcmp(expr->name, "?:") && expr->count >= 3) {
+   if ((!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] &&
+        expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) ||
+       (!strcmp(expr->name, "?:") && expr->count >= 3)) {
       InitConstValue cond = {0};
-      if (!eval_constant_initializer_expr(expr->children[0], &cond)) {
+      ASTNode *test = !strcmp(expr->name, "conditional_expr") ? expr->children[1] : expr->children[0];
+      ASTNode *iftrue = !strcmp(expr->name, "conditional_expr") ? expr->children[2] : expr->children[1];
+      ASTNode *iffalse = !strcmp(expr->name, "conditional_expr") ? expr->children[3] : expr->children[2];
+
+      if (!eval_constant_initializer_expr(test, &cond)) {
          return false;
       }
       if (init_const_truthy(&cond)) {
-         return eval_constant_initializer_expr(expr->children[1], out);
+         return eval_constant_initializer_expr(iftrue, out);
       }
-      return eval_constant_initializer_expr(expr->children[2], out);
+      return eval_constant_initializer_expr(iffalse, out);
    }
 
    if (expr->count == 1) {
@@ -4652,6 +4713,29 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    }
 
    if (expr->count == 2) {
+      if (!strcmp(expr->name, "&&") || !strcmp(expr->name, "||")) {
+         bool lhs_truthy;
+
+         if (!eval_constant_initializer_expr(expr->children[0], &lhs)) {
+            return false;
+         }
+         lhs_truthy = init_const_truthy(&lhs);
+         out->kind = INIT_CONST_INT;
+         if (!strcmp(expr->name, "&&") && !lhs_truthy) {
+            out->i = 0;
+            return true;
+         }
+         if (!strcmp(expr->name, "||") && lhs_truthy) {
+            out->i = 1;
+            return true;
+         }
+         if (!eval_constant_initializer_expr(expr->children[1], &rhs)) {
+            return false;
+         }
+         out->i = init_const_truthy(&rhs) ? 1 : 0;
+         return true;
+      }
+
       if (!eval_constant_initializer_expr(expr->children[0], &lhs) ||
           !eval_constant_initializer_expr(expr->children[1], &rhs)) {
          return false;
@@ -4719,19 +4803,27 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             return false;
          }
          out->kind = INIT_CONST_INT;
-         if (!strcmp(expr->name, "<<")) out->i = lhs.i << rhs.i;
-         else if (!strcmp(expr->name, ">>")) out->i = lhs.i >> rhs.i;
+         if (!strcmp(expr->name, "<<") || !strcmp(expr->name, ">>")) {
+            int lhs_bits = constant_shift_width_bits(expr->children[0]);
+            unsigned int shift_count;
+
+            if (rhs.i < 0) {
+               error("[%s:%d.%d] negative shift count %lld", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i);
+            }
+            if (rhs.i >= lhs_bits) {
+               error("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i, lhs_bits);
+            }
+            shift_count = (unsigned int) rhs.i;
+            if (!strcmp(expr->name, "<<")) {
+               out->i = (long long) (((unsigned long long) lhs.i) << shift_count);
+            }
+            else {
+               out->i = arithmetic_right_shift_ll(lhs.i, shift_count);
+            }
+         }
          else if (!strcmp(expr->name, "&")) out->i = lhs.i & rhs.i;
          else if (!strcmp(expr->name, "|")) out->i = lhs.i | rhs.i;
          else out->i = lhs.i ^ rhs.i;
-         return true;
-      }
-
-      if (!strcmp(expr->name, "&&") || !strcmp(expr->name, "||")) {
-         bool a = init_const_truthy(&lhs);
-         bool b = init_const_truthy(&rhs);
-         out->kind = INIT_CONST_INT;
-         out->i = !strcmp(expr->name, "&&") ? (a && b) : (a || b);
          return true;
       }
 
@@ -5801,6 +5893,10 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       }
       if (rhs_work_size <= 0) {
          rhs_work_size = 1;
+      }
+
+      if (!strcmp(op, "<<=") || !strcmp(op, ">>=")) {
+         diagnose_constant_shift_count(rhs, work_size * 8);
       }
 
       tmp_total = work_size + rhs_work_size;

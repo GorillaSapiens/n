@@ -85,6 +85,28 @@ static bool is_unary_op(ASTNode *node) {
    return false;
 }
 
+static bool node_truthy(ASTNode *node, bool *truthy) {
+   if (!truthy) {
+      return false;
+   }
+   while (node && node->count == 1 &&
+          (!strcmp(node->name, "expr") ||
+           !strcmp(node->name, "assign_expr") ||
+           !strcmp(node->name, "initializer") ||
+           !strcmp(node->name, "opt_expr"))) {
+      node = node->children[0];
+   }
+   if (node && node->kind == AST_INTEGER && node->count == 0) {
+      *truthy = parse_int(node->strval) != 0;
+      return true;
+   }
+   if (node && node->kind == AST_FLOAT && node->count == 0) {
+      *truthy = parse_float(node->strval) != 0.0;
+      return true;
+   }
+   return false;
+}
+
 static void handle_binary_plus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -177,6 +199,9 @@ static void handle_binary_divide(ASTNode **noderef) {
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
+      if (right == 0) {
+         error("integer divide by zero at [%s:%d.%d]", node->file, node->line, node->column);
+      }
       long long result = left / right;
       sprintf(buf, "%lld", result);
       *noderef = make_integer_leaf(strdup(buf));
@@ -198,6 +223,9 @@ static void handle_binary_modulo(ASTNode **noderef) {
       long long left = parse_int(node->children[0]->strval);
       long long right = parse_int(node->children[1]->strval);
 
+      if (right == 0) {
+         error("integer modulo by zero at [%s:%d.%d]", node->file, node->line, node->column);
+      }
       long long result = left % right;
       sprintf(buf, "%lld", result);
       *noderef = make_integer_leaf(strdup(buf));
@@ -217,6 +245,60 @@ static void expropt(ASTNode **noderef) {
    ASTNode *node = *noderef;
 
    if (*noderef == NULL) {
+      return;
+   }
+
+   if (!strcmp(node->name, "&&") && node->count == 2) {
+      bool truthy;
+
+      expropt(&(node->children[0]));
+      if (node_truthy(node->children[0], &truthy)) {
+         if (!truthy) {
+            *noderef = make_integer_leaf("0");
+            return;
+         }
+         expropt(&(node->children[1]));
+         if (node_truthy(node->children[1], &truthy)) {
+            *noderef = make_integer_leaf(truthy ? "1" : "0");
+         }
+         return;
+      }
+      expropt(&(node->children[1]));
+      return;
+   }
+
+   if (!strcmp(node->name, "||") && node->count == 2) {
+      bool truthy;
+
+      expropt(&(node->children[0]));
+      if (node_truthy(node->children[0], &truthy)) {
+         if (truthy) {
+            *noderef = make_integer_leaf("1");
+            return;
+         }
+         expropt(&(node->children[1]));
+         if (node_truthy(node->children[1], &truthy)) {
+            *noderef = make_integer_leaf(truthy ? "1" : "0");
+         }
+         return;
+      }
+      expropt(&(node->children[1]));
+      return;
+   }
+
+   if (!strcmp(node->name, "conditional_expr") && node->count == 4 && node->children[0] &&
+       node->children[0]->kind == AST_IDENTIFIER && !strcmp(node->children[0]->strval, "?:")) {
+      bool truthy;
+
+      expropt(&(node->children[1]));
+      if (node_truthy(node->children[1], &truthy)) {
+         ASTNode *selected = truthy ? node->children[2] : node->children[3];
+         expropt(&selected);
+         *noderef = selected;
+         return;
+      }
+      expropt(&(node->children[2]));
+      expropt(&(node->children[3]));
       return;
    }
 

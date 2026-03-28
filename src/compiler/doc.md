@@ -127,7 +127,7 @@ Shifts are more C-like than earlier versions:
 - signed right shift uses arithmetic shift
 - unsigned right shift uses logical shift
 
-The compiler still does not diagnose negative shift counts or oversized shift counts.
+The compiler now diagnoses constant negative shift counts and constant oversized shift counts.
 
 ### Endianness in expressions and assignment
 

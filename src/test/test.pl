@@ -24,9 +24,17 @@ foreach my $file (`ls *.n`) {
    }
 
    my @expectasm;
+   my @expecterr;
+   my $expectfail = 0;
    for my $line (@lines) {
       if ($line =~ /^\/\/ expectasm:\s*(.*?)\s*$/) {
          push @expectasm, $1;
+      }
+      if ($line =~ /^\/\/ expecterr:\s*(.*?)\s*$/) {
+         push @expecterr, $1;
+      }
+      if ($line =~ /^\/\/ expectfail\s*$/) {
+         $expectfail = 1;
       }
    }
 
@@ -35,12 +43,21 @@ foreach my $file (`ls *.n`) {
    $runner =~ s/  / /g; # remove extra spaces, for aesthetics
 
    my ($outfh, $outfile) = tempfile('test_output_XXXX', UNLINK => 1);
+   my ($errfh, $errfile) = tempfile('test_error_XXXX', UNLINK => 1);
    close($outfh);
+   close($errfh);
 
-   my $status = system("$runner >$outfile 2>/dev/null");
+   my $status = system("$runner >$outfile 2>$errfile");
    my $exit_code = $? >> 8;
 
-   if ($exit_code != 0) {
+   if ($expectfail) {
+      if ($exit_code == 0) {
+         print "[FAIL] $file expected failure but exited 0\n";
+         print "$runner\n";
+         exit(-1);
+      }
+   }
+   elsif ($exit_code != 0) {
       print "[FAIL] $file exit code $exit_code\n";
       print "$runner\n";
       exit(-1);
@@ -55,6 +72,21 @@ foreach my $file (`ls *.n`) {
       for my $needle (@expectasm) {
          if (index($asm, $needle) < 0) {
             print "[FAIL] $file missing assembly fragment: $needle\n";
+            print "$runner\n";
+            exit(-1);
+         }
+      }
+   }
+
+   if (@expecterr) {
+      open(my $err, '<', $errfile) or die "[FAIL] could not read $errfile: $!\n";
+      local $/;
+      my $stderr = <$err>;
+      close($err);
+
+      for my $needle (@expecterr) {
+         if (index($stderr, $needle) < 0) {
+            print "[FAIL] $file missing error fragment: $needle\n";
             print "$runner\n";
             exit(-1);
          }
