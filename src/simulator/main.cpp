@@ -89,6 +89,7 @@ uint8_t read_cb(uint16_t addr) {
 }
 
 void clock_cb(mos6502* cpu) {
+   (void) cpu; // unused parameter
 }
 
 void dispatch(uint8_t op, uint16_t arg) {
