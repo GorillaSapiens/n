@@ -1,0 +1,31 @@
+include "machine_6502.n"
+
+static char buffer[16];
+void printi(int arg) {
+   char spot := 15;
+   char i;
+   buffer[spot--] := 0;
+   buffer[spot--] := '\n';
+   if (arg == 0) {
+      buffer[spot] := '0';
+   }
+   else {
+      while(arg) {
+         buffer[spot--] := '0' + (arg % 10);
+         arg /= 10;
+      }
+      spot++;
+   }
+   for (i := 0; buffer[spot] != 0; i++, spot++) {
+      buffer[i] := buffer[spot];
+   }
+   buffer[i] := 0;
+   asm nop
+   asm lda #0
+   asm ldx #>_buffer
+   asm ldy #<_buffer
+   asm jsr $ffff
+}
+
+void main(void) {
+}

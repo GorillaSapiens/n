@@ -64,6 +64,8 @@ void useless() {
    a := 8 ? 2 : 4;
    a ^= 12;
 
+   asm nop
+
    foo := bar;
 
    a[12] := 5;

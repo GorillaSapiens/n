@@ -43,6 +43,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %token <str> MEMNAME
 %token <str> OPERATOR
 %token <str> STRING
+%token <str> ASM
 %token <str> TYPENAME
 %token <str> XFORMNAME
 
@@ -94,6 +95,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> additive_expr
 %type <node> arg_list
 %type <node> array_initializer
+%type <node> asm_stmt
 %type <node> assign_expr
 %type <node> bitwise_and_expr
 %type <node> bitwise_or_expr
@@ -364,6 +366,11 @@ statement:
   | for_stmt                                 { COVER; $$ = $1; }
   | do_stmt                                  { COVER; $$ = $1; }
   | label_stmt                               { COVER; $$ = $1; }
+  | asm_stmt                                 { COVER; $$ = $1; }
+  ;
+
+asm_stmt:
+    ASM                                      { COVER; $$ = MAKE_NODE(make_asm_leaf($1)); }
   ;
 
 return_stmt:

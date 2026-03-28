@@ -174,6 +174,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx);
 static void compile_goto_stmt(ASTNode *node, Context *ctx);
 static void compile_switch_stmt(ASTNode *node, Context *ctx);
 static void compile_return_stmt(ASTNode *node, Context *ctx);
+static void compile_asm_stmt(ASTNode *node, Context *ctx);
 static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
@@ -6045,6 +6046,23 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 }
 
 
+static void compile_asm_stmt(ASTNode *node, Context *ctx) {
+   (void) ctx;
+
+   if (!node || is_empty(node) || node->count < 1 || !node->children[0]) {
+      return;
+   }
+
+   const ASTNode *leaf = node->children[0];
+   if (leaf->kind != AST_ASM || !leaf->strval) {
+      warning("[%s:%d.%d] inline asm statement malformed", node->file, node->line, node->column);
+      return;
+   }
+
+   emit(&es_code, "%s\n", leaf->strval);
+}
+
+
 static void compile_statement_list(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;
@@ -6090,6 +6108,9 @@ static void compile_statement_list(ASTNode *node, Context *ctx) {
       }
       else if (!strcmp(stmt->name, "switch_stmt")) {
          compile_switch_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "asm_stmt")) {
+         compile_asm_stmt(stmt, ctx);
       }
       else if (!strcmp(stmt->name, "statement_list")) {
          compile_statement_list(stmt, ctx);

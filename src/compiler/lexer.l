@@ -245,6 +245,11 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    }
 }
 
+"asm "[^\n]* {
+   yylval.str = strdup(yytext + 4);
+   return ASM;
+}
+
 \/\/[^\n]*                ;   // skip line comments
 
 [ \t\r]+                  ;   // skip whitespace

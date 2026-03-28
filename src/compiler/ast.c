@@ -101,6 +101,18 @@ ASTNode *make_string_leaf(const char *strval) {
    return ret;
 }
 
+ASTNode *make_asm_leaf(const char *strval) {
+   ASTNode *ret = calloc(1, sizeof(struct ASTNode));
+   ret->name = "asm";
+   ret->file = strdup(current_filename);
+   ret->line = yylineno;
+   ret->column = yycolumn;
+   ret->kind = AST_ASM;
+   ret->strval = strval ? strdup(strval) : NULL;
+   ret->handled = false;
+   return ret;
+}
+
 ASTNode *make_identifier_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "identifier";

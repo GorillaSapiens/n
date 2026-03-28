@@ -13,6 +13,7 @@ N is a mostly C-like systems language aimed at small targets, especially 8-bit m
 - Static function parameters are supported.
 - Some operators can be overloaded.
 - Strings can be translated through named `xform` mappings.
+- Inline assembly statements are supported as raw one-line passthroughs with `asm ...` inside functions.
 
 ## Type system
 
@@ -143,6 +144,24 @@ That means these are now handled sensibly:
 - little-endian to big-endian assignment of equal-sized integers
 - mixed-endian integer arithmetic after promotion
 - mixed-endian comparisons after promotion
+
+## Inline assembly
+
+Inside a function body, a line of the form:
+
+```n
+asm nop
+asm lda #$01
+asm loop_start:
+```
+
+emits the remainder of the line directly into the generated assembler output at that point.
+
+Current limits:
+
+- it is a single-line statement
+- it is emitted verbatim after the `asm ` prefix is removed
+- operand checking and clobber tracking are entirely the programmer's responsibility
 
 ## Operator overloading
 

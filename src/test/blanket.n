@@ -60,6 +60,10 @@ int *;
 void foo(void) {
 }
 
+void foob(void) {
+   asm nop
+}
+
 int operator==(int l, int r) {
    return 0;
 }
