@@ -143,6 +143,7 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
+static int declarator_value_size(const ASTNode *type, const ASTNode *declarator);
 static int declarator_pointer_depth(const ASTNode *declarator);
 static int declarator_array_count(const ASTNode *declarator);
 static int declarator_first_element_size(const ASTNode *type, const ASTNode *declarator);
@@ -1586,6 +1587,22 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    // TODO FIX increment the stack pointer.
 }
 
+static void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   int base_size;
+   int value_size;
+
+   if (!entry || !type) {
+      return;
+   }
+
+   base_size = get_size(type_name_from_node(type));
+   value_size = declarator_value_size(type, declarator);
+   entry->size = value_size;
+   entry->declarator = declarator;
+   ctx->locals += (value_size - base_size);
+}
+
 
 static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -1673,6 +1690,23 @@ static int parameter_storage_size(const ASTNode *parameter) {
    return declarator_storage_size(ptype, pdecl);
 }
 
+static void ctx_resize_last_shove(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
+   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
+   int base_size;
+   int value_size;
+
+   if (!entry || !type) {
+      return;
+   }
+
+   base_size = get_size(type_name_from_node(type));
+   value_size = declarator_value_size(type, declarator);
+   entry->size = value_size;
+   entry->declarator = declarator;
+   entry->offset = ctx->params + base_size - value_size;
+   ctx->params -= (value_size - base_size);
+}
+
 static const char *parameter_name(const ASTNode *parameter, int i) {
    const ASTNode *declarator = parameter_declarator(parameter);
    if (!declarator || declarator->count < 2 || is_empty(declarator->children[1])) {
@@ -1746,6 +1780,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    }
 
    ctx_shove(ctx, node->children[0]->children[1], "$$");
+   ctx_resize_last_shove(ctx, node->children[0]->children[1], declarator, "$$");
 }
 
 static void emit_prepare_fp_ptr(int ptrno, int offset) {
@@ -2428,7 +2463,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       declarator = function_declarator_node(fn);
       if (known_ret) {
          ret_type = known_ret;
-         ret_size = get_size(type_name_from_node(ret_type));
+         ret_size = declarator_value_size(ret_type, declarator);
       }
       if (declarator && declarator->count > 2) {
          params = declarator->children[2];
@@ -3548,8 +3583,32 @@ static int type_size_from_node(const ASTNode *type) {
    return get_size(name);
 }
 
+static int declarator_value_size(const ASTNode *type, const ASTNode *declarator) {
+   int size;
+   int mult = 1;
+
+   if (!type) {
+      return 0;
+   }
+
+   size = declarator_pointer_depth(declarator) > 0 ? get_size("*") : get_size(type_name_from_node(type));
+
+   if (!declarator) {
+      return size;
+   }
+
+   for (int i = 2; i < declarator->count; i++) {
+      if (declarator->children[i] && declarator->children[i]->kind == AST_INTEGER) {
+         mult *= atoi(declarator->children[i]->strval);
+      }
+   }
+
+   return size * mult;
+}
+
 static int expr_value_size(ASTNode *expr, Context *ctx) {
    const ASTNode *type;
+   const ASTNode *declarator;
    int lhs_size;
    int rhs_size;
 
@@ -3569,8 +3628,9 @@ static int expr_value_size(ASTNode *expr, Context *ctx) {
    }
 
    type = expr_value_type(expr, ctx);
+   declarator = expr_value_declarator(expr, ctx);
    if (type) {
-      return type_size_from_node(type);
+      return declarator ? declarator_value_size(type, declarator) : type_size_from_node(type);
    }
 
    if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
@@ -4076,6 +4136,9 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    if (entry != NULL) {
       entry->size = size;
       entry->declarator = declarator;
+      if (!has_modifier(modifiers, "static") && !modifiers_imply_zeropage(modifiers)) {
+         ctx_resize_last_push(ctx, type, declarator, name);
+      }
    }
 }
 
