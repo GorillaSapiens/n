@@ -685,14 +685,30 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
          emit_mode_t emode;
 
          emode = stmt->u.insn.final_mode;
-         if (!opcode_lookup(stmt->u.insn.opcode, emode, &opcode)) {
-            writer_error(wr->ctx, stmt, "illegal addressing mode for %s%s",
-                         stmt->u.insn.opcode, mode_spec_suffix(stmt->u.insn.spec));
-            return 0;
-         }
-         if (!buf_write_byte(buf, off++, opcode)) {
-            writer_error(wr->ctx, stmt, "failed to write opcode");
-            return 0;
+         if (emode == EM_REL_LONG) {
+            unsigned char inv_opcode;
+            if (!opcode_invert_branch(stmt->u.insn.opcode, &inv_opcode)) {
+               writer_error(wr->ctx, stmt, "internal error: no inverse branch for %s", stmt->u.insn.opcode);
+               return 0;
+            }
+            if (!buf_write_byte(buf, off++, inv_opcode) || !buf_write_byte(buf, off++, 0x03)) {
+               writer_error(wr->ctx, stmt, "failed to write long branch prefix");
+               return 0;
+            }
+            if (!opcode_lookup("JMP", EM_ABS, &opcode) || !buf_write_byte(buf, off++, opcode)) {
+               writer_error(wr->ctx, stmt, "failed to write long branch jmp opcode");
+               return 0;
+            }
+         } else {
+            if (!opcode_lookup(stmt->u.insn.opcode, emode, &opcode)) {
+               writer_error(wr->ctx, stmt, "illegal addressing mode for %s%s",
+                            stmt->u.insn.opcode, mode_spec_suffix(stmt->u.insn.spec));
+               return 0;
+            }
+            if (!buf_write_byte(buf, off++, opcode)) {
+               writer_error(wr->ctx, stmt, "failed to write opcode");
+               return 0;
+            }
          }
 
          if (emode == EM_IMPLIED || emode == EM_ACCUMULATOR)
@@ -732,6 +748,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
                }
                return 1;
 
+            case EM_REL_LONG:
             case EM_ABS:
             case EM_ABSX:
             case EM_ABSY:

@@ -92,6 +92,7 @@ void clock_cb(mos6502* cpu) {
 }
 
 void dispatch(uint8_t op, uint16_t arg) {
+   printf("dispatch %02x %04X\n", op, arg);
    switch(op) {
       case 0:
          printf("%s", mem+arg);

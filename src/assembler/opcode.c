@@ -58,6 +58,27 @@ int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_
    return 0;
 }
 
+int opcode_is_conditional_branch(const char *mnemonic)
+{
+   return !strcmp(mnemonic, "BCC") || !strcmp(mnemonic, "BCS") ||
+          !strcmp(mnemonic, "BEQ") || !strcmp(mnemonic, "BMI") ||
+          !strcmp(mnemonic, "BNE") || !strcmp(mnemonic, "BPL") ||
+          !strcmp(mnemonic, "BVC") || !strcmp(mnemonic, "BVS");
+}
+
+int opcode_invert_branch(const char *mnemonic, unsigned char *opcode_out)
+{
+   if (!strcmp(mnemonic, "BCC")) { *opcode_out = 0xB0; return 1; }
+   if (!strcmp(mnemonic, "BCS")) { *opcode_out = 0x90; return 1; }
+   if (!strcmp(mnemonic, "BEQ")) { *opcode_out = 0xD0; return 1; }
+   if (!strcmp(mnemonic, "BMI")) { *opcode_out = 0x10; return 1; }
+   if (!strcmp(mnemonic, "BNE")) { *opcode_out = 0xF0; return 1; }
+   if (!strcmp(mnemonic, "BPL")) { *opcode_out = 0x30; return 1; }
+   if (!strcmp(mnemonic, "BVC")) { *opcode_out = 0x70; return 1; }
+   if (!strcmp(mnemonic, "BVS")) { *opcode_out = 0x50; return 1; }
+   return 0;
+}
+
 int emit_mode_size(emit_mode_t mode)
 {
    switch (mode) {
@@ -72,6 +93,8 @@ int emit_mode_size(emit_mode_t mode)
       case EM_INDY:
       case EM_REL:
          return 2;
+      case EM_REL_LONG:
+         return 5;
       case EM_ABS:
       case EM_ABSX:
       case EM_ABSY:

@@ -14,10 +14,13 @@ typedef enum emit_mode {
    EM_IND,
    EM_INDX,
    EM_INDY,
-   EM_REL
+   EM_REL,
+   EM_REL_LONG
 } emit_mode_t;
 
 int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_out);
 int emit_mode_size(emit_mode_t mode);
+int opcode_is_conditional_branch(const char *mnemonic);
+int opcode_invert_branch(const char *mnemonic, unsigned char *opcode_out);
 
 #endif

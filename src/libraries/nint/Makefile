@@ -6,4 +6,4 @@ all:
 	$(AR) -c nint.a65 nrt0_int.o65
 
 clean:
-	rm -f nint.a
+	rm -f nint.a65

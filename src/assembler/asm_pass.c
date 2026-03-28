@@ -818,6 +818,29 @@ static int expr_is_s8_or_u8_value(long value)
    return value >= -128 && value <= 0xFF;
 }
 
+static int insn_is_long_branch_candidate(const insn_info_t *insn, emit_mode_t mode)
+{
+   return mode == EM_REL && opcode_is_conditional_branch(insn->opcode);
+}
+
+static int insn_can_relax_long_branch(const stmt_t *stmt, const asm_context_t *ctx)
+{
+   long value;
+   long disp;
+
+   if (!stmt || stmt->kind != STMT_INSN)
+      return 0;
+
+   if (stmt->u.insn.final_mode != EM_REL_LONG || !stmt->u.insn.expr)
+      return 0;
+
+   if (expr_eval(stmt->u.insn.expr, &ctx->symbols, stmt->scope, stmt->file, stmt->address + 1, &value) != EXPR_EVAL_OK)
+      return 0;
+
+   disp = value - (stmt->address + 2);
+   return disp >= -128 && disp <= 127;
+}
+
 static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
@@ -868,6 +891,8 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
 
       case AM_RELATIVE:
          *out_mode = EM_REL;
+         if (insn_is_long_branch_candidate(insn, *out_mode))
+            *out_mode = EM_REL_LONG;
          return 1;
 
       case AM_ZP_OR_ABS:
@@ -972,6 +997,8 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
    int total_bytes;
    int zp_like;
    int abs_like;
+   int long_count;
+   int long_relax_count;
 
    insn_count = 0;
    dir_count = 0;
@@ -980,6 +1007,8 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
    total_bytes = 0;
    zp_like = 0;
    abs_like = 0;
+   long_count = 0;
+   long_relax_count = 0;
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {
@@ -1012,6 +1041,12 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
                   abs_like++;
                   break;
 
+               case EM_REL_LONG:
+                  long_count++;
+                  if (insn_can_relax_long_branch(stmt, ctx))
+                     long_relax_count++;
+                  break;
+
                default:
                   break;
             }
@@ -1019,8 +1054,8 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
       }
    }
 
-   printf("%-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d errors=%d\n",
-          phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, ctx->error_count);
+   printf("%-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d long=%d long_relax=%d errors=%d\n",
+          phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, long_count, long_relax_count, ctx->error_count);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65)
@@ -1497,6 +1532,13 @@ int asm_relax(asm_context_t *ctx)
          if (stmt->kind != STMT_INSN)
             continue;
 
+         if (stmt->u.insn.final_mode == EM_REL_LONG && insn_can_relax_long_branch(stmt, ctx)) {
+            stmt->u.insn.final_mode = EM_REL;
+            stmt->u.insn.size = insn_size_from_mode(EM_REL);
+            changed = 1;
+            continue;
+         }
+
          if (!can_relax_to_zp_family(&stmt->u.insn, stmt->u.insn.final_mode, &candidate))
             continue;
 
@@ -1728,16 +1770,45 @@ static int insn_emit_pass2(asm_context_t *ctx,
    pc = stmt->address;
    rec_count = 0;
 
-   if (!opcode_lookup(insn->opcode, emode, &opcode)) {
-      asm_error(ctx, stmt, "illegal addressing mode for %s%s",
-                insn->opcode, mode_spec_suffix(insn->spec));
-      return -1;
-   }
+   if (emode == EM_REL_LONG) {
+      unsigned char inv_opcode;
 
-   if (!emit_byte(ctx, pc, opcode, stmt))
-      return -1;
-   rec[rec_count++] = opcode;
-   pc++;
+      if (!opcode_invert_branch(insn->opcode, &inv_opcode)) {
+         asm_error(ctx, stmt, "internal error: no inverse branch for %s", insn->opcode);
+         return -1;
+      }
+
+      if (!emit_byte(ctx, pc, inv_opcode, stmt))
+         return -1;
+      rec[rec_count++] = inv_opcode;
+      pc++;
+
+      if (!emit_byte(ctx, pc, 0x03, stmt))
+         return -1;
+      rec[rec_count++] = 0x03;
+      pc++;
+
+      if (!opcode_lookup("JMP", EM_ABS, &opcode)) {
+         asm_error(ctx, stmt, "internal error: missing JMP opcode");
+         return -1;
+      }
+
+      if (!emit_byte(ctx, pc, opcode, stmt))
+         return -1;
+      rec[rec_count++] = opcode;
+      pc++;
+   } else {
+      if (!opcode_lookup(insn->opcode, emode, &opcode)) {
+         asm_error(ctx, stmt, "illegal addressing mode for %s%s",
+                   insn->opcode, mode_spec_suffix(insn->spec));
+         return -1;
+      }
+
+      if (!emit_byte(ctx, pc, opcode, stmt))
+         return -1;
+      rec[rec_count++] = opcode;
+      pc++;
+   }
 
    switch (emode) {
       case EM_IMPLIED:
@@ -1812,6 +1883,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
          break;
       }
 
+      case EM_REL_LONG:
       case EM_ABS:
       case EM_ABSX:
       case EM_ABSY:
