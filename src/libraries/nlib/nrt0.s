@@ -106,8 +106,10 @@ _start_main:
    ; argument stack pointer
    ldx #$00
    stx _nl_sp
+   stx _nl_fp
    ldx #$10
    stx _nl_sp+1
+   stx _nl_fp+1
 
    jsr _main
 

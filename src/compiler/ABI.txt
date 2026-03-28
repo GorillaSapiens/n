@@ -3,41 +3,43 @@ If you're not respecting the ABI, you're one segfault away from chaos.
 int foo(int in_sp, const int ref_in_sp, static int in_var_not_stack)
 
 before call:
-; push our frame pointer onto HARDWARE stack
+; push room for return+args onto ARGUMENT stack
+lda #size
+sta arg0
+jsr _pushN
+; populate return/arg area relative to caller fp
+; save caller frame pointer on HARDWARE stack
 lda fp+1
 pha
 lda fp
 pha
-; push room for return onto ARGUMENT stack
-ldx #size
-jsr incsp
-; push stack pointer onto HARDWARE stack
-lda sp+1
-pha
-lda sp
-pha
-; push arguments onto ARGUMENT stack
 ; jsr to target
-jsr
+jsr _foo
+; restore caller frame pointer from HARDWARE stack
+pla
+sta fp
+pla
+sta fp+1
+; copy return value out of caller's pushed area if needed
+; pop return+arg area from ARGUMENT stack
+lda #size
+sta arg0
+jsr _popN
 
 function prologue:
-; transfer sp to fp
+; transfer current sp to fp
 lda sp+1
 sta fp+1
 lda sp
 sta fp
-; rewind the fp to account for arguments
-ldx #size
-jsr decsp
-; frame pointer starts with return value
-
+; allocate locals if any with pushN
 
 function epilogue:
-; nothing ???
+; pop locals if any with popN
+rts
 
-after call:
-; pop sp
-; pop fp
+reset/startup:
+; initialize both sp and fp to the initial argument-stack base
 
 TODO: do we need to save/restore APXY ??
 PHA/PLA is push pop for A

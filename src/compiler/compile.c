@@ -2780,7 +2780,15 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
          return false;
       }
       remember_symbol_import(callee_sym);
+      emit(&es_code, "    lda fp+1\n");
+      emit(&es_code, "    pha\n");
+      emit(&es_code, "    lda fp\n");
+      emit(&es_code, "    pha\n");
       emit(&es_code, "    jsr _%s\n", callee_sym);
+      emit(&es_code, "    pla\n");
+      emit(&es_code, "    sta fp\n");
+      emit(&es_code, "    pla\n");
+      emit(&es_code, "    sta fp+1\n");
    }
 
    if (dst && ret_size > 0) {
