@@ -1,3 +1,4 @@
+// nc
 include "machine_6502.n"
 
 static char buffer[16];
@@ -28,4 +29,18 @@ void printi(int arg) {
 }
 
 void main(void) {
+   int i := 2, j;
+   bool flag := 0;
+   while (1) {
+      flag := 0;
+      for (j := 2; !flag && j * j < i; j++) {
+         if (i % j == 0) {
+            flag := 1;
+         }
+      }
+      if (!flag) {
+         printi(i);
+      }
+      i++;
+   }
 }
