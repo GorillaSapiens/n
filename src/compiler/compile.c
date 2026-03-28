@@ -124,7 +124,12 @@ static bool mem_decl_is_zeropage(const ASTNode *mem_decl);
 static bool modifiers_imply_zeropage(const ASTNode *modifiers);
 static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
+static bool has_modifier(ASTNode *node, const char *modifier);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
+static const ASTNode *function_modifiers_node(const ASTNode *fn);
+static bool function_has_body(const ASTNode *fn);
+static bool function_same_signature(const ASTNode *a, const ASTNode *b);
+static bool function_same_declaration(const ASTNode *a, const ASTNode *b);
 
 static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
@@ -286,6 +291,23 @@ static bool is_operator_function_name(const char *name) {
    return name && !strncmp(name, "operator", 8);
 }
 
+static const ASTNode *function_modifiers_node(const ASTNode *fn) {
+   if (!fn) {
+      return NULL;
+   }
+   if (fn->count == 3 && fn->children[0] && fn->children[0]->count > 0) {
+      return fn->children[0]->children[0];
+   }
+   if (fn->count == 4) {
+      return fn->children[0];
+   }
+   return NULL;
+}
+
+static bool function_has_body(const ASTNode *fn) {
+   return fn && fn->count == 3;
+}
+
 static int function_fixed_param_count(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
@@ -306,6 +328,31 @@ static int function_fixed_param_count(const ASTNode *fn) {
    return count;
 }
 
+static bool declarator_array_signature_matches_from(const ASTNode *actual, const ASTNode *formal, int start_child) {
+   int ai = start_child;
+   int fi = start_child;
+
+   while (1) {
+      while (actual && ai < actual->count && (!actual->children[ai] || actual->children[ai]->kind != AST_INTEGER)) {
+         ai++;
+      }
+      while (formal && fi < formal->count && (!formal->children[fi] || formal->children[fi]->kind != AST_INTEGER)) {
+         fi++;
+      }
+      if ((!actual || ai >= actual->count) && (!formal || fi >= formal->count)) {
+         return true;
+      }
+      if (!actual || ai >= actual->count || !formal || fi >= formal->count) {
+         return false;
+      }
+      if (strcmp(actual->children[ai]->strval, formal->children[fi]->strval)) {
+         return false;
+      }
+      ai++;
+      fi++;
+   }
+}
+
 static bool declarator_signature_matches(const ASTNode *actual, const ASTNode *formal) {
    if (declarator_pointer_depth(actual) != declarator_pointer_depth(formal)) {
       return false;
@@ -313,7 +360,46 @@ static bool declarator_signature_matches(const ASTNode *actual, const ASTNode *f
    if (declarator_array_count(actual) != declarator_array_count(formal)) {
       return false;
    }
-   return true;
+   return declarator_array_signature_matches_from(actual, formal, 2);
+}
+
+static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
+   const ASTNode *atype;
+   const ASTNode *btype;
+   const ASTNode *adecl;
+   const ASTNode *bdecl;
+   const char *aname;
+   const char *bname;
+
+   if (!a || !b) {
+      return false;
+   }
+
+   atype = function_return_type(a);
+   btype = function_return_type(b);
+   aname = type_name_from_node(atype);
+   bname = type_name_from_node(btype);
+   if ((!aname || !bname) && aname != bname) {
+      return false;
+   }
+   if (aname && bname && strcmp(aname, bname)) {
+      return false;
+   }
+
+   adecl = function_declarator_node(a);
+   bdecl = function_declarator_node(b);
+   if (declarator_pointer_depth(adecl) != declarator_pointer_depth(bdecl)) {
+      return false;
+   }
+   if (!declarator_array_signature_matches_from(adecl, bdecl, 3)) {
+      return false;
+   }
+   if (has_modifier((ASTNode *) function_modifiers_node(a), "static") !=
+       has_modifier((ASTNode *) function_modifiers_node(b), "static")) {
+      return false;
+   }
+
+   return function_same_signature(a, b);
 }
 
 static int function_signature_match_score(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
@@ -6081,11 +6167,24 @@ static void remember_function(const ASTNode *node, const char *name) {
 
    const ASTNode *value = set_get(functions, name);
    if (value != NULL) {
-      if (value->count >= 4 && node->count >= 4) {
+      if (value == node) {
+         return;
+      }
+      if (!function_same_declaration(value, node)) {
+         error("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for '%s'",
+               node->file, node->line, node->column,
+               value->file, value->line, value->column,
+               name);
+      }
+      if (function_has_body(value) && function_has_body(node)) {
          error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
                node->file, node->line, node->column,
                value->file, value->line, value->column,
                name);
+      }
+      if (!function_has_body(value) && function_has_body(node)) {
+         set_rm(functions, name);
+         set_add(functions, strdup(name), (void *) node);
       }
       return;
    }
@@ -6385,6 +6484,9 @@ static void compile(ASTNode *program) {
 
    if (!typename_exists("bool")) {
       error("type bool is not defined");
+   }
+   if (!typename_exists("void")) {
+      error("type void is not defined");
    }
 
    for (int i = 0; i < program->count; i++) {

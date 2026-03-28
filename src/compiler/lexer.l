@@ -153,6 +153,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 "default"       return DEFAULT;
 "do"            return DO;
 "else"          return ELSE;
+"extern"        return EXTERN;
 "for"           return FOR;
 "goto"          return GOTO;
 "if"            return IF;

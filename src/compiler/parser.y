@@ -274,6 +274,7 @@ modifier_list:
 
 modifier:
     CONST                                    { COVER; $$ = make_identifier_leaf("const"); }
+  | EXTERN                                   { COVER; $$ = make_identifier_leaf("extern"); }
   | REF                                      { COVER; $$ = make_identifier_leaf("ref"); }
   | STATIC                                   { COVER; $$ = make_identifier_leaf("static"); }
   | MEMNAME                                  { COVER; $$ = make_identifier_leaf($1); }

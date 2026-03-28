@@ -16,7 +16,7 @@ N is a mostly C-like systems language aimed at small targets, especially 8-bit m
 
 ## Type system
 
-There are no implicit built-in scalar types other than the required pointer type `*` and the required boolean type `bool`.
+There are no implicit built-in scalar types other than the required pointer type `*`, the required boolean type `bool`, and the required empty type `void`.
 
 Example:
 
@@ -35,6 +35,7 @@ The compiler requires these declarations to exist in the program or its includes
 
 - `*` ... the machine pointer type
 - `bool` ... boolean result type used by comparisons and logical expressions
+- `void` ... the canonical no-value type used for empty parameter lists and no-result functions
 
 `int` and `float` are **not** required and are not hard-coded semantic fallback types anymore.
 
@@ -59,6 +60,24 @@ The compiler supports:
 - combinations such as arrays of pointers, pointer-to-function style declarators, and return-value arrays where the grammar allows them
 
 Struct and union declarations immediately introduce their names as usable types.
+
+### Function declarations
+
+Ordinary function declarations work. Multiple compatible declarations are allowed, and a later definition may follow an earlier declaration. Incompatible redeclarations are rejected.
+
+```n
+int twice(int x);
+
+int main(void) {
+   return twice(21);
+}
+
+int twice(int x) {
+   return x + x;
+}
+```
+
+`extern` function declarations are also supported and cause the compiler to emit an import for the referenced symbol.
 
 ## Expressions
 
