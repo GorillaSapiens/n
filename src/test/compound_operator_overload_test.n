@@ -1,0 +1,30 @@
+// nc
+// expectasm: jsr _operatorx2B__int_p0_a0__int_p0_a0
+// expectasm: jsr _operatorx3Cx3C__int_p0_a0__int_p0_a0
+// expectasm: jsr _operatorx26__int_p0_a0__int_p0_a0
+
+type void { $size:0 };
+type bool { $size:1 };
+type *    { $size:2 $unsigned $endian:little };
+type int  { $size:2 $signed $endian:little };
+
+int operator+(int a, int b) {
+   return a;
+}
+
+int operator<<(int a, int b) {
+   return a;
+}
+
+int operator&(int a, int b) {
+   return a;
+}
+
+int main(void) {
+   int x;
+   int y;
+   x += y;
+   x <<= y;
+   x &= y;
+   return x;
+}

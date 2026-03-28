@@ -97,7 +97,7 @@ This promotion logic is used for:
 
 - ordinary binary arithmetic
 - comparisons
-- compound assignment
+- compound assignment, including overload-aware sugar for builtin compound operators
 
 ### Shifts
 
@@ -165,10 +165,24 @@ A typical overload looks like this:
 
 ```n
 counter operator++(ref counter x) {
-   x.value += 1;
+   x.value := x.value + 1;
    return x;
 }
 ```
+
+### Compound assignment sugar
+
+Compound assignments are treated as syntactic sugar over the corresponding binary operator plus ordinary assignment.
+
+Examples:
+
+- `a += b` behaves like `a := a + b`
+- `a <<= b` behaves like `a := a << b`
+- `a &= b` behaves like `a := a & b`
+
+That means the compiler first tries the matching overloaded binary operator such as `operator+`, `operator<<`, or `operator&`. If no matching overload is available, it falls back to the builtin compound-assignment implementation.
+
+The left-hand side is still treated as an lvalue target for the final store, so the result of the binary operator is converted and assigned back using ordinary assignment rules.
 
 ### Overload matching limits
 
@@ -326,10 +340,6 @@ type bool { $size:1 };
 type *    { $size:2 $unsigned $endian:little };
 type s2   { $size:2 $signed   $endian:little };
 
-s2 operator+(s2 a, s2 b) {
-   return a + b;
-}
-
 bool operator{}(s2 v) {
    return v != 0;
 }
@@ -338,7 +348,7 @@ void bump(ref s2 x) {
    x++;
 }
 
-s2 main() {
+s2 main(void) {
    s2 x;
    x := 1;
    bump(x);

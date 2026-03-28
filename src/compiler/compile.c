@@ -5374,6 +5374,156 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    if (!strcmp(op, "+=") || !strcmp(op, "-=") || !strcmp(op, "&=") || !strcmp(op, "|=") ||
        !strcmp(op, "^=") || !strcmp(op, "*=") || !strcmp(op, "/=") || !strcmp(op, "%=") ||
        !strcmp(op, "<<=") || !strcmp(op, ">>=")) {
+      const char *base_op = NULL;
+      const ASTNode *arg_types[2];
+      const ASTNode *arg_decls[2];
+      bool arg_lvalues[2];
+      const ASTNode *ofn = NULL;
+      char opname[32];
+
+      if (!strcmp(op, "+=")) {
+         base_op = "+";
+      }
+      else if (!strcmp(op, "-=")) {
+         base_op = "-";
+      }
+      else if (!strcmp(op, "&=")) {
+         base_op = "&";
+      }
+      else if (!strcmp(op, "|=")) {
+         base_op = "|";
+      }
+      else if (!strcmp(op, "^=")) {
+         base_op = "^";
+      }
+      else if (!strcmp(op, "*=")) {
+         base_op = "*";
+      }
+      else if (!strcmp(op, "/=")) {
+         base_op = "/";
+      }
+      else if (!strcmp(op, "%=")) {
+         base_op = "%";
+      }
+      else if (!strcmp(op, "<<=")) {
+         base_op = "<<";
+      }
+      else if (!strcmp(op, ">>=")) {
+         base_op = ">>";
+      }
+
+      if (base_op) {
+         arg_types[0] = dst->type;
+         arg_decls[0] = dst->declarator;
+         arg_lvalues[0] = true;
+         arg_types[1] = expr_value_type(rhs, ctx);
+         arg_decls[1] = expr_value_declarator(rhs, ctx);
+         arg_lvalues[1] = resolve_ref_argument_lvalue(ctx, rhs, NULL);
+         if (arg_types[0] && arg_types[1]) {
+            snprintf(opname, sizeof(opname), "operator%s", base_op);
+            ofn = lookup_operator_overload(opname, 2, arg_types, arg_decls, arg_lvalues);
+         }
+      }
+
+      if (ofn) {
+         const ASTNode *rtype = function_return_type(ofn);
+         const ASTNode *rdecl = function_declarator_node(ofn);
+         int rsize = declarator_storage_size(rtype, rdecl);
+         int dst_size = dst->size > 0 ? dst->size : rsize;
+         ContextEntry tmp;
+         ASTNode *argv[2] = { node->children[1], rhs };
+         ASTNode *call = NULL;
+
+         if (rsize <= 0) {
+            rsize = type_size_from_node(rtype);
+         }
+         if (rsize <= 0) {
+            error("[%s:%d.%d] overloaded compound assignment '%s' has unknown return size", node->file, node->line, node->column, op);
+         }
+         if (dst_size <= 0) {
+            dst_size = rsize;
+         }
+
+         tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
+         call = make_synthetic_call_expr(node, function_declarator_node(ofn)->children[1]->strval, argv, 2);
+         if (!call) {
+            warning("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            return;
+         }
+
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_call_expr_to_slot(call, ctx, &tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            return;
+         }
+
+         if (dst->is_static || dst->is_zeropage || dst->is_global) {
+            char sym[256];
+            if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               warning("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               return;
+            }
+            if (dst_size != rsize || dst->type != rtype) {
+               int store_offset = ctx->locals + rsize;
+               remember_runtime_import("pushN");
+               emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _pushN\n");
+               emit_copy_fp_to_fp_convert(store_offset, dst_size, dst->type, tmp.offset, rsize, rtype);
+               emit_copy_fp_to_symbol(sym, store_offset, dst_size);
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+            }
+            else {
+               emit_copy_fp_to_symbol(sym, tmp.offset, dst_size);
+            }
+         }
+         else if (lv.indirect) {
+            if (dst_size != rsize || dst->type != rtype) {
+               int store_offset = ctx->locals + rsize;
+               remember_runtime_import("pushN");
+               emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _pushN\n");
+               emit_copy_fp_to_fp_convert(store_offset, dst_size, dst->type, tmp.offset, rsize, rtype);
+               emit_copy_fp_to_lvalue(&lv, store_offset, dst_size);
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+            }
+            else {
+               emit_copy_fp_to_lvalue(&lv, tmp.offset, dst_size);
+            }
+         }
+         else {
+            emit_copy_fp_to_fp_convert(dst->offset, dst_size, dst->type, tmp.offset, rsize, rtype);
+         }
+
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return;
+      }
+   }
+
+   if (!strcmp(op, "+=") || !strcmp(op, "-=") || !strcmp(op, "&=") || !strcmp(op, "|=") ||
+       !strcmp(op, "^=") || !strcmp(op, "*=") || !strcmp(op, "/=") || !strcmp(op, "%=") ||
+       !strcmp(op, "<<=") || !strcmp(op, ">>=")) {
       char dst_sym[256];
       bool dst_symbol = (dst->is_static || dst->is_zeropage || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
       bool scaled_pointer_assign = dst->declarator && declarator_pointer_depth(dst->declarator) > 0 && (!strcmp(op, "+=") || !strcmp(op, "-="));
