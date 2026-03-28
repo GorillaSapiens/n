@@ -37,10 +37,10 @@ union float { // should cause an error
 
 int ia;
 static int ib;
-zp const ref static int ic, id;
+zeropage const ref static int ic, id;
 
-zp int ie @ 12;
-zp int ie @ ia;
+zeropage int ie @ 12;
+zeropage int ie @ ia;
 
 int ig := 5`int;
 

@@ -38,7 +38,7 @@ char exy  := '\f';
 char *exy := "this is a test" `testxform;
 char exy  := '\f' `testxform;
 
-zp int in_the_zero_page := 5;
+zeropage int in_the_zero_page := 5;
 
 int a[5], *b, c := 'a';
 

@@ -1,0 +1,16 @@
+// nc -i .
+// expectasm: .zpexport _z
+// expectasm: .zpexport _q
+// expectasm: .segment "ZEROPAGE"
+// expectasm: _z:
+// expectasm: .byte $05, $00
+// expectasm: _q:
+// expectasm: .res 1
+include "machine_6502.n"
+
+zeropage int z := 5;
+zeropage char q;
+
+int main(void) {
+   return z;
+}
