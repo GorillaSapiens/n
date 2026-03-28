@@ -69,11 +69,16 @@ typedef struct LValueRef {
    const char *name;
    const ASTNode *type;
    const ASTNode *declarator;
+   const ASTNode *base_type;
+   const ASTNode *base_declarator;
+   const ASTNode *suffixes;
    bool is_static;
    bool is_zeropage;
    bool is_global;
    bool is_ref;
    bool indirect;
+   bool base_is_deref;
+   bool needs_runtime_address;
    int offset;
    int size;
    int ptr_adjust;
@@ -153,6 +158,7 @@ static bool parameter_is_ref(const ASTNode *parameter);
 static int parameter_storage_size(const ASTNode *parameter);
 static bool parameter_is_void(const ASTNode *parameter);
 static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
+static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv);
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
@@ -160,6 +166,8 @@ static int declarator_value_size(const ASTNode *type, const ASTNode *declarator)
 static int declarator_pointer_depth(const ASTNode *declarator);
 static int declarator_array_count(const ASTNode *declarator);
 static int declarator_first_element_size(const ASTNode *type, const ASTNode *declarator);
+static const ASTNode *declarator_after_subscript(const ASTNode *declarator);
+static const ASTNode *declarator_after_deref(const ASTNode *declarator);
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 static void compile_statement_list(ASTNode *node, Context *ctx);
 static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label);
@@ -195,10 +203,16 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
 static int expr_value_size(ASTNode *expr, Context *ctx);
 static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
 static void emit_prepare_fp_ptr(int ptrno, int offset);
+static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size);
+static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend);
+static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend);
+static void emit_deref_ptr(int ptrno);
 static int expr_byte_index(const ASTNode *type, int size, int i);
 static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type);
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type);
+static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
+static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
 static unsigned char hex_value(unsigned char c) {
    if (c >= '0' && c <= '9') return (unsigned char) (c - '0');
    if (c >= 'a' && c <= 'f') return (unsigned char) (10 + c - 'a');
@@ -2014,18 +2028,72 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
 }
 
 static void emit_prepare_fp_ptr(int ptrno, int offset) {
+   static const char *plus_helpers[] = { "fp2ptr0p", "fp2ptr1p", "fp2ptr2p", "fp2ptr3p" };
+   static const char *minus_helpers[] = { "fp2ptr0m", "fp2ptr1m", "fp2ptr2m", "fp2ptr3m" };
+   const char *helper;
    int abs_offset = offset < 0 ? -offset : offset;
+
+   if (ptrno < 0 || ptrno > 3) {
+      ptrno = 0;
+   }
 
    emit(&es_code, "    lda #$%02x\n", abs_offset & 0xff);
    emit(&es_code, "    sta arg0\n");
 
-   if (offset < 0) {
-      remember_runtime_import(ptrno == 0 ? "fp2ptr0m" : "fp2ptr1m");
-      emit(&es_code, "    jsr _%s\n", ptrno == 0 ? "fp2ptr0m" : "fp2ptr1m");
+   helper = offset < 0 ? minus_helpers[ptrno] : plus_helpers[ptrno];
+   remember_runtime_import(helper);
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) {
+   emit(&es_code, "    lda #<(%s + %d)\n", symbol, addend);
+   emit(&es_code, "    sta ptr%d\n", ptrno);
+   emit(&es_code, "    lda #>(%s + %d)\n", symbol, addend);
+   emit(&es_code, "    sta ptr%d+1\n", ptrno);
+}
+
+static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend) {
+   emit(&es_code, "    ldy #0\n");
+   emit(&es_code, "    lda %s + %d,y\n", symbol, addend);
+   emit(&es_code, "    sta ptr%d\n", ptrno);
+   emit(&es_code, "    iny\n");
+   emit(&es_code, "    lda %s + %d,y\n", symbol, addend);
+   emit(&es_code, "    sta ptr%d+1\n", ptrno);
+}
+
+static void emit_deref_ptr(int ptrno) {
+   emit(&es_code, "    ldy #0\n");
+   emit(&es_code, "    lda (ptr%d),y\n", ptrno);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    iny\n");
+   emit(&es_code, "    lda (ptr%d),y\n", ptrno);
+   emit(&es_code, "    sta arg1\n");
+   emit(&es_code, "    lda arg0\n");
+   emit(&es_code, "    sta ptr%d\n", ptrno);
+   emit(&es_code, "    lda arg1\n");
+   emit(&es_code, "    sta ptr%d+1\n", ptrno);
+}
+
+static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size) {
+   bool direct = src_offset >= 0 && src_offset + src_size <= 256;
+   int src_ptr = ptrno == 0 ? 1 : 0;
+   int ptr_size = get_size("*");
+
+   if (!direct) {
+      emit_prepare_fp_ptr(src_ptr, src_offset);
    }
-   else {
-      remember_runtime_import(ptrno == 0 ? "fp2ptr0p" : "fp2ptr1p");
-      emit(&es_code, "    jsr _%s\n", ptrno == 0 ? "fp2ptr0p" : "fp2ptr1p");
+
+   emit(&es_code, "    clc\n");
+   for (int i = 0; i < ptr_size; i++) {
+      emit(&es_code, "    lda ptr%d%s\n", ptrno, i == 0 ? "" : "+1");
+      if (i < src_size) {
+         emit(&es_code, "    ldy #%d\n", direct ? (src_offset + i) : i);
+         emit(&es_code, "    adc %s,y\n", direct ? "(fp)" : (src_ptr == 0 ? "(ptr0)" : "(ptr1)"));
+      }
+      else {
+         emit(&es_code, "    adc #0\n");
+      }
+      emit(&es_code, "    sta ptr%d%s\n", ptrno, i == 0 ? "" : "+1");
    }
 }
 
@@ -2239,6 +2307,56 @@ static int declarator_first_element_size(const ASTNode *type, const ASTNode *dec
    return get_size(type_name_from_node(type)) * declarator_array_multiplier_from(declarator, 3);
 }
 
+static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int new_ptr_depth, int first_array_child) {
+   ASTNode *copy;
+   char depth_buf[32];
+
+   if (!declarator) {
+      return NULL;
+   }
+
+   snprintf(depth_buf, sizeof(depth_buf), "%d", new_ptr_depth);
+   copy = make_node(declarator->name, NULL);
+   copy->file = declarator->file;
+   copy->line = declarator->line;
+   copy->column = declarator->column;
+   copy->handled = declarator->handled;
+   copy->kind = declarator->kind;
+
+   append_child(copy, make_integer_leaf(depth_buf));
+   if (declarator->count > 1) {
+      append_child(copy, (ASTNode *) declarator->children[1]);
+   }
+   for (int i = first_array_child; i < declarator->count; i++) {
+      append_child(copy, (ASTNode *) declarator->children[i]);
+   }
+   return copy;
+}
+
+static const ASTNode *declarator_after_subscript(const ASTNode *declarator) {
+   int ptr_depth = declarator_pointer_depth(declarator);
+
+   if (!declarator) {
+      return NULL;
+   }
+   if (ptr_depth > 0) {
+      return clone_declarator_variant(declarator, ptr_depth - 1, 2);
+   }
+   if (declarator_array_count(declarator) > 0) {
+      return clone_declarator_variant(declarator, ptr_depth, 3);
+   }
+   return NULL;
+}
+
+static const ASTNode *declarator_after_deref(const ASTNode *declarator) {
+   int ptr_depth = declarator_pointer_depth(declarator);
+
+   if (ptr_depth <= 0) {
+      return NULL;
+   }
+   return clone_declarator_variant(declarator, ptr_depth - 1, 2);
+}
+
 static bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
    const ASTNode *agg;
    int offset = 0;
@@ -2369,6 +2487,9 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
       out->name = entry->name ? entry->name : expr->strval;
       out->type = entry->type;
       out->declarator = entry->declarator;
+      out->base_type = entry->type;
+      out->base_declarator = entry->declarator;
+      out->suffixes = NULL;
       out->is_static = entry->is_static;
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
@@ -2387,37 +2508,8 @@ static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_of
    if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
       error("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
    }
-   if (lv.indirect) {
-      if (lv.is_static || lv.is_zeropage || lv.is_global) {
-         char sym[256];
-         if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-            return false;
-         }
-         emit(&es_code, "    ldy #0\n");
-         emit(&es_code, "    lda %s,y\n", sym);
-         emit(&es_code, "    sta ptr0\n");
-         emit(&es_code, "    iny\n");
-         emit(&es_code, "    lda %s,y\n", sym);
-         emit(&es_code, "    sta ptr0+1\n");
-         emit_add_immediate_to_ptr(0, lv.ptr_adjust);
-      }
-      else {
-         emit_load_ptr_from_fpvar(0, lv.offset);
-         emit_add_immediate_to_ptr(0, lv.ptr_adjust);
-      }
-   }
-   else if (lv.is_static || lv.is_zeropage || lv.is_global) {
-      char sym[256];
-      if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-         return false;
-      }
-      emit(&es_code, "    lda #<(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
-      emit(&es_code, "    sta ptr0\n");
-      emit(&es_code, "    lda #>(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
-      emit(&es_code, "    sta ptr0+1\n");
-   }
-   else {
-      emit_prepare_fp_ptr(0, lv.offset + lv.ptr_adjust);
+   if (!emit_prepare_lvalue_ptr(ctx, &lv)) {
+      return false;
    }
    emit_store_ptr_to_fp(dst_offset, 0, dst_size);
    return true;
@@ -2457,50 +2549,224 @@ static void emit_runtime_shift_fp(const char *helper, int value_offset, int scra
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffixes, const ASTNode **type_io, const ASTNode **decl_io) {
+   if (!suffixes || is_empty(suffixes)) {
+      return true;
+   }
+   if (suffixes->count > 0 && !emit_prepare_lvalue_ptr_suffixes(ctx, suffixes->children[0], type_io, decl_io)) {
+      return false;
+   }
+   if (!strcmp(suffixes->name, "[")) {
+      const ASTNode *idx = unwrap_expr_node(suffixes->children[1]);
+      int elem_size = declarator_first_element_size(*type_io, *decl_io);
+      const ASTNode *next_decl;
 
+      if (!idx || elem_size <= 0) {
+         return false;
+      }
+      if (declarator_pointer_depth(*decl_io) > 0) {
+         emit_deref_ptr(0);
+      }
+      else if (declarator_array_count(*decl_io) <= 0) {
+         return false;
+      }
 
-static void emit_copy_lvalue_to_fp(int dst_offset, const LValueRef *src, int size) {
+      if (idx->kind == AST_INTEGER) {
+         emit_add_immediate_to_ptr(0, atoi(idx->strval) * elem_size);
+      }
+      else {
+         const ASTNode *idx_type = expr_value_type((ASTNode *) idx, ctx);
+         int ptr_size = get_size("*");
+         int idx_offset = ctx->locals;
+         int factor_offset = idx_offset + ptr_size;
+         int scaled_offset = factor_offset + ptr_size;
+         int total = ptr_size + (elem_size != 1 ? ptr_size * 2 : 0);
+         ContextEntry idx_tmp = { .name = "$idx", .type = idx_type ? idx_type : required_typename_node("int"), .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = idx_offset, .size = ptr_size };
+
+         remember_runtime_import("pushN");
+         emit(&es_code, "    lda #$%02x\n", total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _pushN\n");
+         if (!compile_expr_to_slot((ASTNode *) idx, ctx, &idx_tmp)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
+         if (elem_size != 1) {
+            unsigned char *factor_bytes = (unsigned char *) calloc(ptr_size ? ptr_size : 1, sizeof(unsigned char));
+            char factor_buf[64];
+            if (!factor_bytes) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               return false;
+            }
+            snprintf(factor_buf, sizeof(factor_buf), "%d", elem_size);
+            if (idx_type && has_flag(type_name_from_node(idx_type), "$endian:big")) {
+               make_be_int(factor_buf, factor_bytes, ptr_size);
+            }
+            else {
+               make_le_int(factor_buf, factor_bytes, ptr_size);
+            }
+            emit_store_immediate_to_fp(factor_offset, factor_bytes, ptr_size);
+            free(factor_bytes);
+            emit_runtime_binary_fp_fp("mulN", scaled_offset, idx_offset, factor_offset, ptr_size);
+            emit_add_fp_to_ptr(0, scaled_offset, ptr_size);
+         }
+         else {
+            emit_add_fp_to_ptr(0, idx_offset, ptr_size);
+         }
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", total & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+      }
+
+      next_decl = declarator_after_subscript(*decl_io);
+      *decl_io = next_decl;
+      return true;
+   }
+   if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
+      const ASTNode *member_type = NULL;
+      const ASTNode *member_decl = NULL;
+      int member_offset = 0;
+
+      if (!strcmp(suffixes->name, "->")) {
+         if (declarator_pointer_depth(*decl_io) <= 0) {
+            return false;
+         }
+         emit_deref_ptr(0);
+      }
+      if (!find_aggregate_member(*type_io, suffixes->children[1]->strval, &member_type, &member_decl, &member_offset)) {
+         return false;
+      }
+      emit_add_immediate_to_ptr(0, member_offset);
+      *type_io = member_type;
+      *decl_io = member_decl;
+      return true;
+   }
+   return true;
+}
+
+static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv) {
+   ContextEntry base_entry;
+   char sym[256];
+   const ASTNode *type;
+   const ASTNode *decl;
+
+   if (!lv) {
+      return false;
+   }
+
+   if (!lv->base_type) {
+      if (lv->indirect) {
+         if (lv->is_static || lv->is_zeropage || lv->is_global) {
+            base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = lv->size };
+            if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
+               return false;
+            }
+            emit_load_ptr_from_symbol(0, sym, 0);
+         }
+         else {
+            emit_load_ptr_from_fpvar(0, lv->offset);
+         }
+         emit_add_immediate_to_ptr(0, lv->ptr_adjust);
+         return true;
+      }
+      if (lv->is_static || lv->is_zeropage || lv->is_global) {
+         base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = lv->size };
+         if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
+            return false;
+         }
+         emit_load_address_to_ptr(0, sym, 0);
+      }
+      else {
+         emit_prepare_fp_ptr(0, lv->offset);
+      }
+      emit_add_immediate_to_ptr(0, lv->ptr_adjust);
+      return true;
+   }
+
+   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
+   type = lv->base_type;
+   decl = lv->base_declarator;
+
+   if (lv->is_static || lv->is_zeropage || lv->is_global) {
+      if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
+         return false;
+      }
+      if (lv->base_is_deref || lv->is_ref) {
+         emit_load_ptr_from_symbol(0, sym, 0);
+         if (lv->base_is_deref && lv->is_ref) {
+            emit_deref_ptr(0);
+         }
+      }
+      else {
+         emit_load_address_to_ptr(0, sym, 0);
+      }
+   }
+   else {
+      if (lv->base_is_deref || lv->is_ref) {
+         emit_load_ptr_from_fpvar(0, lv->offset);
+         if (lv->base_is_deref && lv->is_ref) {
+            emit_deref_ptr(0);
+         }
+      }
+      else {
+         emit_prepare_fp_ptr(0, lv->offset);
+      }
+   }
+
+   return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
+}
+
+static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
    int copy_size = size < src->size ? size : src->size;
    bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
-   if (src->indirect) {
-      emit_load_ptr_from_fpvar(0, src->offset);
-      emit_add_immediate_to_ptr(0, src->ptr_adjust);
-      if (!dst_direct) {
-         emit_prepare_fp_ptr(1, dst_offset);
-      }
-      for (int i = 0; i < copy_size; i++) {
-         emit(&es_code, "    ldy #%d\n", i);
-         emit(&es_code, "    lda (ptr0),y\n");
-         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-      }
-      return;
+
+   if (copy_size <= 0) {
+      return true;
    }
-   emit_copy_fp_to_fp(dst_offset, src->offset, copy_size);
+   if (!emit_prepare_lvalue_ptr(ctx, src)) {
+      return false;
+   }
+   if (!dst_direct) {
+      emit_prepare_fp_ptr(1, dst_offset);
+   }
+   for (int i = 0; i < copy_size; i++) {
+      emit(&es_code, "    ldy #%d\n", i);
+      emit(&es_code, "    lda (ptr0),y\n");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+   }
+   return true;
 }
 
-static void emit_copy_fp_to_lvalue(const LValueRef *dst, int src_offset, int size) {
+static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
    int copy_size = size < dst->size ? size : dst->size;
    bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
-   if (dst->indirect) {
-      emit_load_ptr_from_fpvar(0, dst->offset);
-      emit_add_immediate_to_ptr(0, dst->ptr_adjust);
-      if (!src_direct) {
-         emit_prepare_fp_ptr(1, src_offset);
-      }
-      for (int i = 0; i < copy_size; i++) {
-         emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
-         emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
-         emit(&es_code, "    ldy #%d\n", i);
-         emit(&es_code, "    sta (ptr0),y\n");
-      }
-      return;
-   }
-   emit_copy_fp_to_fp(dst->offset, src_offset, copy_size);
-}
 
+   if (copy_size <= 0) {
+      return true;
+   }
+   if (!emit_prepare_lvalue_ptr(ctx, dst)) {
+      return false;
+   }
+   if (!src_direct) {
+      emit_prepare_fp_ptr(1, src_offset);
+   }
+   for (int i = 0; i < copy_size; i++) {
+      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
+      emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    ldy #%d\n", i);
+      emit(&es_code, "    sta (ptr0),y\n");
+   }
+   return true;
+}
 static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValueRef *out) {
-   (void) ctx;
    if (!suffixes || is_empty(suffixes)) {
       return true;
    }
@@ -2510,27 +2776,44 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
    if (!strcmp(suffixes->name, "[")) {
       const ASTNode *idx = unwrap_expr_node(suffixes->children[1]);
       int elem_size = declarator_first_element_size(out->type, out->declarator);
-      if (!idx || idx->kind != AST_INTEGER) {
+      const ASTNode *next_decl = declarator_after_subscript(out->declarator);
+
+      if (!idx || elem_size <= 0) {
          return false;
       }
       if (declarator_pointer_depth(out->declarator) > 0) {
          out->indirect = true;
-         out->size = elem_size;
-         out->ptr_adjust += atoi(idx->strval) * elem_size;
-         out->declarator = NULL;
-         return true;
+         if (idx->kind == AST_INTEGER && !out->needs_runtime_address) {
+            out->ptr_adjust += atoi(idx->strval) * elem_size;
+         }
+         else if (ctx) {
+            out->needs_runtime_address = true;
+         }
+         else {
+            return false;
+         }
       }
-      if (declarator_array_count(out->declarator) <= 0) {
-         return false;
-      }
-      if (out->indirect) {
-         out->ptr_adjust += atoi(idx->strval) * elem_size;
+      else if (declarator_array_count(out->declarator) > 0) {
+         if (idx->kind == AST_INTEGER && !out->needs_runtime_address) {
+            if (out->indirect) {
+               out->ptr_adjust += atoi(idx->strval) * elem_size;
+            }
+            else {
+               out->offset += atoi(idx->strval) * elem_size;
+            }
+         }
+         else if (ctx) {
+            out->needs_runtime_address = true;
+         }
+         else {
+            return false;
+         }
       }
       else {
-         out->offset += atoi(idx->strval) * elem_size;
+         return false;
       }
-      out->size = elem_size;
-      out->declarator = NULL;
+      out->declarator = next_decl;
+      out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
       return true;
    }
    if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
@@ -2545,10 +2828,20 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
             return false;
          }
          out->indirect = true;
-         out->ptr_adjust += member_offset;
+         if (out->needs_runtime_address) {
+            ;
+         }
+         else {
+            out->ptr_adjust += member_offset;
+         }
       }
       else if (out->indirect) {
-         out->ptr_adjust += member_offset;
+         if (out->needs_runtime_address) {
+            ;
+         }
+         else {
+            out->ptr_adjust += member_offset;
+         }
       }
       else {
          out->offset += member_offset;
@@ -2570,6 +2863,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
    }
 
    memset(out, 0, sizeof(*out));
+   out->suffixes = node->children[1];
    base = node->children[0];
    if (!base) {
       return false;
@@ -2602,6 +2896,8 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->name = entry->name ? entry->name : base->children[0]->strval;
       out->type = entry->type;
       out->declarator = entry->declarator;
+      out->base_type = entry->type;
+      out->base_declarator = entry->declarator;
       out->is_static = entry->is_static;
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
@@ -2616,6 +2912,22 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       ASTNode *inner = base->children[0];
       if (inner && !strcmp(inner->name, "lvalue_base") && inner->count > 0 && inner->children[0]->kind == AST_IDENTIFIER) {
          entry = ctx_lookup(ctx, inner->children[0]->strval);
+         if (!entry) {
+            const ASTNode *g = global_decl_lookup(inner->children[0]->strval);
+            if (g && g->count >= 3) {
+               static ContextEntry gtmp;
+               gtmp.name = inner->children[0]->strval;
+               gtmp.type = g->children[1];
+               gtmp.declarator = g->children[2];
+               gtmp.is_static = false;
+               gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
+               gtmp.is_global = true;
+               gtmp.is_ref = false;
+               gtmp.offset = 0;
+               gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
+               entry = &gtmp;
+            }
+         }
       }
       else {
          entry = NULL;
@@ -2625,14 +2937,17 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       }
       out->name = entry->name ? entry->name : inner->children[0]->strval;
       out->type = entry->type;
-      out->declarator = NULL;
+      out->declarator = declarator_after_deref(entry->declarator);
+      out->base_type = entry->type;
+      out->base_declarator = out->declarator;
       out->is_static = entry->is_static;
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
       out->is_ref = entry->is_ref;
       out->indirect = true;
+      out->base_is_deref = true;
       out->offset = entry->offset;
-      out->size = get_size(type_name_from_node(entry->type));
+      out->size = out->declarator ? declarator_storage_size(entry->type, out->declarator) : get_size(type_name_from_node(entry->type));
    }
    else {
       return false;
@@ -3000,42 +3315,14 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       LValueRef lv;
       ASTNode *inner = (ASTNode *) unwrap_expr_node(expr->children[0]);
       if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv)) {
-         if (lv.indirect) {
-            if (lv.is_static || lv.is_zeropage || lv.is_global) {
-               char sym[256];
-               if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-                  return false;
-               }
-               emit(&es_code, "    ldy #0\n");
-               emit(&es_code, "    lda %s,y\n", sym);
-               emit(&es_code, "    sta ptr0\n");
-               emit(&es_code, "    iny\n");
-               emit(&es_code, "    lda %s,y\n", sym);
-               emit(&es_code, "    sta ptr1\n");
-               emit_add_immediate_to_ptr(0, lv.ptr_adjust);
-            }
-            else {
-               emit_load_ptr_from_fpvar(0, lv.offset);
-               emit_add_immediate_to_ptr(0, lv.ptr_adjust);
-            }
-         }
-         else if (lv.is_static || lv.is_zeropage || lv.is_global) {
-            char sym[256];
-            if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-               return false;
-            }
-            emit(&es_code, "    lda #<(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
-            emit(&es_code, "    sta ptr0\n");
-            emit(&es_code, "    lda #>(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
-            emit(&es_code, "    sta ptr1\n");
-         }
-         else {
-            emit_prepare_fp_ptr(0, lv.offset);
+         if (!emit_prepare_lvalue_ptr(ctx, &lv)) {
+            return false;
          }
          emit_store_ptr_to_fp(dst->offset, 0, dst->size);
          return true;
       }
    }
+
 
    if (!strcmp(expr->name, "lvalue") && expr->count > 0 && expr->count >= 3 && expr->children[2] &&
        expr->children[2]->kind == AST_IDENTIFIER &&
@@ -3088,7 +3375,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _pushN\n");
-         emit_copy_lvalue_to_fp(ctx->locals, &lv, old_size);
+         if (!emit_copy_lvalue_to_fp(ctx, ctx->locals, &lv, old_size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
          if (!pre) {
             emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, old_size, lv.type);
          }
@@ -3100,7 +3393,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             return false;
          }
          emit_copy_fp_to_fp_convert(store_offset, store_size, lv.type, result_offset, result_size, rtype);
-         emit_copy_fp_to_lvalue(&lv, store_offset, store_size);
+         if (!emit_copy_fp_to_lvalue(ctx, &lv, store_offset, store_size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
          if (pre) {
             emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, store_offset, store_size, lv.type);
          }
@@ -3120,7 +3419,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _pushN\n");
-         emit_copy_lvalue_to_fp(tmp.offset, &lv, tmp.size);
+         if (!emit_copy_lvalue_to_fp(ctx, tmp.offset, &lv, tmp.size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
          if (!pre) {
             emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, tmp.offset, tmp.size, tmp.type);
          }
@@ -3147,7 +3452,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             emit_sub_immediate_from_fp(tmp.type, tmp.offset, one, tmp.size);
          }
          free(one);
-         emit_copy_fp_to_lvalue(&lv, tmp.offset, tmp.size);
+         if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, tmp.size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return false;
+         }
          if (pre) {
             emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, tmp.offset, tmp.size, tmp.type);
          }
@@ -3162,40 +3473,12 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
-         if (!lv.is_static && !lv.is_zeropage && !lv.is_global) {
-            emit_copy_lvalue_to_fp(dst->offset, &lv, lv.size < dst->size ? lv.size : dst->size);
-            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, dst->offset, lv.size < dst->size ? lv.size : dst->size, lv.type);
-            return true;
+         int load_size = lv.size < dst->size ? lv.size : dst->size;
+         if (!emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, load_size)) {
+            return false;
          }
-         if (lv.indirect) {
-            char sym[256];
-            if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-               return false;
-            }
-            emit(&es_code, "    ldy #0\n");
-            emit(&es_code, "    lda %s,y\n", sym);
-            emit(&es_code, "    sta ptr0\n");
-            emit(&es_code, "    iny\n");
-            emit(&es_code, "    lda %s,y\n", sym);
-            emit(&es_code, "    sta ptr1\n");
-            emit_add_immediate_to_ptr(0, lv.ptr_adjust);
-            for (int i = 0; i < (lv.size < dst->size ? lv.size : dst->size); i++) {
-               emit(&es_code, "    ldy #%d\n", i);
-               emit(&es_code, "    lda (ptr0),y\n");
-               emit(&es_code, "    ldy #%d\n", dst->offset + i);
-               emit(&es_code, "    sta (fp),y\n");
-            }
-            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, dst->offset, lv.size < dst->size ? lv.size : dst->size, lv.type);
-            return true;
-         }
-         else {
-            char sym[256];
-            if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
-               return false;
-            }
-            emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, lv.size, lv.type);
-            return true;
-         }
+         emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, dst->offset, load_size, lv.type);
+         return true;
       }
    }
 
@@ -5621,7 +5904,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 
 
    if (!op || !strcmp(op, ":=")) {
-      if (dst->is_static || dst->is_zeropage || dst->is_global) {
+      if (!lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
             warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
@@ -5634,7 +5917,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_copy_fp_to_symbol(sym, ctx->locals, dst->size);
          return;
       }
-      if (lv.indirect) {
+      if (lv.indirect || lv.needs_runtime_address) {
          int tmp_size = dst->size > 0 ? dst->size : expr_value_size(rhs, ctx);
          if (tmp_size <= 0) {
             tmp_size = 1;
@@ -5652,7 +5935,14 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             warning("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
-         emit_copy_fp_to_lvalue(&lv, tmp.offset, tmp.size);
+         if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, tmp.size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            return;
+         }
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
          emit(&es_code, "    sta arg0\n");
@@ -5763,7 +6053,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             return;
          }
 
-         if (dst->is_static || dst->is_zeropage || dst->is_global) {
+         if (!lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
             char sym[256];
             if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
                remember_runtime_import("popN");
@@ -5790,7 +6080,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit_copy_fp_to_symbol(sym, tmp.offset, dst_size);
             }
          }
-         else if (lv.indirect) {
+         else if (lv.indirect || lv.needs_runtime_address) {
             if (dst_size != rsize || dst->type != rtype) {
                int store_offset = ctx->locals + rsize;
                remember_runtime_import("pushN");
@@ -5798,14 +6088,28 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _pushN\n");
                emit_copy_fp_to_fp_convert(store_offset, dst_size, dst->type, tmp.offset, rsize, rtype);
-               emit_copy_fp_to_lvalue(&lv, store_offset, dst_size);
+               if (!emit_copy_fp_to_lvalue(ctx, &lv, store_offset, dst_size)) {
+                  remember_runtime_import("popN");
+                  emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+                  emit(&es_code, "    sta arg0\n");
+                  emit(&es_code, "    jsr _popN\n");
+                  warning("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  return;
+               }
                remember_runtime_import("popN");
                emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
             }
             else {
-               emit_copy_fp_to_lvalue(&lv, tmp.offset, dst_size);
+               if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, dst_size)) {
+                  remember_runtime_import("popN");
+                  emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
+                  emit(&es_code, "    sta arg0\n");
+                  emit(&es_code, "    jsr _popN\n");
+                  warning("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  return;
+               }
             }
          }
          else {
@@ -5824,7 +6128,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
        !strcmp(op, "^=") || !strcmp(op, "*=") || !strcmp(op, "/=") || !strcmp(op, "%=") ||
        !strcmp(op, "<<=") || !strcmp(op, ">>=")) {
       char dst_sym[256];
-      bool dst_symbol = (dst->is_static || dst->is_zeropage || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
+      bool dst_symbol = !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
       bool scaled_pointer_assign = dst->declarator && declarator_pointer_depth(dst->declarator) > 0 && (!strcmp(op, "+=") || !strcmp(op, "-="));
       const ASTNode *rhs_type = expr_value_type(rhs, ctx);
       const ASTNode *work_type = NULL;
@@ -5920,7 +6224,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          tmp_total += work_size * 2;
       }
 
-      need_store_tmp = dst_symbol || lv.indirect;
+      need_store_tmp = dst_symbol || lv.indirect || lv.needs_runtime_address;
       if (need_store_tmp) {
          store_offset = ctx->locals + tmp_total;
          tmp_total += dst->size;
@@ -5936,9 +6240,16 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       if (dst_symbol) {
          emit_copy_symbol_to_fp_convert(lhs_tmp_offset, work_size, work_type, dst_sym, dst->size, dst->type);
       }
-      else if (lv.indirect) {
+      else if (lv.indirect || lv.needs_runtime_address) {
          int lhs_src_size = dst->size < work_size ? dst->size : work_size;
-         emit_copy_lvalue_to_fp(lhs_tmp_offset, &lv, lhs_src_size);
+         if (!emit_copy_lvalue_to_fp(ctx, lhs_tmp_offset, &lv, lhs_src_size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+            return;
+         }
          emit_copy_fp_to_fp_convert(lhs_tmp_offset, work_size, work_type, lhs_tmp_offset, lhs_src_size, dst->type);
       }
       else {
@@ -6028,7 +6339,14 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit_copy_fp_to_symbol(dst_sym, store_offset, dst->size);
          }
          else {
-            emit_copy_fp_to_lvalue(&lv, store_offset, dst->size);
+            if (!emit_copy_fp_to_lvalue(ctx, &lv, store_offset, dst->size)) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               warning("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               return;
+            }
          }
       }
       else {
