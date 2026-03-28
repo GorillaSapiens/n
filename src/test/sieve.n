@@ -21,10 +21,9 @@ void printi(int arg) {
       buffer[i] := buffer[spot];
    }
    buffer[i] := 0;
-   asm nop
    asm lda #0
-   asm ldx #>_buffer
-   asm ldy #<_buffer
+   asm ldx #<_buffer
+   asm ldy #>_buffer
    asm jsr $ffff
 }
 

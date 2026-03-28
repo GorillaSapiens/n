@@ -1306,7 +1306,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
       if (stmt->label) {
          if (declare_symbol_or_report(ctx, stmt->label, stmt)) {
             sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, stmt->label);
-            symtab_set_value_segment(sym, pc_abs, segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME));
+            symtab_set_value_segment_named(sym, pc_abs,
+                                      segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME),
+                                      stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME);
          }
       }
 
@@ -1316,7 +1318,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
             asm_error(ctx, stmt, ".proc expects exactly one identifier name");
          } else if (declare_symbol_or_report(ctx, proc_name, stmt)) {
             sym = find_declared_symbol(&ctx->symbols, ctx->prog, stmt, proc_name);
-            symtab_set_value_segment(sym, pc_abs, segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME));
+            symtab_set_value_segment_named(sym, pc_abs,
+                                      segment_name_to_o65(stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME),
+                                      stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME);
          }
       }
 

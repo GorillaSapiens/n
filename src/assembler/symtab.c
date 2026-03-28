@@ -18,6 +18,7 @@ void symtab_free(symtab_t *tab)
    while (sym) {
       next = sym->next;
       free(sym->name);
+      free(sym->segment_name);
       free(sym->def_file);
       free(sym);
       sym = next;
@@ -87,6 +88,16 @@ void symtab_set_value_segment(symbol_t *sym, long value, int segment_id)
    if (!sym)
       return;
 
+   symtab_set_value_segment_named(sym, value, segment_id, NULL);
+}
+
+void symtab_set_value_segment_named(symbol_t *sym, long value, int segment_id, const char *segment_name)
+{
+   if (!sym)
+      return;
+
+   free(sym->segment_name);
+   sym->segment_name = segment_name ? xstrdup(segment_name) : NULL;
    sym->value = value;
    sym->defined = 1;
    sym->segment_id = segment_id;

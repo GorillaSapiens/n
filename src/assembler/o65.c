@@ -25,6 +25,8 @@
 #define O65_MODE_BREL   0x0000
 #define O65_VERSION     1
 
+#define DEFAULT_SEGMENT_NAME "__default__"
+
 typedef struct o65_reloc {
    long offset;
    unsigned char type;
@@ -54,12 +56,23 @@ typedef struct o65_segment_buf {
    o65_reloc_t *relocs_tail;
 } o65_segment_buf_t;
 
+typedef struct o65_segment_layout {
+   char *name;
+   unsigned char segid;
+   long source_base;
+   unsigned short packed_base;
+   unsigned short used_size;
+   struct o65_segment_layout *next;
+} o65_segment_layout_t;
+
 typedef struct o65_writer {
    asm_context_t *ctx;
    o65_segment_buf_t text;
    o65_segment_buf_t data;
    unsigned short bss_len;
    unsigned short zp_len;
+   unsigned short seg_lengths[6];
+   o65_segment_layout_t *layouts;
    o65_undef_t *undefs;
    o65_export_t *exports;
 } o65_writer_t;
@@ -133,19 +146,165 @@ static int directive_is_export_family(const char *name)
    return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp"));
 }
 
-static unsigned short segment_used_size(const asm_context_t *ctx, int segid)
+static const asm_segment_t *find_source_segment(const asm_context_t *ctx, const char *name)
 {
    const asm_segment_t *seg;
-   unsigned long maxv = 0;
+   const char *want = name ? name : DEFAULT_SEGMENT_NAME;
 
    for (seg = ctx->segments; seg; seg = seg->next) {
-      if (segment_name_to_o65(seg->name) == segid && (unsigned long)seg->used_size > maxv)
-         maxv = (unsigned long)seg->used_size;
+      if (!strcmp(seg->name, want))
+         return seg;
    }
 
-   if (maxv > 0xFFFFUL)
-      maxv = 0xFFFFUL;
-   return (unsigned short)maxv;
+   return NULL;
+}
+
+static o65_segment_layout_t *find_layout(o65_writer_t *wr, const char *name)
+{
+   o65_segment_layout_t *layout;
+   const char *want = name ? name : DEFAULT_SEGMENT_NAME;
+
+   for (layout = wr->layouts; layout; layout = layout->next) {
+      if (!strcmp(layout->name, want))
+         return layout;
+   }
+
+   return NULL;
+}
+
+static const o65_segment_layout_t *find_layout_const(const o65_writer_t *wr, const char *name)
+{
+   const o65_segment_layout_t *layout;
+   const char *want = name ? name : DEFAULT_SEGMENT_NAME;
+
+   for (layout = wr->layouts; layout; layout = layout->next) {
+      if (!strcmp(layout->name, want))
+         return layout;
+   }
+
+   return NULL;
+}
+
+static int register_layout(o65_writer_t *wr, const char *name)
+{
+   const asm_segment_t *seg;
+   o65_segment_layout_t *layout;
+   unsigned int total;
+   int segid;
+   const char *want = name ? name : DEFAULT_SEGMENT_NAME;
+
+   if (find_layout(wr, want))
+      return 1;
+
+   seg = find_source_segment(wr->ctx, want);
+   if (!seg)
+      return 1;
+
+   segid = segment_name_to_o65(want);
+   total = wr->seg_lengths[segid] + (unsigned int)((seg->used_size < 0) ? 0 : seg->used_size);
+   if (total > 0xFFFFu) {
+      fprintf(stderr, "o65 segment '%s' exceeds 64 KiB when packed into output segment %d\n", want, segid);
+      return 0;
+   }
+
+   layout = (o65_segment_layout_t *)calloc(1, sizeof(*layout));
+   if (!layout) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   layout->name = xstrdup(want);
+   layout->segid = (unsigned char)segid;
+   layout->source_base = seg->base;
+   layout->packed_base = wr->seg_lengths[segid];
+   layout->used_size = (unsigned short)((seg->used_size < 0) ? 0 : seg->used_size);
+   layout->next = NULL;
+
+   if (!wr->layouts)
+      wr->layouts = layout;
+   else {
+      o65_segment_layout_t *tail = wr->layouts;
+      while (tail->next)
+         tail = tail->next;
+      tail->next = layout;
+   }
+
+   wr->seg_lengths[segid] = (unsigned short)total;
+   return 1;
+}
+
+static int build_layouts(o65_writer_t *wr)
+{
+   const stmt_t *stmt;
+   const asm_segment_t *seg;
+
+   for (stmt = wr->ctx->prog->head; stmt; stmt = stmt->next) {
+      if (!register_layout(wr, stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME))
+         return 0;
+   }
+
+   for (seg = wr->ctx->segments; seg; seg = seg->next) {
+      if (seg->used_size <= 0)
+         continue;
+      if (!register_layout(wr, seg->name))
+         return 0;
+   }
+
+   wr->bss_len = wr->seg_lengths[O65_SEG_BSS];
+   wr->zp_len = wr->seg_lengths[O65_SEG_ZP];
+   return 1;
+}
+
+static long packed_stmt_offset(o65_writer_t *wr, const stmt_t *stmt)
+{
+   const o65_segment_layout_t *layout;
+   const char *segname = stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME;
+
+   layout = find_layout_const(wr, segname);
+   if (!layout)
+      return stmt->address;
+
+   return (long)layout->packed_base + (stmt->address - layout->source_base);
+}
+
+static long packed_symbol_value(const o65_writer_t *wr, const symbol_t *sym)
+{
+   const o65_segment_layout_t *layout;
+
+   if (!sym || !sym->defined || sym->segment_id == O65_SEG_ABS)
+      return sym ? sym->value : 0;
+
+   layout = find_layout_const(wr, sym->segment_name ? sym->segment_name : DEFAULT_SEGMENT_NAME);
+   if (!layout)
+      return sym->value;
+
+   return (long)layout->packed_base + (sym->value - layout->source_base);
+}
+
+static const symbol_t *find_scoped_symbol(const symtab_t *symtab,
+                                          const char *scope,
+                                          const char *file_scope,
+                                          const char *ident)
+{
+   char buf[4096];
+   const symbol_t *sym;
+
+   if (!symtab || !ident)
+      return NULL;
+
+   if (ident[0] == '@') {
+      snprintf(buf, sizeof(buf), "%s::%s", scope ? scope : "__root__", ident);
+      return symtab_find_const(symtab, buf);
+   }
+
+   if (file_scope && *file_scope) {
+      snprintf(buf, sizeof(buf), "%s::%s", file_scope, ident);
+      sym = symtab_find_const(symtab, buf);
+      if (sym)
+         return sym;
+   }
+
+   return symtab_find_const(symtab, ident);
 }
 
 static o65_segment_buf_t *writer_buf_for_segid(o65_writer_t *wr, int segid)
@@ -310,17 +469,11 @@ static int analyze_expr(o65_writer_t *wr,
    reloc_expr_info_t inner;
    reloc_expr_info_t left;
    reloc_expr_info_t right;
-   long value;
 
    memset(out, 0, sizeof(*out));
 
    if (!expr) {
       out->value = 0;
-      return 1;
-   }
-
-   if (expr_eval(expr, &wr->ctx->symbols, stmt->scope, stmt->file, pc, &value) == EXPR_EVAL_OK) {
-      out->value = value;
       return 1;
    }
 
@@ -338,11 +491,11 @@ static int analyze_expr(o65_writer_t *wr,
          return 1;
 
       case EXPR_IDENT:
-         sym = symtab_find_const(&wr->ctx->symbols, expr->u.ident);
+         sym = find_scoped_symbol(&wr->ctx->symbols, stmt->scope, stmt->file, expr->u.ident);
          if (sym && sym->defined) {
             out->is_reloc = (sym->segment_id != O65_SEG_ABS);
             out->segid = sym->segment_id;
-            out->value = sym->value;
+            out->value = packed_symbol_value(wr, sym);
             out->part = RELOC_PART_WORD;
             return 1;
          }
@@ -560,7 +713,7 @@ static void add_exports(o65_writer_t *wr)
             exit(1);
          }
          ex->name = export_name;
-         ex->value = (unsigned short)(sym->value & 0xFFFF);
+         ex->value = (unsigned short)(packed_symbol_value(wr, sym) & 0xFFFF);
          ex->segid = (unsigned char)sym->segment_id;
          if (directive_name_implies_zp(stmt->u.dir->name) && ex->segid == O65_SEG_ABS)
             ex->segid = O65_SEG_ZP;
@@ -587,7 +740,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
       return 0;
    }
 
-   off = stmt->address;
+   off = packed_stmt_offset(wr, stmt);
 
    switch (stmt->kind) {
       case STMT_LABEL:
@@ -840,6 +993,16 @@ static int write_exports(FILE *fp, const o65_export_t *e)
    return 1;
 }
 
+static void free_layouts(o65_segment_layout_t *layout)
+{
+   while (layout) {
+      o65_segment_layout_t *next = layout->next;
+      free(layout->name);
+      free(layout);
+      layout = next;
+   }
+}
+
 static void free_relocs(o65_reloc_t *r)
 {
    while (r) {
@@ -877,8 +1040,8 @@ int o65_write_object_file(FILE *fp, asm_context_t *ctx)
 
    memset(&wr, 0, sizeof(wr));
    wr.ctx = ctx;
-   wr.bss_len = segment_used_size(ctx, O65_SEG_BSS);
-   wr.zp_len = segment_used_size(ctx, O65_SEG_ZP);
+   if (!build_layouts(&wr))
+      goto fail;
 
    add_exports(&wr);
 
@@ -919,6 +1082,7 @@ int o65_write_object_file(FILE *fp, asm_context_t *ctx)
    free_relocs(wr.data.relocs);
    free_undefs(wr.undefs);
    free_exports(wr.exports);
+   free_layouts(wr.layouts);
    return ctx->error_count ? 0 : 1;
 
 fail:
@@ -928,5 +1092,6 @@ fail:
    free_relocs(wr.data.relocs);
    free_undefs(wr.undefs);
    free_exports(wr.exports);
+   free_layouts(wr.layouts);
    return 0;
 }
