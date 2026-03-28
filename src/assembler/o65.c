@@ -887,8 +887,14 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
 
             case EM_REL:
                if (info.is_reloc) {
-                  writer_error(wr->ctx, stmt, "o65 output does not support relocatable branch targets");
-                  return 0;
+                  if (info.segid == O65_SEG_UNDEF) {
+                     writer_error(wr->ctx, stmt, "o65 output does not support external branch targets");
+                     return 0;
+                  }
+                  if (info.segid != segid) {
+                     writer_error(wr->ctx, stmt, "o65 output does not support cross-segment branch targets");
+                     return 0;
+                  }
                }
                value = value - (off + 1);
                if (value < -128 || value > 127) {
