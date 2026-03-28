@@ -1,0 +1,14 @@
+// nc -i .
+// expectasm: _bump$x:
+// expectasm: sta _bump$x,y
+// expectasm: lda #$04
+include "machine_6502.n"
+
+int bump(static int x, int y) {
+   return x + y;
+}
+
+int main(void) {
+   int a := 7;
+   return bump(a, 2);
+}

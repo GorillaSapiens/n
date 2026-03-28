@@ -1681,6 +1681,12 @@ static bool parameter_is_ref(const ASTNode *parameter) {
    return has_modifier((ASTNode *) modifiers, "ref");
 }
 
+static bool parameter_has_symbol_storage(const ASTNode *parameter) {
+   const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+   const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
+   return has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_zeropage(modifiers);
+}
+
 static int parameter_storage_size(const ASTNode *parameter) {
    const ASTNode *ptype = parameter_type(parameter);
    const ASTNode *pdecl = parameter_declarator(parameter);
@@ -1741,6 +1747,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          const ASTNode *type = parameter_type(parameter);
          const char *name = parameter_name(parameter, i);
          const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+         const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
          const ASTNode *param_decl = parameter_declarator(parameter);
          int size;
          int slot_size;
@@ -1752,14 +1759,14 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
 
          size = declarator_storage_size(type, param_decl);
          slot_size = parameter_storage_size(parameter);
-         if (has_modifier((ASTNode *) decl_specs->children[0], "static")) {
+         if (has_modifier((ASTNode *) modifiers, "static")) {
             ctx_static(ctx, type, name);
             entry = (ContextEntry *) set_get(ctx->vars, name);
             entry->size = size;
             entry->declarator = param_decl;
             entry->is_ref = parameter_is_ref(parameter);
          }
-         else if (modifiers_imply_zeropage((ASTNode *) decl_specs->children[0])) {
+         else if (modifiers_imply_zeropage(modifiers)) {
             ctx_zeropage(ctx, type, name);
             entry = (ContextEntry *) set_get(ctx->vars, name);
             entry->size = size;
@@ -2438,6 +2445,40 @@ static const ASTNode *function_declarator_node(const ASTNode *fn) {
    return NULL;
 }
 
+static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
+   const ASTNode *declarator = node->children[1];
+   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+
+   if (!params || is_empty(params)) {
+      return;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      const ASTNode *parameter = params->children[i];
+      const ASTNode *type = parameter_type(parameter);
+      const char *name = parameter_name(parameter, i);
+      const ContextEntry *entry;
+      char sym[256];
+      EmitSink *sink;
+
+      if (!type || parameter_is_void(parameter) || !parameter_has_symbol_storage(parameter)) {
+         continue;
+      }
+
+      entry = (const ContextEntry *) set_get(ctx->vars, name);
+      if (!entry) {
+         continue;
+      }
+      if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
+         continue;
+      }
+
+      sink = entry->is_zeropage ? &es_zp : &es_bss;
+      emit(sink, "%s:\n", sym);
+      emit(sink, "\t.res %d\n", entry->size);
+   }
+}
+
 static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    if (!expr || strcmp(expr->name, "()") || expr->count < 1) {
       return false;
@@ -2472,11 +2513,15 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             for (int i = 0; i < params->count; i++) {
                const ASTNode *parameter = params->children[i];
                const ASTNode *ptype = parameter_type(parameter);
+               int psz;
                if (!ptype || parameter_is_void(parameter)) {
                   continue;
                }
                fixed_params++;
-               arg_total += parameter_storage_size(parameter);
+               psz = parameter_storage_size(parameter);
+               if (!parameter_has_symbol_storage(parameter)) {
+                  arg_total += psz;
+               }
             }
             if (fixed_params != arg_count) {
                warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
@@ -2504,6 +2549,21 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       const ASTNode *params = declarator->children[2];
       int arg_offset = ret_size;
       int actual_index = 0;
+      char callee_sym[256];
+      Context callee_ctx;
+
+      memset(&callee_ctx, 0, sizeof(callee_ctx));
+      if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
+         if (call_size > 0) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+         }
+         return false;
+      }
+      callee_ctx.name = callee_sym;
+
       if (params && !is_empty(params)) {
          for (int i = 0; i < params->count && actual_index < arg_count; i++) {
             const ASTNode *parameter = params->children[i];
@@ -2511,9 +2571,11 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             const ASTNode *pdecl = parameter_declarator(parameter);
             ContextEntry tmp;
             int psz;
+
             if (!ptype || parameter_is_void(parameter)) {
                continue;
             }
+
             psz = parameter_storage_size(parameter);
             tmp.type = parameter_is_ref(parameter) ? required_typename_node("*") : ptype;
             tmp.declarator = parameter_is_ref(parameter) ? NULL : pdecl;
@@ -2521,10 +2583,26 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             tmp.is_zeropage = false;
             tmp.is_global = false;
             tmp.is_ref = false;
-            tmp.offset = ctx->locals + arg_offset;
             tmp.size = psz;
-            if (parameter_is_ref(parameter)) {
-               if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
+
+            if (parameter_has_symbol_storage(parameter)) {
+               const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+               const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
+               const char *pname = parameter_name(parameter, i);
+               char sym[256];
+               ContextEntry pentry;
+
+               pentry.name = (char *) pname;
+               pentry.type = ptype;
+               pentry.declarator = pdecl;
+               pentry.is_static = has_modifier((ASTNode *) modifiers, "static");
+               pentry.is_zeropage = !pentry.is_static && modifiers_imply_zeropage(modifiers);
+               pentry.is_global = false;
+               pentry.is_ref = parameter_is_ref(parameter);
+               pentry.offset = 0;
+               pentry.size = declarator_storage_size(ptype, pdecl);
+
+               if (!entry_symbol_name(&callee_ctx, &pentry, sym, sizeof(sym))) {
                   if (call_size > 0) {
                      remember_runtime_import("popN");
                      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
@@ -2533,17 +2611,54 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                   }
                   return false;
                }
-            }
-            else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
-               if (call_size > 0) {
-                  remember_runtime_import("popN");
-                  emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                  emit(&es_code, "    sta arg0\n");
-                  emit(&es_code, "    jsr _popN\n");
+
+               tmp.offset = ctx->locals;
+               if (parameter_is_ref(parameter)) {
+                  if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
+                     if (call_size > 0) {
+                        remember_runtime_import("popN");
+                        emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                        emit(&es_code, "    sta arg0\n");
+                        emit(&es_code, "    jsr _popN\n");
+                     }
+                     return false;
+                  }
                }
-               return false;
+               else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
+                  if (call_size > 0) {
+                     remember_runtime_import("popN");
+                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                     emit(&es_code, "    sta arg0\n");
+                     emit(&es_code, "    jsr _popN\n");
+                  }
+                  return false;
+               }
+               emit_copy_fp_to_symbol(sym, tmp.offset, tmp.size);
             }
-            arg_offset += psz;
+            else {
+               tmp.offset = ctx->locals + arg_offset;
+               if (parameter_is_ref(parameter)) {
+                  if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
+                     if (call_size > 0) {
+                        remember_runtime_import("popN");
+                        emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                        emit(&es_code, "    sta arg0\n");
+                        emit(&es_code, "    jsr _popN\n");
+                     }
+                     return false;
+                  }
+               }
+               else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
+                  if (call_size > 0) {
+                     remember_runtime_import("popN");
+                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                     emit(&es_code, "    sta arg0\n");
+                     emit(&es_code, "    jsr _popN\n");
+                  }
+                  return false;
+               }
+               arg_offset += psz;
+            }
             actual_index++;
          }
       }
@@ -5549,6 +5664,7 @@ static void compile_function_decl(ASTNode *node) {
       predeclare_statement_list(body, &ctx);
    }
 
+   emit_function_parameter_storage(node, &ctx);
    emit(&es_code, ".proc _%s\n", sym);
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
