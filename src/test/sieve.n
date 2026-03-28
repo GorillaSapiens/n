@@ -1,7 +1,7 @@
 // nc
 include "machine_6502.n"
 
-static char buffer[16];
+static char buffer[16] := { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 void printi(int arg) {
    char spot := 15;
    char i;
@@ -21,10 +21,10 @@ void printi(int arg) {
       buffer[i] := buffer[spot];
    }
    buffer[i] := 0;
-   asm lda #0
-   asm ldx #<_buffer
-   asm ldy #>_buffer
-   asm jsr $ffff
+   asm lda #0;
+   asm ldx #<_buffer;
+   asm ldy #>_buffer;
+   asm jsr $ffff;
 }
 
 void main(void) {

@@ -58,7 +58,7 @@ static void replace_in_place(char *s, const char *l, const char *r) {
     size_t len_r = strlen(r);
     char *pos;
 
-    while ((pos = strstr(s, l)) != NULL && !isident(pos-1) && !isident(pos + len_l)) {
+    while ((pos = strstr(s, l)) != NULL && (pos == s || !isident(pos-1)) && !isident(pos + len_l)) {
         size_t tail_len = strlen(pos + len_l);
         if (len_r > len_l) {
             // Shift right to make room

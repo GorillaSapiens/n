@@ -54,12 +54,12 @@ double parse_float(const char *p) {
 
    if (strstr(p, "0x") || strstr(p, "0X")) {
       if (sscanf(p, "%la", &ret) != 1) {
-         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, p);
+         error("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
       }
    }
    else {
       if (sscanf(p, "%lf", &ret) != 1) {
-         error("[%d:%s] could not sscanf '%s'", __FILE__, __LINE__, p);
+         error("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
       }
    }
 

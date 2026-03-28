@@ -168,7 +168,7 @@ ASTNode *make_empty_leaf(void) {
 }
 
 char *make_negative(const char *p) {
-   char *q = (char *) malloc(sizeof(char) * strlen(p) + 2);
+   char *q = (char *) malloc(sizeof(char) * (strlen(p) + 2));
    sprintf(q, "-%s", p);
    free((void *)p);
    return q;
