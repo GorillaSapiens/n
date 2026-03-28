@@ -10,6 +10,7 @@
 .import __data_run_start
 .import __data_size
 .import __bss_start
+.import __bss_end
 .import __bss_size
 
 .include "../nlib.inc"
@@ -103,13 +104,13 @@ _clear_bss_dec_lo:
    jmp _clear_bss
 
 _start_main:
-   ; argument stack pointer
-   ldx #$00
-   stx _nl_sp
-   stx _nl_fp
-   ldx #$10
-   stx _nl_sp+1
-   stx _nl_fp+1
+   ; argument stack grows upward, so start it immediately after BSS
+   lda #<__bss_end
+   sta _nl_sp
+   sta _nl_fp
+   lda #>__bss_end
+   sta _nl_sp+1
+   sta _nl_fp+1
 
    jsr _main
 
