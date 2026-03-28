@@ -1762,14 +1762,14 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          if (has_modifier((ASTNode *) modifiers, "static")) {
             ctx_static(ctx, type, name);
             entry = (ContextEntry *) set_get(ctx->vars, name);
-            entry->size = size;
+            entry->size = slot_size;
             entry->declarator = param_decl;
             entry->is_ref = parameter_is_ref(parameter);
          }
          else if (modifiers_imply_zeropage(modifiers)) {
             ctx_zeropage(ctx, type, name);
             entry = (ContextEntry *) set_get(ctx->vars, name);
-            entry->size = size;
+            entry->size = slot_size;
             entry->declarator = param_decl;
             entry->is_ref = parameter_is_ref(parameter);
          }
