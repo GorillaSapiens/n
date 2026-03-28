@@ -254,6 +254,47 @@ static void path_join(const char *base_dir, const char *child, char *out_path, s
       snprintf(out_path, out_sz, "%s/%s", base_dir, child);
 }
 
+static strlist_t g_include_dirs = { NULL, 0, 0 };
+
+void source_loader_add_include_dir(const char *dir)
+{
+   strlist_push(&g_include_dirs, dir);
+}
+
+void source_loader_clear_include_dirs(void)
+{
+   strlist_free(&g_include_dirs);
+}
+
+static int resolve_include_path(const char *base_dir, const char *include_name, char *resolved_path, size_t resolved_path_sz)
+{
+   FILE *fp;
+
+   if (path_is_absolute(include_name)) {
+      snprintf(resolved_path, resolved_path_sz, "%s", include_name);
+      return 1;
+   }
+
+   path_join(base_dir, include_name, resolved_path, resolved_path_sz);
+   fp = fopen(resolved_path, "r");
+   if (fp) {
+      fclose(fp);
+      return 1;
+   }
+
+   for (int i = 0; i < g_include_dirs.count; i++) {
+      path_join(g_include_dirs.items[i], include_name, resolved_path, resolved_path_sz);
+      fp = fopen(resolved_path, "r");
+      if (fp) {
+         fclose(fp);
+         return 1;
+      }
+   }
+
+   path_join(base_dir, include_name, resolved_path, resolved_path_sz);
+   return 1;
+}
+
 static const char *skip_ws(const char *p)
 {
    while (*p == ' ' || *p == '\t' || *p == '\r')
@@ -990,7 +1031,7 @@ static int expand_file_recursive(expand_ctx_t *ctx,
       if (parse_include_line(line, include_name, sizeof(include_name))) {
          char include_path[PATH_MAX];
 
-         path_join(base_dir, include_name, include_path, sizeof(include_path));
+         resolve_include_path(base_dir, include_name, include_path, sizeof(include_path));
          if (!expand_file_recursive(ctx, include_path, out_fp, depth + 1)) {
             fclose(in_fp);
             return 0;
@@ -1076,12 +1117,14 @@ FILE *source_loader_open_expanded(const char *root_path)
    if (!expand_file_recursive(&ctx, root_path, tmp_fp, 0)) {
       macro_table_free(&ctx.macros);
       def_table_free(&ctx.defs);
+      source_loader_clear_include_dirs();
       fclose(tmp_fp);
       return NULL;
    }
 
    macro_table_free(&ctx.macros);
    def_table_free(&ctx.defs);
+   source_loader_clear_include_dirs();
    rewind(tmp_fp);
    return tmp_fp;
 }

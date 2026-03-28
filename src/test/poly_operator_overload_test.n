@@ -1,4 +1,4 @@
-// nc -i .
+// nc -I .
 include "machine_6502.n"
 
 char operator+(char,char) {

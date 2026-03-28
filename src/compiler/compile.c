@@ -7080,7 +7080,7 @@ static void compile(ASTNode *program) {
    }
 }
 
-void do_compile(void) {
+void do_compile(FILE *out) {
 
    typesizes = pair_create();
 
@@ -7098,29 +7098,29 @@ void do_compile(void) {
 
    compile(root);
 
-   emit_print(&es_header);
-   printf("\n");
+   emit_print(&es_header, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_import);
-   printf("\n");
+   emit_print(&es_import, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_export);
-   printf("\n");
+   emit_print(&es_export, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_zp);
-   printf("\n");
+   emit_print(&es_zp, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_zpdata);
-   printf("\n");
+   emit_print(&es_zpdata, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_bss);
-   printf("\n");
+   emit_print(&es_bss, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_data);
-   printf("\n");
+   emit_print(&es_data, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_rodata);
-   printf("\n");
+   emit_print(&es_rodata, out);
+   fprintf(out, "\n");
 
-   emit_print(&es_code);
+   emit_print(&es_code, out);
 }

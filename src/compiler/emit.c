@@ -30,8 +30,12 @@ void emit(EmitSink *es, const char *fmt, ...) {
    }
 }
 
-void emit_print(EmitSink *es) {
+void emit_print(EmitSink *es, FILE *out) {
+   if (!out) {
+      out = stdout;
+   }
+
    for (EmitPiece *ep = es->head; ep; ep = ep->next) {
-      printf("%s", ep->txt);
+      fprintf(out, "%s", ep->txt);
    }
 }

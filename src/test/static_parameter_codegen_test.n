@@ -1,4 +1,4 @@
-// nc -i .
+// nc -I .
 // expectasm: _bump$x:
 // expectasm: sta _bump$x,y
 // expectasm: lda #$04

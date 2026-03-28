@@ -19,6 +19,8 @@ extern program_ir_t g_program;
 typedef struct
 {
    const char *input_path;
+   char **include_dirs;
+   int include_dir_count;
 
    bool want_hex;
    bool want_lst;
@@ -39,10 +41,11 @@ typedef struct
 static void usage(const char *argv0)
 {
    fprintf(stderr,
-      "usage: %s -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]\n"
+      "usage: %s -i <input.s> [-I <dir>] [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]\n"
       "\n"
       "options:\n"
       "   -i, --input <file>   input assembly source (required)\n"
+      "   -I <dir>             add directory to include search path\n"
       "       --hex[=file]    write Intel HEX output\n"
       "       --lst[=file]    write listing output\n"
       "       --map[=file]    write map output\n"
@@ -51,8 +54,8 @@ static void usage(const char *argv0)
       "\n"
       "examples:\n"
       "   %s -i prog.s --hex\n"
-      "   %s -i prog.s --hex=prog.hex --lst --map\n"
-      "   %s --input prog.s --lst=custom.lst\n",
+      "   %s -i prog.s -I include --hex=prog.hex --lst --map\n"
+      "   %s --input prog.s -I common -I board --lst=custom.lst\n",
       argv0, argv0, argv0, argv0);
 }
 
@@ -108,6 +111,20 @@ static char *make_output_path(const char *input_path, const char *ext)
    return out;
 }
 
+static void add_include_dir(options_t *opt, const char *dir)
+{
+   char **new_dirs;
+
+   new_dirs = realloc(opt->include_dirs, sizeof(*opt->include_dirs) * (size_t)(opt->include_dir_count + 1));
+   if (!new_dirs) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   opt->include_dirs = new_dirs;
+   opt->include_dirs[opt->include_dir_count++] = xstrdup(dir);
+}
+
 static bool parse_args(int argc, char **argv, options_t *opt)
 {
    int ch;
@@ -115,6 +132,7 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
    static struct option long_options[] = {
       { "input", required_argument, NULL, 'i' },
+      { "include", required_argument, NULL, 'I' },
       { "hex",   optional_argument, NULL, 1000 },
       { "lst",   optional_argument, NULL, 1001 },
       { "map",   optional_argument, NULL, 1002 },
@@ -125,7 +143,7 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
    memset(opt, 0, sizeof(*opt));
 
-   while ((ch = getopt_long(argc, argv, "hi:", long_options, &option_index)) != -1) {
+   while ((ch = getopt_long(argc, argv, "hI:i:", long_options, &option_index)) != -1) {
       switch (ch) {
       case 'h':
          usage(argv[0]);
@@ -133,6 +151,10 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
       case 'i':
          opt->input_path = optarg;
+         break;
+
+      case 'I':
+         add_include_dir(opt, optarg);
          break;
 
       case 1000:
@@ -206,6 +228,12 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
 static void free_options(options_t *opt)
 {
+   int i;
+
+   for (i = 0; i < opt->include_dir_count; i++)
+      free(opt->include_dirs[i]);
+   free(opt->include_dirs);
+
    free(opt->hex_path);
    free(opt->lst_path);
    free(opt->map_path);
@@ -227,6 +255,9 @@ int main(int argc, char **argv)
 
    if (!parse_args(argc, argv, &opt))
       return 1;
+
+   for (int i = 0; i < opt.include_dir_count; i++)
+      source_loader_add_include_dir(opt.include_dirs[i]);
 
    yyin = source_loader_open_expanded(opt.input_path);
    if (!yyin) {

@@ -1,4 +1,4 @@
-// nc -i .
+// nc -I .
 // expectasm: _demo$s:
 // expectasm: .byte <(_base+1), >(_base+1)
 // expectasm: _demo$q:

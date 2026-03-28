@@ -1,4 +1,4 @@
-// nc -i .
+// nc -I .
 // expectasm: .zpexport _a
 // expectasm: .export _b
 // expectasm: _a:

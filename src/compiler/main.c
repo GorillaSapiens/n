@@ -31,6 +31,11 @@ static void opt_include(char *n) {
    inclist[inclist_cnt++] = strdup(n);
 }
 
+static const char *outfile = NULL;
+static void opt_output(char *n) {
+   outfile = n;
+}
+
 const char *search_includes(const char *filename) {
    static char *ret = NULL;
 
@@ -73,7 +78,8 @@ struct {
    void (*func)(char *);
 } options[] = {
    { 'X', "XRAY", "name",  "enable named XRAY option for compiler debugging ('list' will list them)", opt_xray },
-   { 'i', "include", "path",  "add path to include search list", opt_include },
+   { 'I', "include", "path",  "add path to include search list", opt_include },
+   { 'o', "output", "file.s", "write assembly output to file instead of stdout", opt_output },
    { '?', "help", NULL, "print usage information", opt_help }
 };
 
@@ -193,7 +199,23 @@ int main(int argc, char** argv) {
       exit(0);
    }
 
-   do_compile();
+   {
+      FILE *out = stdout;
+
+      if (outfile) {
+         out = fopen(outfile, "w");
+         if (!out) {
+            perror(outfile);
+            exit(-1);
+         }
+      }
+
+      do_compile(out);
+
+      if (outfile) {
+         fclose(out);
+      }
+   }
 
    exit(0);
 }

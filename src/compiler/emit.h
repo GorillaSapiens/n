@@ -1,6 +1,8 @@
 #ifndef _INCLUDE_EMIT_H_
 #define _INCLUDE_EMIT_H_
 
+#include <stdio.h>
+
 // piece created by calling emit()
 struct EmitPiece;
 typedef struct EmitPiece {
@@ -21,6 +23,6 @@ typedef struct EmitSink {
 void emit(EmitSink *es, const char *fmt, ...);
 
 // print the text stored in an EmitSink
-void emit_print(EmitSink *es);
+void emit_print(EmitSink *es, FILE *out);
 
 #endif
