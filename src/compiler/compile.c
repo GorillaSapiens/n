@@ -85,6 +85,21 @@ typedef struct Context {
    const char *continue_label;
 } Context;
 
+typedef enum InitConstKind {
+   INIT_CONST_NONE = 0,
+   INIT_CONST_INT,
+   INIT_CONST_FLOAT,
+   INIT_CONST_ADDRESS
+} InitConstKind;
+
+typedef struct InitConstValue {
+   InitConstKind kind;
+   long long i;
+   double f;
+   const char *symbol;
+   long long addend;
+} InitConstValue;
+
 static const ASTNode *global_decl_lookup(const char *name);
 static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
 static const char *type_name_from_node(const ASTNode *type);
@@ -135,6 +150,11 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
 static void calculate_struct_union_sizes(ASTNode *program);
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size);
 static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size);
+static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
+static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type);
+static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type);
+static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend);
+static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size);
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
 static int expr_value_size(ASTNode *expr, Context *ctx);
 static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
@@ -3865,6 +3885,365 @@ static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, i
    return get_size(type_name_from_node(type));
 }
 
+static bool init_const_truthy(const InitConstValue *value) {
+   if (!value) {
+      return false;
+   }
+   switch (value->kind) {
+      case INIT_CONST_INT:
+         return value->i != 0;
+      case INIT_CONST_FLOAT:
+         return value->f != 0.0;
+      case INIT_CONST_ADDRESS:
+         return value->symbol != NULL || value->addend != 0;
+      default:
+         break;
+   }
+   return false;
+}
+
+static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
+   InitConstValue lhs = {0};
+   InitConstValue rhs = {0};
+
+   if (!out) {
+      return false;
+   }
+   memset(out, 0, sizeof(*out));
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return false;
+   }
+
+   if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {
+      return eval_constant_initializer_expr(expr->children[expr->count - 1], out);
+   }
+
+   if (expr->kind == AST_INTEGER) {
+      out->kind = INIT_CONST_INT;
+      out->i = parse_int(expr->strval);
+      return true;
+   }
+
+   if (expr->kind == AST_FLOAT) {
+      out->kind = INIT_CONST_FLOAT;
+      out->f = parse_float(expr->strval);
+      return true;
+   }
+
+   if (!strcmp(expr->name, "?:") && expr->count >= 3) {
+      InitConstValue cond = {0};
+      if (!eval_constant_initializer_expr(expr->children[0], &cond)) {
+         return false;
+      }
+      if (init_const_truthy(&cond)) {
+         return eval_constant_initializer_expr(expr->children[1], out);
+      }
+      return eval_constant_initializer_expr(expr->children[2], out);
+   }
+
+   if (expr->count == 1) {
+      ASTNode *child = expr->children[0];
+      if (!strcmp(expr->name, "+")) {
+         return eval_constant_initializer_expr(child, out);
+      }
+      if (!strcmp(expr->name, "-")) {
+         if (!eval_constant_initializer_expr(child, &lhs)) {
+            return false;
+         }
+         if (lhs.kind == INIT_CONST_INT) {
+            out->kind = INIT_CONST_INT;
+            out->i = -lhs.i;
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_FLOAT) {
+            out->kind = INIT_CONST_FLOAT;
+            out->f = -lhs.f;
+            return true;
+         }
+         return false;
+      }
+      if (!strcmp(expr->name, "~")) {
+         if (!eval_constant_initializer_expr(child, &lhs) || lhs.kind != INIT_CONST_INT) {
+            return false;
+         }
+         out->kind = INIT_CONST_INT;
+         out->i = ~lhs.i;
+         return true;
+      }
+      if (!strcmp(expr->name, "!")) {
+         if (!eval_constant_initializer_expr(child, &lhs)) {
+            return false;
+         }
+         out->kind = INIT_CONST_INT;
+         out->i = init_const_truthy(&lhs) ? 0 : 1;
+         return true;
+      }
+      if (!strcmp(expr->name, "&")) {
+         ASTNode *inner = (ASTNode *) unwrap_expr_node(child);
+         LValueRef lv;
+         if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(NULL, inner, &lv) && !lv.indirect) {
+            static char symbuf[512];
+            if (!entry_symbol_name(NULL, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_quick = lv.is_quick, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size }, symbuf, sizeof(symbuf))) {
+               return false;
+            }
+            out->kind = INIT_CONST_ADDRESS;
+            out->symbol = strdup(symbuf);
+            out->addend = lv.offset + lv.ptr_adjust;
+            return true;
+         }
+         if (inner && inner->kind == AST_IDENTIFIER) {
+            const ASTNode *fn = resolve_function_call_target(inner->strval, NULL, NULL);
+            char sym[512];
+            if (fn && function_symbol_name(fn, inner->strval, sym, sizeof(sym))) {
+               out->kind = INIT_CONST_ADDRESS;
+               out->symbol = strdup(sym);
+               out->addend = 0;
+               return true;
+            }
+         }
+         return false;
+      }
+   }
+
+   if (expr->count == 2) {
+      if (!eval_constant_initializer_expr(expr->children[0], &lhs) ||
+          !eval_constant_initializer_expr(expr->children[1], &rhs)) {
+         return false;
+      }
+
+      if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-")) {
+         bool add = !strcmp(expr->name, "+");
+         if (lhs.kind == INIT_CONST_ADDRESS && rhs.kind == INIT_CONST_INT) {
+            out->kind = INIT_CONST_ADDRESS;
+            out->symbol = lhs.symbol;
+            out->addend = lhs.addend + (add ? rhs.i : -rhs.i);
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_INT && rhs.kind == INIT_CONST_ADDRESS && add) {
+            out->kind = INIT_CONST_ADDRESS;
+            out->symbol = rhs.symbol;
+            out->addend = rhs.addend + lhs.i;
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_FLOAT || rhs.kind == INIT_CONST_FLOAT) {
+            double a = (lhs.kind == INIT_CONST_FLOAT) ? lhs.f : (double) lhs.i;
+            double b = (rhs.kind == INIT_CONST_FLOAT) ? rhs.f : (double) rhs.i;
+            out->kind = INIT_CONST_FLOAT;
+            out->f = add ? (a + b) : (a - b);
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_INT && rhs.kind == INIT_CONST_INT) {
+            out->kind = INIT_CONST_INT;
+            out->i = add ? (lhs.i + rhs.i) : (lhs.i - rhs.i);
+            return true;
+         }
+         return false;
+      }
+
+      if (!strcmp(expr->name, "*") || !strcmp(expr->name, "/") || !strcmp(expr->name, "%")) {
+         if (lhs.kind == INIT_CONST_FLOAT || rhs.kind == INIT_CONST_FLOAT) {
+            double a = (lhs.kind == INIT_CONST_FLOAT) ? lhs.f : (double) lhs.i;
+            double b = (rhs.kind == INIT_CONST_FLOAT) ? rhs.f : (double) rhs.i;
+            if ((!strcmp(expr->name, "/") || !strcmp(expr->name, "%")) && b == 0.0) {
+               return false;
+            }
+            if (!strcmp(expr->name, "%")) {
+               return false;
+            }
+            out->kind = INIT_CONST_FLOAT;
+            out->f = !strcmp(expr->name, "*") ? (a * b) : (a / b);
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_INT && rhs.kind == INIT_CONST_INT) {
+            if ((!strcmp(expr->name, "/") || !strcmp(expr->name, "%")) && rhs.i == 0) {
+               return false;
+            }
+            out->kind = INIT_CONST_INT;
+            if (!strcmp(expr->name, "*")) out->i = lhs.i * rhs.i;
+            else if (!strcmp(expr->name, "/")) out->i = lhs.i / rhs.i;
+            else out->i = lhs.i % rhs.i;
+            return true;
+         }
+         return false;
+      }
+
+      if (!strcmp(expr->name, "<<") || !strcmp(expr->name, ">>") ||
+          !strcmp(expr->name, "&") || !strcmp(expr->name, "|") || !strcmp(expr->name, "^")) {
+         if (lhs.kind != INIT_CONST_INT || rhs.kind != INIT_CONST_INT) {
+            return false;
+         }
+         out->kind = INIT_CONST_INT;
+         if (!strcmp(expr->name, "<<")) out->i = lhs.i << rhs.i;
+         else if (!strcmp(expr->name, ">>")) out->i = lhs.i >> rhs.i;
+         else if (!strcmp(expr->name, "&")) out->i = lhs.i & rhs.i;
+         else if (!strcmp(expr->name, "|")) out->i = lhs.i | rhs.i;
+         else out->i = lhs.i ^ rhs.i;
+         return true;
+      }
+
+      if (!strcmp(expr->name, "&&") || !strcmp(expr->name, "||")) {
+         bool a = init_const_truthy(&lhs);
+         bool b = init_const_truthy(&rhs);
+         out->kind = INIT_CONST_INT;
+         out->i = !strcmp(expr->name, "&&") ? (a && b) : (a || b);
+         return true;
+      }
+
+      if (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+          !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
+          !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
+         bool result;
+         if (lhs.kind == INIT_CONST_ADDRESS || rhs.kind == INIT_CONST_ADDRESS) {
+            if (lhs.kind != INIT_CONST_ADDRESS || rhs.kind != INIT_CONST_ADDRESS) {
+               return false;
+            }
+            if ((lhs.symbol == NULL) != (rhs.symbol == NULL)) {
+               return false;
+            }
+            if (lhs.symbol && rhs.symbol && strcmp(lhs.symbol, rhs.symbol)) {
+               return false;
+            }
+            if (!strcmp(expr->name, "==")) result = lhs.addend == rhs.addend;
+            else if (!strcmp(expr->name, "!=")) result = lhs.addend != rhs.addend;
+            else if (!strcmp(expr->name, "<")) result = lhs.addend < rhs.addend;
+            else if (!strcmp(expr->name, ">")) result = lhs.addend > rhs.addend;
+            else if (!strcmp(expr->name, "<=")) result = lhs.addend <= rhs.addend;
+            else result = lhs.addend >= rhs.addend;
+            out->kind = INIT_CONST_INT;
+            out->i = result ? 1 : 0;
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_FLOAT || rhs.kind == INIT_CONST_FLOAT) {
+            double a = (lhs.kind == INIT_CONST_FLOAT) ? lhs.f : (double) lhs.i;
+            double b = (rhs.kind == INIT_CONST_FLOAT) ? rhs.f : (double) rhs.i;
+            if (!strcmp(expr->name, "==")) result = a == b;
+            else if (!strcmp(expr->name, "!=")) result = a != b;
+            else if (!strcmp(expr->name, "<")) result = a < b;
+            else if (!strcmp(expr->name, ">")) result = a > b;
+            else if (!strcmp(expr->name, "<=")) result = a <= b;
+            else result = a >= b;
+            out->kind = INIT_CONST_INT;
+            out->i = result ? 1 : 0;
+            return true;
+         }
+         if (lhs.kind == INIT_CONST_INT && rhs.kind == INIT_CONST_INT) {
+            if (!strcmp(expr->name, "==")) result = lhs.i == rhs.i;
+            else if (!strcmp(expr->name, "!=")) result = lhs.i != rhs.i;
+            else if (!strcmp(expr->name, "<")) result = lhs.i < rhs.i;
+            else if (!strcmp(expr->name, ">")) result = lhs.i > rhs.i;
+            else if (!strcmp(expr->name, "<=")) result = lhs.i <= rhs.i;
+            else result = lhs.i >= rhs.i;
+            out->kind = INIT_CONST_INT;
+            out->i = result ? 1 : 0;
+            return true;
+         }
+         return false;
+      }
+   }
+
+   return false;
+}
+
+static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type) {
+   char tmp[128];
+   unsigned long long mag;
+
+   if (!buf || size < 0 || !type) {
+      return false;
+   }
+
+   mag = value < 0 ? (unsigned long long) (-(value + 1)) + 1ULL : (unsigned long long) value;
+   snprintf(tmp, sizeof(tmp), "%llu", mag);
+   if (has_flag(type_name_from_node(type), "$endian:big")) {
+      make_be_int(tmp, buf, size);
+      if (value < 0) {
+         negate_be_int(buf, size);
+      }
+   }
+   else {
+      make_le_int(tmp, buf, size);
+      if (value < 0) {
+         negate_le_int(buf, size);
+      }
+   }
+   return true;
+}
+
+static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type) {
+   char tmp[256];
+   if (!buf || size < 0 || !type) {
+      return false;
+   }
+   snprintf(tmp, sizeof(tmp), "%la", value);
+   if (has_flag(type_name_from_node(type), "$endian:big")) {
+      make_be_float(tmp, buf, size);
+   }
+   else {
+      make_le_float(tmp, buf, size);
+   }
+   return true;
+}
+
+static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend) {
+   if (!es || !type || !symbol || size <= 0) {
+      return false;
+   }
+   if (size != 2) {
+      return false;
+   }
+   if (has_flag(type_name_from_node(type), "$endian:big")) {
+      emit(es, "\t.byte >(%s%+lld), <(%s%+lld)\n", symbol, addend, symbol, addend);
+   }
+   else {
+      emit(es, "\t.byte <(%s%+lld), >(%s%+lld)\n", symbol, addend, symbol, addend);
+   }
+   return true;
+}
+
+static void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size) {
+   emit(es, "\t.byte $%02x", bytes[0]);
+   for (int i = 1; i < size; i++) {
+      emit(es, ", $%02x", bytes[i]);
+   }
+   emit(es, "\n");
+}
+
+static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size) {
+   ASTNode *uexpr = (ASTNode *) unwrap_expr_node(expression);
+   unsigned char *bytes;
+   InitConstValue value = {0};
+
+   if (!es || !type || size < 0) {
+      return false;
+   }
+
+   if (uexpr && uexpr->kind == AST_STRING && declarator_pointer_depth(declarator) > 0) {
+      const char *label = remember_string_literal(uexpr->strval);
+      return emit_symbol_address_initializer(es, size, type, label, 0);
+   }
+
+   bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
+   if (!bytes) {
+      return false;
+   }
+
+   if (build_initializer_bytes(bytes, size, 0, uexpr ? uexpr : expression, type, declarator, size)) {
+      emit_initializer_bytes_line(es, bytes, size);
+      free(bytes);
+      return true;
+   }
+   free(bytes);
+
+   if (!initializer_is_list(uexpr ? uexpr : expression) && eval_constant_initializer_expr(uexpr ? uexpr : expression, &value)) {
+      if (value.kind == INIT_CONST_ADDRESS) {
+         return emit_symbol_address_initializer(es, size, type, value.symbol, value.addend);
+      }
+   }
+
+   return false;
+}
+
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size) {
    const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
    int size = scalar_storage_size(type, declarator, total_size);
@@ -3977,16 +4356,21 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
    }
 
    if (!initializer_is_list(uinit)) {
-      if (uinit->kind != AST_INTEGER) {
+      InitConstValue value = {0};
+      if (!eval_constant_initializer_expr((ASTNode *) uinit, &value)) {
          return false;
       }
-      if (has_flag(type_name_from_node(type), "$endian:big")) {
-         make_be_int(uinit->strval, buf + base_offset, size);
+      if (value.kind == INIT_CONST_FLOAT || has_flag(type_name_from_node(type), "$float")) {
+         if (value.kind != INIT_CONST_FLOAT && value.kind != INIT_CONST_INT) {
+            return false;
+         }
+         return encode_float_initializer_value(value.kind == INIT_CONST_FLOAT ? value.f : (double) value.i,
+               buf + base_offset, size, type);
       }
-      else {
-         make_le_int(uinit->strval, buf + base_offset, size);
+      if (value.kind != INIT_CONST_INT) {
+         return false;
       }
-      return true;
+      return encode_integer_initializer_value(value.i, buf + base_offset, size, type);
    }
 
    if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {
@@ -5165,45 +5549,12 @@ static void compile_global_decl_item(ASTNode *node) {
    emit(es, "_%s:\n", name);
    uexpr = (ASTNode *) unwrap_expr_node(expression);
 
-   if (uexpr && uexpr->kind == AST_INTEGER) {
-      unsigned char *bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
-      if (has_flag(type_name_from_node(type), "$endian:big")) {
-         make_be_int(uexpr->strval, bytes, size);
-      }
-      else {
-         make_le_int(uexpr->strval, bytes, size);
-      }
-      emit(es, "	.byte $%02x", bytes[0]);
-      for (int i = 1; i < size; i++) {
-         emit(es, ", $%02x", bytes[i]);
-      }
-      emit(es, "\n");
-      free(bytes);
+   if (!emit_global_initializer(es, type, declarator, uexpr ? uexpr : expression, size)) {
+      warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
+            node->file, node->line, node->column, name);
+      emit(es, "	.res %d, $00\n", size);
    }
-   else if (uexpr && uexpr->kind == AST_STRING && declarator_pointer_depth(declarator) > 0) {
-      const char *label = remember_string_literal(uexpr->strval);
-      emit(es, "	.byte <(%s), >(%s)", label, label);
-      for (int i = 2; i < size; i++) {
-         emit(es, ", $00");
-      }
-      emit(es, "\n");
-   }
-   else {
-      unsigned char *bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
-      if (bytes && build_initializer_bytes(bytes, size, 0, uexpr ? uexpr : expression, type, declarator, size)) {
-         emit(es, "	.byte $%02x", bytes[0]);
-         for (int i = 1; i < size; i++) {
-            emit(es, ", $%02x", bytes[i]);
-         }
-         emit(es, "\n");
-      }
-      else {
-         warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
-               node->file, node->line, node->column, name);
-         emit(es, "	.res %d, $00\n", size);
-      }
-      free(bytes);
-   }
+
 }
 
 static void remember_function(const ASTNode *node, const char *name) {

@@ -21,7 +21,7 @@ typedef struct Bytes2EBits {
 } Bytes2EBits;
 
 // table containing default number of exponent bits for N byte float
-// TODO FIX: in the future, allow sitting the ebits with a $flag
+// TODO FIX: in the future, allow setting the ebits with a $flag
 static Bytes2EBits exponent_bits[] = {
    {  1,  4 }, // proposed binary8
    {  2,  5 }, // half / binary16
