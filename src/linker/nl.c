@@ -1074,6 +1074,13 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    const memory_region_t *data_run_mem = data && data->run_name[0] ? find_memory(cfg, data->run_name) : NULL;
    const memory_region_t *bss_run_mem = bss ? find_memory(cfg, bss->load_name) : NULL;
    const memory_region_t *zp_run_mem = zp && zp->run_name[0] ? find_memory(cfg, zp->run_name) : NULL;
+   int shared_rom;
+   int shared_ram;
+   uint32_t code_load_limit;
+   uint32_t data_load_limit;
+   uint32_t data_run_limit;
+   uint32_t bss_run_limit;
+   uint32_t zp_run_limit;
    size_t i, j;
 
    if (!code_mem || !data_load_mem || !data_run_mem || !bss_run_mem || !zp_run_mem) {
@@ -1081,11 +1088,19 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
       exit(1);
    }
 
+   shared_rom = code_mem == data_load_mem;
+   shared_ram = data_run_mem == bss_run_mem;
+   code_load_limit = (uint32_t)code_mem->start + code_mem->size;
+   data_load_limit = (uint32_t)data_load_mem->start + data_load_mem->size;
+   data_run_limit = (uint32_t)data_run_mem->start + data_run_mem->size;
+   bss_run_limit = (uint32_t)bss_run_mem->start + bss_run_mem->size;
+   zp_run_limit = (uint32_t)zp_run_mem->start + zp_run_mem->size;
+
    memset(layout, 0, sizeof(*layout));
    layout->code_load_cur = code_mem->start;
    layout->code_load_end = (uint16_t)(code_mem->start + code_mem->size);
-   layout->data_load_cur = layout->code_load_cur;
-   layout->data_load_end = layout->code_load_end;
+   layout->data_load_cur = data_load_mem->start;
+   layout->data_load_end = (uint16_t)(data_load_mem->start + data_load_mem->size);
    layout->data_run_cur = data_run_mem->start;
    layout->data_run_end = (uint16_t)(data_run_mem->start + data_run_mem->size);
    layout->bss_run_cur = bss_run_mem->start;
@@ -1102,32 +1117,48 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    for (i = 0; i < in->object_count; ++i) {
       object_file_t *obj = &in->objects[i];
       obj->place_text_load = layout->code_load_cur;
-      if ((uint32_t)obj->place_text_load + obj->text.length > 0xFFFAu) {
+      if ((uint32_t)obj->place_text_load + obj->text.length > 0xFFFAu ||
+          (uint32_t)obj->place_text_load + obj->text.length > code_load_limit) {
          fprintf(stderr, "nl: ROM overflow while placing text from %s\n", obj->origin);
          exit(1);
       }
       layout->code_load_cur = (uint16_t)(layout->code_load_cur + obj->text.length);
+   }
 
-      obj->place_data_load = layout->code_load_cur;
-      if ((uint32_t)obj->place_data_load + obj->data.length > 0xFFFAu) {
+   if (shared_rom) {
+      layout->data_load_cur = layout->code_load_cur;
+   }
+   layout->data_load_start = layout->data_load_cur;
+
+   for (i = 0; i < in->object_count; ++i) {
+      object_file_t *obj = &in->objects[i];
+      obj->place_data_load = layout->data_load_cur;
+      if ((uint32_t)obj->place_data_load + obj->data.length > 0xFFFAu ||
+          (uint32_t)obj->place_data_load + obj->data.length > data_load_limit) {
          fprintf(stderr, "nl: ROM overflow while placing data load image from %s\n", obj->origin);
          exit(1);
       }
-      layout->code_load_cur = (uint16_t)(layout->code_load_cur + obj->data.length);
+      layout->data_load_cur = (uint16_t)(layout->data_load_cur + obj->data.length);
 
       obj->place_data_run = layout->data_run_cur;
-      if ((uint32_t)obj->place_data_run + obj->data.length > layout->data_run_end) {
+      if ((uint32_t)obj->place_data_run + obj->data.length > data_run_limit) {
          fprintf(stderr, "nl: RAM overflow while placing DATA run image from %s\n", obj->origin);
          exit(1);
       }
       layout->data_run_cur = (uint16_t)(layout->data_run_cur + obj->data.length);
       layout->data_run_size = (uint16_t)(layout->data_run_size + obj->data.length);
+   }
 
-      if (layout->bss_run_cur < layout->data_run_cur)
-         layout->bss_run_cur = layout->data_run_cur;
+   if (shared_ram && layout->bss_run_cur < layout->data_run_cur) {
+      layout->bss_run_cur = layout->data_run_cur;
+   }
+   layout->bss_start = layout->bss_run_cur;
+   layout->data_load_size = (uint16_t)(layout->data_load_cur - layout->data_load_start);
 
+   for (i = 0; i < in->object_count; ++i) {
+      object_file_t *obj = &in->objects[i];
       obj->place_bss_run = layout->bss_run_cur;
-      if ((uint32_t)obj->place_bss_run + obj->blen > layout->bss_run_end) {
+      if ((uint32_t)obj->place_bss_run + obj->blen > bss_run_limit) {
          fprintf(stderr, "nl: RAM overflow while placing BSS from %s\n", obj->origin);
          exit(1);
       }
@@ -1135,27 +1166,29 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
       layout->bss_size = (uint16_t)(layout->bss_size + obj->blen);
 
       obj->place_zp_run = layout->zp_run_cur;
-      if ((uint32_t)obj->place_zp_run + obj->zlen > layout->zp_run_end) {
+      if ((uint32_t)obj->place_zp_run + obj->zlen > zp_run_limit) {
          fprintf(stderr, "nl: ZP overflow while placing ZEROPAGE from %s\n", obj->origin);
          exit(1);
       }
       layout->zp_run_cur = (uint16_t)(layout->zp_run_cur + obj->zlen);
+   }
 
+   for (i = 0; i < in->object_count; ++i) {
+      object_file_t *obj = &in->objects[i];
       for (j = 0; j < obj->export_count; ++j) {
          uint16_t addr;
+
          switch (obj->exports[j].segid) {
             case O65_SEG_TEXT: addr = (uint16_t)(obj->place_text_load + obj->exports[j].value); break;
             case O65_SEG_DATA: addr = (uint16_t)(obj->place_data_run + obj->exports[j].value); break;
             case O65_SEG_BSS:  addr = (uint16_t)(obj->place_bss_run + obj->exports[j].value); break;
             case O65_SEG_ZP:   addr = (uint16_t)(obj->place_zp_run + obj->exports[j].value); break;
             case O65_SEG_ABS:  addr = obj->exports[j].value; break;
-            default:           addr = obj->exports[j].value; break;
+            default: continue;
          }
          add_global(layout, obj->exports[j].name, addr, obj->exports[j].segid, obj->origin);
       }
    }
-
-   add_generated_symbols(layout);
 }
 
 static void patch_u8(uint8_t *buf, size_t len, uint32_t off, uint8_t v, const char *origin)
@@ -1480,6 +1513,7 @@ int main(int argc, char **argv)
    select_needed_objects(&inputs);
    warn_unused_cmdline_objects(&inputs);
    layout_objects(&cfg, &inputs, &layout);
+   add_generated_symbols(&layout);
    resolve_all(&inputs, &layout);
 
    image = (uint8_t *)xmalloc(65536);
