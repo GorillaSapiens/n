@@ -108,6 +108,10 @@ static const ASTNode *bool_type_node(void);
 static bool type_is_bool(const ASTNode *type);
 static const ASTNode *literal_annotation_type(const ASTNode *expr);
 static int type_size_from_node(const ASTNode *type);
+static const char *find_mem_modifier_name(const ASTNode *modifiers);
+static const ASTNode *find_mem_modifier_node(const ASTNode *modifiers);
+static bool mem_decl_is_zeropage(const ASTNode *mem_decl);
+static bool modifiers_imply_zeropage(const ASTNode *modifiers);
 static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
@@ -1194,6 +1198,108 @@ static bool has_modifier(ASTNode *node, const char *modifier) {
    return false;
 }
 
+static bool parse_flag_u64(const ASTNode *flags, const char *prefix, unsigned long long *out) {
+   size_t prefix_len;
+
+   if (!flags || is_empty(flags) || !prefix || !out) {
+      return false;
+   }
+
+   prefix_len = strlen(prefix);
+   for (int i = 0; i < flags->count; i++) {
+      char *end = NULL;
+      unsigned long long value;
+      const char *text;
+
+      if (!flags->children[i] || !flags->children[i]->strval) {
+         continue;
+      }
+      text = flags->children[i]->strval;
+      if (strncmp(text, prefix, prefix_len)) {
+         continue;
+      }
+      value = strtoull(text + prefix_len, &end, 0);
+      if (end && *end == '\0') {
+         *out = value;
+         return true;
+      }
+   }
+   return false;
+}
+
+static const char *find_mem_modifier_name(const ASTNode *modifiers) {
+   const char *found = NULL;
+
+   if (!modifiers || is_empty(modifiers)) {
+      return NULL;
+   }
+
+   for (int i = 0; i < modifiers->count; i++) {
+      const char *name;
+      if (!modifiers->children[i] || !modifiers->children[i]->strval) {
+         continue;
+      }
+      name = modifiers->children[i]->strval;
+      if (!memname_exists(name)) {
+         continue;
+      }
+      if (found && strcmp(found, name)) {
+         error("[%s:%d.%d] multiple mem modifiers '%s' and '%s' are not allowed",
+               modifiers->file, modifiers->line, modifiers->column,
+               found, name);
+      }
+      found = name;
+   }
+
+   return found;
+}
+
+static const ASTNode *find_mem_modifier_node(const ASTNode *modifiers) {
+   const char *name = find_mem_modifier_name(modifiers);
+
+   if (!name) {
+      return NULL;
+   }
+   return get_memname_node(name);
+}
+
+static bool mem_decl_is_zeropage(const ASTNode *mem_decl) {
+   const ASTNode *flags;
+   unsigned long long start = 0;
+   unsigned long long size = 0;
+   unsigned long long end = 0;
+   bool have_start;
+   bool have_size;
+   bool have_end;
+
+   if (!mem_decl || strcmp(mem_decl->name, "mem_decl_stmt") || mem_decl->count < 2) {
+      return false;
+   }
+
+   flags = mem_decl->children[1];
+   have_start = parse_flag_u64(flags, "$start:", &start);
+   have_size = parse_flag_u64(flags, "$size:", &size);
+   have_end = parse_flag_u64(flags, "$end:", &end);
+
+   if (!have_start) {
+      return false;
+   }
+
+   if (have_size) {
+      return start <= 0xFFull && size <= 0x100ull && start + size <= 0x100ull;
+   }
+
+   if (have_end) {
+      return start <= 0xFFull && end <= 0x100ull && start <= end;
+   }
+
+   return false;
+}
+
+static bool modifiers_imply_zeropage(const ASTNode *modifiers) {
+   return mem_decl_is_zeropage(find_mem_modifier_node(modifiers));
+}
+
 static int get_size(const char *type) {
    const ASTNode *node;
 
@@ -1262,7 +1368,7 @@ static void compile_decl_stmt(ASTNode *node) {
    bool is_extern = has_modifier(modifiers, "extern");
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
-   bool is_zeropage  = has_modifier(modifiers, "zeropage");
+   bool is_zeropage  = modifiers_imply_zeropage(modifiers);
    bool is_ref    = has_modifier(modifiers, "ref");
 
    if (is_ref) {
@@ -1644,7 +1750,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
             ((ContextEntry *) set_get(ctx->vars, name))->size = size;
             ((ContextEntry *) set_get(ctx->vars, name))->declarator = param_decl;
          }
-         else if (has_modifier((ASTNode *) decl_specs->children[0], "zeropage")) {
+         else if (modifiers_imply_zeropage((ASTNode *) decl_specs->children[0])) {
             ctx_zeropage(ctx, type, name);
             ((ContextEntry *) set_get(ctx->vars, name))->size = size;
             ((ContextEntry *) set_get(ctx->vars, name))->declarator = param_decl;
@@ -2200,7 +2306,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
             gtmp.type = g->children[1];
             gtmp.declarator = g->children[2];
             gtmp.is_static = false;
-            gtmp.is_zeropage = has_modifier((ASTNode *) g->children[0], "zeropage");
+            gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
             gtmp.is_global = true;
             gtmp.offset = 0;
             gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
@@ -3780,7 +3886,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
       ctx_static(ctx, type, name);
       entry = (ContextEntry *) set_get(ctx->vars, name);
    }
-   else if (has_modifier(modifiers, "zeropage")) {
+   else if (modifiers_imply_zeropage(modifiers)) {
       ctx_zeropage(ctx, type, name);
       entry = (ContextEntry *) set_get(ctx->vars, name);
    }
@@ -5476,7 +5582,7 @@ static void compile_global_decl_item(ASTNode *node) {
    bool is_extern = has_modifier(modifiers, "extern");
    bool is_const  = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
-   bool is_zeropage  = has_modifier(modifiers, "zeropage");
+   bool is_zeropage  = modifiers_imply_zeropage(modifiers);
    bool is_ref    = has_modifier(modifiers, "ref");
 
    if (is_ref) {
