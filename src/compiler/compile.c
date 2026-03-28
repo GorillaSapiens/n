@@ -130,6 +130,12 @@ static const ASTNode *function_modifiers_node(const ASTNode *fn);
 static bool function_has_body(const ASTNode *fn);
 static bool function_same_signature(const ASTNode *a, const ASTNode *b);
 static bool function_same_declaration(const ASTNode *a, const ASTNode *b);
+static bool declarator_is_plain_value(const ASTNode *declarator);
+static bool integer_type_can_represent_type(const ASTNode *formal_type, const ASTNode *actual_type);
+static int integer_promotion_conversion_cost(const ASTNode *actual_type, const ASTNode *actual_decl,
+                                             const ASTNode *formal_type, const ASTNode *formal_decl);
+static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
+                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue);
 
 static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
@@ -363,6 +369,119 @@ static bool declarator_signature_matches(const ASTNode *actual, const ASTNode *f
    return declarator_array_signature_matches_from(actual, formal, 2);
 }
 
+static bool declarator_is_plain_value(const ASTNode *declarator) {
+   return declarator_pointer_depth(declarator) == 0 && declarator_array_count(declarator) == 0;
+}
+
+static bool integer_type_can_represent_type(const ASTNode *formal_type, const ASTNode *actual_type) {
+   int formal_size;
+   int actual_size;
+   bool formal_signed;
+   bool actual_signed;
+
+   if (!type_is_promotable_integer(formal_type) || !type_is_promotable_integer(actual_type)) {
+      return false;
+   }
+
+   formal_size = type_size_from_node(formal_type);
+   actual_size = type_size_from_node(actual_type);
+   formal_signed = type_is_signed_integer(formal_type);
+   actual_signed = type_is_signed_integer(actual_type);
+
+   if (formal_size <= 0 || actual_size <= 0) {
+      return false;
+   }
+
+   if (formal_signed == actual_signed) {
+      return formal_size >= actual_size;
+   }
+
+   if (formal_signed && !actual_signed) {
+      return formal_size >= actual_size + 1;
+   }
+
+   return false;
+}
+
+static int integer_promotion_conversion_cost(const ASTNode *actual_type, const ASTNode *actual_decl,
+                                             const ASTNode *formal_type, const ASTNode *formal_decl) {
+   int cost = 0;
+   int formal_size;
+   int actual_size;
+   const char *actual_endian;
+   const char *formal_endian;
+
+   if (!actual_type || !formal_type) {
+      return -1;
+   }
+   if (!declarator_signature_matches(actual_decl, formal_decl)) {
+      return -1;
+   }
+   if (!declarator_is_plain_value(actual_decl) || !declarator_is_plain_value(formal_decl)) {
+      return -1;
+   }
+   if (!type_is_promotable_integer(actual_type) || !type_is_promotable_integer(formal_type)) {
+      return -1;
+   }
+   if (!integer_type_can_represent_type(formal_type, actual_type)) {
+      return -1;
+   }
+
+   formal_size = type_size_from_node(formal_type);
+   actual_size = type_size_from_node(actual_type);
+   if (formal_size < actual_size) {
+      return -1;
+   }
+
+   cost += (formal_size - actual_size) * 16;
+   if (type_is_signed_integer(formal_type) != type_is_signed_integer(actual_type)) {
+      cost += 4;
+   }
+
+   actual_endian = type_endian_name(actual_type);
+   formal_endian = type_endian_name(formal_type);
+   if (formal_size > 1 && actual_endian && formal_endian && strcmp(actual_endian, formal_endian)) {
+      cost += 1;
+   }
+
+   return cost;
+}
+
+static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
+                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue) {
+   const char *pname;
+   const char *aname;
+   int promo_cost;
+
+   if (!ptype || !atype) {
+      return -1;
+   }
+
+   pname = type_name_from_node(ptype);
+   aname = type_name_from_node(atype);
+   if (!pname || !aname) {
+      return -1;
+   }
+
+   if (!strcmp(pname, aname) && declarator_signature_matches(adecl, pdecl)) {
+      if (pref) {
+         return arg_lvalue ? 0 : -1;
+      }
+      return 1;
+   }
+
+   if (pref) {
+      return -1;
+   }
+
+   promo_cost = integer_promotion_conversion_cost(atype, adecl, ptype, pdecl);
+   if (promo_cost >= 0) {
+      return 32 + promo_cost;
+   }
+
+   return -1;
+}
+
 static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
    const ASTNode *atype;
    const ASTNode *btype;
@@ -402,11 +521,11 @@ static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
    return function_same_signature(a, b);
 }
 
-static int function_signature_match_score(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+static int function_signature_match_cost(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
    int seen = 0;
-   int score = 0;
+   int cost = 0;
 
    if (!declarator) {
       return -1;
@@ -421,9 +540,8 @@ static int function_signature_match_score(const ASTNode *fn, int arg_count, cons
          const ASTNode *parameter = params->children[i];
          const ASTNode *ptype;
          const ASTNode *pdecl;
-         const char *pname;
-         const char *aname;
          bool pref;
+         int param_cost;
 
          if (!parameter || parameter_is_void(parameter)) {
             continue;
@@ -436,25 +554,19 @@ static int function_signature_match_score(const ASTNode *fn, int arg_count, cons
             return -1;
          }
 
-         pname = type_name_from_node(ptype);
-         aname = type_name_from_node(arg_types[seen]);
-         if (!pname || !aname || strcmp(pname, aname)) {
+         param_cost = parameter_argument_conversion_cost(
+               ptype, pdecl, pref,
+               arg_types[seen], arg_decls[seen],
+               arg_lvalues ? arg_lvalues[seen] : false);
+         if (param_cost < 0) {
             return -1;
          }
-         if (!declarator_signature_matches(arg_decls[seen], pdecl)) {
-            return -1;
-         }
-         if (pref) {
-            if (!arg_lvalues || !arg_lvalues[seen]) {
-               return -1;
-            }
-            score++;
-         }
+         cost += param_cost;
          seen++;
       }
    }
 
-   return seen == arg_count ? score : -1;
+   return seen == arg_count ? cost : -1;
 }
 
 
@@ -726,21 +838,29 @@ static bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
 
 static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
    const ASTNode *best = NULL;
-   int best_score = -1;
+   int best_cost = INT_MAX;
+   bool ambiguous = false;
 
    for (int i = 0; i < operator_overload_count; i++) {
-      int score;
+      int cost;
       if (strcmp(operator_overloads[i].name, name)) {
          continue;
       }
-      score = function_signature_match_score(operator_overloads[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
-      if (score < 0) {
+      cost = function_signature_match_cost(operator_overloads[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
+      if (cost < 0) {
          continue;
       }
-      if (!best || score > best_score) {
+      if (!best || cost < best_cost) {
          best = operator_overloads[i].node;
-         best_score = score;
+         best_cost = cost;
+         ambiguous = false;
       }
+      else if (cost == best_cost) {
+         ambiguous = true;
+      }
+   }
+   if (ambiguous && best) {
+      error("ambiguous overloaded operator '%s'", name);
    }
    return best;
 }

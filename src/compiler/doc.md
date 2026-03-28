@@ -205,7 +205,9 @@ The left-hand side is still treated as an lvalue target for the final store, so 
 
 ### Overload matching limits
 
-Current overload matching is still exact-match only. There is no full "best viable overload" search with promotion-aware ranking for overloaded calls.
+Operator overload matching now prefers exact matches first and then considers safe integer promotions for plain value parameters. Smaller integers may widen, and mixed signed/unsigned operands may promote to a signed type that can represent the full range of the actual argument. `ref` parameters remain strict and still require an lvalue of the exact declared type.
+
+This is not a full C++-style overload system. There is still no arbitrary narrowing conversion search, no user-defined conversion machinery, and no general function-overload ranking outside operator overloads.
 
 ## `ref` parameters
 
@@ -345,8 +347,8 @@ Compiled calls save and restore the caller's frame pointer around calls so neste
 
 This tree is much further along than the original state, but a few sharp edges remain:
 
-- overloaded call resolution is still exact-match only
-- promotion-aware overload ranking is not implemented
+- operator overload resolution only considers exact matches plus safe integer promotions for plain value parameters
+- ordinary non-operator function overloading and generic best-viable-match search are still not implemented
 - arbitrary non-zero-page named memory regions are not yet fully honored as distinct backend storage segments
 - some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
 - shift-count diagnostics are still lax
