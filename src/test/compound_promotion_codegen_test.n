@@ -1,0 +1,25 @@
+// nc
+// expectasm: and #$80
+// expectasm: ldy #6
+// expectasm: sta (fp),y
+// expectasm: ldy #9
+// expectasm: lda #$00
+// expectasm: sta (fp),y
+
+type void      { $size:0 };
+type bool      { $size:1 };
+type s2        { $size:2 $signed $endian:little };
+type u4        { $size:4 $unsigned $endian:little };
+type s4        { $size:4 $signed $endian:little };
+type s5        { $size:5 $signed $endian:little };
+type *         { $size:2 $unsigned $endian:little };
+
+s4 addassign_signed(s4 a, s2 b) {
+   a += b;
+   return a;
+}
+
+s5 addassign_mixed(s5 a, u4 b) {
+   a += b;
+   return a;
+}
