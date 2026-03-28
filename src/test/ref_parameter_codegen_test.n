@@ -1,0 +1,17 @@
+// nc
+// expectasm: jsr _bump
+
+type void { $size:0 };
+type bool { $size:1 };
+type *    { $size:2 $unsigned $endian:little };
+type int  { $size:2 $signed $endian:little };
+
+void bump(ref int x) {
+   x++;
+}
+
+int main(void) {
+   int a;
+   bump(a);
+   return a;
+}

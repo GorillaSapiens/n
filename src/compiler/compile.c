@@ -59,6 +59,7 @@ typedef struct ContextEntry {
    bool is_static;
    bool is_zeropage;
    bool is_global;
+   bool is_ref;
    int offset;
    int size;
 } ContextEntry;
@@ -70,6 +71,7 @@ typedef struct LValueRef {
    bool is_static;
    bool is_zeropage;
    bool is_global;
+   bool is_ref;
    bool indirect;
    int offset;
    int size;
@@ -128,7 +130,10 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx);
 static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx);
 static const ASTNode *parameter_type(const ASTNode *parameter);
 static const ASTNode *parameter_declarator(const ASTNode *parameter);
+static bool parameter_is_ref(const ASTNode *parameter);
+static int parameter_storage_size(const ASTNode *parameter);
 static bool parameter_is_void(const ASTNode *parameter);
+static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
@@ -302,17 +307,18 @@ static bool declarator_signature_matches(const ASTNode *actual, const ASTNode *f
    return true;
 }
 
-static bool function_signature_matches_args(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls) {
+static int function_signature_match_score(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
    int seen = 0;
+   int score = 0;
 
    if (!declarator) {
-      return false;
+      return -1;
    }
 
    if (function_fixed_param_count(fn) != arg_count) {
-      return false;
+      return -1;
    }
 
    if (params && !is_empty(params)) {
@@ -322,6 +328,7 @@ static bool function_signature_matches_args(const ASTNode *fn, int arg_count, co
          const ASTNode *pdecl;
          const char *pname;
          const char *aname;
+         bool pref;
 
          if (!parameter || parameter_is_void(parameter)) {
             continue;
@@ -329,24 +336,32 @@ static bool function_signature_matches_args(const ASTNode *fn, int arg_count, co
 
          ptype = parameter_type(parameter);
          pdecl = parameter_declarator(parameter);
+         pref = parameter_is_ref(parameter);
          if (!ptype || seen >= arg_count || !arg_types[seen]) {
-            return false;
+            return -1;
          }
 
          pname = type_name_from_node(ptype);
          aname = type_name_from_node(arg_types[seen]);
          if (!pname || !aname || strcmp(pname, aname)) {
-            return false;
+            return -1;
          }
          if (!declarator_signature_matches(arg_decls[seen], pdecl)) {
-            return false;
+            return -1;
+         }
+         if (pref) {
+            if (!arg_lvalues || !arg_lvalues[seen]) {
+               return -1;
+            }
+            score++;
          }
          seen++;
       }
    }
 
-   return seen == arg_count;
+   return seen == arg_count ? score : -1;
 }
+
 
 static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
    if (!a || !b) {
@@ -389,6 +404,9 @@ static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
             return false;
          }
          if (strcmp(type_name_from_node(parameter_type(aparam)), type_name_from_node(parameter_type(bparam)))) {
+            return false;
+         }
+         if (parameter_is_ref(aparam) != parameter_is_ref(bparam)) {
             return false;
          }
          if (!declarator_signature_matches(parameter_declarator(aparam), parameter_declarator(bparam))) {
@@ -494,6 +512,9 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
             pdecl = parameter_declarator(parameter);
             strncat(buf, "__", bufsize - strlen(buf) - 1);
             append_mangled_text(buf, bufsize, type_name_from_node(ptype));
+            if (parameter_is_ref(parameter)) {
+               strncat(buf, "_r1", bufsize - strlen(buf) - 1);
+            }
             snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(pdecl), declarator_array_count(pdecl));
             strncat(buf, tmp, bufsize - strlen(buf) - 1);
          }
@@ -608,16 +629,25 @@ static bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
    return false;
 }
 
-static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls) {
+static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+   const ASTNode *best = NULL;
+   int best_score = -1;
+
    for (int i = 0; i < operator_overload_count; i++) {
+      int score;
       if (strcmp(operator_overloads[i].name, name)) {
          continue;
       }
-      if (function_signature_matches_args(operator_overloads[i].node, arg_count, arg_types, arg_decls)) {
-         return operator_overloads[i].node;
+      score = function_signature_match_score(operator_overloads[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
+      if (score < 0) {
+         continue;
+      }
+      if (!best || score > best_score) {
+         best = operator_overloads[i].node;
+         best_score = score;
       }
    }
-   return NULL;
+   return best;
 }
 
 static const ASTNode *resolve_function_call_target(const char *name, ASTNode *args, Context *ctx) {
@@ -625,14 +655,16 @@ static const ASTNode *resolve_function_call_target(const char *name, ASTNode *ar
       int arg_count = (args && !is_empty(args)) ? args->count : 0;
       const ASTNode *arg_types[8];
       const ASTNode *arg_decls[8];
+      bool arg_lvalues[8];
       if (arg_count > (int) (sizeof(arg_types) / sizeof(arg_types[0]))) {
          return NULL;
       }
       for (int i = 0; i < arg_count; i++) {
          arg_types[i] = expr_value_type(args->children[i], ctx);
          arg_decls[i] = expr_value_declarator(args->children[i], ctx);
+         arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, args->children[i], NULL);
       }
-      return lookup_operator_overload(name, arg_count, arg_types, arg_decls);
+      return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
    }
 
    if (functions) {
@@ -646,6 +678,7 @@ static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx
    const char *name = NULL;
    const ASTNode *arg_types[2];
    const ASTNode *arg_decls[2];
+   bool arg_lvalues[2];
    int arg_count;
    char buf[64];
 
@@ -675,17 +708,19 @@ static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx
    for (int i = 0; i < arg_count; i++) {
       arg_types[i] = expr_value_type(expr->children[i], ctx);
       arg_decls[i] = expr_value_declarator(expr->children[i], ctx);
+      arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, expr->children[i], NULL);
       if (!arg_types[i]) {
          return NULL;
       }
    }
-   return lookup_operator_overload(name, arg_count, arg_types, arg_decls);
+   return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
 }
 
 static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) {
    bool inc;
    const ASTNode *arg_type;
    const ASTNode *arg_decl;
+   bool arg_lvalue;
 
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!classify_incdec_lvalue_expr(expr, &inc, NULL)) {
@@ -697,12 +732,14 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) 
       return NULL;
    }
    arg_decl = expr_value_declarator(expr, ctx);
-   return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl);
+   arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
+   return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl, &arg_lvalue);
 }
 
 static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
    const ASTNode *arg_type;
    const ASTNode *arg_decl;
+   bool arg_lvalue;
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr || is_empty(expr)) {
       return NULL;
@@ -712,7 +749,8 @@ static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
       return NULL;
    }
    arg_decl = expr_value_declarator(expr, ctx);
-   return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl);
+   arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
+   return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl, &arg_lvalue);
 }
 
 static const ASTNode *global_decl_lookup(const char *name) {
@@ -1680,6 +1718,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_static = false;
    entry->is_zeropage = false;
    entry->is_global = false;
+   entry->is_ref = false;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -1703,6 +1742,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_static = false;
    entry->is_zeropage = false;
    entry->is_global = false;
+   entry->is_ref = false;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -1729,6 +1769,7 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_static = true;
    entry->is_zeropage = false;
    entry->is_global = false;
+   entry->is_ref = false;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -1751,6 +1792,7 @@ static void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_static = false;
    entry->is_zeropage = true;
    entry->is_global = false;
+   entry->is_ref = false;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -1782,6 +1824,21 @@ static const ASTNode *parameter_type(const ASTNode *parameter) {
 static const ASTNode *parameter_declarator(const ASTNode *parameter) {
    const ASTNode *decl_item = parameter_decl_item(parameter);
    return (decl_item && decl_item->count > 0) ? decl_item->children[0] : NULL;
+}
+
+static bool parameter_is_ref(const ASTNode *parameter) {
+   const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+   const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
+   return has_modifier((ASTNode *) modifiers, "ref");
+}
+
+static int parameter_storage_size(const ASTNode *parameter) {
+   const ASTNode *ptype = parameter_type(parameter);
+   const ASTNode *pdecl = parameter_declarator(parameter);
+   if (parameter_is_ref(parameter)) {
+      return get_size("*");
+   }
+   return declarator_storage_size(ptype, pdecl);
 }
 
 static const char *parameter_name(const ASTNode *parameter, int i) {
@@ -1820,28 +1877,37 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
          const ASTNode *param_decl = parameter_declarator(parameter);
          int size;
+         int slot_size;
+         ContextEntry *entry;
 
          if (!type || parameter_is_void(parameter)) {
             continue;
          }
 
          size = declarator_storage_size(type, param_decl);
+         slot_size = parameter_storage_size(parameter);
          if (has_modifier((ASTNode *) decl_specs->children[0], "static")) {
             ctx_static(ctx, type, name);
-            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
-            ((ContextEntry *) set_get(ctx->vars, name))->declarator = param_decl;
+            entry = (ContextEntry *) set_get(ctx->vars, name);
+            entry->size = size;
+            entry->declarator = param_decl;
+            entry->is_ref = parameter_is_ref(parameter);
          }
          else if (modifiers_imply_zeropage((ASTNode *) decl_specs->children[0])) {
             ctx_zeropage(ctx, type, name);
-            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
-            ((ContextEntry *) set_get(ctx->vars, name))->declarator = param_decl;
+            entry = (ContextEntry *) set_get(ctx->vars, name);
+            entry->size = size;
+            entry->declarator = param_decl;
+            entry->is_ref = parameter_is_ref(parameter);
          }
          else {
             ctx_shove(ctx, type, name);
-            ((ContextEntry *) set_get(ctx->vars, name))->size = size;
-            ((ContextEntry *) set_get(ctx->vars, name))->declarator = param_decl;
-            ((ContextEntry *) set_get(ctx->vars, name))->offset = ctx->params + get_size(type_name_from_node(type)) - size;
-            ctx->params -= (size - get_size(type_name_from_node(type)));
+            entry = (ContextEntry *) set_get(ctx->vars, name);
+            entry->size = size;
+            entry->declarator = param_decl;
+            entry->is_ref = parameter_is_ref(parameter);
+            entry->offset = ctx->params + get_size(type_name_from_node(type)) - slot_size;
+            ctx->params -= (slot_size - get_size(type_name_from_node(type)));
          }
          i++;
       }
@@ -2165,6 +2231,101 @@ static void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
    }
 }
 
+static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out) {
+   ContextEntry *entry;
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr) {
+      return false;
+   }
+   if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
+      if (!out) {
+         LValueRef tmp;
+         return resolve_lvalue(ctx, expr, &tmp);
+      }
+      return resolve_lvalue(ctx, expr, out);
+   }
+   if (expr->kind != AST_IDENTIFIER) {
+      return false;
+   }
+   entry = ctx_lookup(ctx, expr->strval);
+   if (!entry) {
+      const ASTNode *g = global_decl_lookup(expr->strval);
+      if (g && g->count >= 3) {
+         static ContextEntry gtmp;
+         gtmp.name = expr->strval;
+         gtmp.type = g->children[1];
+         gtmp.declarator = g->children[2];
+         gtmp.is_static = false;
+         gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
+         gtmp.is_global = true;
+         gtmp.is_ref = false;
+         gtmp.offset = 0;
+         gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
+         entry = &gtmp;
+      }
+   }
+   if (!entry) {
+      return false;
+   }
+   if (out) {
+      memset(out, 0, sizeof(*out));
+      out->name = entry->name ? entry->name : expr->strval;
+      out->type = entry->type;
+      out->declarator = entry->declarator;
+      out->is_static = entry->is_static;
+      out->is_zeropage = entry->is_zeropage;
+      out->is_global = entry->is_global;
+      out->is_ref = entry->is_ref;
+      out->offset = entry->offset;
+      out->size = entry->size;
+      if (entry->is_ref) {
+         out->indirect = true;
+      }
+   }
+   return true;
+}
+
+static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_offset, int dst_size) {
+   LValueRef lv;
+   if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
+      error("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
+   }
+   if (lv.indirect) {
+      if (lv.is_static || lv.is_zeropage || lv.is_global) {
+         char sym[256];
+         if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
+            return false;
+         }
+         emit(&es_code, "    ldy #0\n");
+         emit(&es_code, "    lda %s,y\n", sym);
+         emit(&es_code, "    sta ptr0\n");
+         emit(&es_code, "    iny\n");
+         emit(&es_code, "    lda %s,y\n", sym);
+         emit(&es_code, "    sta ptr0+1\n");
+         emit_add_immediate_to_ptr(0, lv.ptr_adjust);
+      }
+      else {
+         emit_load_ptr_from_fpvar(0, lv.offset);
+         emit_add_immediate_to_ptr(0, lv.ptr_adjust);
+      }
+   }
+   else if (lv.is_static || lv.is_zeropage || lv.is_global) {
+      char sym[256];
+      if (!entry_symbol_name(ctx, &(ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .offset = lv.offset, .size = lv.size }, sym, sizeof(sym))) {
+         return false;
+      }
+      emit(&es_code, "    lda #<(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
+      emit(&es_code, "    sta ptr0\n");
+      emit(&es_code, "    lda #>(%s + %d)\n", sym, lv.offset + lv.ptr_adjust);
+      emit(&es_code, "    sta ptr0+1\n");
+   }
+   else {
+      emit_prepare_fp_ptr(0, lv.offset + lv.ptr_adjust);
+   }
+   emit_store_ptr_to_fp(dst_offset, 0, dst_size);
+   return true;
+}
+
 static void emit_load_lowbyte_fp_to_arg1(int src_offset) {
    bool direct = src_offset >= 0 && src_offset + 1 <= 256;
    if (!direct) {
@@ -2327,7 +2488,12 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
       if (declarator_array_count(out->declarator) <= 0) {
          return false;
       }
-      out->offset += atoi(idx->strval) * elem_size;
+      if (out->indirect) {
+         out->ptr_adjust += atoi(idx->strval) * elem_size;
+      }
+      else {
+         out->offset += atoi(idx->strval) * elem_size;
+      }
       out->size = elem_size;
       out->declarator = NULL;
       return true;
@@ -2389,6 +2555,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
             gtmp.is_static = false;
             gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
             gtmp.is_global = true;
+            gtmp.is_ref = false;
             gtmp.offset = 0;
             gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
             entry = &gtmp;
@@ -2403,8 +2570,12 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->is_static = entry->is_static;
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
+      out->is_ref = entry->is_ref;
       out->offset = entry->offset;
       out->size = entry->size;
+      if (entry->is_ref) {
+         out->indirect = true;
+      }
    }
    else if (!strcmp(base->name, "*") && base->count > 0) {
       ASTNode *inner = base->children[0];
@@ -2423,6 +2594,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->is_static = entry->is_static;
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
+      out->is_ref = entry->is_ref;
       out->indirect = true;
       out->offset = entry->offset;
       out->size = get_size(type_name_from_node(entry->type));
@@ -2448,6 +2620,7 @@ static ContextEntry *ctx_lookup_lvalue(Context *ctx, ASTNode *node) {
    tmp.is_static = lv.is_static;
    tmp.is_zeropage = lv.is_zeropage;
    tmp.is_global = lv.is_global;
+   tmp.is_ref = lv.is_ref;
    tmp.offset = lv.offset;
    tmp.size = lv.size;
    return &tmp;
@@ -2514,12 +2687,11 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             for (int i = 0; i < params->count; i++) {
                const ASTNode *parameter = params->children[i];
                const ASTNode *ptype = parameter_type(parameter);
-               const ASTNode *pdecl = parameter_declarator(parameter);
                if (!ptype || parameter_is_void(parameter)) {
                   continue;
                }
                fixed_params++;
-               arg_total += declarator_storage_size(ptype, pdecl);
+               arg_total += parameter_storage_size(parameter);
             }
             if (fixed_params != arg_count) {
                warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
@@ -2557,13 +2729,27 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             if (!ptype || parameter_is_void(parameter)) {
                continue;
             }
-            psz = declarator_storage_size(ptype, pdecl);
-            tmp.type = ptype;
+            psz = parameter_storage_size(parameter);
+            tmp.type = parameter_is_ref(parameter) ? required_typename_node("*") : ptype;
+            tmp.declarator = parameter_is_ref(parameter) ? NULL : pdecl;
             tmp.is_static = false;
             tmp.is_zeropage = false;
+            tmp.is_global = false;
+            tmp.is_ref = false;
             tmp.offset = ctx->locals + arg_offset;
             tmp.size = psz;
-            if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
+            if (parameter_is_ref(parameter)) {
+               if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
+                  if (call_size > 0) {
+                     remember_runtime_import("popN");
+                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+                     emit(&es_code, "    sta arg0\n");
+                     emit(&es_code, "    jsr _popN\n");
+                  }
+                  return false;
+               }
+            }
+            else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
                if (call_size > 0) {
                   remember_runtime_import("popN");
                   emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
@@ -2593,11 +2779,12 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
          return false;
       }
+      remember_symbol_import(callee_sym);
       emit(&es_code, "    jsr _%s\n", callee_sym);
    }
 
    if (dst && ret_size > 0) {
-      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, ret_size, function_return_type(fn));
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, ret_size, ret_type);
    }
 
    if (call_size > 0) {
@@ -5056,64 +5243,6 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          warning("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
       }
       return;
-   }
-
-   if (!strcmp(node->name, "lvalue") && node->count >= 3 && node->children[2] &&
-       node->children[2]->kind == AST_IDENTIFIER &&
-       (!strcmp(node->children[2]->strval, "pre++") ||
-        !strcmp(node->children[2]->strval, "post++") ||
-        !strcmp(node->children[2]->strval, "pre--") ||
-        !strcmp(node->children[2]->strval, "post--"))) {
-      ContextEntry *dst = ctx_lookup_lvalue(ctx, node);
-      unsigned char *one;
-      bool inc;
-      if (!dst) {
-         warning("[%s:%d.%d] increment/decrement target not compiled yet", node->file, node->line, node->column);
-         return;
-      }
-      {
-         if (dst->is_static || dst->is_zeropage || dst->is_global) {
-            char sym[256];
-            if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
-               warning("[%s:%d.%d] increment/decrement target not compiled yet", node->file, node->line, node->column);
-               return;
-            }
-            one = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-            if (!one) {
-               return;
-            }
-            if (!make_incdec_delta_bytes(dst->type, dst->declarator, dst->size, one)) {
-               free(one);
-               return;
-            }
-            inc = !strcmp(node->children[2]->strval, "pre++") || !strcmp(node->children[2]->strval, "post++");
-            if (inc) {
-               emit_add_immediate_to_symbol(dst->type, sym, one, dst->size);
-            }
-            else {
-               emit_sub_immediate_from_symbol(dst->type, sym, one, dst->size);
-            }
-            free(one);
-            return;
-         }
-         one = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-         if (!one) {
-            return;
-         }
-         if (!make_incdec_delta_bytes(dst->type, dst->declarator, dst->size, one)) {
-            free(one);
-            return;
-         }
-         inc = !strcmp(node->children[2]->strval, "pre++") || !strcmp(node->children[2]->strval, "post++");
-         if (inc) {
-            emit_add_immediate_to_fp(dst->type, dst->offset, one, dst->size);
-         }
-         else {
-            emit_sub_immediate_from_fp(dst->type, dst->offset, one, dst->size);
-         }
-         free(one);
-         return;
-      }
    }
 
    if (!node || strcmp(node->name, "assign_expr") || node->count != 3) {
