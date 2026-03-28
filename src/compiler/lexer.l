@@ -245,7 +245,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    }
 }
 
-"asm "[^\n]* {
+"asm "[^;\n]* {
    yylval.str = strdup(yytext + 4);
    return ASM;
 }
