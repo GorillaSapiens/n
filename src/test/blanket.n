@@ -1,4 +1,4 @@
-// nc -X coverage -X parseonly
+// nc -X coverage -X dumpast
 
 // for code coverage, some is nonsensical
 
@@ -22,6 +22,8 @@ union ofthesnake {
 
 struct undeclared;
 union also_undeclared;
+
+extern int floopy(void);
 
 xform nulxform {
    '\0' 0
