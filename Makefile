@@ -1,8 +1,15 @@
+all:
+	( cd ./assembler ; make clean ; make )
+	( cd ./linker ; make clean ; make )
+	( cd ./archiver ; make clean ; make )
+	( cd ./libraries/nint ; make clean ; make )
+	( cd ./libraries/nlib ; make clean ; make )
+	( cd ./compiler ; make clean ; make )
+	( cd ./simulator ; make clean ; make )
+
 tarball:
 	git clean -fdx
-	( cd src ; make )
+	make
 	rm -f n_*.gz
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
-tools:
-	tar -czvf tools.tar.gz /usr/share/bison/* /usr/bin/flex /usr/bin/bison /lib/libfl.a
