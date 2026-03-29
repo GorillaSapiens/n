@@ -41,8 +41,10 @@ sub parse_case_directives {
    my %meta = (
       expectsim => [],
       expecterr => [],
+      expectmap => [],
       archive   => [],
       object    => [],
+      linkcfg   => undef,
       expectfail => 0,
    );
 
@@ -61,6 +63,12 @@ sub parse_case_directives {
       }
       elsif ($line =~ m{^//\s*object:\s*(.*?)\s*$}) {
          push @{$meta{object}}, $1;
+      }
+      elsif ($line =~ m{^//\s*expectmap:\s*(.*?)\s*$}) {
+         push @{$meta{expectmap}}, $1;
+      }
+      elsif ($line =~ m{^//\s*linkcfg:\s*(.*?)\s*$}) {
+         $meta{linkcfg} = $1;
       }
       elsif ($line =~ m{^//\s*expectfail\s*$}) {
          $meta{expectfail} = 1;
@@ -154,6 +162,7 @@ for my $case (@cases) {
    my $main_s   = File::Spec->catfile($tmp, 'main.s');
    my $main_o65 = File::Spec->catfile($tmp, 'main.o65');
    my $hex_path = File::Spec->catfile($tmp, 'out.hex');
+   my $map_path = File::Spec->catfile($tmp, 'out.map');
 
    my $compile_out = File::Spec->catfile($tmp, 'compile.out');
    my $compile_err = File::Spec->catfile($tmp, 'compile.err');
@@ -250,7 +259,11 @@ for my $case (@cases) {
       push @archives, $a_path;
    }
 
-   my @link_cmd = ($nl, @compiled_objects, @archives, $nlib, $hex_path);
+   my @link_cmd = ($nl);
+   if (defined $meta->{linkcfg}) {
+      push @link_cmd, File::Spec->catfile($case_dir, $meta->{linkcfg});
+   }
+   push @link_cmd, @compiled_objects, @archives, $nlib, $hex_path, $map_path;
    my $link_out = File::Spec->catfile($tmp, 'link.out');
    my $link_err = File::Spec->catfile($tmp, 'link.err');
    my ($link_exit) = run_cmd(\@link_cmd, $link_out, $link_err);
@@ -259,6 +272,11 @@ for my $case (@cases) {
       print join(' ', @link_cmd), "\n";
       print slurp_file($link_err);
       exit(-1);
+   }
+
+   if (@{$meta->{expectmap}}) {
+      my $map_text = slurp_file($map_path);
+      require_substrings($map_text, $meta->{expectmap}, 'map', $case, $map_path);
    }
 
    my $sim_out = File::Spec->catfile($tmp, 'sim.out');

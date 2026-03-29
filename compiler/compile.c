@@ -168,6 +168,8 @@ static const char *find_mem_modifier_name(const ASTNode *modifiers);
 static const ASTNode *find_mem_modifier_node(const ASTNode *modifiers);
 static bool mem_decl_is_zeropage(const ASTNode *mem_decl);
 static bool modifiers_imply_zeropage(const ASTNode *modifiers);
+static bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers);
+static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment);
 static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
 static bool has_modifier(ASTNode *node, const char *modifier);
@@ -2068,6 +2070,25 @@ static bool mem_decl_is_zeropage(const ASTNode *mem_decl) {
 
 static bool modifiers_imply_zeropage(const ASTNode *modifiers) {
    return mem_decl_is_zeropage(find_mem_modifier_node(modifiers));
+}
+
+static bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers) {
+   return find_mem_modifier_name(modifiers) != NULL && !modifiers_imply_zeropage(modifiers);
+}
+
+static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment) {
+   const char *memname = find_mem_modifier_name(modifiers);
+
+   if (!buf || bufsize == 0) {
+      return;
+   }
+
+   if (modifiers_imply_named_nonzeropage(modifiers) && memname && *memname) {
+      snprintf(buf, bufsize, "%s.%s", base_segment, memname);
+   }
+   else {
+      snprintf(buf, bufsize, "%s", base_segment);
+   }
 }
 
 static int get_size(const char *type) {
@@ -6943,17 +6964,33 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          return;
       }
       if (is_empty(expression)) {
-         sink = entry->is_zeropage ? &es_zp : &es_bss;
+         if (entry->is_zeropage) {
+            sink = &es_zp;
+         }
+         else {
+            char segbuf[256];
+            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+            sink = &es_bss;
+            emit(sink, ".segment \"%s\"\n", segbuf);
+         }
          emit(sink, "%s:\n", sym);
-         emit(sink, "	.res %d\n", size);
+         emit(sink, "\t.res %d\n", size);
          return;
       }
 
-      sink = has_modifier(modifiers, "const") ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
+      if (modifiers_imply_named_nonzeropage(modifiers)) {
+         char segbuf[256];
+         sink = &es_data;
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
+         emit(sink, ".segment \"%s\"\n", segbuf);
+      }
+      else {
+         sink = has_modifier(modifiers, "const") ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
+      }
       emit(sink, "%s:\n", sym);
       if (!emit_global_initializer(sink, type, declarator, expression, size)) {
          warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-         emit(sink, "	.res %d\n", size);
+         emit(sink, "\t.res %d\n", size);
       }
       return;
    }
@@ -8059,6 +8096,9 @@ static void compile_global_decl_item(ASTNode *node) {
          emit(&es_zp, "\t.res %d\n", size);
       }
       else {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+         emit(&es_bss, ".segment \"%s\"\n", segbuf);
          emit(&es_bss, "_%s:\n", name);
          emit(&es_bss, "\t.res %d\n", size);
       }
@@ -8068,9 +8108,18 @@ static void compile_global_decl_item(ASTNode *node) {
    uexpr = (ASTNode *) unwrap_expr_node(expression);
 
    if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
-      EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
-      emit(es, "_%s:\n", name);
-      emit_sink_append(es, &init_es);
+      if (modifiers_imply_named_nonzeropage(modifiers)) {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
+         emit(&es_data, ".segment \"%s\"\n", segbuf);
+         emit(&es_data, "_%s:\n", name);
+         emit_sink_append(&es_data, &init_es);
+      }
+      else {
+         EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
+         emit(es, "_%s:\n", name);
+         emit_sink_append(es, &init_es);
+      }
       return;
    }
 
@@ -8079,6 +8128,9 @@ static void compile_global_decl_item(ASTNode *node) {
       emit(&es_zp, "\t.res %d\n", size);
    }
    else {
+      char segbuf[256];
+      build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+      emit(&es_bss, ".segment \"%s\"\n", segbuf);
       emit(&es_bss, "_%s:\n", name);
       emit(&es_bss, "\t.res %d\n", size);
    }

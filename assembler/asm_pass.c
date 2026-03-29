@@ -274,15 +274,26 @@ static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name,
    ctx->imports = p;
 }
 
+static int segment_name_matches(const char *name, const char *base)
+{
+   size_t n;
+
+   if (!name || !base)
+      return 0;
+
+   n = strlen(base);
+   return strncasecmp(name, base, n) == 0 && (name[n] == '\0' || name[n] == '.');
+}
+
 static int segment_name_to_o65(const char *name)
 {
-   if (!name || !strcasecmp(name, DEFAULT_SEGMENT_NAME) || !strcasecmp(name, "TEXT") || !strcasecmp(name, "CODE"))
+   if (!name || !strcasecmp(name, DEFAULT_SEGMENT_NAME) || segment_name_matches(name, "TEXT") || segment_name_matches(name, "CODE") || segment_name_matches(name, "RODATA"))
       return O65_SEG_TEXT;
-   if (!strcasecmp(name, "DATA"))
+   if (segment_name_matches(name, "DATA"))
       return O65_SEG_DATA;
-   if (!strcasecmp(name, "BSS"))
+   if (segment_name_matches(name, "BSS"))
       return O65_SEG_BSS;
-   if (!strcasecmp(name, "ZP") || !strcasecmp(name, "ZEROPAGE") || !strcasecmp(name, "ZERO"))
+   if (segment_name_matches(name, "ZP") || segment_name_matches(name, "ZEROPAGE") || segment_name_matches(name, "ZERO"))
       return O65_SEG_ZP;
    return O65_SEG_TEXT;
 }

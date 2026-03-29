@@ -6,12 +6,9 @@
 
 .import _main
 
-.import __data_load_start
-.import __data_run_start
-.import __data_size
-.import __bss_start
-.import __bss_end
-.import __bss_size
+.import __copy_table
+.import __zero_table
+.import __stack_start
 .import __init_table
 
 .include "../nlib.inc"
@@ -26,131 +23,164 @@ __reset:
    ldx #$ff
    txs
 
-   ; _nl_ptr0 = __data_load_start
-   lda #<__data_load_start
-   sta _nl_ptr0
-   lda #>__data_load_start
-   sta _nl_ptr0+1
+   ; ptr0 = __copy_table
+   lda #<__copy_table
+   sta ptr0
+   lda #>__copy_table
+   sta ptr0+1
 
-   ; _nl_ptr1 = __data_run_start
-   lda #<__data_run_start
-   sta _nl_ptr1
-   lda #>__data_run_start
-   sta _nl_ptr1+1
-
-   ; _nl_ptr2 = __data_size
-   lda #<__data_size
-   sta _nl_ptr2
-   lda #>__data_size
-   sta _nl_ptr2+1
-
-_copy_data:
-   lda _nl_ptr2
-   ora _nl_ptr2+1
-   beq _clear_bss_setup
-
+_copy_record:
    ldy #0
-   lda (_nl_ptr0),y
-   sta (_nl_ptr1),y
+   lda (ptr0),y
+   sta ptr1
+   iny
+   lda (ptr0),y
+   sta ptr1+1
+   iny
+   lda (ptr0),y
+   sta ptr2
+   iny
+   lda (ptr0),y
+   sta ptr2+1
+   iny
+   lda (ptr0),y
+   sta arg0
+   iny
+   lda (ptr0),y
+   sta arg0+1
+   lda arg0
+   ora arg0+1
+   beq _zero_setup
 
-   inc _nl_ptr0
-   bne _copy_data_dst
-   inc _nl_ptr0+1
+_copy_loop:
+   ldy #0
+   lda (ptr1),y
+   sta (ptr2),y
 
-_copy_data_dst:
-   inc _nl_ptr1
-   bne _copy_data_count
-   inc _nl_ptr1+1
+   inc ptr1
+   bne _copy_dst
+   inc ptr1+1
 
-_copy_data_count:
-   lda _nl_ptr2
-   bne _copy_data_dec_lo
-   dec _nl_ptr2+1
-_copy_data_dec_lo:
-   dec _nl_ptr2
-   jmp _copy_data
+_copy_dst:
+   inc ptr2
+   bne _copy_count
+   inc ptr2+1
 
-_clear_bss_setup:
-   ; _nl_ptr1 = __bss_start
-   lda #<__bss_start
-   sta _nl_ptr1
-   lda #>__bss_start
-   sta _nl_ptr1+1
+_copy_count:
+   lda arg0
+   bne _copy_dec_lo
+   dec arg0+1
+_copy_dec_lo:
+   dec arg0
+   lda arg0
+   ora arg0+1
+   bne _copy_loop
 
-   ; _nl_ptr2 = __bss_size
-   lda #<__bss_size
-   sta _nl_ptr2
-   lda #>__bss_size
-   sta _nl_ptr2+1
+   clc
+   lda ptr0
+   adc #6
+   sta ptr0
+   bcc _copy_record
+   inc ptr0+1
+   jmp _copy_record
 
-_clear_bss:
-   lda _nl_ptr2
-   ora _nl_ptr2+1
+_zero_setup:
+   ; ptr0 = __zero_table
+   lda #<__zero_table
+   sta ptr0
+   lda #>__zero_table
+   sta ptr0+1
+
+_zero_record:
+   ldy #0
+   lda (ptr0),y
+   sta ptr1
+   iny
+   lda (ptr0),y
+   sta ptr1+1
+   iny
+   lda (ptr0),y
+   sta arg0
+   iny
+   lda (ptr0),y
+   sta arg0+1
+   lda arg0
+   ora arg0+1
    beq _start_init
 
+_zero_loop:
    ldy #0
    lda #0
-   sta (_nl_ptr1),y
+   sta (ptr1),y
 
-   inc _nl_ptr1
-   bne _clear_bss_count
-   inc _nl_ptr1+1
+   inc ptr1
+   bne _zero_count
+   inc ptr1+1
 
-_clear_bss_count:
-   lda _nl_ptr2
-   bne _clear_bss_dec_lo
-   dec _nl_ptr2+1
-_clear_bss_dec_lo:
-   dec _nl_ptr2
-   jmp _clear_bss
+_zero_count:
+   lda arg0
+   bne _zero_dec_lo
+   dec arg0+1
+_zero_dec_lo:
+   dec arg0
+   lda arg0
+   ora arg0+1
+   bne _zero_loop
+
+   clc
+   lda ptr0
+   adc #4
+   sta ptr0
+   bcc _zero_record
+   inc ptr0+1
+   jmp _zero_record
 
 _start_init:
-   ; argument stack grows upward, so start it immediately after BSS
-   lda #<__bss_end
-   sta _nl_sp
-   sta _nl_fp
-   lda #>__bss_end
-   sta _nl_sp+1
-   sta _nl_fp+1
+   ; argument stack grows upward from linker-selected stack start
+   lda #<__stack_start
+   sta sp
+   sta fp
+   lda #>__stack_start
+   sta sp+1
+   sta fp+1
 
    lda #<__init_table
-   sta _nl_ptr0
+   sta ptr0
    lda #>__init_table
-   sta _nl_ptr0+1
+   sta ptr0+1
 
 _call_init_loop:
    ldy #0
-   lda (_nl_ptr0),y
-   sta _nl_ptr1
+   lda (ptr0),y
+   sta ptr1
    iny
-   lda (_nl_ptr0),y
-   sta _nl_ptr1+1
-   lda _nl_ptr1
-   ora _nl_ptr1+1
+   lda (ptr0),y
+   sta ptr1+1
+   lda ptr1
+   ora ptr1+1
    beq _start_main
-   lda _nl_ptr0
+   lda ptr0
    pha
-   lda _nl_ptr0+1
+   lda ptr0+1
    pha
    jsr _call_init_trampoline
    pla
-   sta _nl_ptr0+1
+   sta ptr0+1
    pla
-   sta _nl_ptr0
+   sta ptr0
    clc
-   lda _nl_ptr0
+   lda ptr0
    adc #2
-   sta _nl_ptr0
+   sta ptr0
    bcc _call_init_loop
-   inc _nl_ptr0+1
+   inc ptr0+1
    jmp _call_init_loop
 
 _call_init_trampoline:
-   jmp (_nl_ptr1)
+   jmp (ptr1)
 
 _start_main:
    jsr _main
 
 _forever:
    jmp _forever
-

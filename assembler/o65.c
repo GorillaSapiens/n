@@ -122,15 +122,26 @@ static int str_ieq(const char *a, const char *b)
    return *a == '\0' && *b == '\0';
 }
 
+static int segment_name_matches(const char *name, const char *base)
+{
+   size_t n;
+
+   if (!name || !base)
+      return 0;
+
+   n = strlen(base);
+   return strncasecmp(name, base, n) == 0 && (name[n] == '\0' || name[n] == '.');
+}
+
 static int segment_name_to_o65(const char *name)
 {
-   if (!name || str_ieq(name, "__default__") || str_ieq(name, "TEXT") || str_ieq(name, "CODE"))
+   if (!name || str_ieq(name, "__default__") || segment_name_matches(name, "TEXT") || segment_name_matches(name, "CODE") || segment_name_matches(name, "RODATA"))
       return O65_SEG_TEXT;
-   if (str_ieq(name, "DATA"))
+   if (segment_name_matches(name, "DATA"))
       return O65_SEG_DATA;
-   if (str_ieq(name, "BSS"))
+   if (segment_name_matches(name, "BSS"))
       return O65_SEG_BSS;
-   if (str_ieq(name, "ZP") || str_ieq(name, "ZEROPAGE") || str_ieq(name, "ZERO"))
+   if (segment_name_matches(name, "ZP") || segment_name_matches(name, "ZEROPAGE") || segment_name_matches(name, "ZERO"))
       return O65_SEG_ZP;
    return O65_SEG_TEXT;
 }
@@ -999,6 +1010,30 @@ static int write_exports(FILE *fp, const o65_export_t *e)
    return 1;
 }
 
+static int write_layouts(FILE *fp, const o65_segment_layout_t *layout)
+{
+   unsigned int count = 0;
+   const o65_segment_layout_t *p;
+
+   for (p = layout; p; p = p->next)
+      count++;
+
+   if (count > 0xFFFFu) {
+      fprintf(stderr, "too many segment layouts for current o65 writer\n");
+      return 0;
+   }
+
+   if (!write_u16(fp, (unsigned short)count))
+      return 0;
+
+   for (; layout; layout = layout->next) {
+      if (!write_cstr(fp, layout->name) || !write_u8(fp, layout->segid) || !write_u16(fp, layout->packed_base) || !write_u16(fp, layout->used_size))
+         return 0;
+   }
+
+   return 1;
+}
+
 static void free_layouts(o65_segment_layout_t *layout)
 {
    while (layout) {
@@ -1077,7 +1112,8 @@ int o65_write_object_file(FILE *fp, asm_context_t *ctx)
        !write_undefs(fp, wr.undefs) ||
        !write_reloc_table(fp, wr.text.relocs) ||
        !write_reloc_table(fp, wr.data.relocs) ||
-       !write_exports(fp, wr.exports)) {
+       !write_exports(fp, wr.exports) ||
+       !write_layouts(fp, wr.layouts)) {
       fprintf(stderr, "failed writing o65 object contents\n");
       goto fail;
    }

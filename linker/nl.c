@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
 #define NAR_MAGIC "NAR65\0\1"
@@ -55,6 +56,15 @@ typedef struct {
 } symbol_t;
 
 typedef struct {
+   char *name;
+   uint8_t segid;
+   uint16_t packed_base;
+   uint16_t size;
+   uint16_t load_addr;
+   uint16_t run_addr;
+} object_layout_t;
+
+typedef struct {
    uint32_t offset;
    uint8_t type;
    uint8_t segid;
@@ -84,6 +94,8 @@ typedef struct {
    size_t undef_count;
    symbol_t *exports;
    size_t export_count;
+   object_layout_t *layouts;
+   size_t layout_count;
    uint16_t place_text_load;
    uint16_t place_data_load;
    uint16_t place_data_run;
@@ -138,6 +150,25 @@ typedef struct {
 } global_symbol_t;
 
 typedef struct {
+   char name[MAX_NAME];
+   uint16_t cur;
+   uint32_t end;
+} memory_cursor_t;
+
+typedef struct {
+   char *name;
+   uint16_t load_addr;
+   uint16_t run_addr;
+   uint16_t size;
+} copy_record_t;
+
+typedef struct {
+   char *name;
+   uint16_t run_addr;
+   uint16_t size;
+} zero_record_t;
+
+typedef struct {
    uint16_t code_load_cur;
    uint16_t data_load_cur;
    uint16_t data_run_cur;
@@ -156,6 +187,17 @@ typedef struct {
    uint16_t bss_size;
    uint16_t init_table_addr;
    uint16_t init_table_size;
+   uint16_t copy_table_addr;
+   uint16_t copy_table_size;
+   uint16_t zero_table_addr;
+   uint16_t zero_table_size;
+   uint16_t stack_start;
+   memory_cursor_t *cursors;
+   size_t cursor_count;
+   copy_record_t *copy_records;
+   size_t copy_record_count;
+   zero_record_t *zero_records;
+   size_t zero_record_count;
    global_symbol_t *globals;
    size_t global_count;
 } layout_t;
@@ -646,6 +688,22 @@ static int parse_exports(reader_t *r, symbol_t **out, size_t *count_out)
    return 1;
 }
 
+static int parse_layouts(reader_t *r, object_layout_t **out, size_t *count_out)
+{
+   size_t i;
+   uint16_t count = rd_u16(r);
+   object_layout_t *items = (object_layout_t *)xcalloc(count, sizeof(*items));
+   for (i = 0; i < count; ++i) {
+      items[i].name = rd_cstr(r);
+      items[i].segid = rd_u8(r);
+      items[i].packed_base = rd_u16(r);
+      items[i].size = rd_u16(r);
+   }
+   *out = items;
+   *count_out = count;
+   return 1;
+}
+
 static int parse_undefs(reader_t *r, char ***out, size_t *count_out)
 {
    size_t i;
@@ -658,10 +716,27 @@ static int parse_undefs(reader_t *r, char ***out, size_t *count_out)
    return 1;
 }
 
+static void free_exports_array(symbol_t *items, size_t count)
+{
+   size_t i;
+   for (i = 0; i < count; ++i)
+      free(items[i].name);
+   free(items);
+}
+
+static void free_layout_array(object_layout_t *items, size_t count)
+{
+   size_t i;
+   for (i = 0; i < count; ++i)
+      free(items[i].name);
+   free(items);
+}
+
 static int try_parse_tail(const uint8_t *tail, size_t tail_size,
    reloc_t **text_relocs, size_t *text_reloc_count,
    reloc_t **data_relocs, size_t *data_reloc_count,
    symbol_t **exports, size_t *export_count,
+   object_layout_t **layouts, size_t *layout_count,
    char ***undefs, size_t *undef_count,
    const char *label)
 {
@@ -674,29 +749,85 @@ static int try_parse_tail(const uint8_t *tail, size_t tail_size,
 
    if (parse_reloc_table_old(&r, text_relocs, text_reloc_count) &&
          parse_reloc_table_old(&r, data_relocs, data_reloc_count) &&
-         parse_exports(&r, exports, export_count) &&
-         r.pos == r.size)
-      return 1;
+         parse_exports(&r, exports, export_count)) {
+      if (r.pos == r.size)
+         return 1;
+      if (parse_layouts(&r, layouts, layout_count) && r.pos == r.size)
+         return 1;
+   }
 
    free(*text_relocs); *text_relocs = NULL; *text_reloc_count = 0;
    free(*data_relocs); *data_relocs = NULL; *data_reloc_count = 0;
-   {
-      size_t i;
-      for (i = 0; i < *export_count; ++i)
-         free((*exports)[i].name);
-      free(*exports);
-      *exports = NULL;
-      *export_count = 0;
-   }
+   free_exports_array(*exports, *export_count); *exports = NULL; *export_count = 0;
+   free_layout_array(*layouts, *layout_count); *layouts = NULL; *layout_count = 0;
 
    r.pos = save;
    if (parse_reloc_table_old(&r, data_relocs, data_reloc_count) &&
          parse_reloc_table_old(&r, text_relocs, text_reloc_count) &&
-         parse_exports(&r, exports, export_count) &&
-         r.pos == r.size)
-      return 1;
+         parse_exports(&r, exports, export_count)) {
+      if (r.pos == r.size)
+         return 1;
+      if (parse_layouts(&r, layouts, layout_count) && r.pos == r.size)
+         return 1;
+   }
 
+   free(*text_relocs); *text_relocs = NULL; *text_reloc_count = 0;
+   free(*data_relocs); *data_relocs = NULL; *data_reloc_count = 0;
+   free_exports_array(*exports, *export_count); *exports = NULL; *export_count = 0;
+   free_layout_array(*layouts, *layout_count); *layouts = NULL; *layout_count = 0;
    return 0;
+}
+
+static void synthesize_default_layouts(object_file_t *obj)
+{
+   size_t count = 0;
+   object_layout_t *items;
+
+   if (obj->layout_count > 0)
+      return;
+
+   if (obj->text.length > 0)
+      count++;
+   if (obj->data.length > 0)
+      count++;
+   if (obj->blen > 0)
+      count++;
+   if (obj->zlen > 0)
+      count++;
+
+   items = (object_layout_t *)xcalloc(count ? count : 1, sizeof(*items));
+   count = 0;
+   if (obj->text.length > 0) {
+      items[count].name = xstrdup("CODE");
+      items[count].segid = O65_SEG_TEXT;
+      items[count].packed_base = 0;
+      items[count].size = (uint16_t)obj->text.length;
+      count++;
+   }
+   if (obj->data.length > 0) {
+      items[count].name = xstrdup("DATA");
+      items[count].segid = O65_SEG_DATA;
+      items[count].packed_base = 0;
+      items[count].size = (uint16_t)obj->data.length;
+      count++;
+   }
+   if (obj->blen > 0) {
+      items[count].name = xstrdup("BSS");
+      items[count].segid = O65_SEG_BSS;
+      items[count].packed_base = 0;
+      items[count].size = obj->blen;
+      count++;
+   }
+   if (obj->zlen > 0) {
+      items[count].name = xstrdup("ZEROPAGE");
+      items[count].segid = O65_SEG_ZP;
+      items[count].packed_base = 0;
+      items[count].size = obj->zlen;
+      count++;
+   }
+
+   obj->layouts = items;
+   obj->layout_count = count;
 }
 
 static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data, size_t size, const char *label)
@@ -713,6 +844,8 @@ static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data
    size_t text_reloc_count = 0;
    reloc_t *data_relocs = NULL;
    size_t data_reloc_count = 0;
+   object_layout_t *layouts = NULL;
+   size_t layout_count = 0;
 
    memset(obj, 0, sizeof(*obj));
    snprintf(obj->origin, sizeof(obj->origin), "%s", label);
@@ -756,6 +889,7 @@ static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data
          &text_relocs, &text_reloc_count,
          &data_relocs, &data_reloc_count,
          &exports, &export_count,
+         &layouts, &layout_count,
          &undefs, &undef_count,
          label)) {
       fprintf(stderr, "nl: failed to parse o65 relocation/export tail in '%s' (header ended at 0x%zx)\n", label, header_end);
@@ -770,6 +904,9 @@ static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data
    obj->undef_count = undef_count;
    obj->exports = exports;
    obj->export_count = export_count;
+   obj->layouts = layouts;
+   obj->layout_count = layout_count;
+   synthesize_default_layouts(obj);
 }
 
 static void load_archive(const char *path, archive_file_t *archive)
@@ -1044,17 +1181,10 @@ static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_
 
 static void add_generated_symbols(layout_t *layout)
 {
-   add_global(layout, "__data_load_start", layout->data_load_start, O65_SEG_ABS, "<linker>");
-   add_global(layout, "__data_load_end", (uint16_t)(layout->data_load_start + layout->data_load_size), O65_SEG_ABS, "<linker>");
-   add_global(layout, "__data_run_start", layout->data_run_start, O65_SEG_ABS, "<linker>");
-   add_global(layout, "__data_run_end", (uint16_t)(layout->data_run_start + layout->data_run_size), O65_SEG_ABS, "<linker>");
-   add_global(layout, "__data_size", layout->data_run_size, O65_SEG_ABS, "<linker>");
-
-   add_global(layout, "__bss_start", layout->bss_start, O65_SEG_ABS, "<linker>");
-   add_global(layout, "__bss_end", (uint16_t)(layout->bss_start + layout->bss_size), O65_SEG_ABS, "<linker>");
-   add_global(layout, "__bss_size", layout->bss_size, O65_SEG_ABS, "<linker>");
-
+   add_global(layout, "__copy_table", layout->copy_table_addr, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__zero_table", layout->zero_table_addr, O65_SEG_ABS, "<linker>");
    add_global(layout, "__init_table", layout->init_table_addr, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__stack_start", layout->stack_start, O65_SEG_ABS, "<linker>");
 }
 
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
@@ -1097,130 +1227,222 @@ static size_t count_init_functions_in_input(const input_set_t *in)
    return count;
 }
 
+static int segment_name_matches_prefix(const char *name, const char *prefix)
+{
+   size_t n;
+
+   if (!name || !prefix)
+      return 0;
+
+   n = strlen(prefix);
+   return strncasecmp(name, prefix, n) == 0 && (name[n] == '\0' || name[n] == '.');
+}
+
+static const char *segment_name_suffix(const char *name)
+{
+   const char *dot;
+
+   if (!name)
+      return NULL;
+   dot = strchr(name, '.');
+   return (dot && dot[1]) ? dot + 1 : NULL;
+}
+
+static const char *rule_run_region_name(const segment_rule_t *rule)
+{
+   if (!rule)
+      return NULL;
+   return rule->run_name[0] ? rule->run_name : rule->load_name;
+}
+
+static memory_cursor_t *ensure_cursor(layout_t *layout, const linker_config_t *cfg, const char *mem_name)
+{
+   size_t i;
+   const memory_region_t *mem;
+
+   for (i = 0; i < layout->cursor_count; ++i) {
+      if (str_ieq(layout->cursors[i].name, mem_name))
+         return &layout->cursors[i];
+   }
+
+   mem = find_memory(cfg, mem_name);
+   if (!mem) {
+      fprintf(stderr, "nl: MEMORY region '%s' not found\n", mem_name);
+      exit(1);
+   }
+
+   layout->cursors = (memory_cursor_t *)xrealloc(layout->cursors,
+      (layout->cursor_count + 1) * sizeof(*layout->cursors));
+   memset(&layout->cursors[layout->cursor_count], 0, sizeof(*layout->cursors));
+   snprintf(layout->cursors[layout->cursor_count].name, sizeof(layout->cursors[layout->cursor_count].name), "%s", mem->name);
+   layout->cursors[layout->cursor_count].cur = mem->start;
+   layout->cursors[layout->cursor_count].end = (uint32_t)mem->start + (uint32_t)mem->size;
+   return &layout->cursors[layout->cursor_count++];
+}
+
+static uint16_t alloc_from_region(layout_t *layout, const linker_config_t *cfg, const char *mem_name,
+   uint16_t size, const char *what, const char *origin)
+{
+   memory_cursor_t *cursor = ensure_cursor(layout, cfg, mem_name);
+   uint32_t addr = cursor->cur;
+   uint32_t end = addr + size;
+
+   if (end > 0x10000u || end > cursor->end || (str_ieq(mem_name, "ROM") && end > 0xFFFAu)) {
+      fprintf(stderr, "nl: %s overflow while placing %s from %s in %s\n", mem_name, what, origin, mem_name);
+      exit(1);
+   }
+
+   cursor->cur = (uint16_t)end;
+   return (uint16_t)addr;
+}
+
+static void add_copy_record(layout_t *layout, const char *name, uint16_t load_addr, uint16_t run_addr, uint16_t size)
+{
+   if (size == 0)
+      return;
+   layout->copy_records = (copy_record_t *)xrealloc(layout->copy_records,
+      (layout->copy_record_count + 1) * sizeof(*layout->copy_records));
+   layout->copy_records[layout->copy_record_count].name = xstrdup(name ? name : "DATA");
+   layout->copy_records[layout->copy_record_count].load_addr = load_addr;
+   layout->copy_records[layout->copy_record_count].run_addr = run_addr;
+   layout->copy_records[layout->copy_record_count].size = size;
+   layout->copy_record_count++;
+}
+
+static void add_zero_record(layout_t *layout, const char *name, uint16_t run_addr, uint16_t size)
+{
+   if (size == 0)
+      return;
+   layout->zero_records = (zero_record_t *)xrealloc(layout->zero_records,
+      (layout->zero_record_count + 1) * sizeof(*layout->zero_records));
+   layout->zero_records[layout->zero_record_count].name = xstrdup(name ? name : "BSS");
+   layout->zero_records[layout->zero_record_count].run_addr = run_addr;
+   layout->zero_records[layout->zero_record_count].size = size;
+   layout->zero_record_count++;
+}
+
+static const object_layout_t *find_layout_for_value(const object_file_t *obj, uint8_t segid, uint16_t packed_value)
+{
+   const object_layout_t *fallback = NULL;
+   size_t i;
+
+   for (i = 0; i < obj->layout_count; ++i) {
+      const object_layout_t *lay = &obj->layouts[i];
+      uint32_t start = lay->packed_base;
+      uint32_t end = (uint32_t)lay->packed_base + lay->size;
+
+      if (lay->segid != segid)
+         continue;
+      if (packed_value >= start && packed_value < end)
+         return lay;
+      if (packed_value == end)
+         fallback = lay;
+   }
+
+   return fallback;
+}
+
+static uint16_t object_runtime_addr_for_value(const object_file_t *obj, uint8_t segid, uint16_t packed_value)
+{
+   const object_layout_t *lay;
+   uint16_t base;
+
+   if (segid == O65_SEG_ABS)
+      return packed_value;
+
+   lay = find_layout_for_value(obj, segid, packed_value);
+   if (!lay) {
+      fprintf(stderr, "nl: could not map packed value $%04X in %s for segment %u\n", packed_value, obj->origin, (unsigned)segid);
+      exit(1);
+   }
+
+   base = (segid == O65_SEG_TEXT) ? lay->load_addr : lay->run_addr;
+   return (uint16_t)(base + (packed_value - lay->packed_base));
+}
+
 static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t *layout)
 {
    const segment_rule_t *code = find_segment_rule(cfg, "CODE");
    const segment_rule_t *data = find_segment_rule(cfg, "DATA");
    const segment_rule_t *bss = find_segment_rule(cfg, "BSS");
    const segment_rule_t *zp = find_segment_rule(cfg, "ZEROPAGE");
-   const memory_region_t *code_mem = code ? find_memory(cfg, code->load_name) : NULL;
-   const memory_region_t *data_load_mem = data ? find_memory(cfg, data->load_name) : NULL;
-   const memory_region_t *data_run_mem = data && data->run_name[0] ? find_memory(cfg, data->run_name) : NULL;
-   const memory_region_t *bss_run_mem = bss ? find_memory(cfg, bss->load_name) : NULL;
-   const memory_region_t *zp_run_mem = zp && zp->run_name[0] ? find_memory(cfg, zp->run_name) : NULL;
-   int shared_rom;
-   int shared_ram;
-   uint32_t code_load_limit;
-   uint32_t data_load_limit;
-   uint32_t data_run_limit;
-   uint32_t bss_run_limit;
-   uint32_t zp_run_limit;
+   const char *code_load_name = code ? code->load_name : NULL;
+   const char *data_load_name = data ? data->load_name : NULL;
+   const char *data_run_name = rule_run_region_name(data);
+   const char *bss_run_name = rule_run_region_name(bss);
+   const char *zp_run_name = rule_run_region_name(zp);
    size_t i, j;
 
-   if (!code_mem || !data_load_mem || !data_run_mem || !bss_run_mem || !zp_run_mem) {
+   if (!code_load_name || !data_load_name || !data_run_name || !bss_run_name || !zp_run_name) {
       fprintf(stderr, "nl: config must define CODE, DATA, BSS, and ZEROPAGE segments with valid MEMORY targets\n");
       exit(1);
    }
 
-   shared_rom = code_mem == data_load_mem;
-   shared_ram = data_run_mem == bss_run_mem;
-   code_load_limit = (uint32_t)code_mem->start + code_mem->size;
-   data_load_limit = (uint32_t)data_load_mem->start + data_load_mem->size;
-   data_run_limit = (uint32_t)data_run_mem->start + data_run_mem->size;
-   bss_run_limit = (uint32_t)bss_run_mem->start + bss_run_mem->size;
-   zp_run_limit = (uint32_t)zp_run_mem->start + zp_run_mem->size;
-
    memset(layout, 0, sizeof(*layout));
-   layout->code_load_cur = code_mem->start;
-   layout->code_load_end = (uint16_t)(code_mem->start + code_mem->size);
-   layout->data_load_cur = data_load_mem->start;
-   layout->data_load_end = (uint16_t)(data_load_mem->start + data_load_mem->size);
-   layout->data_run_cur = data_run_mem->start;
-   layout->data_run_end = (uint16_t)(data_run_mem->start + data_run_mem->size);
-   layout->bss_run_cur = bss_run_mem->start;
-   layout->bss_run_end = (uint16_t)(bss_run_mem->start + bss_run_mem->size);
-   layout->zp_run_cur = zp_run_mem->start;
-   layout->zp_run_end = (uint16_t)(zp_run_mem->start + zp_run_mem->size);
-   layout->data_load_start = 0;
-   layout->data_load_size = 0;
-   layout->data_run_start = layout->data_run_cur;
-   layout->data_run_size = 0;
-   layout->bss_start = layout->bss_run_cur;
-   layout->bss_size = 0;
-   layout->init_table_addr = 0;
-   layout->init_table_size = 0;
+   (void)ensure_cursor(layout, cfg, code_load_name);
+   (void)ensure_cursor(layout, cfg, data_load_name);
+   (void)ensure_cursor(layout, cfg, data_run_name);
+   (void)ensure_cursor(layout, cfg, bss_run_name);
+   (void)ensure_cursor(layout, cfg, zp_run_name);
 
    for (i = 0; i < in->object_count; ++i) {
       object_file_t *obj = &in->objects[i];
-      obj->place_text_load = layout->code_load_cur;
-      if ((uint32_t)obj->place_text_load + obj->text.length > 0xFFFAu ||
-          (uint32_t)obj->place_text_load + obj->text.length > code_load_limit) {
-         fprintf(stderr, "nl: ROM overflow while placing text from %s\n", obj->origin);
-         exit(1);
+      obj->place_text_load = alloc_from_region(layout, cfg, code_load_name, (uint16_t)obj->text.length, "text", obj->origin);
+      obj->place_data_load = alloc_from_region(layout, cfg, data_load_name, (uint16_t)obj->data.length, "data load image", obj->origin);
+
+      for (j = 0; j < obj->layout_count; ++j) {
+         object_layout_t *lay = &obj->layouts[j];
+         const char *suffix = segment_name_suffix(lay->name);
+
+         lay->load_addr = 0;
+         lay->run_addr = 0;
+
+         switch (lay->segid) {
+            case O65_SEG_TEXT:
+               lay->load_addr = (uint16_t)(obj->place_text_load + lay->packed_base);
+               lay->run_addr = lay->load_addr;
+               break;
+
+            case O65_SEG_DATA: {
+               const char *run_name = (suffix && segment_name_matches_prefix(lay->name, "DATA")) ? suffix : data_run_name;
+               lay->load_addr = (uint16_t)(obj->place_data_load + lay->packed_base);
+               lay->run_addr = alloc_from_region(layout, cfg, run_name, lay->size, lay->name, obj->origin);
+               add_copy_record(layout, lay->name, lay->load_addr, lay->run_addr, lay->size);
+               break;
+            }
+
+            case O65_SEG_BSS: {
+               const char *run_name = (suffix && segment_name_matches_prefix(lay->name, "BSS")) ? suffix : bss_run_name;
+               lay->run_addr = alloc_from_region(layout, cfg, run_name, lay->size, lay->name, obj->origin);
+               add_zero_record(layout, lay->name, lay->run_addr, lay->size);
+               break;
+            }
+
+            case O65_SEG_ZP: {
+               const char *run_name = (suffix && (segment_name_matches_prefix(lay->name, "ZEROPAGE") || segment_name_matches_prefix(lay->name, "ZP") || segment_name_matches_prefix(lay->name, "ZERO"))) ? suffix : zp_run_name;
+               lay->run_addr = alloc_from_region(layout, cfg, run_name, lay->size, lay->name, obj->origin);
+               break;
+            }
+         }
       }
-      layout->code_load_cur = (uint16_t)(layout->code_load_cur + obj->text.length);
    }
 
-   if (shared_rom) {
-      layout->data_load_cur = layout->code_load_cur;
-   }
-   layout->data_load_start = layout->data_load_cur;
-
-   for (i = 0; i < in->object_count; ++i) {
-      object_file_t *obj = &in->objects[i];
-      obj->place_data_load = layout->data_load_cur;
-      if ((uint32_t)obj->place_data_load + obj->data.length > 0xFFFAu ||
-          (uint32_t)obj->place_data_load + obj->data.length > data_load_limit) {
-         fprintf(stderr, "nl: ROM overflow while placing data load image from %s\n", obj->origin);
-         exit(1);
-      }
-      layout->data_load_cur = (uint16_t)(layout->data_load_cur + obj->data.length);
-
-      obj->place_data_run = layout->data_run_cur;
-      if ((uint32_t)obj->place_data_run + obj->data.length > data_run_limit) {
-         fprintf(stderr, "nl: RAM overflow while placing DATA run image from %s\n", obj->origin);
-         exit(1);
-      }
-      layout->data_run_cur = (uint16_t)(layout->data_run_cur + obj->data.length);
-      layout->data_run_size = (uint16_t)(layout->data_run_size + obj->data.length);
-   }
-
-   if (shared_ram && layout->bss_run_cur < layout->data_run_cur) {
-      layout->bss_run_cur = layout->data_run_cur;
-   }
-   layout->bss_start = layout->bss_run_cur;
-   layout->data_load_size = (uint16_t)(layout->data_load_cur - layout->data_load_start);
-
-   for (i = 0; i < in->object_count; ++i) {
-      object_file_t *obj = &in->objects[i];
-      obj->place_bss_run = layout->bss_run_cur;
-      if ((uint32_t)obj->place_bss_run + obj->blen > bss_run_limit) {
-         fprintf(stderr, "nl: RAM overflow while placing BSS from %s\n", obj->origin);
-         exit(1);
-      }
-      layout->bss_run_cur = (uint16_t)(layout->bss_run_cur + obj->blen);
-      layout->bss_size = (uint16_t)(layout->bss_size + obj->blen);
-
-      obj->place_zp_run = layout->zp_run_cur;
-      if ((uint32_t)obj->place_zp_run + obj->zlen > zp_run_limit) {
-         fprintf(stderr, "nl: ZP overflow while placing ZEROPAGE from %s\n", obj->origin);
-         exit(1);
-      }
-      layout->zp_run_cur = (uint16_t)(layout->zp_run_cur + obj->zlen);
-   }
-
+   layout->copy_table_addr = alloc_from_region(layout, cfg, data_load_name,
+      (uint16_t)((layout->copy_record_count + 1) * 6), "__copy_table", "<linker>");
+   layout->zero_table_addr = alloc_from_region(layout, cfg, data_load_name,
+      (uint16_t)((layout->zero_record_count + 1) * 4), "__zero_table", "<linker>");
    {
       size_t init_count = count_init_functions_in_input(in);
-      size_t init_table_size = (init_count + 1) * 2;
+      layout->init_table_addr = alloc_from_region(layout, cfg, data_load_name,
+         (uint16_t)((init_count + 1) * 2), "__init_table", "<linker>");
+      layout->init_table_size = (uint16_t)((init_count + 1) * 2);
+   }
+   layout->copy_table_size = (uint16_t)((layout->copy_record_count + 1) * 6);
+   layout->zero_table_size = (uint16_t)((layout->zero_record_count + 1) * 4);
 
-      layout->init_table_addr = layout->data_load_cur;
-      layout->init_table_size = (uint16_t)init_table_size;
-      if ((uint32_t)layout->init_table_addr + init_table_size > 0xFFFAu ||
-          (uint32_t)layout->init_table_addr + init_table_size > data_load_limit) {
-         fprintf(stderr, "nl: ROM overflow while placing __init_table\n");
-         exit(1);
-      }
-      layout->data_load_cur = (uint16_t)(layout->data_load_cur + init_table_size);
+   {
+      memory_cursor_t *stack_cursor = ensure_cursor(layout, cfg, data_run_name);
+      layout->stack_start = stack_cursor->cur;
    }
 
    for (i = 0; i < in->object_count; ++i) {
@@ -1228,14 +1450,10 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
       for (j = 0; j < obj->export_count; ++j) {
          uint16_t addr;
 
-         switch (obj->exports[j].segid) {
-            case O65_SEG_TEXT: addr = (uint16_t)(obj->place_text_load + obj->exports[j].value); break;
-            case O65_SEG_DATA: addr = (uint16_t)(obj->place_data_run + obj->exports[j].value); break;
-            case O65_SEG_BSS:  addr = (uint16_t)(obj->place_bss_run + obj->exports[j].value); break;
-            case O65_SEG_ZP:   addr = (uint16_t)(obj->place_zp_run + obj->exports[j].value); break;
-            case O65_SEG_ABS:  addr = obj->exports[j].value; break;
-            default: continue;
-         }
+         if (obj->exports[j].segid == O65_SEG_ABS)
+            addr = obj->exports[j].value;
+         else
+            addr = object_runtime_addr_for_value(obj, obj->exports[j].segid, obj->exports[j].value);
          add_global(layout, obj->exports[j].name, addr, obj->exports[j].segid, obj->origin);
       }
    }
@@ -1260,19 +1478,6 @@ static void patch_u16(uint8_t *buf, size_t len, uint32_t off, uint16_t v, const 
    buf[off + 1] = (uint8_t)((v >> 8) & 0xFFu);
 }
 
-static uint16_t segment_base_runtime(const object_file_t *obj, uint8_t segid, const layout_t *layout)
-{
-   (void)layout;
-   switch (segid) {
-      case O65_SEG_TEXT: return obj->place_text_load;
-      case O65_SEG_DATA: return obj->place_data_run;
-      case O65_SEG_BSS:  return obj->place_bss_run;
-      case O65_SEG_ZP:   return obj->place_zp_run;
-      case O65_SEG_ABS:  return 0;
-      default:           return 0;
-   }
-}
-
 static void apply_segment_relocs(object_file_t *obj, o65_segment_t *seg, const layout_t *layout, const char *seg_name)
 {
    size_t i;
@@ -1290,8 +1495,10 @@ static void apply_segment_relocs(object_file_t *obj, o65_segment_t *seg, const l
          }
          target = lookup_global_addr(layout, obj->undefs[r->undef_index]);
       } else {
-         target = (uint16_t)(segment_base_runtime(obj, r->segid, layout) +
-            ((r->type == O65_RTYPE_WORD) ? (uint16_t)(seg->data[r->offset] | (seg->data[r->offset + 1] << 8)) : seg->data[r->offset]));
+         current_word = (r->type == O65_RTYPE_WORD)
+            ? (uint16_t)(seg->data[r->offset] | (seg->data[r->offset + 1] << 8))
+            : seg->data[r->offset];
+         target = object_runtime_addr_for_value(obj, r->segid, current_word);
       }
 
       switch (r->type) {
@@ -1358,6 +1565,38 @@ static void build_init_table_image(const input_set_t *in, const layout_t *layout
    }
 }
 
+static void build_copy_table_image(const layout_t *layout, uint8_t *table)
+{
+   size_t i;
+   size_t out = 0;
+
+   memset(table, 0, layout->copy_table_size);
+   for (i = 0; i < layout->copy_record_count; ++i) {
+      const copy_record_t *rec = &layout->copy_records[i];
+      table[out++] = (uint8_t)(rec->load_addr & 0xFFu);
+      table[out++] = (uint8_t)((rec->load_addr >> 8) & 0xFFu);
+      table[out++] = (uint8_t)(rec->run_addr & 0xFFu);
+      table[out++] = (uint8_t)((rec->run_addr >> 8) & 0xFFu);
+      table[out++] = (uint8_t)(rec->size & 0xFFu);
+      table[out++] = (uint8_t)((rec->size >> 8) & 0xFFu);
+   }
+}
+
+static void build_zero_table_image(const layout_t *layout, uint8_t *table)
+{
+   size_t i;
+   size_t out = 0;
+
+   memset(table, 0, layout->zero_table_size);
+   for (i = 0; i < layout->zero_record_count; ++i) {
+      const zero_record_t *rec = &layout->zero_records[i];
+      table[out++] = (uint8_t)(rec->run_addr & 0xFFu);
+      table[out++] = (uint8_t)((rec->run_addr >> 8) & 0xFFu);
+      table[out++] = (uint8_t)(rec->size & 0xFFu);
+      table[out++] = (uint8_t)((rec->size >> 8) & 0xFFu);
+   }
+}
+
 static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const layout_t *layout, uint8_t *image, uint8_t *used)
 {
    const memory_region_t *rom = find_memory(cfg, "ROM");
@@ -1375,6 +1614,20 @@ static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const l
          in->objects[i].text.length, in->objects[i].origin);
       image_write(image, used, in->objects[i].place_data_load, in->objects[i].data.data,
          in->objects[i].data.length, in->objects[i].origin);
+   }
+
+   if (layout->copy_table_size > 0) {
+      uint8_t *table = (uint8_t *)xmalloc(layout->copy_table_size);
+      build_copy_table_image(layout, table);
+      image_write(image, used, layout->copy_table_addr, table, layout->copy_table_size, "<linker:__copy_table>");
+      free(table);
+   }
+
+   if (layout->zero_table_size > 0) {
+      uint8_t *table = (uint8_t *)xmalloc(layout->zero_table_size);
+      build_zero_table_image(layout, table);
+      image_write(image, used, layout->zero_table_addr, table, layout->zero_table_size, "<linker:__zero_table>");
+      free(table);
    }
 
    if (layout->init_table_size > 0) {
@@ -1472,17 +1725,27 @@ static void write_map_file(const char *path, const linker_config_t *cfg, const i
    fprintf(fp, "\nOBJECTS\n");
    for (i = 0; i < in->object_count; ++i) {
       const object_file_t *o = &in->objects[i];
-      fprintf(fp,
-         "  %s\n"
-         "     TEXT load=$%04X size=$%04zX\n"
-         "     DATA load=$%04X run =$%04X size=$%04zX\n"
-         "     BSS  run =$%04X size=$%04X\n"
-         "     ZP   run =$%04X size=$%04X\n",
-         o->origin, o->place_text_load, o->text.length,
-         o->place_data_load, o->place_data_run, o->data.length,
-         o->place_bss_run, o->blen,
-         o->place_zp_run, o->zlen);
+      size_t j;
+      fprintf(fp, "  %s\n", o->origin);
+      for (j = 0; j < o->layout_count; ++j) {
+         const object_layout_t *lay = &o->layouts[j];
+         if (lay->segid == O65_SEG_TEXT) {
+            fprintf(fp, "     %-16s load=$%04X size=$%04X\n", lay->name, lay->load_addr, lay->size);
+         }
+         else if (lay->segid == O65_SEG_DATA) {
+            fprintf(fp, "     %-16s load=$%04X run=$%04X size=$%04X\n", lay->name, lay->load_addr, lay->run_addr, lay->size);
+         }
+         else {
+            fprintf(fp, "     %-16s run=$%04X size=$%04X\n", lay->name, lay->run_addr, lay->size);
+         }
+      }
    }
+
+   fprintf(fp, "\nTABLES\n");
+   fprintf(fp, "  __copy_table  $%04X size=$%04X\n", layout->copy_table_addr, layout->copy_table_size);
+   fprintf(fp, "  __zero_table  $%04X size=$%04X\n", layout->zero_table_addr, layout->zero_table_size);
+   fprintf(fp, "  __init_table  $%04X size=$%04X\n", layout->init_table_addr, layout->init_table_size);
+   fprintf(fp, "  __stack_start $%04X\n", layout->stack_start);
 
    fprintf(fp, "\nSYMBOLS\n");
    for (i = 0; i < layout->global_count; ++i) {
@@ -1506,6 +1769,9 @@ static void free_object(object_file_t *obj)
    for (i = 0; i < obj->export_count; ++i)
       free(obj->exports[i].name);
    free(obj->exports);
+   for (i = 0; i < obj->layout_count; ++i)
+      free(obj->layouts[i].name);
+   free(obj->layouts);
 }
 
 int main(int argc, char **argv)
@@ -1612,6 +1878,13 @@ int main(int argc, char **argv)
    for (i = 0; i < layout.global_count; ++i)
       free(layout.globals[i].name);
    free(layout.globals);
+   for (i = 0; i < layout.copy_record_count; ++i)
+      free(layout.copy_records[i].name);
+   free(layout.copy_records);
+   for (i = 0; i < layout.zero_record_count; ++i)
+      free(layout.zero_records[i].name);
+   free(layout.zero_records);
+   free(layout.cursors);
 
    return 0;
 }
