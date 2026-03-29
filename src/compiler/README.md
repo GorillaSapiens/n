@@ -6,7 +6,7 @@ N is a mostly C-like systems language aimed at small targets, especially 8-bit m
 
 - Assignment uses `:=` instead of `=`.
 - Braces are required on `if`, `else`, loops, and similar statements. There is no dangling-`else` ambiguity.
-- Included files behave like `pragma once` automatically.
+- Included files behave like `pragma once` automatically. Include-file identity is currently based on an MD5 of file contents, so duplicate content is only compiled once.
 - There are no built-in integer or float type names. Types are declared explicitly.
 - Struct and union names become types directly. There is no separate `typedef struct foo foo;` dance.
 - Functions can return any value type supported by the compiler, including arrays.
@@ -266,7 +266,7 @@ Instead:
 - the callee owns a symbol-backed storage slot for that parameter
 - the caller evaluates the argument and writes it directly into that storage before `jsr`
 
-This matches the advertised "static parameter" model.
+This matches the advertised "static parameter" model. Because that storage is owned by the callee rather than the call frame, `static` parameters should be treated as re-entrancy-hostile unless the programmer arranges external protection. Recursive or interrupt-driven re-entry can overwrite the shared parameter slots.
 
 ### Zeropage-backed parameters
 
