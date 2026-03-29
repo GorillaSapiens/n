@@ -171,16 +171,20 @@ static int decode_utf8(const char *s, int *codepoint) {
 
 static int fromhex(int len, const char *p) {
    int ret = 0;
+   const char *op = p;
    for (int i = 0; i < len; i++) {
       ret <<= 4;
-      if (*p <= '9') {
+      if (*p >= '0' && *p <= '9') {
          ret |= (*p - '0');
       }
-      else if (*p <= 'F') {
+      else if (*p >= 'A' && *p <= 'F') {
          ret |= (*p - 'A' + 10);
       }
-      else if (*p <= 'f') {
+      else if (*p >= 'a' && *p <= 'f') {
          ret |= (*p - 'a' + 10);
+      }
+      else {
+         warning("malformed hex '%s'\n", op);
       }
       p++;
    }

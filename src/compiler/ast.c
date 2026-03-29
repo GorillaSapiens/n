@@ -85,7 +85,7 @@ ASTNode *increment_integer_leaf(ASTNode *node) {
    n++;
    free((void *)node->strval);
    node->strval = (char *) malloc(24);
-   sprintf((char *)node->strval, "%ld", n);
+   sprintf((char *)node->strval, "%lu", n);
    return node;
 }
 
@@ -179,8 +179,6 @@ void dump_ast_flat(const ASTNode *node,
                    int is_last,
                    const char *parent_name) {
     if (!node) return;
-
-    parent_name = NULL;
 
     // Print current node
     if (!parent_name ||

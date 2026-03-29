@@ -60,7 +60,7 @@ static char *unquote_string(const char *s)
 
    n = strlen(s);
    if (n >= 2 && s[0] == '"' && s[n - 1] == '"') {
-      out = (char *)malloc(n - 1);
+      out = (char *)malloc(n - 2 + 1);
       if (!out) {
          fprintf(stderr, "out of memory\n");
          exit(1);
