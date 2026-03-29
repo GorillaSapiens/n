@@ -37,7 +37,7 @@ int lookup_xray(const char *name) {
    if (!strcmp(name, "list")) {
       // special code to list defined xrays
       printf("%19s   %s\n", "name", "description");
-      for (int i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
+      for (size_t i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
          printf("(%3d)%14s   %s\n",
             name2number[i].number,
             name2number[i].name,
@@ -46,7 +46,7 @@ int lookup_xray(const char *name) {
       xray_exit(0, __FILE__, __LINE__);
    }
 
-   for (int i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
+   for (size_t i = 0; i < sizeof(name2number) / sizeof(name2number[0]); i++) {
       if (!strcmp(name2number[i].name, name)) {
          return name2number[i].number;
       }

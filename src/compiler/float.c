@@ -38,7 +38,7 @@ static Bytes2EBits exponent_bits[] = {
 };
 
 static int ebits(int size) {
-   for (int i = 0;
+   for (size_t i = 0;
         i < sizeof(exponent_bits) /
             sizeof(exponent_bits[0]);
         i++) {
@@ -124,6 +124,7 @@ int make_be_float(const char *p, unsigned char *target, int size) {
 }
 
 void negate_be_float(unsigned char *target, int size) {
+   (void) size; // unused parameter
    target[0] |= 0x80;
 }
 

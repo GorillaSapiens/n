@@ -77,8 +77,7 @@ static const char *replacements[] = {
 };
 
 static void do_replacements(char *s) {
-   int i;
-   for (i = 0; i < sizeof(replacements) / sizeof(replacements[0]); i += 2) {
+   for (size_t i = 0; i < sizeof(replacements) / sizeof(replacements[0]); i += 2) {
       replace_in_place(s, replacements[i], replacements[i+1]);
    }
 }

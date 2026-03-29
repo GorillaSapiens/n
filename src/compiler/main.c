@@ -85,10 +85,11 @@ struct {
 
 #define NOPTS (sizeof(options) / sizeof(options[0]))
 
-static void opt_help(char *) {
+static void opt_help(char *unused) {
+   (void) unused; // unused parameter
    printf("Usage: %s <flags> <filename>\n", arg0);
    printf("   flags:\n");
-   for (int i = 0; i < NOPTS; i++) {
+   for (size_t i = 0; i < NOPTS; i++) {
       if (options[i].arg_name) {
          printf("   -%c/--%s\t<%s>\t%s\n",
             options[i].short_char,
@@ -119,7 +120,7 @@ int main(int argc, char** argv) {
       if (argv[0][0] == '-') {
          bool matched = false;
 
-         for (int i = 0; i < NOPTS; i++) {
+         for (size_t i = 0; i < NOPTS; i++) {
             if ((argv[0][1] == '-' && !strcmp(options[i].long_name, argv[0] + 2)) ||
                 (argv[0][1] == options[i].short_char)) {
                char *arg = NULL;

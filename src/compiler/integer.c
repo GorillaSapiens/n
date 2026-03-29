@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "messages.h"
 #include "xray.h"
 
 static long long parse_binary(const char *p) {
@@ -54,6 +55,7 @@ static int c2n(char c) {
 
 static int make_le_helper(const char *p, int bpc,
                           unsigned char *target, int size) {
+   const char *op = p;
    int len = strlen(p);
    int n = 0;
    int o = 0;
@@ -66,6 +68,11 @@ static int make_le_helper(const char *p, int bpc,
       o += bpc;
       if (o >= 8) {
          target[n++] = a;
+         if (n >= size) {
+            warning("integer '%s' is too big for %d bytes!", op, size);
+            // TODO FIX should this be an error?
+            return size;
+         }
          o -= 8;
          a >>= 8;
       }
@@ -73,6 +80,11 @@ static int make_le_helper(const char *p, int bpc,
    }
    if (a) {
       target[n++] = a;
+      if (n >= size) {
+         warning("integer '%s' is too big for %d bytes!", op, size);
+            // TODO FIX should this be an error?
+         return size;
+      }
    }
    return n;
 }
@@ -93,6 +105,7 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
    int i;
    int max = 1;
    int carry;
+   const char *op = p;
 
    while (*p) {
       carry = 0;
@@ -103,6 +116,11 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
       }
       if (carry) {
          target[max++] = carry;
+         if (max >= size) {
+            warning("integer '%s' is too big for %d bytes!", op, size);
+            // TODO FIX should this be an error?
+            return size;
+         }
       }
 
       carry = target[0] + *p - '0';
@@ -117,6 +135,11 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
       }
       if (carry) {
          target[max++] = carry;
+         if (max >= size) {
+            warning("integer '%s' is too big for %d bytes!", op, size);
+            // TODO FIX should this be an error?
+            return size;
+         }
       }
       p++;
    }

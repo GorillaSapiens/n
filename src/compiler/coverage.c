@@ -13,7 +13,7 @@ static unsigned char visited[sizeof(coverage_map)] = { 0 };
 void coverage_report(void) {
    int missing = 0;
    bool begin = false;
-   for (int i = 0; i < sizeof(coverage_map); i++) {
+   for (size_t i = 0; i < sizeof(coverage_map); i++) {
       if (visited[i] != coverage_map[i]) {
          for (int j = 0; j < 8; j++) {
             unsigned char k = 1 << j;

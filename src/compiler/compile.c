@@ -6727,7 +6727,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
-   //debug("%s:%s", __FUNCTION__, node->children[0]->strval);
+   //debug("%s:%s", __func__, node->children[0]->strval);
    bool haveSize = false;
    int size = -1;
    bool haveEndian = false;
@@ -6796,7 +6796,7 @@ static void compile_struct_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
    debug("========================================\n");
    parse_dump_node(node);
    debug("========================================\n");
@@ -6806,7 +6806,7 @@ static void compile_union_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __FUNCTION__);
+   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
    debug("========================================\n");
    parse_dump_node(node);
    debug("========================================\n");
