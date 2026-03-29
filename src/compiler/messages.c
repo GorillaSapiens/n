@@ -87,9 +87,24 @@ static void yymessage(const char *preamble, const char *fmt, va_list args) {
    va_copy(args_copy, args);
 
    int size = 1 + vsnprintf(NULL, 0, fmt, args);
-   size *= 2; // allow space for expansion
    char *str = (char *) malloc(sizeof(char) * size);
    vsnprintf(str, size, fmt, args_copy);
+
+   // compute a max size as current size PLUS the length of the right
+   // hand side of any left hand thing we find. in reality, actual size
+   // will be less because left hand size is nonzero length. BUT we want
+   // to overguess because not all matched left sides get replaced (e.g.
+   // strings occurring inside identifier names)
+   for (char *p = str; *p; p++) {
+      for (size_t i = 0; i < sizeof(replacements) / sizeof(replacements[0]); i += 2) {
+         size_t len_l = strlen(replacements[i]);
+         size_t len_r = strlen(replacements[i + 1]);
+         if (!strncmp(p, replacements[i], len_l)) {
+            size += len_r;
+         }
+      }
+   }
+   str = realloc(str, size);
 
    do_replacements(str);
 
