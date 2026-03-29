@@ -4,10 +4,13 @@ use strict;
 use warnings;
 use File::Temp qw(tempfile);
 
+my $FAIL = "\e[31mFAIL\e[0m";
+my $pass = "\e[32mpass\e[0m";
+
 foreach my $file (`ls *.n`) {
    $file =~ s/[\x0a\x0d]//g;
 
-   open(my $fh, '<', $file) or die "[FAIL] could not open $file: $!\n";
+   open(my $fh, '<', $file) or die "[$FAIL] could not open $file: $!\n";
    my @lines = <$fh>;
    close($fh);
 
@@ -15,11 +18,11 @@ foreach my $file (`ls *.n`) {
    $runner =~ s/[\x0a\x0d]//g;
 
    if (!($runner =~ /\/\/ nc/)) {
-      print "[FAIL] $file missing runner\n";
+      print "[$FAIL] $file missing runner\n";
       exit -1;
    }
    elsif ($runner =~ /[;`]/ || $runner =~ /\.\./) {
-      print "[FAIL] $file hey! no sneaky shell shenanigans !!!\n";
+      print "[$FAIL] $file hey! no sneaky shell shenanigans !!!\n";
       exit -1;
    }
 
@@ -52,26 +55,26 @@ foreach my $file (`ls *.n`) {
 
    if ($expectfail) {
       if ($exit_code == 0) {
-         print "[FAIL] $file expected failure but exited 0\n";
+         print "[$FAIL] $file expected failure but exited 0\n";
          print "$runner\n";
          exit(-1);
       }
    }
    elsif ($exit_code != 0) {
-      print "[FAIL] $file exit code $exit_code\n";
+      print "[$FAIL] $file exit code $exit_code\n";
       print "$runner\n";
       exit(-1);
    }
 
    if (@expectasm) {
-      open(my $out, '<', $outfile) or die "[FAIL] could not read $outfile: $!\n";
+      open(my $out, '<', $outfile) or die "[$FAIL] could not read $outfile: $!\n";
       local $/;
       my $asm = <$out>;
       close($out);
 
       for my $needle (@expectasm) {
          if (index($asm, $needle) < 0) {
-            print "[FAIL] $file missing assembly fragment: $needle\n";
+            print "[$FAIL] $file missing assembly fragment: $needle\n";
             print "$runner\n";
             exit(-1);
          }
@@ -79,19 +82,19 @@ foreach my $file (`ls *.n`) {
    }
 
    if (@expecterr) {
-      open(my $err, '<', $errfile) or die "[FAIL] could not read $errfile: $!\n";
+      open(my $err, '<', $errfile) or die "[$FAIL] could not read $errfile: $!\n";
       local $/;
       my $stderr = <$err>;
       close($err);
 
       for my $needle (@expecterr) {
          if (index($stderr, $needle) < 0) {
-            print "[FAIL] $file missing error fragment: $needle\n";
+            print "[$FAIL] $file missing error fragment: $needle\n";
             print "$runner\n";
             exit(-1);
          }
       }
    }
 
-   print "[pass] $file\n";
+   print "[$pass] $file\n";
 }
