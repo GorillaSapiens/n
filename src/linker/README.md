@@ -29,6 +29,7 @@ Examples:
 - pulls in only objects that satisfy required symbols or later unresolved imports
 - warns when a command-line `.o65` file is not used
 - warns when a command-line `.a65` archive is completely unused
+- collects selected `__init`/`__init_*` functions into a linker-generated null-terminated `__init_table`
 - lays out `TEXT`, `DATA`, `BSS`, and `ZEROPAGE`
 - resolves imports against exports
 - writes Intel HEX output
@@ -59,8 +60,9 @@ Vector order is the normal 6502 order:
 - `__bss_start`
 - `__bss_end`
 - `__bss_size`
+- `__init_table`
 
-These are intended for startup code.
+These are intended for startup code. `__init_table` points at a null-terminated table of 16-bit function addresses collected from selected object files that export `__init` or `__init_*`.
 
 Typical usage:
 - copy initialized writable data from ROM at `__data_load_start` to RAM at `__data_run_start`

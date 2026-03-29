@@ -71,6 +71,8 @@ typedef struct {
    size_t reloc_count;
 } o65_segment_t;
 
+typedef struct archive_member_s archive_member_t;
+
 typedef struct {
    char origin[MAX_PATH];
    uint16_t mode;
@@ -90,15 +92,16 @@ typedef struct {
    int selected_from_archive;
    int selected;
    int from_cmdline;
+   archive_member_t *archive_member;
 } object_file_t;
 
-typedef struct {
+struct archive_member_s {
    char member_name[MAX_NAME];
    uint8_t *data;
    size_t size;
    int selected;
    object_file_t obj;
-} archive_member_t;
+};
 
 typedef struct {
    char path[MAX_PATH];
@@ -151,6 +154,8 @@ typedef struct {
    uint16_t data_run_size;
    uint16_t bss_start;
    uint16_t bss_size;
+   uint16_t init_table_addr;
+   uint16_t init_table_size;
    global_symbol_t *globals;
    size_t global_count;
 } layout_t;
@@ -812,6 +817,7 @@ static void load_archive(const char *path, archive_file_t *archive)
       snprintf(member_label, sizeof(member_label), "%s(%s)", path, m->member_name);
       parse_o65_object_from_memory(&m->obj, m->data, m->size, member_label);
       m->obj.selected_from_archive = 1;
+      m->obj.archive_member = m;
    }
 
    free(buf);
@@ -851,6 +857,11 @@ static int symbol_in_list(char **items, size_t count, const char *name)
          return 1;
    }
    return 0;
+}
+
+static int symbol_is_init_function(const char *name)
+{
+   return strcmp(name, "__init") == 0 || strncmp(name, "__init_", 7) == 0;
 }
 
 static void add_unique_string(char ***items, size_t *count, const char *name)
@@ -951,6 +962,8 @@ static void include_object(input_set_t *in, object_file_t *obj)
    if (obj->selected)
       return;
    obj->selected = 1;
+   if (obj->archive_member)
+      obj->archive_member->selected = 1;
    in->objects = (object_file_t *)xrealloc(in->objects,
       (in->object_count + 1) * sizeof(*in->objects));
    in->objects[in->object_count++] = *obj;
@@ -997,7 +1010,7 @@ static void warn_unused_cmdline_objects(const input_set_t *in)
       size_t m;
       int any_selected = 0;
       for (m = 0; m < arc->member_count; ++m) {
-         if (arc->members[m].selected) {
+         if (arc->members[m].selected || arc->members[m].obj.selected) {
             any_selected = 1;
             break;
          }
@@ -1037,6 +1050,8 @@ static void add_generated_symbols(layout_t *layout)
    add_global(layout, "__bss_start", layout->bss_start, O65_SEG_ABS, "<linker>");
    add_global(layout, "__bss_end", (uint16_t)(layout->bss_start + layout->bss_size), O65_SEG_ABS, "<linker>");
    add_global(layout, "__bss_size", layout->bss_size, O65_SEG_ABS, "<linker>");
+
+   add_global(layout, "__init_table", layout->init_table_addr, O65_SEG_ABS, "<linker>");
 }
 
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
@@ -1061,6 +1076,22 @@ static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
 
    fprintf(stderr, "nl: unresolved symbol '%s'\n", name);
    exit(1);
+}
+
+static size_t count_init_functions_in_input(const input_set_t *in)
+{
+   size_t i, j;
+   size_t count = 0;
+
+   for (i = 0; i < in->object_count; ++i) {
+      const object_file_t *obj = &in->objects[i];
+      for (j = 0; j < obj->export_count; ++j) {
+         if (symbol_is_init_function(obj->exports[j].name))
+            count++;
+      }
+   }
+
+   return count;
 }
 
 static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t *layout)
@@ -1113,6 +1144,8 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    layout->data_run_size = 0;
    layout->bss_start = layout->bss_run_cur;
    layout->bss_size = 0;
+   layout->init_table_addr = 0;
+   layout->init_table_size = 0;
 
    for (i = 0; i < in->object_count; ++i) {
       object_file_t *obj = &in->objects[i];
@@ -1171,6 +1204,20 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
          exit(1);
       }
       layout->zp_run_cur = (uint16_t)(layout->zp_run_cur + obj->zlen);
+   }
+
+   {
+      size_t init_count = count_init_functions_in_input(in);
+      size_t init_table_size = (init_count + 1) * 2;
+
+      layout->init_table_addr = layout->data_load_cur;
+      layout->init_table_size = (uint16_t)init_table_size;
+      if ((uint32_t)layout->init_table_addr + init_table_size > 0xFFFAu ||
+          (uint32_t)layout->init_table_addr + init_table_size > data_load_limit) {
+         fprintf(stderr, "nl: ROM overflow while placing __init_table\n");
+         exit(1);
+      }
+      layout->data_load_cur = (uint16_t)(layout->data_load_cur + init_table_size);
    }
 
    for (i = 0; i < in->object_count; ++i) {
@@ -1287,6 +1334,27 @@ static void image_write(uint8_t *image, uint8_t *used, uint16_t addr, const uint
    }
 }
 
+static void build_init_table_image(const input_set_t *in, const layout_t *layout, uint8_t *table)
+{
+   size_t i, j;
+   size_t out = 0;
+
+   memset(table, 0, layout->init_table_size);
+
+   for (i = 0; i < in->object_count; ++i) {
+      const object_file_t *obj = &in->objects[i];
+      for (j = 0; j < obj->export_count; ++j) {
+         uint16_t addr;
+
+         if (!symbol_is_init_function(obj->exports[j].name))
+            continue;
+         addr = lookup_global_addr(layout, obj->exports[j].name);
+         table[out++] = (uint8_t)(addr & 0xFFu);
+         table[out++] = (uint8_t)((addr >> 8) & 0xFFu);
+      }
+   }
+}
+
 static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const layout_t *layout, uint8_t *image, uint8_t *used)
 {
    const memory_region_t *rom = find_memory(cfg, "ROM");
@@ -1304,6 +1372,13 @@ static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const l
          in->objects[i].text.length, in->objects[i].origin);
       image_write(image, used, in->objects[i].place_data_load, in->objects[i].data.data,
          in->objects[i].data.length, in->objects[i].origin);
+   }
+
+   if (layout->init_table_size > 0) {
+      uint8_t *table = (uint8_t *)xmalloc(layout->init_table_size);
+      build_init_table_image(in, layout, table);
+      image_write(image, used, layout->init_table_addr, table, layout->init_table_size, "<linker:__init_table>");
+      free(table);
    }
 
    reset = lookup_global_addr(layout, "__reset");
