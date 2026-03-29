@@ -198,7 +198,7 @@ for my $case (@cases) {
 
    my $asm_out = File::Spec->catfile($tmp, 'main_asm.out');
    my $asm_err = File::Spec->catfile($tmp, 'main_asm.err');
-   my @asm_cmd = ($n65asm, '-i', $main_s, '-I', $nlib_inc, '--o65');
+   my @asm_cmd = ($n65asm, '-I', $nlib_inc, '-o', $main_o65, $main_s);
    my ($asm_exit) = run_cmd(\@asm_cmd, $asm_out, $asm_err);
    if ($asm_exit != 0) {
       print "[$FAIL] $case assembler exit code $asm_exit\n";
@@ -223,7 +223,7 @@ for my $case (@cases) {
          print slurp_file($err_path);
          exit(-1);
       }
-      my @acmd = ($n65asm, '-i', $s_path, '-I', $nlib_inc, '--o65');
+      my @acmd = ($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
       my ($aexit) = run_cmd(\@acmd, File::Spec->catfile($tmp, "$stem.asm.out"), File::Spec->catfile($tmp, "$stem.asm.err"));
       if ($aexit != 0) {
          print "[$FAIL] $case extra object assemble exit code $aexit\n";
@@ -248,7 +248,7 @@ for my $case (@cases) {
          print slurp_file(File::Spec->catfile($tmp, "$stem.compile.err"));
          exit(-1);
       }
-      my @acmd = ($n65asm, '-i', $s_path, '-I', $nlib_inc, '--o65');
+      my @acmd = ($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
       my ($aexit) = run_cmd(\@acmd, File::Spec->catfile($tmp, "$stem.asm.out"), File::Spec->catfile($tmp, "$stem.asm.err"));
       if ($aexit != 0) {
          print "[$FAIL] $case archive member assemble exit code $aexit\n";

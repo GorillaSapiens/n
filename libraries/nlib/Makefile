@@ -6,7 +6,7 @@ all:
 	mkdir wrk
 	./unbundle.pl
 	cp *.s wrk
-	for each in `ls wrk/*.s`; do echo ===== $$each ; $(ASM) -i $$each --o65; done
+	for each in `ls wrk/*.s`; do stem=`basename $$each .s`; echo ===== $$each ; $(ASM) -o wrk/$$stem.o65 $$each; done
 	$(AR) rcs nlib.a65 wrk/*.o65
 
 clean:

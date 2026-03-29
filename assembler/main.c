@@ -41,22 +41,28 @@ typedef struct
 static void usage(const char *argv0)
 {
    fprintf(stderr,
-      "usage: %s -i <input.s> [-I <dir>] [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]\n"
+      "usage: %s [options] file\n"
       "\n"
       "options:\n"
-      "   -i, --input <file>   input assembly source (required)\n"
-      "   -I <dir>             add directory to include search path\n"
-      "       --hex[=file]    write Intel HEX output\n"
-      "       --lst[=file]    write listing output\n"
-      "       --map[=file]    write map output\n"
-      "       --o65[=file]    write relocatable o65 object output\n"
-      "   -h, --help          show this help\n"
+      "   -o, --output <file>  write relocatable o65 object output\n"
+      "   -I, --include <dir>  add directory to include search path\n"
+      "       --hex[=file]     write Intel HEX output\n"
+      "       --lst[=file]     write listing output\n"
+      "       --map[=file]     write map output\n"
+      "   -i, --input <file>   compatibility alias for positional input file\n"
+      "       --o65[=file]     compatibility alias for object output\n"
+      "   -h, --help           show this help\n"
+      "\n"
+      "notes:\n"
+      "   if no primary output is selected, relocatable o65 output is written to a.out\n"
+      "   use --o65 without a filename to preserve the old derived-name behavior (.o65)\n"
       "\n"
       "examples:\n"
-      "   %s -i prog.s --hex\n"
-      "   %s -i prog.s -I include --hex=prog.hex --lst --map\n"
-      "   %s --input prog.s -I common -I board --lst=custom.lst\n",
-      argv0, argv0, argv0, argv0);
+      "   %s prog.s\n"
+      "   %s -o prog.o65 prog.s\n"
+      "   %s -I include --hex=prog.hex --lst --map prog.s\n"
+      "   %s --input prog.s -I common -I board --o65=prog.o65\n",
+      argv0, argv0, argv0, argv0, argv0);
 }
 
 static char *make_output_path(const char *input_path, const char *ext)
@@ -129,10 +135,13 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 {
    int ch;
    int option_index = 0;
+   const char *positional_input = NULL;
+   bool default_o65_output = false;
 
    static struct option long_options[] = {
       { "input", required_argument, NULL, 'i' },
       { "include", required_argument, NULL, 'I' },
+      { "output", required_argument, NULL, 'o' },
       { "hex",   optional_argument, NULL, 1000 },
       { "lst",   optional_argument, NULL, 1001 },
       { "map",   optional_argument, NULL, 1002 },
@@ -143,18 +152,28 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
    memset(opt, 0, sizeof(*opt));
 
-   while ((ch = getopt_long(argc, argv, "hI:i:", long_options, &option_index)) != -1) {
+   while ((ch = getopt_long(argc, argv, "hI:i:o:", long_options, &option_index)) != -1) {
       switch (ch) {
       case 'h':
          usage(argv[0]);
          exit(0);
 
       case 'i':
+         if (opt->input_path) {
+            fprintf(stderr, "error: input file specified more than once\n");
+            usage(argv[0]);
+            return false;
+         }
          opt->input_path = optarg;
          break;
 
       case 'I':
          add_include_dir(opt, optarg);
+         break;
+
+      case 'o':
+         opt->want_o65 = true;
+         opt->o65_path_arg = optarg;
          break;
 
       case 1000:
@@ -183,16 +202,33 @@ static bool parse_args(int argc, char **argv, options_t *opt)
       }
    }
 
+   while (optind < argc) {
+      if (positional_input) {
+         fprintf(stderr, "error: unexpected positional argument: %s\n", argv[optind]);
+         usage(argv[0]);
+         return false;
+      }
+      positional_input = argv[optind++];
+   }
+
+   if (positional_input) {
+      if (opt->input_path) {
+         fprintf(stderr, "error: input file specified both positionally and with -i/--input\n");
+         usage(argv[0]);
+         return false;
+      }
+      opt->input_path = positional_input;
+   }
+
    if (!opt->input_path) {
       fprintf(stderr, "error: input file is required\n");
       usage(argv[0]);
       return false;
    }
 
-   if (optind != argc) {
-      fprintf(stderr, "error: unexpected positional argument: %s\n", argv[optind]);
-      usage(argv[0]);
-      return false;
+   if (!opt->want_hex && !opt->want_o65) {
+      opt->want_o65 = true;
+      default_o65_output = true;
    }
 
    if (opt->want_hex) {
@@ -219,6 +255,8 @@ static bool parse_args(int argc, char **argv, options_t *opt)
    if (opt->want_o65) {
       if (opt->o65_path_arg)
          opt->o65_path = xstrdup(opt->o65_path_arg);
+      else if (default_o65_output)
+         opt->o65_path = xstrdup("a.out");
       else
          opt->o65_path = make_output_path(opt->input_path, "o65");
    }
