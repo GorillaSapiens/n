@@ -51,8 +51,15 @@ typedef struct OperatorOverload {
    const ASTNode *node;
 } OperatorOverload;
 
+typedef struct OrdinaryFunction {
+   const char *name;
+   const ASTNode *node;
+} OrdinaryFunction;
+
 static OperatorOverload *operator_overloads = NULL;
 static int operator_overload_count = 0;
+static OrdinaryFunction *ordinary_functions = NULL;
+static int ordinary_function_count = 0;
 
 typedef struct ContextEntry {
    const char *name;
@@ -178,7 +185,9 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
 
 static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
+static bool ordinary_function_name_is_overloaded(const char *name);
 static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize);
+static const ASTNode *resolve_function_designator_target(const char *name, const ASTNode *expected_type, const ASTNode *expected_decl);
 static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc);
 static ASTNode *make_synthetic_incdec_operand(ASTNode *origin);
 static bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre);
@@ -529,10 +538,18 @@ static int integer_promotion_conversion_cost(const ASTNode *actual_type, const A
    if (!actual_type || !formal_type) {
       return -1;
    }
-   if (!declarator_signature_matches(actual_decl, formal_decl)) {
+   if (actual_decl) {
+      if (!declarator_signature_matches(actual_decl, formal_decl)) {
+         return -1;
+      }
+      if (!declarator_is_plain_value(actual_decl)) {
+         return -1;
+      }
+   }
+   else if (!declarator_is_plain_value(formal_decl)) {
       return -1;
    }
-   if (!declarator_is_plain_value(actual_decl) || !declarator_is_plain_value(formal_decl)) {
+   if (!declarator_is_plain_value(formal_decl)) {
       return -1;
    }
    if (!type_is_promotable_integer(actual_type) || !type_is_promotable_integer(formal_type)) {
@@ -566,6 +583,7 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
                                               const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue) {
    const char *pname;
    const char *aname;
+   bool decl_match = false;
    int promo_cost;
 
    if (!ptype || !atype) {
@@ -578,7 +596,14 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
       return -1;
    }
 
-   if (!strcmp(pname, aname) && declarator_signature_matches(adecl, pdecl)) {
+   if (adecl) {
+      decl_match = declarator_signature_matches(adecl, pdecl);
+   }
+   else if (declarator_is_plain_value(pdecl)) {
+      decl_match = true;
+   }
+
+   if (!strcmp(pname, aname) && decl_match) {
       if (pref) {
          return arg_lvalue ? 0 : -1;
       }
@@ -592,6 +617,23 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
    promo_cost = integer_promotion_conversion_cost(atype, adecl, ptype, pdecl);
    if (promo_cost >= 0) {
       return 32 + promo_cost;
+   }
+
+   if (!pref && type_is_promotable_integer(atype) && type_is_promotable_integer(ptype) &&
+       type_size_from_node(atype) == type_size_from_node(ptype) && declarator_is_plain_value(pdecl) &&
+       (!adecl || declarator_is_plain_value(adecl))) {
+      int cost = 96;
+      if (type_is_signed_integer(atype) != type_is_signed_integer(ptype)) {
+         cost += 4;
+      }
+      {
+         const char *actual_endian = type_endian_name(atype);
+         const char *formal_endian = type_endian_name(ptype);
+         if (actual_endian && formal_endian && strcmp(actual_endian, formal_endian)) {
+            cost += 1;
+         }
+      }
+      return cost;
    }
 
    return -1;
@@ -793,6 +835,34 @@ static void append_mangled_text(char *buf, size_t bufsize, const char *text) {
    buf[len] = 0;
 }
 
+static void append_callable_signature_mangle(char *buf, size_t bufsize, const ASTNode *declarator) {
+   const ASTNode *params = declarator_parameter_list(declarator);
+
+   if (params && !is_empty(params)) {
+      for (int i = 0; i < params->count; i++) {
+         const ASTNode *parameter = params->children[i];
+         const ASTNode *ptype;
+         const ASTNode *pdecl;
+         char tmp[64];
+         if (!parameter || parameter_is_void(parameter)) {
+            continue;
+         }
+         ptype = parameter_type(parameter);
+         pdecl = parameter_declarator(parameter);
+         strncat(buf, "__", bufsize - strlen(buf) - 1);
+         append_mangled_text(buf, bufsize, type_name_from_node(ptype));
+         if (parameter_is_ref(parameter)) {
+            strncat(buf, "_r1", bufsize - strlen(buf) - 1);
+         }
+         snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(pdecl), declarator_array_count(pdecl));
+         strncat(buf, tmp, bufsize - strlen(buf) - 1);
+      }
+   }
+   else {
+      strncat(buf, "__void", bufsize - strlen(buf) - 1);
+   }
+}
+
 static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize) {
    const ASTNode *declarator = function_declarator_node(fn);
    const char *name = fallback_name;
@@ -809,7 +879,7 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
       return false;
    }
 
-   if (!is_operator_function_name(name)) {
+   if (!is_operator_function_name(name) && !ordinary_function_name_is_overloaded(name)) {
       snprintf(buf, bufsize, "%s", name);
       return true;
    }
@@ -819,33 +889,7 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
       return true;
    }
 
-   {
-      const ASTNode *params = declarator_parameter_list(declarator);
-      if (params && !is_empty(params)) {
-         for (int i = 0; i < params->count; i++) {
-            const ASTNode *parameter = params->children[i];
-            const ASTNode *ptype;
-            const ASTNode *pdecl;
-            char tmp[64];
-            if (!parameter || parameter_is_void(parameter)) {
-               continue;
-            }
-            ptype = parameter_type(parameter);
-            pdecl = parameter_declarator(parameter);
-            strncat(buf, "__", bufsize - strlen(buf) - 1);
-            append_mangled_text(buf, bufsize, type_name_from_node(ptype));
-            if (parameter_is_ref(parameter)) {
-               strncat(buf, "_r1", bufsize - strlen(buf) - 1);
-            }
-            snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(pdecl), declarator_array_count(pdecl));
-            strncat(buf, tmp, bufsize - strlen(buf) - 1);
-         }
-      }
-      else {
-         strncat(buf, "__void", bufsize - strlen(buf) - 1);
-      }
-   }
-
+   append_callable_signature_mangle(buf, bufsize, declarator);
    return true;
 }
 
@@ -980,27 +1024,221 @@ static const ASTNode *lookup_operator_overload(const char *name, int arg_count, 
    return best;
 }
 
+static bool ordinary_function_name_is_overloaded(const char *name) {
+   int count = 0;
+
+   if (!name) {
+      return false;
+   }
+
+   for (int i = 0; i < ordinary_function_count; i++) {
+      if (strcmp(ordinary_functions[i].name, name)) {
+         continue;
+      }
+      count++;
+      if (count > 1) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+static bool parameter_lists_same_signature(const ASTNode *lhs_params, const ASTNode *rhs_params) {
+   int li = 0;
+   int ri = 0;
+
+   while ((lhs_params && !is_empty(lhs_params) && li < lhs_params->count) ||
+          (rhs_params && !is_empty(rhs_params) && ri < rhs_params->count)) {
+      const ASTNode *lparam = NULL;
+      const ASTNode *rparam = NULL;
+      const char *lname;
+      const char *rname;
+
+      while (lhs_params && !is_empty(lhs_params) && li < lhs_params->count) {
+         lparam = lhs_params->children[li++];
+         if (lparam && !parameter_is_void(lparam) && parameter_type(lparam)) {
+            break;
+         }
+         lparam = NULL;
+      }
+      while (rhs_params && !is_empty(rhs_params) && ri < rhs_params->count) {
+         rparam = rhs_params->children[ri++];
+         if (rparam && !parameter_is_void(rparam) && parameter_type(rparam)) {
+            break;
+         }
+         rparam = NULL;
+      }
+
+      if (!lparam && !rparam) {
+         break;
+      }
+      if (!lparam || !rparam) {
+         return false;
+      }
+      lname = type_name_from_node(parameter_type(lparam));
+      rname = type_name_from_node(parameter_type(rparam));
+      if ((!lname || !rname) && lname != rname) {
+         return false;
+      }
+      if (lname && rname && strcmp(lname, rname)) {
+         return false;
+      }
+      if (parameter_is_ref(lparam) != parameter_is_ref(rparam)) {
+         return false;
+      }
+      if (!declarator_signature_matches(parameter_declarator(lparam), parameter_declarator(rparam))) {
+         return false;
+      }
+   }
+
+   return true;
+}
+
+static int function_designator_match_cost(const ASTNode *fn, const ASTNode *expected_type, const ASTNode *expected_decl) {
+   const ASTNode *fn_decl;
+   const ASTNode *fn_ret_type;
+   const ASTNode *fn_ret_decl;
+   const ASTNode *expected_ret_decl;
+   const char *expected_name;
+   const char *fn_name;
+
+   if (!fn || !expected_type || !expected_decl || !declarator_has_parameter_list(expected_decl)) {
+      return -1;
+   }
+
+   fn_decl = function_declarator_node(fn);
+   fn_ret_type = function_return_type(fn);
+   fn_ret_decl = function_return_declarator_from_callable(fn_decl);
+   expected_ret_decl = function_return_declarator_from_callable(expected_decl);
+   expected_name = type_name_from_node(expected_type);
+   fn_name = type_name_from_node(fn_ret_type);
+
+   if ((!expected_name || !fn_name) && expected_name != fn_name) {
+      return -1;
+   }
+   if (expected_name && fn_name && strcmp(expected_name, fn_name)) {
+      return -1;
+   }
+   if (!declarator_signature_matches(fn_ret_decl, expected_ret_decl)) {
+      return -1;
+   }
+   if (!parameter_lists_same_signature(declarator_parameter_list(fn_decl), declarator_parameter_list(expected_decl))) {
+      return -1;
+   }
+
+   return 0;
+}
+
+static const ASTNode *lookup_ordinary_function_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+   const ASTNode *best = NULL;
+   int best_cost = INT_MAX;
+   bool ambiguous = false;
+   bool saw_name = false;
+
+   for (int i = 0; i < ordinary_function_count; i++) {
+      int cost;
+
+      if (strcmp(ordinary_functions[i].name, name)) {
+         continue;
+      }
+      saw_name = true;
+      cost = function_signature_match_cost(ordinary_functions[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
+      if (cost < 0) {
+         continue;
+      }
+      if (!best || cost < best_cost) {
+         best = ordinary_functions[i].node;
+         best_cost = cost;
+         ambiguous = false;
+      }
+      else if (cost == best_cost) {
+         ambiguous = true;
+      }
+   }
+
+   if (ambiguous && best) {
+      error("ambiguous call to overloaded function '%s'", name);
+   }
+   if (!best && saw_name) {
+      error("no viable overload for function '%s'", name);
+   }
+
+   return best;
+}
+
+static const ASTNode *resolve_function_designator_target(const char *name, const ASTNode *expected_type, const ASTNode *expected_decl) {
+   const ASTNode *best = NULL;
+   const ASTNode *first = NULL;
+   int matches = 0;
+   int total = 0;
+
+   if (!name) {
+      return NULL;
+   }
+
+   for (int i = 0; i < ordinary_function_count; i++) {
+      if (strcmp(ordinary_functions[i].name, name)) {
+         continue;
+      }
+      if (!first) {
+         first = ordinary_functions[i].node;
+      }
+      total++;
+      if (!expected_type || !expected_decl) {
+         continue;
+      }
+      if (function_designator_match_cost(ordinary_functions[i].node, expected_type, expected_decl) >= 0) {
+         best = ordinary_functions[i].node;
+         matches++;
+      }
+   }
+
+   if (total == 0) {
+      return NULL;
+   }
+
+   if (!expected_type || !expected_decl) {
+      if (total == 1) {
+         return first;
+      }
+      error("ambiguous reference to overloaded function '%s'", name);
+   }
+
+   if (matches > 1) {
+      error("ambiguous reference to overloaded function '%s'", name);
+   }
+   if (matches == 1) {
+      return best;
+   }
+   if (total == 1) {
+      return NULL;
+   }
+
+   error("no overload of function '%s' matches the target function pointer type", name);
+   return NULL;
+}
+
 static const ASTNode *resolve_function_call_target(const char *name, ASTNode *args, Context *ctx) {
+   int arg_count = (args && !is_empty(args)) ? args->count : 0;
+   const ASTNode *arg_types[8];
+   const ASTNode *arg_decls[8];
+   bool arg_lvalues[8];
+
+   if (arg_count > (int) (sizeof(arg_types) / sizeof(arg_types[0]))) {
+      return NULL;
+   }
+   for (int i = 0; i < arg_count; i++) {
+      arg_types[i] = expr_value_type(args->children[i], ctx);
+      arg_decls[i] = expr_value_declarator(args->children[i], ctx);
+      arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, args->children[i], NULL);
+   }
+
    if (is_operator_function_name(name)) {
-      int arg_count = (args && !is_empty(args)) ? args->count : 0;
-      const ASTNode *arg_types[8];
-      const ASTNode *arg_decls[8];
-      bool arg_lvalues[8];
-      if (arg_count > (int) (sizeof(arg_types) / sizeof(arg_types[0]))) {
-         return NULL;
-      }
-      for (int i = 0; i < arg_count; i++) {
-         arg_types[i] = expr_value_type(args->children[i], ctx);
-         arg_decls[i] = expr_value_declarator(args->children[i], ctx);
-         arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, args->children[i], NULL);
-      }
       return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
    }
 
-   if (functions) {
-      return (const ASTNode *) set_get(functions, name);
-   }
-   return NULL;
+   return lookup_ordinary_function_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
 }
 
 static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx) {
@@ -2563,7 +2801,8 @@ static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int ne
    copy->handled = declarator->handled;
    copy->kind = declarator->kind;
 
-   copy = append_child(copy, make_integer_leaf(depth_buf));
+   copy = append_child(copy, make_integer_leaf(strdup(depth_buf)));
+   copy->children[0]->name = "pointer";
    if (name) {
       copy = append_child(copy, (ASTNode *) name);
    }
@@ -2605,9 +2844,11 @@ static const ASTNode *function_pointer_declarator_from_callable(const ASTNode *d
    copy->kind = declarator->kind;
 
    snprintf(depth_buf, sizeof(depth_buf), "%d", outer_depth);
-   copy = append_child(copy, make_integer_leaf(depth_buf));
+   copy = append_child(copy, make_integer_leaf(strdup(depth_buf)));
+   copy->children[0]->name = "pointer";
    nested = make_node("declarator", NULL);
-   nested = append_child(nested, make_integer_leaf("1"));
+   nested = append_child(nested, make_integer_leaf(strdup("1")));
+   nested->children[0]->name = "pointer";
    nested = append_child(nested, make_empty_leaf());
    copy = append_child(copy, nested);
    for (int i = 0; i < declarator->count; i++) {
@@ -2645,7 +2886,8 @@ static const ASTNode *function_return_declarator_from_callable(const ASTNode *de
    copy->kind = declarator->kind;
 
    snprintf(depth_buf, sizeof(depth_buf), "%d", outer_depth);
-   copy = append_child(copy, make_integer_leaf(depth_buf));
+   copy = append_child(copy, make_integer_leaf(strdup(depth_buf)));
+   copy->children[0]->name = "pointer";
    copy = append_child(copy, make_empty_leaf());
 
    for (int i = 0; i < declarator->count; i++) {
@@ -4084,7 +4326,14 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             }
          }
          {
-            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            const ASTNode *target_type = NULL;
+            const ASTNode *target_decl = NULL;
+            const ASTNode *fn;
+            if (dst && dst->declarator && declarator_has_parameter_list(dst->declarator) && declarator_function_pointer_depth(dst->declarator) > 0) {
+               target_type = dst->type;
+               target_decl = dst->declarator;
+            }
+            fn = resolve_function_designator_target(ident, target_type, target_decl);
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
@@ -4117,7 +4366,14 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       {
          const char *ident = expr_bare_identifier_name(inner);
          if (ident) {
-            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            const ASTNode *target_type = NULL;
+            const ASTNode *target_decl = NULL;
+            const ASTNode *fn;
+            if (dst && dst->declarator && declarator_has_parameter_list(dst->declarator) && declarator_function_pointer_depth(dst->declarator) > 0) {
+               target_type = dst->type;
+               target_decl = dst->declarator;
+            }
+            fn = resolve_function_designator_target(ident, target_type, target_decl);
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
@@ -4880,8 +5136,26 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return NULL;
    }
 
-   if (expr->kind == AST_INTEGER || expr->kind == AST_FLOAT) {
-      return literal_annotation_type(expr);
+   if (expr->kind == AST_INTEGER) {
+      const ASTNode *annotated = literal_annotation_type(expr);
+      if (annotated) {
+         return annotated;
+      }
+      if (typename_exists("int")) {
+         return required_typename_node("int");
+      }
+      return NULL;
+   }
+
+   if (expr->kind == AST_FLOAT) {
+      const ASTNode *annotated = literal_annotation_type(expr);
+      if (annotated) {
+         return annotated;
+      }
+      if (typename_exists("float")) {
+         return required_typename_node("float");
+      }
+      return NULL;
    }
 
    if (expr->kind == AST_STRING) {
@@ -4905,7 +5179,7 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
             }
          }
          {
-            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            const ASTNode *fn = resolve_function_designator_target(ident, NULL, NULL);
             if (fn) {
                return function_return_type(fn);
             }
@@ -4914,6 +5188,11 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    }
 
    if (expr->count == 1 && !strcmp(expr->name, "&")) {
+      LValueRef lv;
+      ASTNode *inner = (ASTNode *) unwrap_expr_node(expr->children[0]);
+      if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv)) {
+         return lv.type;
+      }
       return required_typename_node("*");
    }
 
@@ -5039,7 +5318,7 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
             }
          }
          {
-            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            const ASTNode *fn = resolve_function_designator_target(ident, NULL, NULL);
             if (fn) {
                return function_pointer_declarator_from_callable(function_declarator_node(fn));
             }
@@ -5051,6 +5330,24 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
          return lv.declarator;
+      }
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "&")) {
+      LValueRef lv;
+      ASTNode *inner = (ASTNode *) unwrap_expr_node(expr->children[0]);
+      if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv) && lv.declarator) {
+         const ASTNode *value_decl = declarator_value_declarator(lv.declarator);
+         int start = declarator_suffix_start_index(value_decl ? value_decl : lv.declarator);
+         return clone_declarator_variant(value_decl ? value_decl : lv.declarator,
+               declarator_pointer_depth(lv.declarator) + 1, start);
+      }
+      {
+         const char *ident = expr_bare_identifier_name(inner);
+         const ASTNode *fn = ident ? resolve_function_designator_target(ident, NULL, NULL) : NULL;
+         if (fn) {
+            return function_pointer_declarator_from_callable(function_declarator_node(fn));
+         }
       }
    }
 
@@ -5833,7 +6130,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    {
       const char *ident = expr_bare_identifier_name(expr);
       if (ident) {
-         const ASTNode *fn = resolve_function_call_target(ident, NULL, NULL);
+         const ASTNode *fn = resolve_function_designator_target(ident, NULL, NULL);
          char sym[512];
          if (fn) {
             if (function_has_static_parameters(fn)) {
@@ -5921,7 +6218,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
          {
             const char *ident = expr_bare_identifier_name(inner);
             char sym[512];
-            const ASTNode *fn = ident ? resolve_function_call_target(ident, NULL, NULL) : NULL;
+            const ASTNode *fn = ident ? resolve_function_designator_target(ident, NULL, NULL) : NULL;
             if (fn) {
                if (function_has_static_parameters(fn)) {
                   error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", inner->file, inner->line, inner->column, ident);
@@ -7789,6 +8086,8 @@ static void compile_global_decl_item(ASTNode *node) {
 }
 
 static void remember_function(const ASTNode *node, const char *name) {
+   bool name_present = false;
+
    if (!name) {
       error("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
    }
@@ -7802,31 +8101,53 @@ static void remember_function(const ASTNode *node, const char *name) {
       functions = new_set();
    }
 
-   const ASTNode *value = set_get(functions, name);
-   if (value != NULL) {
+   for (int i = 0; i < ordinary_function_count; i++) {
+      const ASTNode *value;
+
+      if (strcmp(ordinary_functions[i].name, name)) {
+         continue;
+      }
+      name_present = true;
+      value = ordinary_functions[i].node;
       if (value == node) {
          return;
       }
-      if (!function_same_declaration(value, node)) {
-         error("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for '%s'",
-               node->file, node->line, node->column,
-               value->file, value->line, value->column,
-               name);
+      if (function_same_signature(value, node)) {
+         if (!function_same_declaration(value, node)) {
+            error("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for overloaded '%s'",
+                  node->file, node->line, node->column,
+                  value->file, value->line, value->column,
+                  name);
+         }
+         if (function_has_body(value) && function_has_body(node)) {
+            error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+                  node->file, node->line, node->column,
+                  value->file, value->line, value->column,
+                  name);
+         }
+         if (!function_has_body(value) && function_has_body(node)) {
+            ordinary_functions[i].node = node;
+            if (set_get(functions, name) == value) {
+               set_rm(functions, name);
+               set_add(functions, strdup(name), (void *) node);
+            }
+         }
+         return;
       }
-      if (function_has_body(value) && function_has_body(node)) {
-         error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
-               node->file, node->line, node->column,
-               value->file, value->line, value->column,
-               name);
-      }
-      if (!function_has_body(value) && function_has_body(node)) {
-         set_rm(functions, name);
-         set_add(functions, strdup(name), (void *) node);
-      }
-      return;
    }
 
-   set_add(functions, strdup(name), (void *) node);
+   ordinary_functions = (OrdinaryFunction *) realloc(ordinary_functions,
+         sizeof(*ordinary_functions) * (ordinary_function_count + 1));
+   if (!ordinary_functions) {
+      error("out of memory");
+   }
+   ordinary_functions[ordinary_function_count].name = strdup(name);
+   ordinary_functions[ordinary_function_count].node = node;
+   ordinary_function_count++;
+
+   if (!name_present && !set_get(functions, name)) {
+      set_add(functions, strdup(name), (void *) node);
+   }
 }
 
 static void predeclare_top_level_functions(ASTNode *program) {

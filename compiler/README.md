@@ -80,6 +80,37 @@ int twice(int x) {
 
 `extern` function declarations are also supported and cause the compiler to emit an import for the referenced symbol.
 
+### Ordinary function overloading
+
+Ordinary non-operator functions can now be overloaded by parameter signature. Overload resolution uses a best-viable-match search much like the current operator-overload matcher:
+
+- exact matches win first
+- safe integer promotions for plain value parameters are considered after exact matches
+- `ref` parameters remain strict and require an lvalue of the exact declared type
+- ambiguous best matches are rejected
+
+Examples:
+
+```n
+s2 pick(s2 x) {
+   return x;
+}
+
+s4 pick(s4 x) {
+   return x;
+}
+
+s2 a(s2 x) {
+   return pick(x);
+}
+
+s4 b(s4 x) {
+   return pick(x);
+}
+```
+
+If no viable overload exists, the compiler rejects the call. If multiple viable overloads tie for best cost, the compiler reports the call as ambiguous.
+
 ### Function pointers and indirect calls
 
 Pointer-to-function declarators are supported.
@@ -248,7 +279,7 @@ The left-hand side is still treated as an lvalue target for the final store, so 
 
 Operator overload matching now prefers exact matches first and then considers safe integer promotions for plain value parameters. Smaller integers may widen, and mixed signed/unsigned operands may promote to a signed type that can represent the full range of the actual argument. `ref` parameters remain strict and still require an lvalue of the exact declared type.
 
-This is not a full C++-style overload system. There is still no arbitrary narrowing conversion search, no user-defined conversion machinery, and no general function-overload ranking outside operator overloads.
+This is not a full C++-style overload system. There is still no arbitrary narrowing conversion search and no user-defined conversion machinery. Ordinary function overloading now uses the same general best-viable-match style as operators for exact matches plus safe integer promotions.
 
 ## `ref` parameters
 
@@ -395,7 +426,7 @@ Compiled calls save and restore the caller's frame pointer around calls so neste
 This tree is much further along than the original state, but a few sharp edges remain:
 
 - operator overload resolution only considers exact matches plus safe integer promotions for plain value parameters
-- ordinary non-operator function overloading and generic best-viable-match search are still not implemented
+- ordinary function overloading now supports exact matches plus safe integer promotions for plain value parameters, but there is still no user-defined conversion search or other C++-style ranking machinery
 - arbitrary non-zero-page named memory regions are not yet fully honored as distinct backend storage segments
 - some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
 - static-parameter cycle checking is based on the compiler's direct call graph for the current translation unit; it does not try to prove safety across separately compiled units or truly dynamic call targets

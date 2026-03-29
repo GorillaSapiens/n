@@ -1,0 +1,21 @@
+// nc
+// expectasm: jsr _widen__s4_p0_a0
+
+type void { $size:0 };
+type bool { $size:1 };
+type *    { $size:2 $unsigned $endian:little };
+type s2   { $size:2 $signed $endian:little };
+type s4   { $size:4 $signed $endian:little };
+type s5   { $size:5 $signed $endian:little };
+
+s4 widen(s4 x) {
+   return x;
+}
+
+s5 widen(s5 x) {
+   return x;
+}
+
+s4 use_promoted(s2 x) {
+   return widen(x);
+}
