@@ -41,7 +41,7 @@ foreach my $file (`ls *.n`) {
       }
    }
 
-   $runner =~ s{^//\s*n65cc\b}{../compiler/n65cc};
+   $runner =~ s{^//\s*n65cc\b}{../compiler/n65cc -quiet};
    $runner .= " $file";
    $runner =~ s/  / /g; # remove extra spaces, for aesthetics
 

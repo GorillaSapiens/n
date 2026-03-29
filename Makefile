@@ -19,7 +19,7 @@ unit:
 	( cd ./test ; ./test.pl )
 
 sieve:
-	./compiler/n65cc -I test -o sieve.s test/sieve.n
+	./compiler/n65cc -quiet -I test test/sieve.n -o sieve.s -dumpbase sieve.n -dumpbase-ext .n -dumpdir ./
 	./assembler/n65asm -I libraries/nlib/ -o sieve.o65 sieve.s
 	./linker/n65ld -o sieve.hex sieve.o65 libraries/nlib/nlib.a65
 	simulator/n65sim sieve.hex  | head

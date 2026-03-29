@@ -36,6 +36,10 @@ static void opt_output(char *n) {
    outfile = n;
 }
 
+static void opt_ignore(char *unused) {
+   (void) unused;
+}
+
 const char *search_includes(const char *filename) {
    static char *ret = NULL;
 
@@ -70,16 +74,22 @@ const char *search_includes(const char *filename) {
    return filename;
 }
 
-struct {
+struct option_def {
    char  short_char;
    char *long_name;
    char *arg_name;
    char *help;
    void (*func)(char *);
-} options[] = {
-   { 'X', "XRAY", "name",  "enable named XRAY option for compiler debugging ('list' will list them)", opt_xray },
-   { 'I', "include", "path",  "add path to include search list", opt_include },
+};
+
+static struct option_def options[] = {
+   { 'X', "XRAY", "name", "enable named XRAY option for compiler debugging ('list' will list them)", opt_xray },
+   { 'I', "include", "path", "add path to include search list", opt_include },
    { 'o', "output", "file.s", "write assembly output to file instead of stdout", opt_output },
+   { 0, "quiet", NULL, "accept GCC cc1's -quiet flag and ignore it", opt_ignore },
+   { 0, "dumpbase", "name", "accept GCC cc1's -dumpbase flag and ignore it", opt_ignore },
+   { 0, "dumpbase-ext", "ext", "accept GCC cc1's -dumpbase-ext flag and ignore it", opt_ignore },
+   { 0, "dumpdir", "dir", "accept GCC cc1's -dumpdir flag and ignore it", opt_ignore },
    { '?', "help", NULL, "print usage information", opt_help }
 };
 
@@ -88,28 +98,96 @@ struct {
 static void opt_help(char *unused) {
    (void) unused; // unused parameter
    printf("Usage: %s <flags> <filename>\n", arg0);
+   printf("   one input filename is required and may appear anywhere on the command line\n");
+   printf("   GNU cc1-style compatibility flags -quiet, -dumpbase, -dumpbase-ext, and -dumpdir are accepted\n");
    printf("   flags:\n");
    for (size_t i = 0; i < NOPTS; i++) {
       if (options[i].arg_name) {
-         printf("   -%c/--%s\t<%s>\t%s\n",
-            options[i].short_char,
-            options[i].long_name,
-            options[i].arg_name,
-            options[i].help);
+         if (options[i].short_char) {
+            printf("   -%c/--%s\t<%s>\t%s\n",
+               options[i].short_char,
+               options[i].long_name,
+               options[i].arg_name,
+               options[i].help);
+         }
+         else {
+            printf("   -%s\t<%s>\t%s\n",
+               options[i].long_name,
+               options[i].arg_name,
+               options[i].help);
+         }
       }
       else {
-         printf("   -%c/--%s\t\t%s\n",
-            options[i].short_char,
-            options[i].long_name,
-            options[i].help);
+         if (options[i].short_char) {
+            printf("   -%c/--%s\t\t%s\n",
+               options[i].short_char,
+               options[i].long_name,
+               options[i].help);
+         }
+         else {
+            printf("   -%s\t\t%s\n",
+               options[i].long_name,
+               options[i].help);
+         }
       }
    }
    exit(0);
 }
 
+static struct option_def *find_option(const char *arg, const char **inline_arg, bool *used_double_dash) {
+   *inline_arg = NULL;
+   *used_double_dash = false;
+
+   if (arg[0] != '-' || arg[1] == '\0') {
+      return NULL;
+   }
+
+   if (arg[1] == '-') {
+      const char *name = arg + 2;
+      const char *eq = strchr(name, '=');
+      size_t name_len = eq ? (size_t) (eq - name) : strlen(name);
+      *used_double_dash = true;
+      if (eq) {
+         *inline_arg = eq + 1;
+      }
+      for (size_t i = 0; i < NOPTS; i++) {
+         if (!strncmp(options[i].long_name, name, name_len) && options[i].long_name[name_len] == '\0') {
+            return &options[i];
+         }
+      }
+      return NULL;
+   }
+
+   for (size_t i = 0; i < NOPTS; i++) {
+      if (options[i].short_char && arg[1] == options[i].short_char && options[i].short_char != '\0') {
+         if (arg[2] != '\0') {
+            *inline_arg = arg + 2;
+         }
+         return &options[i];
+      }
+   }
+
+   {
+      const char *name = arg + 1;
+      const char *eq = strchr(name, '=');
+      size_t name_len = eq ? (size_t) (eq - name) : strlen(name);
+      if (eq) {
+         *inline_arg = eq + 1;
+      }
+      for (size_t i = 0; i < NOPTS; i++) {
+         if (!strncmp(options[i].long_name, name, name_len) && options[i].long_name[name_len] == '\0') {
+            return &options[i];
+         }
+      }
+   }
+
+   return NULL;
+}
+
 #define return "DON'T USE return, MUST USE exit !!!" // please don't break xray !!!
 int main(int argc, char** argv) {
    int ret;
+   const char *input = NULL;
 
    arg0 = argv[0];
 
@@ -117,54 +195,62 @@ int main(int argc, char** argv) {
    argv++;
 
    while (argc) {
-      if (argv[0][0] == '-') {
-         bool matched = false;
+      const char *inline_arg = NULL;
+      bool used_double_dash = false;
+      struct option_def *opt = find_option(argv[0], &inline_arg, &used_double_dash);
 
-         for (size_t i = 0; i < NOPTS; i++) {
-            if ((argv[0][1] == '-' && !strcmp(options[i].long_name, argv[0] + 2)) ||
-                (argv[0][1] == options[i].short_char)) {
-               char *arg = NULL;
-               matched = true;
+      if (opt) {
+         char *arg = NULL;
+         argc--;
+         argv++;
+
+         if (opt->arg_name) {
+            if (inline_arg && *inline_arg) {
+               arg = (char *) inline_arg;
+            }
+            else if (argc == 0) {
+               opt_help(NULL);
+            }
+            else {
+               arg = argv[0];
                argc--;
                argv++;
-
-               if (options[i].arg_name) {
-                  if (argc == 0) {
-                     opt_help(NULL);
-                  }
-                  else {
-                     arg = argv[0];
-                     argc--;
-                     argv++;
-                  }
-               }
-
-               options[i].func(arg);
-               break;
             }
          }
-
-         if (!matched) {
+         else if (inline_arg && *inline_arg && !used_double_dash) {
             opt_help(NULL);
          }
+
+         opt->func(arg);
+         continue;
       }
-      else {
-         break;
+
+      if (argv[0][0] == '-' && argv[0][1] != '\0') {
+         opt_help(NULL);
       }
+
+      if (input) {
+         fprintf(stderr, "%s: exactly one input file is required\n", arg0);
+         exit(-1);
+      }
+
+      input = argv[0];
+      argc--;
+      argv++;
    }
 
-   if (argc != 1) {
+   if (!input) {
       opt_help(NULL);
    }
 
-   yyin = fopen(argv[0], "r");
+   yyin = fopen(input, "r");
    if (!yyin) {
-      perror(argv[0]);
+      perror(input);
       exit(-1);
    }
-   md5seen(argv[0], yyin);
+   md5seen(input, yyin);
 
-   root_filename = current_filename = argv[0];
+   root_filename = current_filename = (char *) input;
 
 #if YYDEBUG
    yydebug = 1;

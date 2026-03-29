@@ -174,7 +174,7 @@ for my $case (@cases) {
 
    my $compile_out = File::Spec->catfile($tmp, 'compile.out');
    my $compile_err = File::Spec->catfile($tmp, 'compile.err');
-   my @compile_cmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $main_s, $main_src);
+   my @compile_cmd = ($n65cc, '-quiet', '-I', $case_dir, '-I', $test_root, $main_src, '-o', $main_s, '-dumpbase', 'main.n', '-dumpbase-ext', '.n', '-dumpdir', $tmp);
    my ($compile_exit) = run_cmd(\@compile_cmd, $compile_out, $compile_err);
    my $compile_stderr = slurp_file($compile_err);
 
@@ -215,7 +215,7 @@ for my $case (@cases) {
       my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
       my $out_path = File::Spec->catfile($tmp, "$stem.compile.out");
       my $err_path = File::Spec->catfile($tmp, "$stem.compile.err");
-      my @cmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
+      my @cmd = ($n65cc, '-quiet', '-I', $case_dir, '-I', $test_root, $src_path, '-o', $s_path, '-dumpbase', $obj_src_name, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
       my ($exit) = run_cmd(\@cmd, $out_path, $err_path);
       if ($exit != 0) {
          print "[$FAIL] $case extra object compile exit code $exit\n";
@@ -240,7 +240,7 @@ for my $case (@cases) {
       my $s_path   = File::Spec->catfile($tmp, "$stem.s");
       my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
       my $a_path   = File::Spec->catfile($tmp, "$stem.a65");
-      my @ccmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
+      my @ccmd = ($n65cc, '-quiet', '-I', $case_dir, '-I', $test_root, $src_path, '-o', $s_path, '-dumpbase', $arc_src_name, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
       my ($cexit) = run_cmd(\@ccmd, File::Spec->catfile($tmp, "$stem.compile.out"), File::Spec->catfile($tmp, "$stem.compile.err"));
       if ($cexit != 0) {
          print "[$FAIL] $case archive member compile exit code $cexit\n";

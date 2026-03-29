@@ -8,7 +8,7 @@ This repository contains the `n` language compiler (`n65cc`) plus a companion 65
 
 The command-line tools are being aligned with the usual GCC/binutils habits:
 
-- `n65cc` compiles `input.n` to `-o output.s`
+- `n65cc` now accepts a GCC-`cc1`-style single input file anywhere on the line, uses `-o output.s`, and accepts `-quiet`, `-dumpbase`, `-dumpbase-ext`, and `-dumpdir` as compatibility flags
 - `n65asm` takes a positional input file and uses `-o output.o65` for relocatable object output, similar to GNU `as`
 - `n65ar` accepts GNU-`ar` style operation strings such as `rcs`
 - `n65ld` accepts GNU-`ld` style `-o`, `-T`, and `-Map`
@@ -16,7 +16,7 @@ The command-line tools are being aligned with the usual GCC/binutils habits:
 Examples:
 
 ```sh
-n65cc -I test -o sieve.s test/sieve.n
+n65cc -quiet -I test test/sieve.n -o sieve.s -dumpbase sieve.n -dumpbase-ext .n -dumpdir ./
 n65asm -I libraries/nlib/ -o sieve.o65 sieve.s
 n65ld -o sieve.hex sieve.o65 libraries/nlib/nlib.a65
 n65sim sieve.hex
