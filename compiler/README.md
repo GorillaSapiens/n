@@ -358,6 +358,8 @@ Because that storage is owned by the callee rather than the call frame, symbol-b
 
 The compiler now performs a direct-call graph check inside each translation unit and rejects any call-cycle strongly connected component that contains a function with symbol-backed parameters. That catches obvious self-recursion and mutual recursion cases before code generation completes.
 
+The linker also performs the same check across the selected object files, so call cycles that only become visible after separate compilation are rejected before image generation.
+
 Because symbol-backed parameters need named callee-owned storage, functions with symbol-backed parameters cannot be converted to plain function pointers.
 
 ## Storage classes and memory regions
@@ -459,7 +461,7 @@ This tree is much further along than the original state, but a few sharp edges r
 - operator overload resolution only considers exact matches plus safe integer promotions for plain value parameters
 - ordinary function overloading now supports exact matches plus safe integer promotions for plain value parameters, but there is still no user-defined conversion search or other C++-style ranking machinery
 - some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
-- static-parameter cycle checking is based on the compiler's direct call graph for the current translation unit; it does not try to prove safety across separately compiled units or truly dynamic call targets
+- symbol-backed-parameter cycle checking now spans the selected object files at link time, but truly dynamic call targets still cannot be proven safe
 - shift-count diagnostics are still lax
 
 ## Minimal example

@@ -1,0 +1,11 @@
+// object: a.n
+// object: b.n
+// expectlinkfail
+// expectlinkerr: call graph cycle reaches function 'a' with symbol-backed parameters
+include "machine_6502.n"
+
+int a(static int x);
+
+int main(void) {
+   return a(1);
+}

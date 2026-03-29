@@ -41,11 +41,13 @@ sub parse_case_directives {
    my %meta = (
       expectsim => [],
       expecterr => [],
+      expectlinkerr => [],
       expectmap => [],
       archive   => [],
       object    => [],
       linkcfg   => undef,
       expectfail => 0,
+      expectlinkfail => 0,
    );
 
    open(my $fh, '<', $main_path) or die "[$FAIL] could not open $main_path: $!\n";
@@ -57,6 +59,9 @@ sub parse_case_directives {
       }
       elsif ($line =~ m{^//\s*expecterr:\s*(.*?)\s*$}) {
          push @{$meta{expecterr}}, $1;
+      }
+      elsif ($line =~ m{^//\s*expectlinkerr:\s*(.*?)\s*$}) {
+         push @{$meta{expectlinkerr}}, $1;
       }
       elsif ($line =~ m{^//\s*archive:\s*(.*?)\s*$}) {
          push @{$meta{archive}}, $1;
@@ -72,6 +77,9 @@ sub parse_case_directives {
       }
       elsif ($line =~ m{^//\s*expectfail\s*$}) {
          $meta{expectfail} = 1;
+      }
+      elsif ($line =~ m{^//\s*expectlinkfail\s*$}) {
+         $meta{expectlinkfail} = 1;
       }
    }
    close($fh);
@@ -267,10 +275,21 @@ for my $case (@cases) {
    my $link_out = File::Spec->catfile($tmp, 'link.out');
    my $link_err = File::Spec->catfile($tmp, 'link.err');
    my ($link_exit) = run_cmd(\@link_cmd, $link_out, $link_err);
+   my $link_stderr = slurp_file($link_err);
+   if ($meta->{expectlinkfail}) {
+      if ($link_exit == 0) {
+         print "[$FAIL] $case expected link failure but linker exited 0\n";
+         print join(' ', @link_cmd), "\n";
+         exit(-1);
+      }
+      require_substrings($link_stderr, $meta->{expectlinkerr}, 'link stderr', $case, $link_err);
+      print "[$PASS] $case\n";
+      next;
+   }
    if ($link_exit != 0) {
       print "[$FAIL] $case linker exit code $link_exit\n";
       print join(' ', @link_cmd), "\n";
-      print slurp_file($link_err);
+      print $link_stderr;
       exit(-1);
    }
 

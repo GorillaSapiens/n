@@ -35,6 +35,7 @@ Pair *typesizes = NULL;
 Set *globals = NULL;
 Set *functions = NULL;
 Set *runtime_imports = NULL;
+Set *imported_symbols = NULL;
 Set *string_literals = NULL;
 static int label_counter = 0;
 static const char *loop_break_stack[128];
@@ -148,6 +149,8 @@ typedef struct CallGraphEdge {
    int to;
 } CallGraphEdge;
 
+#define SYMBOL_BACKED_META_PREFIX "__sbpmeta$"
+
 typedef enum LValueAccessMode {
    LVALUE_ACCESS_READ = 0,
    LVALUE_ACCESS_WRITE,
@@ -202,6 +205,8 @@ static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
 static bool ordinary_function_name_is_overloaded(const char *name);
 static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize);
+static bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
+                                           char *buf, size_t bufsize, bool *is_zeropage_out);
 static const ASTNode *resolve_function_designator_target(const char *name, const ASTNode *expected_type, const ASTNode *expected_decl);
 static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc);
 static ASTNode *make_synthetic_incdec_operand(ASTNode *origin);
@@ -212,6 +217,9 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx);
 static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx);
 static const ASTNode *parameter_type(const ASTNode *parameter);
 static const ASTNode *parameter_declarator(const ASTNode *parameter);
+static const ASTNode *parameter_decl_specifiers(const ASTNode *parameter);
+static const char *parameter_name(const ASTNode *parameter, int i);
+static bool parameter_has_symbol_storage(const ASTNode *parameter);
 static const ASTNode *decl_subitem_declarator(const ASTNode *node);
 static const ASTNode *decl_subitem_address_spec(const ASTNode *node);
 static const ASTNode *decl_node_declarator(const ASTNode *node);
@@ -272,6 +280,9 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
                                                const ASTNode *callable_decl);
 static int call_graph_node_index_for_function(const ASTNode *fn);
 static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee);
+static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, const char *sym);
+static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const char *caller_sym, const char *callee_sym);
+static void emit_symbol_backed_call_graph_metadata(void);
 static void analyze_static_parameter_call_graph(void);
 static const char *expr_bare_identifier_name(ASTNode *expr);
 static bool declarator_is_function(const ASTNode *declarator);
@@ -919,6 +930,57 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
 
    append_callable_signature_mangle(buf, bufsize, declarator);
    return true;
+}
+
+static bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
+                                           char *buf, size_t bufsize, bool *is_zeropage_out) {
+   const ASTNode *ptype;
+   const ASTNode *pdecl;
+   const ASTNode *decl_specs;
+   const ASTNode *modifiers;
+   const char *pname;
+   char callee_sym[256];
+   Context callee_ctx;
+   ContextEntry pentry;
+
+   if (!fn || !parameter || !buf || bufsize == 0 || !parameter_has_symbol_storage(parameter)) {
+      return false;
+   }
+
+   ptype = parameter_type(parameter);
+   pdecl = parameter_declarator(parameter);
+   decl_specs = parameter_decl_specifiers(parameter);
+   modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
+   pname = parameter_name(parameter, index);
+   if (!ptype || !pname) {
+      return false;
+   }
+
+   if (!function_symbol_name(fn, declarator_name(function_declarator_node(fn)), callee_sym, sizeof(callee_sym))) {
+      return false;
+   }
+
+   memset(&callee_ctx, 0, sizeof(callee_ctx));
+   callee_ctx.name = callee_sym;
+
+   pentry.name = (char *) pname;
+   pentry.type = ptype;
+   pentry.declarator = pdecl;
+   pentry.is_static = has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers);
+   pentry.is_zeropage = modifiers_imply_zeropage(modifiers);
+   pentry.is_global = false;
+   pentry.is_ref = parameter_is_ref(parameter);
+   pentry.is_absolute_ref = false;
+   pentry.read_expr = NULL;
+   pentry.write_expr = NULL;
+   pentry.offset = 0;
+   pentry.size = declarator_storage_size(ptype, pdecl);
+
+   if (is_zeropage_out) {
+      *is_zeropage_out = pentry.is_zeropage;
+   }
+
+   return entry_symbol_name(&callee_ctx, &pentry, buf, bufsize);
 }
 
 static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc) {
@@ -1780,12 +1842,32 @@ static void remember_runtime_import(const char *name) {
 }
 
 static void remember_symbol_import(const char *name) {
-   if (!globals) {
-      globals = new_set();
+   if (!imported_symbols) {
+      imported_symbols = new_set();
    }
-   if (!set_get(globals, name)) {
-      set_add(globals, strdup(name), (void *)1);
-      emit(&es_import, ".import _%s\n", name);
+   if (!set_get(imported_symbols, name)) {
+      set_add(imported_symbols, strdup(name), (void *)1);
+      emit(&es_import, (name && name[0] == '_') ? ".import %s\n" : ".import _%s\n", name);
+   }
+}
+
+static void remember_symbol_import_mode(const char *name, bool is_zeropage) {
+   char key[320];
+
+   if (!name) {
+      return;
+   }
+   if (!imported_symbols) {
+      imported_symbols = new_set();
+   }
+
+   snprintf(key, sizeof(key), "%c:%s", is_zeropage ? 'Z' : 'A', name);
+   if (!set_get(imported_symbols, key)) {
+      set_add(imported_symbols, strdup(key), (void *)1);
+      emit(&es_import,
+           is_zeropage ? ((name && name[0] == '_') ? ".zpimport %s\n" : ".zpimport _%s\n")
+                       : ((name && name[0] == '_') ? ".import %s\n" : ".import _%s\n"),
+           name);
    }
 }
 
@@ -3890,6 +3972,26 @@ static int call_graph_node_index_for_function(const ASTNode *fn) {
    return call_graph_node_count++;
 }
 
+static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, const char *sym) {
+   if (!buf || bufsize == 0 || !sym || !*sym) {
+      return false;
+   }
+   if ((size_t) snprintf(buf, bufsize, SYMBOL_BACKED_META_PREFIX "F$%s", sym) >= bufsize) {
+      return false;
+   }
+   return true;
+}
+
+static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const char *caller_sym, const char *callee_sym) {
+   if (!buf || bufsize == 0 || !caller_sym || !*caller_sym || !callee_sym || !*callee_sym) {
+      return false;
+   }
+   if ((size_t) snprintf(buf, bufsize, SYMBOL_BACKED_META_PREFIX "E$%s$%s", caller_sym, callee_sym) >= bufsize) {
+      return false;
+   }
+   return true;
+}
+
 static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee) {
    int from = call_graph_node_index_for_function(caller);
    int to = call_graph_node_index_for_function(callee);
@@ -4034,6 +4136,38 @@ static void analyze_static_parameter_call_graph(void) {
    free(component_has_cycle);
 }
 
+static void emit_symbol_backed_call_graph_metadata(void) {
+   char meta[768];
+
+   for (int i = 0; i < call_graph_node_count; i++) {
+      if (!call_graph_nodes[i].has_static_params || !function_has_body(call_graph_nodes[i].fn)) {
+         continue;
+      }
+      if (!symbol_backed_metadata_function_name(meta, sizeof(meta), call_graph_nodes[i].sym)) {
+         error("symbol-backed metadata name too long for function '%s'", call_graph_nodes[i].sym);
+      }
+      emit(&es_export, ".export %s\n", meta);
+      emit(&es_export, "%s = 0\n", meta);
+   }
+
+   for (int i = 0; i < call_graph_edge_count; i++) {
+      int from = call_graph_edges[i].from;
+      int to = call_graph_edges[i].to;
+
+      if (from < 0 || from >= call_graph_node_count || to < 0 || to >= call_graph_node_count) {
+         continue;
+      }
+      if (!function_has_body(call_graph_nodes[from].fn)) {
+         continue;
+      }
+      if (!symbol_backed_metadata_edge_name(meta, sizeof(meta), call_graph_nodes[from].sym, call_graph_nodes[to].sym)) {
+         error("symbol-backed metadata edge name too long for '%s' -> '%s'", call_graph_nodes[from].sym, call_graph_nodes[to].sym);
+      }
+      emit(&es_export, ".export %s\n", meta);
+      emit(&es_export, "%s = 0\n", meta);
+   }
+}
+
 static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -4074,6 +4208,32 @@ static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
          emit(&es_bss, "%s:\n", sym);
          emit(&es_bss, "\t.res %d\n", entry->size);
       }
+   }
+}
+
+static void emit_function_parameter_exports(const ASTNode *node) {
+   const ASTNode *declarator = node->children[1];
+   const ASTNode *params = declarator_parameter_list(declarator);
+
+   if (!params || is_empty(params)) {
+      return;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      const ASTNode *parameter = params->children[i];
+      char sym[256];
+      bool is_zeropage = false;
+
+      if (!parameter || parameter_is_void(parameter) || !parameter_has_symbol_storage(parameter)) {
+         continue;
+      }
+      if (!function_parameter_symbol_name(node, parameter, i, sym, sizeof(sym), &is_zeropage)) {
+         continue;
+      }
+      emit(&es_export,
+           is_zeropage ? ((sym[0] == '_') ? ".zpexport %s\n" : ".zpexport _%s\n")
+                       : ((sym[0] == '_') ? ".export %s\n" : ".export _%s\n"),
+           sym);
    }
 }
 
@@ -4317,13 +4477,9 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       int arg_offset = ret_size;
       int actual_index = 0;
       char callee_sym[256];
-      Context callee_ctx;
-
-      memset(&callee_ctx, 0, sizeof(callee_ctx));
       if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
          goto fail;
       }
-      callee_ctx.name = callee_sym;
 
       if (params && !is_empty(params)) {
          for (int i = 0; i < params->count && actual_index < arg_count; i++) {
@@ -4350,26 +4506,10 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             tmp.size = psz;
 
             if (parameter_has_symbol_storage(parameter)) {
-               const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
-               const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
-               const char *pname = parameter_name(parameter, i);
                char sym[256];
-               ContextEntry pentry;
+               bool is_zeropage = false;
 
-               pentry.name = (char *) pname;
-               pentry.type = ptype;
-               pentry.declarator = pdecl;
-               pentry.is_static = has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers);
-               pentry.is_zeropage = modifiers_imply_zeropage(modifiers);
-               pentry.is_global = false;
-               pentry.is_ref = parameter_is_ref(parameter);
-               pentry.is_absolute_ref = false;
-               pentry.read_expr = NULL;
-               pentry.write_expr = NULL;
-               pentry.offset = 0;
-               pentry.size = declarator_storage_size(ptype, pdecl);
-
-               if (!entry_symbol_name(&callee_ctx, &pentry, sym, sizeof(sym))) {
+               if (!function_parameter_symbol_name(fn, parameter, i, sym, sizeof(sym), &is_zeropage)) {
                   goto fail;
                }
 
@@ -4381,6 +4521,9 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                }
                else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
                   goto fail;
+               }
+               if (!function_has_body(fn)) {
+                  remember_symbol_import_mode(sym, is_zeropage);
                }
                emit_copy_fp_to_symbol(sym, tmp.offset, tmp.size);
             }
@@ -8219,6 +8362,7 @@ static void compile_function_decl(ASTNode *node) {
 
    if (!has_modifier(modifiers, "static")) {
       emit(&es_export, ".export _%s\n", sym);
+      emit_function_parameter_exports(node);
    }
 
    Context ctx;
@@ -8937,6 +9081,7 @@ void do_compile(FILE *out) {
 
    compile(root);
    analyze_static_parameter_call_graph();
+   emit_symbol_backed_call_graph_metadata();
    emit_runtime_global_init_function();
 
    emit_print(&es_header, out);

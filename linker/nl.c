@@ -23,6 +23,8 @@
 #define O65_RTYPE_HIGH 0x40
 #define O65_RTYPE_WORD 0x80
 
+#define SYMBOL_BACKED_META_PREFIX "__sbpmeta$"
+
 #define MAX_NAME 128
 #define MAX_PATH 512
 
@@ -150,6 +152,16 @@ typedef struct {
 } global_symbol_t;
 
 typedef struct {
+   char *name;
+   int has_symbol_backed_params;
+} call_graph_node_t;
+
+typedef struct {
+   int from;
+   int to;
+} call_graph_edge_t;
+
+typedef struct {
    char name[MAX_NAME];
    uint16_t cur;
    uint32_t end;
@@ -242,6 +254,8 @@ static int str_ieq(const char *a, const char *b)
    return *a == '\0' && *b == '\0';
 }
 
+static void *xmalloc(size_t size);
+
 static char *xstrdup(const char *s)
 {
    size_t n = strlen(s) + 1;
@@ -252,6 +266,58 @@ static char *xstrdup(const char *s)
    }
    memcpy(p, s, n);
    return p;
+}
+
+static int symbol_backed_metadata_has_prefix(const char *name)
+{
+   return name && strncmp(name, SYMBOL_BACKED_META_PREFIX, sizeof(SYMBOL_BACKED_META_PREFIX) - 1) == 0;
+}
+
+static int symbol_backed_metadata_parse_function(const char *name, const char **sym_out)
+{
+   const char *p;
+
+   if (!symbol_backed_metadata_has_prefix(name))
+      return 0;
+   p = name + sizeof(SYMBOL_BACKED_META_PREFIX) - 1;
+   if (strncmp(p, "F$", 2) != 0)
+      return 0;
+   p += 2;
+   if (!*p)
+      return 0;
+   if (strchr(p, '$'))
+      return 0;
+   if (sym_out)
+      *sym_out = p;
+   return 1;
+}
+
+static int symbol_backed_metadata_parse_edge(const char *name, char **caller_out, char **callee_out)
+{
+   const char *p;
+   const char *sep;
+   size_t caller_len;
+
+   if (!symbol_backed_metadata_has_prefix(name))
+      return 0;
+   p = name + sizeof(SYMBOL_BACKED_META_PREFIX) - 1;
+   if (strncmp(p, "E$", 2) != 0)
+      return 0;
+   p += 2;
+   sep = strchr(p, '$');
+   if (!sep || sep == p || !sep[1])
+      return 0;
+   if (strchr(sep + 1, '$'))
+      return 0;
+   caller_len = (size_t)(sep - p);
+   if (caller_out) {
+      *caller_out = (char *)xmalloc(caller_len + 1);
+      memcpy(*caller_out, p, caller_len);
+      (*caller_out)[caller_len] = '\0';
+   }
+   if (callee_out)
+      *callee_out = xstrdup(sep + 1);
+   return 1;
 }
 
 static void *xmalloc(size_t size)
@@ -1160,6 +1226,200 @@ static void warn_unused_cmdline_objects(const input_set_t *in)
    }
 }
 
+static int call_graph_find_or_add_node(call_graph_node_t **nodes, size_t *count, const char *name)
+{
+   size_t i;
+
+   for (i = 0; i < *count; ++i) {
+      if (strcmp((*nodes)[i].name, name) == 0)
+         return (int)i;
+   }
+
+   *nodes = (call_graph_node_t *)xrealloc(*nodes, (*count + 1) * sizeof(**nodes));
+   (*nodes)[*count].name = xstrdup(name);
+   (*nodes)[*count].has_symbol_backed_params = 0;
+   return (int)(*count)++;
+}
+
+static void call_graph_add_edge(call_graph_edge_t **edges, size_t *count, int from, int to)
+{
+   size_t i;
+
+   for (i = 0; i < *count; ++i) {
+      if ((*edges)[i].from == from && (*edges)[i].to == to)
+         return;
+   }
+
+   *edges = (call_graph_edge_t *)xrealloc(*edges, (*count + 1) * sizeof(**edges));
+   (*edges)[*count].from = from;
+   (*edges)[*count].to = to;
+   (*count)++;
+}
+
+static void call_graph_collect_from_object(const object_file_t *obj,
+                                           call_graph_node_t **nodes, size_t *node_count,
+                                           call_graph_edge_t **edges, size_t *edge_count)
+{
+   size_t i;
+
+   for (i = 0; i < obj->export_count; ++i) {
+      const char *name = obj->exports[i].name;
+      const char *sym = NULL;
+      char *caller = NULL;
+      char *callee = NULL;
+
+      if (symbol_backed_metadata_parse_function(name, &sym)) {
+         int idx = call_graph_find_or_add_node(nodes, node_count, sym);
+         (*nodes)[idx].has_symbol_backed_params = 1;
+         continue;
+      }
+
+      if (symbol_backed_metadata_parse_edge(name, &caller, &callee)) {
+         int from = call_graph_find_or_add_node(nodes, node_count, caller);
+         int to = call_graph_find_or_add_node(nodes, node_count, callee);
+         call_graph_add_edge(edges, edge_count, from, to);
+      }
+
+      free(caller);
+      free(callee);
+   }
+}
+
+static void call_graph_tarjan_visit(int v,
+                                    const call_graph_edge_t *edges, size_t edge_count,
+                                    int *index_counter,
+                                    int *stack, int *stack_top,
+                                    int *indices, int *lowlink, unsigned char *onstack,
+                                    int *component, int *component_sizes, int *component_count)
+{
+   size_t i;
+
+   indices[v] = *index_counter;
+   lowlink[v] = *index_counter;
+   (*index_counter)++;
+   stack[(*stack_top)++] = v;
+   onstack[v] = 1;
+
+   for (i = 0; i < edge_count; ++i) {
+      int w;
+
+      if (edges[i].from != v)
+         continue;
+      w = edges[i].to;
+      if (indices[w] < 0) {
+         call_graph_tarjan_visit(w, edges, edge_count, index_counter, stack, stack_top,
+            indices, lowlink, onstack, component, component_sizes, component_count);
+         if (lowlink[w] < lowlink[v])
+            lowlink[v] = lowlink[w];
+      }
+      else if (onstack[w] && indices[w] < lowlink[v]) {
+         lowlink[v] = indices[w];
+      }
+   }
+
+   if (lowlink[v] == indices[v]) {
+      int cid = (*component_count)++;
+      component_sizes[cid] = 0;
+      for (;;) {
+         int w = stack[--(*stack_top)];
+         onstack[w] = 0;
+         component[w] = cid;
+         component_sizes[cid]++;
+         if (w == v)
+            break;
+      }
+   }
+}
+
+static void enforce_symbol_backed_call_graph(const input_set_t *in)
+{
+   call_graph_node_t *nodes = NULL;
+   call_graph_edge_t *edges = NULL;
+   size_t node_count = 0;
+   size_t edge_count = 0;
+   int *indices = NULL;
+   int *lowlink = NULL;
+   int *stack = NULL;
+   int *component = NULL;
+   int *component_sizes = NULL;
+   unsigned char *onstack = NULL;
+   unsigned char *component_has_symbol_backed = NULL;
+   unsigned char *component_has_cycle = NULL;
+   int stack_top = 0;
+   int index_counter = 0;
+   int component_count = 0;
+   size_t i;
+
+   for (i = 0; i < in->object_count; ++i)
+      call_graph_collect_from_object(&in->objects[i], &nodes, &node_count, &edges, &edge_count);
+
+   if (node_count == 0)
+      goto cleanup;
+
+   indices = (int *)xmalloc(sizeof(*indices) * node_count);
+   lowlink = (int *)xmalloc(sizeof(*lowlink) * node_count);
+   stack = (int *)xmalloc(sizeof(*stack) * node_count);
+   component = (int *)xmalloc(sizeof(*component) * node_count);
+   component_sizes = (int *)xcalloc(node_count, sizeof(*component_sizes));
+   onstack = (unsigned char *)xcalloc(node_count, sizeof(*onstack));
+   component_has_symbol_backed = (unsigned char *)xcalloc(node_count, sizeof(*component_has_symbol_backed));
+   component_has_cycle = (unsigned char *)xcalloc(node_count, sizeof(*component_has_cycle));
+
+   for (i = 0; i < node_count; ++i) {
+      indices[i] = -1;
+      lowlink[i] = -1;
+      component[i] = -1;
+   }
+
+   for (i = 0; i < node_count; ++i) {
+      if (indices[i] < 0) {
+         call_graph_tarjan_visit((int)i, edges, edge_count, &index_counter, stack, &stack_top,
+            indices, lowlink, onstack, component, component_sizes, &component_count);
+      }
+   }
+
+   for (i = 0; i < node_count; ++i) {
+      if (component[i] >= 0 && nodes[i].has_symbol_backed_params)
+         component_has_symbol_backed[component[i]] = 1;
+   }
+   for (i = 0; i < (size_t)component_count; ++i) {
+      if (component_sizes[i] > 1)
+         component_has_cycle[i] = 1;
+   }
+   for (i = 0; i < edge_count; ++i) {
+      if (component[edges[i].from] == component[edges[i].to])
+         component_has_cycle[component[edges[i].from]] = 1;
+   }
+
+   for (i = 0; i < (size_t)component_count; ++i) {
+      size_t j;
+
+      if (!component_has_cycle[i] || !component_has_symbol_backed[i])
+         continue;
+
+      for (j = 0; j < node_count; ++j) {
+         if (component[j] == (int)i && nodes[j].has_symbol_backed_params) {
+            fprintf(stderr, "nl: call graph cycle reaches function '%s' with symbol-backed parameters\n", nodes[j].name);
+            exit(1);
+         }
+      }
+   }
+
+cleanup:
+   for (i = 0; i < node_count; ++i)
+      free(nodes[i].name);
+   free(nodes);
+   free(edges);
+   free(indices);
+   free(lowlink);
+   free(stack);
+   free(component);
+   free(component_sizes);
+   free(onstack);
+   free(component_has_symbol_backed);
+   free(component_has_cycle);
+}
+
 static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_t segid, const char *source)
 {
    size_t i;
@@ -1449,6 +1709,9 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
       object_file_t *obj = &in->objects[i];
       for (j = 0; j < obj->export_count; ++j) {
          uint16_t addr;
+
+         if (symbol_backed_metadata_has_prefix(obj->exports[j].name))
+            continue;
 
          if (obj->exports[j].segid == O65_SEG_ABS)
             addr = obj->exports[j].value;
@@ -1855,6 +2118,7 @@ int main(int argc, char **argv)
       init_default_config(&cfg);
 
    select_needed_objects(&inputs);
+   enforce_symbol_backed_call_graph(&inputs);
    warn_unused_cmdline_objects(&inputs);
    layout_objects(&cfg, &inputs, &layout);
    add_generated_symbols(&layout);
