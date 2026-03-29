@@ -21,7 +21,7 @@ If you are not replacing the runtime yourself, this is the library you use.
   - these are fallback interrupt entries when nothing stronger is linked
 - `nlib_zeropage.s`
   - exports the zero-page runtime workspace used by startup code and many helper routines
-  - current symbols are `_nl_sp`, `_nl_fp`, `_nl_arg0`, `_nl_arg1`, `_nl_ptr0`..`_nl_ptr3`, `_nl_tmp0`..`_nl_tmp5`
+  - current symbols are `_nl_sp`, `_nl_fp`, `_nl_arg0`, `_nl_arg1`, `_nl_ptr0`..`_nl_ptr3`, `_nl_tmp0`..`_nl_tmp5`, `_nl_sbrk`
 - `asm/handler.asm`
   - default `_handle_nmi` and `_handle_irq`
   - both are do-nothing `rts` handlers meant to be overridden by application code if needed
@@ -41,9 +41,17 @@ The exact entry points are visible in `nlib.h`, the assembly sources in `asm/`, 
 
 ### Memory allocation
 
-This tree still contains `asm/dynamicmem.asm` with `_nalloc` and `_nfree`, but it is not a serious allocator.
-It is placeholder code, not a general-purpose heap.
-Do not build anything important around it unless you are replacing it yourself.
+This tree uses `asm/sbrk.asm` for simple dynamic allocation support.
+It exports `_sbrk` and adds the zero-page heap pointer `_nl_sbrk`.
+At startup, `__init_sbrk` seeds that pointer from linker symbol `__stack_top`, which is the top free byte of the RAM arena left over after `DATA` and `BSS` placement.
+
+The N argument stack still grows upward from `__stack_start`.
+The `sbrk` pointer grows downward from `__stack_top`, so both share the same free RAM arena from opposite ends.
+`_sbrk` prevents a heap allocation from crossing the **current** argument-stack top and returns `0` on failure.
+A size-0 request returns the current heap pointer without changing it.
+
+This is still a very small runtime allocator interface, not a full malloc/free system.
+There is no free list, no block reuse, and no protection against later argument-stack growth colliding with already allocated heap memory.
 
 ## What it requires
 
@@ -53,7 +61,7 @@ Do not build anything important around it unless you are replacing it yourself.
 In practice that means:
 
 - the program is linked with `nl`
-- the linker provides `__copy_table`, `__zero_table`, `__init_table`, and `__stack_start`
+- the linker provides `__copy_table`, `__zero_table`, `__init_table`, `__stack_start`, and `__stack_top`
 - the linker config defines the standard runtime segments the startup code expects
 
 At minimum, the project's linker expects the usual core segments (`CODE`, `DATA`, `BSS`, `ZEROPAGE`).
@@ -63,7 +71,7 @@ For the stock runtime layout used by `nlib/n.cfg`, you also want `STARTUP`, `ARG
 
 - 6502-family target
 - hardware stack at page `$01xx`
-- argument stack grows upward from `__stack_start`
+- argument stack grows upward from `__stack_start` while the `sbrk` heap pointer grows downward from `__stack_top`
 - zero page is available for the runtime workspace exported by `nlib_zeropage.s`
 
 ### Link-time roots
