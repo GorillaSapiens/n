@@ -1431,6 +1431,14 @@ static bool entry_is_absolute_ref(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref;
 }
 
+static void warn_address_spec_without_ref(const ASTNode *node, const char *name) {
+   if (!node) {
+      return;
+   }
+   warning("[%s:%d.%d] '@' on non-ref declaration '%s' is ignored",
+         node->file, node->line, node->column, name ? name : "?");
+}
+
 static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g) {
    const ASTNode *modifiers;
    const ASTNode *type;
@@ -6212,6 +6220,10 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
       return;
    }
 
+   if (addrspec != NULL && !has_modifier(modifiers, "ref")) {
+      warn_address_spec_without_ref(node, name);
+   }
+
    if (has_modifier(modifiers, "ref") && addrspec != NULL) {
       if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
          error("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
@@ -8393,6 +8405,10 @@ static void compile_global_decl_item(ASTNode *node) {
    bool is_ref = has_modifier(modifiers, "ref");
    bool is_absolute_ref = is_ref && addrspec != NULL;
    int size = declarator_storage_size(type, declarator);
+
+   if (addrspec != NULL && !is_ref) {
+      warn_address_spec_without_ref(node, name);
+   }
 
    if (is_ref && !is_absolute_ref) {
       error("[%s:%d.%d] 'ref' not allowed in global declaration without an absolute address binding",
