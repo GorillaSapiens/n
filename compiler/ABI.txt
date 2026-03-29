@@ -40,7 +40,7 @@ rts
 
 reset/startup:
 ; initialize both sp and fp to the initial argument-stack base
-; because the argument stack grows upward, startup should seed them at __bss_end
+; because the argument stack grows upward, startup should seed them at __stack_start
 
 TODO: do we need to save/restore APXY ??
 PHA/PLA is push pop for A

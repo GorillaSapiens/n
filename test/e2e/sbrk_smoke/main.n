@@ -1,0 +1,40 @@
+// expectmap: __stack_top
+// expectsim: OK
+include "machine_6502.n"
+
+extern char *sbrk(int n);
+
+static char ok[4] := { 'O', 'K', '
+', 0 };
+static char bad[5] := { 'B', 'A', 'D', '
+', 0 };
+
+void print_ok(void) {
+   asm lda #0;
+   asm ldx #<_ok;
+   asm ldy #>_ok;
+   asm jsr $ffff;
+}
+
+void print_bad(void) {
+   asm lda #0;
+   asm ldx #<_bad;
+   asm ldy #>_bad;
+   asm jsr $ffff;
+}
+
+void main(void) {
+   char *a := sbrk(16);
+   char *b := sbrk(8);
+   char *c := sbrk(0x7fff);
+
+   if (a != 0 && b != 0 && c == 0 && b + 8 == a) {
+      print_ok();
+   }
+   else {
+      print_bad();
+   }
+
+   while (1) {
+   }
+}

@@ -8,6 +8,7 @@
 .importzp _nl_ptr1
 .importzp _nl_ptr2
 .importzp _nl_ptr3
+.importzp _nl_sbrk
 .importzp _nl_tmp0
 .importzp _nl_tmp1
 .importzp _nl_tmp2
@@ -23,6 +24,7 @@
 .def ptr1 _nl_ptr1
 .def ptr2 _nl_ptr2
 .def ptr3 _nl_ptr3
+.def sbrk _nl_sbrk
 .def tmp0 _nl_tmp0
 .def tmp1 _nl_tmp1
 .def tmp2 _nl_tmp2

@@ -204,6 +204,7 @@ typedef struct {
    uint16_t zero_table_addr;
    uint16_t zero_table_size;
    uint16_t stack_start;
+   uint16_t stack_top;
    memory_cursor_t *cursors;
    size_t cursor_count;
    copy_record_t *copy_records;
@@ -1445,6 +1446,7 @@ static void add_generated_symbols(layout_t *layout)
    add_global(layout, "__zero_table", layout->zero_table_addr, O65_SEG_ABS, "<linker>");
    add_global(layout, "__init_table", layout->init_table_addr, O65_SEG_ABS, "<linker>");
    add_global(layout, "__stack_start", layout->stack_start, O65_SEG_ABS, "<linker>");
+   add_global(layout, "__stack_top", layout->stack_top, O65_SEG_ABS, "<linker>");
 }
 
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
@@ -1703,6 +1705,7 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    {
       memory_cursor_t *stack_cursor = ensure_cursor(layout, cfg, data_run_name);
       layout->stack_start = stack_cursor->cur;
+      layout->stack_top = (uint16_t)(stack_cursor->end - 1u);
    }
 
    for (i = 0; i < in->object_count; ++i) {
@@ -2009,6 +2012,7 @@ static void write_map_file(const char *path, const linker_config_t *cfg, const i
    fprintf(fp, "  __zero_table  $%04X size=$%04X\n", layout->zero_table_addr, layout->zero_table_size);
    fprintf(fp, "  __init_table  $%04X size=$%04X\n", layout->init_table_addr, layout->init_table_size);
    fprintf(fp, "  __stack_start $%04X\n", layout->stack_start);
+   fprintf(fp, "  __stack_top   $%04X\n", layout->stack_top);
 
    fprintf(fp, "\nSYMBOLS\n");
    for (i = 0; i < layout->global_count; ++i) {

@@ -17,6 +17,9 @@ extern void* nl_ptr2;
 extern void* nl_ptr3;
 #pragma zpsym ("nl_ptr3");
 
+extern void* nl_sbrk;
+#pragma zpsym ("nl_sbrk");
+
 extern unsigned char nl_tmp0;
 #pragma zpsym ("nl_tmp0");
 extern unsigned char nl_tmp1;

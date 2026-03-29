@@ -61,6 +61,8 @@ Vector order is the normal 6502 order:
 - `__bss_end`
 - `__bss_size`
 - `__init_table`
+- `__stack_start`
+- `__stack_top`
 
 These are intended for startup code. `__init_table` points at a null-terminated table of 16-bit function addresses collected from selected object files that export `__init` or `__init_*`.
 
@@ -84,7 +86,7 @@ bss = __bss_start
 bss_end = __bss_end
 ```
 
-If there is no initialized DATA or no BSS, the corresponding size symbol will be zero.
+If there is no initialized DATA or no BSS, the corresponding size symbol will be zero. `__stack_start` marks the bottom of the remaining free RAM arena for the upward-growing N stack, and `__stack_top` marks the top free byte of that same arena for downward-growing `sbrk` use.
 
 ## Default memory layout
 
