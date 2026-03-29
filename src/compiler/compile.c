@@ -1881,8 +1881,6 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ctx->locals += entry->size;
    debug("[%s:%d] ctx_push(%s, %s, %d, %d)", __FILE__, __LINE__, type->strval, name, entry->size, entry->offset);
    set_add(ctx->vars, strdup(name), entry);
-
-   // TODO FIX increment the stack pointer.
 }
 
 static void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {

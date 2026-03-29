@@ -170,8 +170,6 @@ int main(int argc, char** argv) {
    yydebug = 1;
 #endif
 
-   // TODO register built in type names
-
    debug(";Parsing...\n");
 
    ret = yyparse();
