@@ -343,24 +343,22 @@ Absolute address binding is only meaningful on `ref` declarations. Using `@...` 
 
 Ordinary parameters are passed in the N argument stack frame.
 
-### Static parameters
+### Symbol-backed parameters
 
-Function parameters declared `static` are not pushed as ordinary call-frame arguments.
+Function parameters declared `static`, or parameters that use a `mem` modifier, are not pushed as ordinary call-frame arguments.
 
 Instead:
 
 - the callee owns a symbol-backed storage slot for that parameter
 - the caller evaluates the argument and writes it directly into that storage before `jsr`
 
-This matches the advertised "static parameter" model. Because that storage is owned by the callee rather than the call frame, `static` parameters should be treated as re-entrancy-hostile unless the programmer arranges external protection. Recursive or interrupt-driven re-entry can overwrite the shared parameter slots.
+This includes zero-page-backed parameters and non-zero-page named memory regions such as `banana`.
 
-The compiler now performs a direct-call graph check inside each translation unit and rejects any call-cycle strongly connected component that contains a function with `static` parameters. That catches obvious self-recursion and mutual recursion cases before code generation completes.
+Because that storage is owned by the callee rather than the call frame, symbol-backed parameters should be treated as re-entrancy-hostile unless the programmer arranges external protection. Recursive or interrupt-driven re-entry can overwrite the shared parameter slots.
 
-Because `static` parameters need named callee-owned storage, functions with `static` parameters cannot be converted to plain function pointers.
+The compiler now performs a direct-call graph check inside each translation unit and rejects any call-cycle strongly connected component that contains a function with symbol-backed parameters. That catches obvious self-recursion and mutual recursion cases before code generation completes.
 
-### Zeropage-backed parameters
-
-If a parameter uses a mem modifier that resolves to a zero-page region, the compiler treats it as zero-page-backed storage.
+Because symbol-backed parameters need named callee-owned storage, functions with symbol-backed parameters cannot be converted to plain function pointers.
 
 ## Storage classes and memory regions
 
@@ -371,7 +369,7 @@ The compiler supports:
 - globals
 - stack locals
 - function-scope `static`
-- zero-page-backed storage
+- mem-backed symbol storage for locals and parameters
 
 ### Memory regions
 
@@ -460,7 +458,6 @@ This tree is much further along than the original state, but a few sharp edges r
 
 - operator overload resolution only considers exact matches plus safe integer promotions for plain value parameters
 - ordinary function overloading now supports exact matches plus safe integer promotions for plain value parameters, but there is still no user-defined conversion search or other C++-style ranking machinery
-- arbitrary non-zero-page named memory regions are not yet fully honored as distinct backend storage segments
 - some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
 - static-parameter cycle checking is based on the compiler's direct call graph for the current translation unit; it does not try to prove safety across separately compiled units or truly dynamic call targets
 - shift-count diagnostics are still lax

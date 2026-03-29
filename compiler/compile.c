@@ -180,6 +180,7 @@ static const char *find_mem_modifier_name(const ASTNode *modifiers);
 static const ASTNode *find_mem_modifier_node(const ASTNode *modifiers);
 static bool mem_decl_is_zeropage(const ASTNode *mem_decl);
 static bool modifiers_imply_zeropage(const ASTNode *modifiers);
+static bool modifiers_imply_mem_storage(const ASTNode *modifiers);
 static bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers);
 static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment);
 static int integer_literal_min_size(const ASTNode *expr);
@@ -2213,8 +2214,12 @@ static bool modifiers_imply_zeropage(const ASTNode *modifiers) {
    return mem_decl_is_zeropage(find_mem_modifier_node(modifiers));
 }
 
+static bool modifiers_imply_mem_storage(const ASTNode *modifiers) {
+   return find_mem_modifier_name(modifiers) != NULL;
+}
+
 static bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers) {
-   return find_mem_modifier_name(modifiers) != NULL && !modifiers_imply_zeropage(modifiers);
+   return modifiers_imply_mem_storage(modifiers) && !modifiers_imply_zeropage(modifiers);
 }
 
 static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment) {
@@ -2428,7 +2433,7 @@ static bool parameter_is_ref(const ASTNode *parameter) {
 static bool parameter_has_symbol_storage(const ASTNode *parameter) {
    const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
    const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
-   return has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_zeropage(modifiers);
+   return has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_mem_storage(modifiers);
 }
 
 static int parameter_storage_size(const ASTNode *parameter) {
@@ -2503,7 +2508,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
 
          size = declarator_storage_size(type, param_decl);
          slot_size = parameter_storage_size(parameter);
-         if (has_modifier((ASTNode *) modifiers, "static")) {
+         if (has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers)) {
             ctx_static(ctx, type, name);
             entry = (ContextEntry *) set_get(ctx->vars, name);
             entry->size = slot_size;
@@ -4015,7 +4020,7 @@ static void analyze_static_parameter_call_graph(void) {
          if (component[j] != i || !call_graph_nodes[j].has_static_params) {
             continue;
          }
-         error("call graph cycle reaches function '%s' with static parameters", call_graph_nodes[j].sym);
+         error("call graph cycle reaches function '%s' with symbol-backed parameters", call_graph_nodes[j].sym);
       }
    }
 
@@ -4040,10 +4045,11 @@ static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    for (int i = 0; i < params->count; i++) {
       const ASTNode *parameter = params->children[i];
       const ASTNode *type = parameter_type(parameter);
+      const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
+      const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
       const char *name = parameter_name(parameter, i);
       const ContextEntry *entry;
       char sym[256];
-      EmitSink *sink;
 
       if (!type || parameter_is_void(parameter) || !parameter_has_symbol_storage(parameter)) {
          continue;
@@ -4057,9 +4063,17 @@ static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
          continue;
       }
 
-      sink = entry->is_zeropage ? &es_zp : &es_bss;
-      emit(sink, "%s:\n", sym);
-      emit(sink, "\t.res %d\n", entry->size);
+      if (entry->is_zeropage) {
+         emit(&es_zp, "%s:\n", sym);
+         emit(&es_zp, "\t.res %d\n", entry->size);
+      }
+      else {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+         emit(&es_bss, ".segment \"%s\"\n", segbuf);
+         emit(&es_bss, "%s:\n", sym);
+         emit(&es_bss, "\t.res %d\n", entry->size);
+      }
    }
 }
 
@@ -4094,7 +4108,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
             continue;
          }
          if (parameter_has_symbol_storage(parameter)) {
-            error("[%s:%d.%d] indirect call target type cannot use static or zeropage-backed parameters", expr->file, expr->line, expr->column);
+            error("[%s:%d.%d] indirect call target type cannot use symbol-backed parameters", expr->file, expr->line, expr->column);
          }
          fixed_params++;
          arg_total += parameter_storage_size(parameter);
@@ -4345,8 +4359,8 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                pentry.name = (char *) pname;
                pentry.type = ptype;
                pentry.declarator = pdecl;
-               pentry.is_static = has_modifier((ASTNode *) modifiers, "static");
-               pentry.is_zeropage = !pentry.is_static && modifiers_imply_zeropage(modifiers);
+               pentry.is_static = has_modifier((ASTNode *) modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers);
+               pentry.is_zeropage = modifiers_imply_zeropage(modifiers);
                pentry.is_global = false;
                pentry.is_ref = parameter_is_ref(parameter);
                pentry.is_absolute_ref = false;
@@ -4606,7 +4620,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", expr->file, expr->line, expr->column, ident);
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
                }
                if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   return false;
@@ -4649,7 +4663,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", inner->file, inner->line, inner->column, ident);
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
                }
                if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   return false;
@@ -6249,7 +6263,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
       return;
    }
 
-   if (has_modifier(modifiers, "static")) {
+   if (has_modifier(modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers)) {
       ctx_static(ctx, type, name);
       entry = (ContextEntry *) set_get(ctx->vars, name);
    }
@@ -6265,7 +6279,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    if (entry != NULL) {
       entry->size = size;
       entry->declarator = declarator;
-      if (!has_modifier(modifiers, "static") && !modifiers_imply_zeropage(modifiers)) {
+      if (!has_modifier(modifiers, "static") && !modifiers_imply_mem_storage(modifiers)) {
          ctx_resize_last_push(ctx, type, declarator, name);
       }
    }
@@ -6444,7 +6458,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
          char sym[512];
          if (fn) {
             if (function_has_static_parameters(fn)) {
-               error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", expr->file, expr->line, expr->column, ident);
+               error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
             }
             if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                char label[sizeof(sym) + 2];
@@ -6531,7 +6545,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             const ASTNode *fn = ident ? resolve_function_designator_target(ident, NULL, NULL) : NULL;
             if (fn) {
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", inner->file, inner->line, inner->column, ident);
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
                }
                if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   char label[sizeof(sym) + 2];

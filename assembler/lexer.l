@@ -63,7 +63,7 @@ CHARBODY     ([^\\\n']|\\[0nrt'"\\])
 CHARCONST    \'{CHARBODY}\'?
 STRING       \"([^\\\n]|\\.)*\"
 IDSTART      [A-Za-z_@?]
-IDCHAR       [A-Za-z0-9_@?]
+IDCHAR       [A-Za-z0-9_@?$]
 IDENT        {IDSTART}{IDCHAR}*
 DIRECTIVE    [.!][A-Za-z_][A-Za-z0-9_]*
 MODE_SUFFIX  \.(z|zx|zy|a|ax|ay|i|ix|iy)
