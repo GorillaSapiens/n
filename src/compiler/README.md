@@ -80,6 +80,28 @@ int twice(int x) {
 
 `extern` function declarations are also supported and cause the compiler to emit an import for the referenced symbol.
 
+### Function pointers and indirect calls
+
+Pointer-to-function declarators are supported.
+
+```n
+int twice(int x) {
+   return x + x;
+}
+
+int (*fp)(int) := twice;
+
+int main(void) {
+   return fp(21);
+}
+```
+
+Function names decay to function pointers in ordinary expression and initializer contexts, and `&name` also works when a function pointer is wanted.
+
+Indirect calls through function pointers are implemented. The compiler lowers them through a small runtime helper so ordinary call-frame setup and result handling still work.
+
+Functions that use `static` parameters are **not** allowed to have pointers formed to them. That prohibition applies both to bare decay and explicit `&name`, because the static-parameter calling convention needs caller knowledge that a plain function pointer does not carry.
+
 ## Expressions
 
 ### Truthiness
@@ -268,6 +290,10 @@ Instead:
 
 This matches the advertised "static parameter" model. Because that storage is owned by the callee rather than the call frame, `static` parameters should be treated as re-entrancy-hostile unless the programmer arranges external protection. Recursive or interrupt-driven re-entry can overwrite the shared parameter slots.
 
+The compiler now performs a direct-call graph check inside each translation unit and rejects any call-cycle strongly connected component that contains a function with `static` parameters. That catches obvious self-recursion and mutual recursion cases before code generation completes.
+
+Because `static` parameters need named callee-owned storage, functions with `static` parameters cannot be converted to plain function pointers.
+
 ### Zeropage-backed parameters
 
 If a parameter uses a mem modifier that resolves to a zero-page region, the compiler treats it as zero-page-backed storage.
@@ -372,6 +398,7 @@ This tree is much further along than the original state, but a few sharp edges r
 - ordinary non-operator function overloading and generic best-viable-match search are still not implemented
 - arbitrary non-zero-page named memory regions are not yet fully honored as distinct backend storage segments
 - some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
+- static-parameter cycle checking is based on the compiler's direct call graph for the current translation unit; it does not try to prove safety across separately compiled units or truly dynamic call targets
 - shift-count diagnostics are still lax
 
 ## Minimal example

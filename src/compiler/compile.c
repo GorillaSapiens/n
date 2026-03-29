@@ -124,6 +124,24 @@ static int pending_global_init_max_size = 0;
 static char runtime_global_init_symbol_buf[64];
 static bool runtime_global_init_symbol_ready = false;
 
+typedef struct CallGraphNode {
+   const ASTNode *fn;
+   char *sym;
+   bool has_static_params;
+} CallGraphNode;
+
+typedef struct CallGraphEdge {
+   int from;
+   int to;
+} CallGraphEdge;
+
+static CallGraphNode *call_graph_nodes = NULL;
+static int call_graph_node_count = 0;
+static CallGraphEdge *call_graph_edges = NULL;
+static int call_graph_edge_count = 0;
+static int current_call_graph_node = -1;
+static const ASTNode *current_call_graph_function = NULL;
+
 static const ASTNode *global_decl_lookup(const char *name);
 static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
 static const char *type_name_from_node(const ASTNode *type);
@@ -202,6 +220,24 @@ static void compile_asm_stmt(ASTNode *node, Context *ctx);
 static void compile_expr(ASTNode *node, Context *ctx);
 static const ASTNode *function_return_type(const ASTNode *fn);
 static const ASTNode *function_declarator_node(const ASTNode *fn);
+static int declarator_pointer_node_count(const ASTNode *declarator);
+static const ASTNode *declarator_name_node(const ASTNode *declarator);
+static const char *declarator_name(const ASTNode *declarator);
+static int declarator_suffix_start_index(const ASTNode *declarator);
+static const ASTNode *declarator_parameter_list(const ASTNode *declarator);
+static bool declarator_has_parameter_list(const ASTNode *declarator);
+static int declarator_function_pointer_depth(const ASTNode *declarator);
+static const ASTNode *function_pointer_declarator_from_callable(const ASTNode *declarator);
+static const ASTNode *function_return_declarator_from_callable(const ASTNode *declarator);
+static bool function_has_static_parameters(const ASTNode *fn);
+static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst,
+                                               ASTNode *callee, ASTNode *args,
+                                               const ASTNode *ret_type,
+                                               const ASTNode *callable_decl);
+static int call_graph_node_index_for_function(const ASTNode *fn);
+static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee);
+static void analyze_static_parameter_call_graph(void);
+static const char *expr_bare_identifier_name(ASTNode *expr);
 static bool declarator_is_function(const ASTNode *declarator);
 static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
 static void calculate_struct_union_sizes(ASTNode *program);
@@ -395,7 +431,7 @@ static bool function_has_body(const ASTNode *fn) {
 
 static int function_fixed_param_count(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
-   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+   const ASTNode *params = declarator_parameter_list(declarator);
    int count = 0;
 
    if (params && !is_empty(params)) {
@@ -602,7 +638,7 @@ static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
 
 static int function_signature_match_cost(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
    const ASTNode *declarator = function_declarator_node(fn);
-   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+   const ASTNode *params = declarator_parameter_list(declarator);
    int seen = 0;
    int cost = 0;
 
@@ -660,8 +696,8 @@ static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
    {
       const ASTNode *adecl = function_declarator_node(a);
       const ASTNode *bdecl = function_declarator_node(b);
-      const ASTNode *aparams = (adecl && adecl->count > 2) ? adecl->children[2] : NULL;
-      const ASTNode *bparams = (bdecl && bdecl->count > 2) ? bdecl->children[2] : NULL;
+      const ASTNode *aparams = declarator_parameter_list(adecl);
+      const ASTNode *bparams = declarator_parameter_list(bdecl);
       int ai = 0;
       int bi = 0;
 
@@ -766,8 +802,8 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
    }
    buf[0] = 0;
 
-   if (!name && declarator && declarator->count > 1 && declarator->children[1]) {
-      name = declarator->children[1]->strval;
+   if (!name && declarator) {
+      name = declarator_name(declarator);
    }
    if (!name) {
       return false;
@@ -784,7 +820,7 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
    }
 
    {
-      const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+      const ASTNode *params = declarator_parameter_list(declarator);
       if (params && !is_empty(params)) {
          for (int i = 0; i < params->count; i++) {
             const ASTNode *parameter = params->children[i];
@@ -2011,10 +2047,10 @@ static void ctx_resize_last_shove(Context *ctx, const ASTNode *type, const ASTNo
 
 static const char *parameter_name(const ASTNode *parameter, int i) {
    const ASTNode *declarator = parameter_declarator(parameter);
-   if (!declarator || declarator->count < 2 || is_empty(declarator->children[1])) {
+   if (!declarator || !declarator_name(declarator)) {
       return missing_argname(i);
    }
-   return declarator->children[1]->strval;
+   return declarator_name(declarator);
 }
 
 static bool parameter_is_void(const ASTNode *parameter) {
@@ -2025,7 +2061,7 @@ static bool parameter_is_void(const ASTNode *parameter) {
       return false;
    }
 
-   if (!declarator || declarator->count < 2 || !is_empty(declarator->children[1])) {
+   if (!declarator || declarator_name(declarator)) {
       return false;
    }
 
@@ -2034,7 +2070,7 @@ static bool parameter_is_void(const ASTNode *parameter) {
 
 static void build_function_context(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
-   const ASTNode *params = (declarator->count > 2) ? declarator->children[2] : NULL;
+   const ASTNode *params = declarator_parameter_list(declarator);
    int i = 0;
 
    if (params && !is_empty(params)) {
@@ -2326,49 +2362,194 @@ static void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_off
 }
 
 
-static int declarator_pointer_depth(const ASTNode *declarator) {
-   if (!declarator || declarator->count == 0 || !declarator->children[0] || !declarator->children[0]->strval) {
+static int declarator_pointer_node_count(const ASTNode *declarator) {
+   int count = 0;
+
+   if (!declarator) {
       return 0;
    }
-   return atoi(declarator->children[0]->strval);
+
+   while (count < declarator->count && declarator->children[count] &&
+          !strcmp(declarator->children[count]->name, "pointer")) {
+      count++;
+   }
+
+   return count;
+}
+
+static const ASTNode *declarator_nested(const ASTNode *declarator) {
+   int pcount = declarator_pointer_node_count(declarator);
+
+   if (!declarator || pcount >= declarator->count) {
+      return NULL;
+   }
+
+   if (declarator->children[pcount] && !strcmp(declarator->children[pcount]->name, "declarator")) {
+      return declarator->children[pcount];
+   }
+
+   return NULL;
+}
+
+static const ASTNode *declarator_value_declarator(const ASTNode *declarator) {
+   const ASTNode *nested = declarator_nested(declarator);
+
+   if (nested && declarator_parameter_list(declarator)) {
+      return nested;
+   }
+
+   return declarator;
+}
+
+static const ASTNode *declarator_name_node(const ASTNode *declarator) {
+   const ASTNode *nested = declarator_nested(declarator);
+   int pcount = declarator_pointer_node_count(declarator);
+   const ASTNode *fallback = NULL;
+
+   if (!declarator) {
+      return NULL;
+   }
+
+   if (nested) {
+      return declarator_name_node(nested);
+   }
+
+   for (int i = pcount; i < declarator->count; i++) {
+      const ASTNode *child = declarator->children[i];
+      if (!child) {
+         continue;
+      }
+      if (child->kind == AST_IDENTIFIER) {
+         return child;
+      }
+      if (!fallback && child->kind == AST_EMPTY) {
+         fallback = child;
+      }
+   }
+
+   return fallback;
+}
+
+static const char *declarator_name(const ASTNode *declarator) {
+   const ASTNode *name = declarator_name_node(declarator);
+
+   if (!name || is_empty(name) || !name->strval) {
+      return NULL;
+   }
+
+   return name->strval;
+}
+
+static int declarator_suffix_start_index(const ASTNode *declarator) {
+   const ASTNode *nested = declarator_nested(declarator);
+   const ASTNode *name = declarator_name_node(declarator);
+
+   if (!declarator) {
+      return 0;
+   }
+
+   if (nested) {
+      return declarator->count;
+   }
+
+   for (int i = 0; i < declarator->count; i++) {
+      if (declarator->children[i] == name) {
+         return i + 1;
+      }
+   }
+
+   return declarator_pointer_node_count(declarator);
+}
+
+static const ASTNode *declarator_parameter_list(const ASTNode *declarator) {
+   int start = declarator_pointer_node_count(declarator) + 1;
+
+   if (!declarator) {
+      return NULL;
+   }
+
+   for (int i = start; i < declarator->count; i++) {
+      if (declarator->children[i] && !strcmp(declarator->children[i]->name, "parameter_list")) {
+         return declarator->children[i];
+      }
+   }
+
+   return NULL;
+}
+
+static bool declarator_has_parameter_list(const ASTNode *declarator) {
+   return declarator_parameter_list(declarator) != NULL;
+}
+
+static int declarator_pointer_depth(const ASTNode *declarator) {
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
+   int pcount = declarator_pointer_node_count(value_decl);
+
+   if (!value_decl || pcount == 0) {
+      return 0;
+   }
+
+   return value_decl->children[0] && value_decl->children[0]->strval ? atoi(value_decl->children[0]->strval) : 0;
+}
+
+static int declarator_function_pointer_depth(const ASTNode *declarator) {
+   const ASTNode *nested = declarator_nested(declarator);
+
+   if (!declarator_has_parameter_list(declarator) || !nested) {
+      return 0;
+   }
+
+   return declarator_pointer_depth(nested);
 }
 
 static int declarator_array_multiplier_from(const ASTNode *declarator, int start_child) {
    int mult = 1;
-   if (!declarator || declarator_is_function(declarator)) {
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
+
+   if (!value_decl || declarator_is_function(declarator)) {
       return 1;
    }
-   for (int i = start_child; i < declarator->count; i++) {
-      if (declarator->children[i] && declarator->children[i]->kind == AST_INTEGER) {
-         mult *= atoi(declarator->children[i]->strval);
+
+   for (int i = start_child; i < value_decl->count; i++) {
+      if (value_decl->children[i] && value_decl->children[i]->kind == AST_INTEGER) {
+         mult *= atoi(value_decl->children[i]->strval);
       }
    }
+
    return mult;
 }
 
 static int declarator_array_count(const ASTNode *declarator) {
    int count = 0;
-   if (!declarator || declarator_is_function(declarator)) {
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
+   int start = declarator_suffix_start_index(value_decl);
+
+   if (!value_decl || declarator_is_function(declarator)) {
       return 0;
    }
-   for (int i = 2; i < declarator->count; i++) {
-      if (declarator->children[i] && declarator->children[i]->kind == AST_INTEGER) {
+
+   for (int i = start; i < value_decl->count; i++) {
+      if (value_decl->children[i] && value_decl->children[i]->kind == AST_INTEGER) {
          count++;
       }
    }
+
    return count;
 }
 
 static int declarator_first_element_size(const ASTNode *type, const ASTNode *declarator) {
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
+
    if (declarator_pointer_depth(declarator) > 0) {
       return get_size(type_name_from_node(type));
    }
-   return get_size(type_name_from_node(type)) * declarator_array_multiplier_from(declarator, 3);
+   return get_size(type_name_from_node(type)) * declarator_array_multiplier_from(value_decl, declarator_suffix_start_index(value_decl) + 1);
 }
 
 static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int new_ptr_depth, int first_array_child) {
    ASTNode *copy;
    char depth_buf[32];
+   const ASTNode *name = declarator_name_node(declarator);
 
    if (!declarator) {
       return NULL;
@@ -2382,38 +2563,130 @@ static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int ne
    copy->handled = declarator->handled;
    copy->kind = declarator->kind;
 
-   append_child(copy, make_integer_leaf(depth_buf));
-   if (declarator->count > 1) {
-      append_child(copy, (ASTNode *) declarator->children[1]);
+   copy = append_child(copy, make_integer_leaf(depth_buf));
+   if (name) {
+      copy = append_child(copy, (ASTNode *) name);
+   }
+   else {
+      copy = append_child(copy, make_empty_leaf());
    }
    for (int i = first_array_child; i < declarator->count; i++) {
+      if (declarator->children[i] && strcmp(declarator->children[i]->name, "parameter_list")) {
+         copy = append_child(copy, (ASTNode *) declarator->children[i]);
+      }
+   }
+   return copy;
+}
+
+static const ASTNode *function_pointer_declarator_from_callable(const ASTNode *declarator) {
+   ASTNode *copy;
+   ASTNode *nested;
+   char depth_buf[32];
+   int outer_depth = 0;
+   int param_index = -1;
+
+   if (!declarator || !declarator_has_parameter_list(declarator)) {
+      return NULL;
+   }
+
+   if (declarator_function_pointer_depth(declarator) > 0) {
+      return declarator;
+   }
+
+   if (declarator->children[0] && declarator->children[0]->strval) {
+      outer_depth = atoi(declarator->children[0]->strval);
+   }
+
+   copy = make_node(declarator->name, NULL);
+   copy->file = declarator->file;
+   copy->line = declarator->line;
+   copy->column = declarator->column;
+   copy->handled = declarator->handled;
+   copy->kind = declarator->kind;
+
+   snprintf(depth_buf, sizeof(depth_buf), "%d", outer_depth);
+   copy = append_child(copy, make_integer_leaf(depth_buf));
+   nested = make_node("declarator", NULL);
+   nested = append_child(nested, make_integer_leaf("1"));
+   nested = append_child(nested, make_empty_leaf());
+   copy = append_child(copy, nested);
+   for (int i = 0; i < declarator->count; i++) {
+      if (declarator->children[i] && !strcmp(declarator->children[i]->name, "parameter_list")) {
+         param_index = i;
+         break;
+      }
+   }
+   for (int i = param_index; param_index >= 0 && i < declarator->count; i++) {
       append_child(copy, (ASTNode *) declarator->children[i]);
    }
+
+   return copy;
+}
+
+static const ASTNode *function_return_declarator_from_callable(const ASTNode *declarator) {
+   ASTNode *copy;
+   char depth_buf[32];
+   int outer_depth = 0;
+   int param_index = -1;
+
+   if (!declarator || !declarator_has_parameter_list(declarator)) {
+      return NULL;
+   }
+
+   if (declarator->children[0] && declarator->children[0]->strval) {
+      outer_depth = atoi(declarator->children[0]->strval);
+   }
+
+   copy = make_node(declarator->name, NULL);
+   copy->file = declarator->file;
+   copy->line = declarator->line;
+   copy->column = declarator->column;
+   copy->handled = declarator->handled;
+   copy->kind = declarator->kind;
+
+   snprintf(depth_buf, sizeof(depth_buf), "%d", outer_depth);
+   copy = append_child(copy, make_integer_leaf(depth_buf));
+   copy = append_child(copy, make_empty_leaf());
+
+   for (int i = 0; i < declarator->count; i++) {
+      if (declarator->children[i] && !strcmp(declarator->children[i]->name, "parameter_list")) {
+         param_index = i;
+         break;
+      }
+   }
+   for (int i = param_index + 1; param_index >= 0 && i < declarator->count; i++) {
+      if (declarator->children[i] && declarator->children[i]->kind == AST_INTEGER) {
+         copy = append_child(copy, (ASTNode *) declarator->children[i]);
+      }
+   }
+
    return copy;
 }
 
 static const ASTNode *declarator_after_subscript(const ASTNode *declarator) {
    int ptr_depth = declarator_pointer_depth(declarator);
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
 
-   if (!declarator) {
+   if (!value_decl) {
       return NULL;
    }
    if (ptr_depth > 0) {
-      return clone_declarator_variant(declarator, ptr_depth - 1, 2);
+      return clone_declarator_variant(value_decl, ptr_depth - 1, declarator_suffix_start_index(value_decl));
    }
-   if (declarator_array_count(declarator) > 0) {
-      return clone_declarator_variant(declarator, ptr_depth, 3);
+   if (declarator_array_count(value_decl) > 0) {
+      return clone_declarator_variant(value_decl, ptr_depth, declarator_suffix_start_index(value_decl) + 1);
    }
    return NULL;
 }
 
 static const ASTNode *declarator_after_deref(const ASTNode *declarator) {
    int ptr_depth = declarator_pointer_depth(declarator);
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
 
-   if (ptr_depth <= 0) {
+   if (ptr_depth <= 0 || !value_decl) {
       return NULL;
    }
-   return clone_declarator_variant(declarator, ptr_depth - 1, 2);
+   return clone_declarator_variant(value_decl, ptr_depth - 1, declarator_suffix_start_index(value_decl));
 }
 
 static bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
@@ -2439,10 +2712,10 @@ static bool find_aggregate_member(const ASTNode *type, const char *member, const
       }
       ftype = field->children[1];
       fdecl = field->children[2];
-      if (!fdecl || fdecl->count < 2 || !fdecl->children[1] || !fdecl->children[1]->strval) {
+      fname = declarator_name(fdecl);
+      if (!fname) {
          continue;
       }
-      fname = fdecl->children[1]->strval;
       fsize = declarator_storage_size(ftype, fdecl);
       if (!strcmp(fname, member)) {
          if (member_type) *member_type = ftype;
@@ -3123,9 +3396,198 @@ static const ASTNode *function_declarator_node(const ASTNode *fn) {
    return NULL;
 }
 
+static bool function_has_static_parameters(const ASTNode *fn) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   const ASTNode *params = declarator_parameter_list(declarator);
+
+   if (!params || is_empty(params)) {
+      return false;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      const ASTNode *parameter = params->children[i];
+      if (parameter_has_symbol_storage(parameter)) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+static int call_graph_node_index_for_function(const ASTNode *fn) {
+   char sym[256];
+
+   if (!fn) {
+      return -1;
+   }
+
+   for (int i = 0; i < call_graph_node_count; i++) {
+      if (call_graph_nodes[i].fn == fn) {
+         return i;
+      }
+   }
+
+   if (!function_symbol_name(fn, declarator_name(function_declarator_node(fn)), sym, sizeof(sym))) {
+      return -1;
+   }
+
+   call_graph_nodes = (CallGraphNode *) realloc(call_graph_nodes, sizeof(CallGraphNode) * (call_graph_node_count + 1));
+   if (!call_graph_nodes) {
+      error("out of memory");
+   }
+   call_graph_nodes[call_graph_node_count].fn = fn;
+   call_graph_nodes[call_graph_node_count].sym = strdup(sym);
+   call_graph_nodes[call_graph_node_count].has_static_params = function_has_static_parameters(fn);
+   return call_graph_node_count++;
+}
+
+static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee) {
+   int from = call_graph_node_index_for_function(caller);
+   int to = call_graph_node_index_for_function(callee);
+
+   if (from < 0 || to < 0) {
+      return;
+   }
+
+   for (int i = 0; i < call_graph_edge_count; i++) {
+      if (call_graph_edges[i].from == from && call_graph_edges[i].to == to) {
+         return;
+      }
+   }
+
+   call_graph_edges = (CallGraphEdge *) realloc(call_graph_edges, sizeof(CallGraphEdge) * (call_graph_edge_count + 1));
+   if (!call_graph_edges) {
+      error("out of memory");
+   }
+   call_graph_edges[call_graph_edge_count].from = from;
+   call_graph_edges[call_graph_edge_count].to = to;
+   call_graph_edge_count++;
+}
+
+static void call_graph_tarjan_visit(int v, int *index_counter, int *stack, int *stack_top,
+                                    int *indices, int *lowlink, unsigned char *onstack,
+                                    int *component, int *component_sizes, int *component_count) {
+   indices[v] = *index_counter;
+   lowlink[v] = *index_counter;
+   (*index_counter)++;
+   stack[(*stack_top)++] = v;
+   onstack[v] = 1;
+
+   for (int i = 0; i < call_graph_edge_count; i++) {
+      if (call_graph_edges[i].from != v) {
+         continue;
+      }
+      int w = call_graph_edges[i].to;
+      if (indices[w] < 0) {
+         call_graph_tarjan_visit(w, index_counter, stack, stack_top, indices, lowlink, onstack, component, component_sizes, component_count);
+         if (lowlink[w] < lowlink[v]) {
+            lowlink[v] = lowlink[w];
+         }
+      }
+      else if (onstack[w] && indices[w] < lowlink[v]) {
+         lowlink[v] = indices[w];
+      }
+   }
+
+   if (lowlink[v] == indices[v]) {
+      int cid = (*component_count)++;
+      component_sizes[cid] = 0;
+      for (;;) {
+         int w = stack[--(*stack_top)];
+         onstack[w] = 0;
+         component[w] = cid;
+         component_sizes[cid]++;
+         if (w == v) {
+            break;
+         }
+      }
+   }
+}
+
+static void analyze_static_parameter_call_graph(void) {
+   int n = call_graph_node_count;
+   int *indices;
+   int *lowlink;
+   int *stack;
+   int *component;
+   int *component_sizes;
+   unsigned char *onstack;
+   unsigned char *component_has_static;
+   unsigned char *component_has_cycle;
+   int stack_top = 0;
+   int index_counter = 0;
+   int component_count = 0;
+
+   if (n <= 0) {
+      return;
+   }
+
+   indices = (int *) malloc(sizeof(int) * n);
+   lowlink = (int *) malloc(sizeof(int) * n);
+   stack = (int *) malloc(sizeof(int) * n);
+   component = (int *) malloc(sizeof(int) * n);
+   component_sizes = (int *) calloc(n, sizeof(int));
+   onstack = (unsigned char *) calloc(n, sizeof(unsigned char));
+   component_has_static = (unsigned char *) calloc(n, sizeof(unsigned char));
+   component_has_cycle = (unsigned char *) calloc(n, sizeof(unsigned char));
+   if (!indices || !lowlink || !stack || !component || !component_sizes || !onstack || !component_has_static || !component_has_cycle) {
+      error("out of memory");
+   }
+
+   for (int i = 0; i < n; i++) {
+      indices[i] = -1;
+      lowlink[i] = -1;
+      component[i] = -1;
+   }
+
+   for (int i = 0; i < n; i++) {
+      if (indices[i] < 0) {
+         call_graph_tarjan_visit(i, &index_counter, stack, &stack_top, indices, lowlink, onstack, component, component_sizes, &component_count);
+      }
+   }
+
+   for (int i = 0; i < n; i++) {
+      if (component[i] >= 0 && call_graph_nodes[i].has_static_params) {
+         component_has_static[component[i]] = 1;
+      }
+   }
+   for (int i = 0; i < component_count; i++) {
+      if (component_sizes[i] > 1) {
+         component_has_cycle[i] = 1;
+      }
+   }
+   for (int i = 0; i < call_graph_edge_count; i++) {
+      if (component[call_graph_edges[i].from] == component[call_graph_edges[i].to]) {
+         component_has_cycle[component[call_graph_edges[i].from]] = 1;
+      }
+   }
+
+   for (int i = 0; i < component_count; i++) {
+      if (!component_has_cycle[i] || !component_has_static[i]) {
+         continue;
+      }
+
+      for (int j = 0; j < n; j++) {
+         if (component[j] != i || !call_graph_nodes[j].has_static_params) {
+            continue;
+         }
+         error("call graph cycle reaches function '%s' with static parameters", call_graph_nodes[j].sym);
+      }
+   }
+
+   free(indices);
+   free(lowlink);
+   free(stack);
+   free(component);
+   free(component_sizes);
+   free(onstack);
+   free(component_has_static);
+   free(component_has_cycle);
+}
+
 static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
-   const ASTNode *params = (declarator && declarator->count > 2) ? declarator->children[2] : NULL;
+   const ASTNode *params = declarator_parameter_list(declarator);
 
    if (!params || is_empty(params)) {
       return;
@@ -3157,6 +3619,154 @@ static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    }
 }
 
+static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst,
+                                               ASTNode *callee, ASTNode *args,
+                                               const ASTNode *ret_type,
+                                               const ASTNode *callable_decl) {
+   const ASTNode *params = declarator_parameter_list(callable_decl);
+   const ASTNode *ret_decl = function_return_declarator_from_callable(callable_decl);
+   int arg_count = (args && !is_empty(args)) ? args->count : 0;
+   int ret_size = dst ? dst->size : 0;
+   int arg_total = 0;
+   int ptr_size = get_size("*");
+   int base_locals = ctx ? ctx->locals : 0;
+   int callee_tmp_offset;
+   int call_size;
+   ContextEntry callee_tmp;
+
+   if (ret_type && dst) {
+      ret_size = declarator_value_size(ret_type, ret_decl);
+   }
+   if (ret_size < 0) {
+      ret_size = 0;
+   }
+
+   if (params && !is_empty(params)) {
+      int fixed_params = 0;
+      for (int i = 0; i < params->count; i++) {
+         const ASTNode *parameter = params->children[i];
+         const ASTNode *ptype = parameter_type(parameter);
+         if (!ptype || parameter_is_void(parameter)) {
+            continue;
+         }
+         if (parameter_has_symbol_storage(parameter)) {
+            error("[%s:%d.%d] indirect call target type cannot use static or zeropage-backed parameters", expr->file, expr->line, expr->column);
+         }
+         fixed_params++;
+         arg_total += parameter_storage_size(parameter);
+      }
+      if (fixed_params != arg_count) {
+         warning("[%s:%d.%d] indirect call argument count mismatch (%d vs %d)", expr->file, expr->line, expr->column, arg_count, fixed_params);
+      }
+   }
+
+   callee_tmp_offset = ret_size + arg_total;
+   call_size = callee_tmp_offset + ptr_size;
+
+   if (call_size > 0) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+   }
+   if (ctx) {
+      ctx->locals = base_locals + call_size;
+   }
+
+   if (params && !is_empty(params)) {
+      int arg_offset = ret_size;
+      int actual_index = 0;
+      for (int i = 0; i < params->count && actual_index < arg_count; i++) {
+         const ASTNode *parameter = params->children[i];
+         const ASTNode *ptype = parameter_type(parameter);
+         const ASTNode *pdecl = parameter_declarator(parameter);
+         ContextEntry tmp;
+         int psz;
+
+         if (!ptype || parameter_is_void(parameter)) {
+            continue;
+         }
+
+         psz = parameter_storage_size(parameter);
+         tmp.type = parameter_is_ref(parameter) ? required_typename_node("*") : ptype;
+         tmp.declarator = parameter_is_ref(parameter) ? NULL : pdecl;
+         tmp.is_static = false;
+         tmp.is_zeropage = false;
+         tmp.is_global = false;
+         tmp.is_ref = false;
+         tmp.offset = base_locals + arg_offset;
+         tmp.size = psz;
+
+         if (parameter_is_ref(parameter)) {
+            if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
+               goto fail;
+            }
+         }
+         else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
+            goto fail;
+         }
+
+         arg_offset += psz;
+         actual_index++;
+      }
+   }
+
+   callee_tmp.name = "$callee";
+   callee_tmp.type = required_typename_node("*");
+   callee_tmp.declarator = NULL;
+   callee_tmp.is_static = false;
+   callee_tmp.is_zeropage = false;
+   callee_tmp.is_global = false;
+   callee_tmp.is_ref = false;
+   callee_tmp.offset = base_locals + callee_tmp_offset;
+   callee_tmp.size = ptr_size;
+
+   if (!compile_expr_to_slot(callee, ctx, &callee_tmp)) {
+      goto fail;
+   }
+
+   emit_load_ptr_from_fpvar(0, callee_tmp.offset);
+   remember_runtime_import("callptr0");
+   emit(&es_code, "    lda fp+1\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "    lda fp\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "    jsr _callptr0\n");
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp\n");
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp+1\n");
+
+   if (ctx) {
+      ctx->locals = base_locals;
+   }
+
+   if (dst && ret_size > 0) {
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals, ret_size, ret_type);
+   }
+
+   if (call_size > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+
+   return true;
+
+fail:
+   if (ctx) {
+      ctx->locals = base_locals;
+   }
+   if (call_size > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   return false;
+}
+
 static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    if (!expr || strcmp(expr->name, "()") || expr->count < 1) {
       return false;
@@ -3167,51 +3777,62 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
    const ASTNode *fn = NULL;
    const ASTNode *ret_type = dst ? dst->type : NULL;
    const ASTNode *declarator = NULL;
+   const ASTNode *ret_decl = NULL;
    int ret_size = dst ? dst->size : 0;
    int arg_total = 0;
    int arg_count = (args && !is_empty(args)) ? args->count : 0;
    int base_locals = ctx ? ctx->locals : 0;
 
-   if (!callee || callee->kind != AST_IDENTIFIER) {
+   {
+      const char *callee_name = expr_bare_identifier_name(callee);
+      if (callee_name) {
+         fn = resolve_function_call_target(callee_name, args, ctx);
+      }
+   }
+
+   if (!fn) {
+      const ASTNode *callable_decl = expr_value_declarator(callee, ctx);
+      const ASTNode *callable_type = expr_value_type(callee, ctx);
+      if (callable_decl && declarator_has_parameter_list(callable_decl) && declarator_function_pointer_depth(callable_decl) > 0) {
+         return compile_indirect_call_expr_to_slot(expr, ctx, dst, callee, args, callable_type, callable_decl);
+      }
+      if (arg_count > 0) {
+         warning("[%s:%d.%d] call target has no visible signature", expr->file, expr->line, expr->column);
+      }
       return false;
    }
 
-   fn = resolve_function_call_target(callee->strval, args, ctx);
-   if (fn) {
+   {
       const ASTNode *known_ret = function_return_type(fn);
       const ASTNode *params = NULL;
       declarator = function_declarator_node(fn);
+      ret_decl = function_return_declarator_from_callable(declarator);
       if (known_ret) {
          ret_type = known_ret;
-         ret_size = declarator_value_size(ret_type, declarator);
+         ret_size = declarator_value_size(ret_type, ret_decl);
       }
-      if (declarator && declarator->count > 2) {
-         params = declarator->children[2];
-         if (params && !is_empty(params)) {
-            int fixed_params = 0;
-            for (int i = 0; i < params->count; i++) {
-               const ASTNode *parameter = params->children[i];
-               const ASTNode *ptype = parameter_type(parameter);
-               int psz;
-               if (!ptype || parameter_is_void(parameter)) {
-                  continue;
-               }
-               fixed_params++;
-               psz = parameter_storage_size(parameter);
-               if (!parameter_has_symbol_storage(parameter)) {
-                  arg_total += psz;
-               }
+      params = declarator_parameter_list(declarator);
+      if (params && !is_empty(params)) {
+         int fixed_params = 0;
+         for (int i = 0; i < params->count; i++) {
+            const ASTNode *parameter = params->children[i];
+            const ASTNode *ptype = parameter_type(parameter);
+            int psz;
+            if (!ptype || parameter_is_void(parameter)) {
+               continue;
             }
-            if (fixed_params != arg_count) {
-               warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
-                       expr->file, expr->line, expr->column,
-                       callee->strval, arg_count, fixed_params);
+            fixed_params++;
+            psz = parameter_storage_size(parameter);
+            if (!parameter_has_symbol_storage(parameter)) {
+               arg_total += psz;
             }
          }
+         if (fixed_params != arg_count) {
+            warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
+                    expr->file, expr->line, expr->column,
+                    callee->strval, arg_count, fixed_params);
+         }
       }
-   }
-   else if (!dst) {
-      ret_size = 0;
    }
 
    if (ret_size < 0) ret_size = 0;
@@ -3227,8 +3848,8 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       ctx->locals = base_locals + call_size;
    }
 
-   if (fn && declarator && declarator->count > 2) {
-      const ASTNode *params = declarator->children[2];
+   if (fn && declarator) {
+      const ASTNode *params = declarator_parameter_list(declarator);
       int arg_offset = ret_size;
       int actual_index = 0;
       char callee_sym[256];
@@ -3236,13 +3857,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
 
       memset(&callee_ctx, 0, sizeof(callee_ctx));
       if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
-         if (call_size > 0) {
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-         }
-         return false;
+         goto fail;
       }
       callee_ctx.name = callee_sym;
 
@@ -3285,35 +3900,17 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                pentry.size = declarator_storage_size(ptype, pdecl);
 
                if (!entry_symbol_name(&callee_ctx, &pentry, sym, sizeof(sym))) {
-                  if (call_size > 0) {
-                     remember_runtime_import("popN");
-                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                     emit(&es_code, "    sta arg0\n");
-                     emit(&es_code, "    jsr _popN\n");
-                  }
-                  return false;
+                  goto fail;
                }
 
                tmp.offset = base_locals;
                if (parameter_is_ref(parameter)) {
                   if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
-                     if (call_size > 0) {
-                        remember_runtime_import("popN");
-                        emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                        emit(&es_code, "    sta arg0\n");
-                        emit(&es_code, "    jsr _popN\n");
-                     }
-                     return false;
+                     goto fail;
                   }
                }
                else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
-                  if (call_size > 0) {
-                     remember_runtime_import("popN");
-                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                     emit(&es_code, "    sta arg0\n");
-                     emit(&es_code, "    jsr _popN\n");
-                  }
-                  return false;
+                  goto fail;
                }
                emit_copy_fp_to_symbol(sym, tmp.offset, tmp.size);
             }
@@ -3321,49 +3918,19 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                tmp.offset = base_locals + arg_offset;
                if (parameter_is_ref(parameter)) {
                   if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
-                     if (call_size > 0) {
-                        remember_runtime_import("popN");
-                        emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                        emit(&es_code, "    sta arg0\n");
-                        emit(&es_code, "    jsr _popN\n");
-                     }
-                     return false;
+                     goto fail;
                   }
                }
                else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
-                  if (call_size > 0) {
-                     remember_runtime_import("popN");
-                     emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-                     emit(&es_code, "    sta arg0\n");
-                     emit(&es_code, "    jsr _popN\n");
-                  }
-                  return false;
+                  goto fail;
                }
                arg_offset += psz;
             }
             actual_index++;
          }
       }
-   }
-   else if (arg_count > 0) {
-      if (call_size > 0) {
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-      }
-      warning("[%s:%d.%d] call to '%s' has no visible signature yet", expr->file, expr->line, expr->column, callee->strval);
-      return false;
-   }
 
-   {
-      char callee_sym[256];
-      if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
-         if (ctx) {
-            ctx->locals = base_locals;
-         }
-         return false;
-      }
+      record_call_graph_edge(current_call_graph_function, fn);
       remember_symbol_import(callee_sym);
       emit(&es_code, "    lda fp+1\n");
       emit(&es_code, "    pha\n");
@@ -3392,6 +3959,43 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
    }
 
    return true;
+
+fail:
+   if (ctx) {
+      ctx->locals = base_locals;
+   }
+   if (call_size > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   return false;
+}
+
+static const char *expr_bare_identifier_name(ASTNode *expr) {
+   ASTNode *base;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+   if (expr->kind == AST_IDENTIFIER) {
+      return expr->strval;
+   }
+   if (strcmp(expr->name, "lvalue") || expr->count != 2) {
+      return NULL;
+   }
+
+   base = expr->children[0];
+   if (!base || strcmp(base->name, "lvalue_base") || base->count <= 0 || !base->children[0] || base->children[0]->kind != AST_IDENTIFIER) {
+      return NULL;
+   }
+   if (!expr->children[1] || !is_empty(expr->children[1])) {
+      return NULL;
+   }
+
+   return base->children[0]->strval;
 }
 
 static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
@@ -3454,27 +4058,48 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return true;
    }
 
-   if (expr->kind == AST_IDENTIFIER) {
-      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
-      if (entry && !entry->is_static && !entry->is_zeropage) {
-         emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, entry->offset, entry->size, entry->type);
-         return true;
-      }
-      if (entry) {
-         char sym[256];
-         if (entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
-            emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, entry->size, entry->type);
+   {
+      const char *ident = expr_bare_identifier_name(expr);
+      if (ident) {
+         ContextEntry *entry = ctx_lookup(ctx, ident);
+         if (entry && !entry->is_static && !entry->is_zeropage) {
+            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, entry->offset, entry->size, entry->type);
             return true;
          }
-      }
-      {
-         const ASTNode *g = global_decl_lookup(expr->strval);
-         if (g && g->count >= 3) {
+         if (entry) {
             char sym[256];
-            int gsize = declarator_storage_size(g->children[1], g->children[2]);
-            snprintf(sym, sizeof(sym), "_%s", expr->strval);
-            emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, gsize, g->children[1]);
-            return true;
+            if (entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
+               emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, entry->size, entry->type);
+               return true;
+            }
+         }
+         {
+            const ASTNode *g = global_decl_lookup(ident);
+            if (g && g->count >= 3) {
+               char sym[256];
+               int gsize = declarator_storage_size(g->children[1], g->children[2]);
+               snprintf(sym, sizeof(sym), "_%s", ident);
+               emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, gsize, g->children[1]);
+               return true;
+            }
+         }
+         {
+            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            if (fn) {
+               char sym[256];
+               if (function_has_static_parameters(fn)) {
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", expr->file, expr->line, expr->column, ident);
+               }
+               if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
+                  return false;
+               }
+               {
+                  char label[sizeof(sym) + 2];
+                  snprintf(label, sizeof(label), "_%s", sym);
+                  emit_store_label_address_to_fp(dst->offset, dst->size, label);
+               }
+               return true;
+            }
          }
       }
    }
@@ -3488,6 +4113,23 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          }
          emit_store_ptr_to_fp(dst->offset, 0, dst->size);
          return true;
+      }
+      {
+         const char *ident = expr_bare_identifier_name(inner);
+         if (ident) {
+            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            if (fn) {
+               char sym[256];
+               if (function_has_static_parameters(fn)) {
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", inner->file, inner->line, inner->column, ident);
+               }
+               if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
+                  return false;
+               }
+               emit_store_label_address_to_fp(dst->offset, dst->size, sym);
+               return true;
+            }
+         }
       }
    }
 
@@ -3534,7 +4176,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             return false;
          }
          argv[0] = operand;
-         call = make_synthetic_call_expr(expr, function_declarator_node(ofn)->children[1]->strval, argv, 1);
+         call = make_synthetic_call_expr(expr, declarator_name(function_declarator_node(ofn)), argv, 1);
          if (!call) {
             return false;
          }
@@ -3692,7 +4334,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          if (expr->count > 1) {
             argv[1] = expr->children[1];
          }
-         call = make_synthetic_call_expr(expr, function_declarator_node(ofn)->children[1]->strval, argv, expr->count);
+         call = make_synthetic_call_expr(expr, declarator_name(function_declarator_node(ofn)), argv, expr->count);
          return call ? compile_call_expr_to_slot(call, ctx, dst) : false;
       }
    }
@@ -4249,15 +4891,24 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return required_typename_node("*");
    }
 
-   if (expr->kind == AST_IDENTIFIER) {
-      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
-      if (entry) {
-         return entry->type;
-      }
-      {
-         const ASTNode *g = global_decl_lookup(expr->strval);
-         if (g && g->count >= 3) {
-            return g->children[1];
+   {
+      const char *ident = expr_bare_identifier_name(expr);
+      if (ident) {
+         ContextEntry *entry = ctx_lookup(ctx, ident);
+         if (entry) {
+            return entry->type;
+         }
+         {
+            const ASTNode *g = global_decl_lookup(ident);
+            if (g && g->count >= 3) {
+               return g->children[1];
+            }
+         }
+         {
+            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            if (fn) {
+               return function_return_type(fn);
+            }
          }
       }
    }
@@ -4277,13 +4928,23 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       ASTNode *callee = expr->children[0];
       ASTNode *args = (expr->count > 1) ? expr->children[1] : NULL;
       const ASTNode *fn = NULL;
-      if (callee && callee->kind == AST_IDENTIFIER) {
-         fn = resolve_function_call_target(callee->strval, args, ctx);
+      {
+         const char *callee_name = expr_bare_identifier_name(callee);
+         if (callee_name) {
+            fn = resolve_function_call_target(callee_name, args, ctx);
+         }
       }
       if (fn) {
          const ASTNode *ret = function_return_type(fn);
          if (ret) {
             return ret;
+         }
+      }
+      else {
+         const ASTNode *callable_decl = expr_value_declarator(callee, ctx);
+         const ASTNode *callable_type = expr_value_type(callee, ctx);
+         if (callable_decl && declarator_has_parameter_list(callable_decl) && declarator_function_pointer_depth(callable_decl) > 0) {
+            return callable_type;
          }
       }
    }
@@ -4364,15 +5025,24 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       return NULL;
    }
 
-   if (expr->kind == AST_IDENTIFIER) {
-      ContextEntry *entry = ctx_lookup(ctx, expr->strval);
-      if (entry) {
-         return entry->declarator;
-      }
-      {
-         const ASTNode *g = global_decl_lookup(expr->strval);
-         if (g && g->count >= 3) {
-            return g->children[2];
+   {
+      const char *ident = expr_bare_identifier_name(expr);
+      if (ident) {
+         ContextEntry *entry = ctx_lookup(ctx, ident);
+         if (entry) {
+            return entry->declarator;
+         }
+         {
+            const ASTNode *g = global_decl_lookup(ident);
+            if (g && g->count >= 3) {
+               return g->children[2];
+            }
+         }
+         {
+            const ASTNode *fn = resolve_function_call_target(ident, NULL, ctx);
+            if (fn) {
+               return function_pointer_declarator_from_callable(function_declarator_node(fn));
+            }
          }
       }
    }
@@ -4388,11 +5058,20 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       ASTNode *callee = expr->children[0];
       ASTNode *args = (expr->count > 1) ? expr->children[1] : NULL;
       const ASTNode *fn = NULL;
-      if (callee && callee->kind == AST_IDENTIFIER) {
-         fn = resolve_function_call_target(callee->strval, args, ctx);
+      {
+         const char *callee_name = expr_bare_identifier_name(callee);
+         if (callee_name) {
+            fn = resolve_function_call_target(callee_name, args, ctx);
+         }
       }
       if (fn) {
-         return function_declarator_node(fn);
+         return function_return_declarator_from_callable(function_declarator_node(fn));
+      }
+      else {
+         const ASTNode *callable_decl = expr_value_declarator(callee, ctx);
+         if (callable_decl && declarator_has_parameter_list(callable_decl) && declarator_function_pointer_depth(callable_decl) > 0) {
+            return function_return_declarator_from_callable(callable_decl);
+         }
       }
    }
 
@@ -4566,7 +5245,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          if (expr->count > 1) {
             argv[1] = expr->children[1];
          }
-         call = make_synthetic_call_expr(expr, function_declarator_node(ofn)->children[1]->strval, argv, expr->count);
+         call = make_synthetic_call_expr(expr, declarator_name(function_declarator_node(ofn)), argv, expr->count);
          if (!call) {
             return false;
          }
@@ -4602,7 +5281,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       const ASTNode *tfn = resolve_truthiness_overload(expr, ctx);
       if (tfn) {
          ASTNode *argv[1] = { expr };
-         ASTNode *call = make_synthetic_call_expr(expr, function_declarator_node(tfn)->children[1]->strval, argv, 1);
+         ASTNode *call = make_synthetic_call_expr(expr, declarator_name(function_declarator_node(tfn)), argv, 1);
          const ASTNode *rtype = function_return_type(tfn);
          const ASTNode *rdecl = function_declarator_node(tfn);
          int rsize = declarator_storage_size(rtype, rdecl);
@@ -4955,7 +5634,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
    ASTNode *declarator = node->children[2];
-   const char *name    = declarator->children[1]->strval;
+   const char *name    = declarator_name(declarator);
    //ASTNode *expression = node->children[node->count - 1];
    int size            = declarator_storage_size(type, declarator);
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -5151,6 +5830,27 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
       return true;
    }
 
+   {
+      const char *ident = expr_bare_identifier_name(expr);
+      if (ident) {
+         const ASTNode *fn = resolve_function_call_target(ident, NULL, NULL);
+         char sym[512];
+         if (fn) {
+            if (function_has_static_parameters(fn)) {
+               error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", expr->file, expr->line, expr->column, ident);
+            }
+            if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
+               char label[sizeof(sym) + 2];
+               snprintf(label, sizeof(label), "_%s", sym);
+               out->kind = INIT_CONST_ADDRESS;
+               out->symbol = strdup(label);
+               out->addend = 0;
+               return true;
+            }
+         }
+      }
+   }
+
    if ((!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] &&
         expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) ||
        (!strcmp(expr->name, "?:") && expr->count >= 3)) {
@@ -5218,14 +5918,22 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             out->addend = lv.offset + lv.ptr_adjust;
             return true;
          }
-         if (inner && inner->kind == AST_IDENTIFIER) {
-            const ASTNode *fn = resolve_function_call_target(inner->strval, NULL, NULL);
+         {
+            const char *ident = expr_bare_identifier_name(inner);
             char sym[512];
-            if (fn && function_symbol_name(fn, inner->strval, sym, sizeof(sym))) {
-               out->kind = INIT_CONST_ADDRESS;
-               out->symbol = strdup(sym);
-               out->addend = 0;
-               return true;
+            const ASTNode *fn = ident ? resolve_function_call_target(ident, NULL, NULL) : NULL;
+            if (fn) {
+               if (function_has_static_parameters(fn)) {
+                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has static parameters", inner->file, inner->line, inner->column, ident);
+               }
+               if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
+                  char label[sizeof(sym) + 2];
+                  snprintf(label, sizeof(label), "_%s", sym);
+                  out->kind = INIT_CONST_ADDRESS;
+                  out->symbol = strdup(label);
+                  out->addend = 0;
+                  return true;
+               }
             }
          }
          return false;
@@ -5700,7 +6408,7 @@ static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const A
                }
                ftype = field->children[1];
                fdecl = field->children[2];
-               find_aggregate_member(type, fdecl->children[1]->strval, NULL, NULL, &offset);
+               find_aggregate_member(type, declarator_name(fdecl), NULL, NULL, &offset);
                field_pos++;
                break;
             }
@@ -5812,7 +6520,7 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
                }
                ftype = field->children[1];
                fdecl = field->children[2];
-               find_aggregate_member(type, fdecl->children[1]->strval, NULL, NULL, &offset);
+               find_aggregate_member(type, declarator_name(fdecl), NULL, NULL, &offset);
                field_pos++;
                break;
             }
@@ -5883,7 +6591,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
    ASTNode *declarator = node->children[2];
-   const char *name    = declarator->children[1]->strval;
+   const char *name    = declarator_name(declarator);
    ASTNode *expression = node->children[node->count - 1];
    int size            = declarator_storage_size(type, declarator);
    ContextEntry *entry;
@@ -6394,7 +7102,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          }
 
          tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
-         call = make_synthetic_call_expr(node, function_declarator_node(ofn)->children[1]->strval, argv, 2);
+         call = make_synthetic_call_expr(node, declarator_name(function_declarator_node(ofn)), argv, 2);
          if (!call) {
             warning("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
             return;
@@ -6803,7 +7511,9 @@ static void compile_function_decl(ASTNode *node) {
    ASTNode *modifiers  = node->children[0]->children[0];
    ASTNode *declarator = node->children[1];
    ASTNode *body       = node->children[2];
-   const char *name    = declarator->children[1]->strval;
+   const char *name    = declarator_name(declarator);
+   const ASTNode *saved_call_graph_function = current_call_graph_function;
+   int saved_call_graph_node = current_call_graph_node;
    char sym[256];
 
    remember_function(node, name);
@@ -6823,6 +7533,8 @@ static void compile_function_decl(ASTNode *node) {
    ctx.break_label = NULL;
    ctx.continue_label = NULL;
    build_function_context(node, &ctx);
+   current_call_graph_function = node;
+   current_call_graph_node = call_graph_node_index_for_function(node);
 
    if (!is_empty(body) && !strcmp(body->name, "statement_list")) {
       predeclare_statement_list(body, &ctx);
@@ -6859,6 +7571,8 @@ static void compile_function_decl(ASTNode *node) {
    }
    emit(&es_code, "    rts\n");
    emit(&es_code, ".endproc\n");
+   current_call_graph_function = saved_call_graph_function;
+   current_call_graph_node = saved_call_graph_node;
 }
 
 static void compile_mem_decl_stmt(ASTNode *node) {
@@ -6955,26 +7669,21 @@ static void compile_union_decl_stmt(ASTNode *node) {
 }
 
 static bool declarator_is_function(const ASTNode *declarator) {
-   return declarator && declarator->count >= 3 &&
-          !strcmp(declarator->children[2]->name, "parameter_list");
+   return declarator && declarator_has_parameter_list(declarator) && !declarator_nested(declarator);
 }
 
 static int declarator_array_multiplier(const ASTNode *declarator) {
-   int mult = 1;
-
-   if (!declarator_is_function(declarator)) {
-      for (int i = 2; i < declarator->count; i++) {
-         mult *= atoi(declarator->children[i]->strval);
-      }
+   if (!declarator || declarator_is_function(declarator)) {
+      return 1;
    }
 
-   return mult;
+   return declarator_array_multiplier_from(declarator, declarator_suffix_start_index(declarator));
 }
 
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator) {
    int size;
 
-   if (atoi(declarator->children[0]->strval) > 0) {
+   if (declarator_pointer_depth(declarator) > 0 || declarator_function_pointer_depth(declarator) > 0) {
       size = get_size("*");
    }
    else {
@@ -6988,7 +7697,7 @@ static void compile_global_decl_item(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
    ASTNode *declarator = node->children[2];
-   const char *name    = declarator->children[1]->strval;
+   const char *name    = declarator_name(declarator);
    ASTNode *expression = node->children[node->count - 1];
    ASTNode *uexpr;
    EmitSink init_es = EMIT_INIT;
@@ -7080,6 +7789,10 @@ static void compile_global_decl_item(ASTNode *node) {
 }
 
 static void remember_function(const ASTNode *node, const char *name) {
+   if (!name) {
+      error("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
+   }
+
    if (is_operator_function_name(name)) {
       remember_operator_overload(node, name);
       return;
@@ -7133,13 +7846,13 @@ static void predeclare_top_level_functions(ASTNode *program) {
             ASTNode *item = list->children[j];
             ASTNode *declarator = item->children[2];
             if (declarator_is_function(declarator)) {
-               remember_function(item, declarator->children[1]->strval);
+               remember_function(item, declarator_name(declarator));
             }
          }
       }
       else if (node->count == 3) {
          ASTNode *declarator = node->children[1];
-         remember_function(node, declarator->children[1]->strval);
+         remember_function(node, declarator_name(declarator));
       }
    }
 }
@@ -7147,7 +7860,7 @@ static void predeclare_top_level_functions(ASTNode *program) {
 static void compile_function_signature(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *declarator = node->children[2];
-   const char *name    = declarator->children[1]->strval;
+   const char *name    = declarator_name(declarator);
    char sym[256];
 
    remember_function(node, name);
@@ -7466,6 +8179,7 @@ void do_compile(FILE *out) {
    emit(&es_export, "; exports\n");
 
    compile(root);
+   analyze_static_parameter_call_graph();
    emit_runtime_global_init_function();
 
    emit_print(&es_header, out);
