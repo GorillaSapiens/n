@@ -6,7 +6,7 @@ CFLAGS += -g        # for debugging
 #CFLAGS += -DYYDEBUG # for yacc debugging
 #CFLAGS += -O2       # for obtimization
 
-TARGET = nc
+TARGET = n65cc
 TEST   = test
 
 GENSRC = parser.tab.c lex.yy.c

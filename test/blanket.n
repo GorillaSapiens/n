@@ -1,4 +1,4 @@
-// nc -X coverage -X dumpast
+// n65cc -X coverage -X dumpast
 
 // for code coverage, some is nonsensical
 

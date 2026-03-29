@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: jsr _bump
 
 type void { $size:0 };

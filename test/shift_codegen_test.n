@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: lda #$01
 // expectasm: sta arg0
 // expectasm: jsr _asrN

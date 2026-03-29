@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: _and_short:
 // expectasm: 	.byte $00
 // expectasm: _or_short:

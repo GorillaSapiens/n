@@ -1,6 +1,6 @@
 *.o
 *.d
-na
+n65asm
 nid
 parser.output
 lex.yy.c

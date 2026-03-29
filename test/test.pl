@@ -17,7 +17,7 @@ foreach my $file (`ls *.n`) {
    my $runner = $lines[0] // '';
    $runner =~ s/[\x0a\x0d]//g;
 
-   if (!($runner =~ /\/\/ nc/)) {
+   if (!($runner =~ /\/\/ n65cc/)) {
       print "[$FAIL] $file missing runner\n";
       exit -1;
    }
@@ -41,7 +41,7 @@ foreach my $file (`ls *.n`) {
       }
    }
 
-   $runner =~ s/^.../..\/compiler\//g;
+   $runner =~ s{^//\s*n65cc\b}{../compiler/n65cc};
    $runner .= " $file";
    $runner =~ s/  / /g; # remove extra spaces, for aesthetics
 

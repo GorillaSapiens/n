@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectasm: .export __sbpmeta$F$a
 // expectasm: __sbpmeta$F$a = 0
 // expectasm: .export __sbpmeta$E$a$b

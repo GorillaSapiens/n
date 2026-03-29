@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm:     jsr _twice
 
 include "machine_6502.n"

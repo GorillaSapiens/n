@@ -1,4 +1,4 @@
-// nc -X dumpast -X parseonly
+// n65cc -X dumpast -X parseonly
 
 // contains all the "standards" used in the default generic 6502 case
 

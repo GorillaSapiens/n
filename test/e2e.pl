@@ -13,15 +13,15 @@ my $test_root = abs_path('.');
 my $repo_root = abs_path(File::Spec->catdir($test_root, '..'));
 my $cases_root = File::Spec->catdir($test_root, 'e2e');
 
-my $nc  = File::Spec->catfile($repo_root, 'compiler', 'nc');
-my $na  = File::Spec->catfile($repo_root, 'assembler', 'na');
-my $nl  = File::Spec->catfile($repo_root, 'linker', 'nl');
-my $nar = File::Spec->catfile($repo_root, 'archiver', 'nar');
-my $ns  = File::Spec->catfile($repo_root, 'simulator', 'ns');
+my $n65cc  = File::Spec->catfile($repo_root, 'compiler', 'n65cc');
+my $n65asm = File::Spec->catfile($repo_root, 'assembler', 'n65asm');
+my $n65ld  = File::Spec->catfile($repo_root, 'linker', 'n65ld');
+my $n65ar  = File::Spec->catfile($repo_root, 'archiver', 'n65ar');
+my $n65sim = File::Spec->catfile($repo_root, 'simulator', 'n65sim');
 my $nlib = File::Spec->catfile($repo_root, 'libraries', 'nlib', 'nlib.a65');
 my $nlib_inc = File::Spec->catdir($repo_root, 'libraries', 'nlib');
 
-for my $tool ($nc, $na, $nl, $nar, $ns, $nlib) {
+for my $tool ($n65cc, $n65asm, $n65ld, $n65ar, $n65sim, $nlib) {
    if (!-e $tool) {
       die "[$FAIL] missing required file: $tool\n";
    }
@@ -174,7 +174,7 @@ for my $case (@cases) {
 
    my $compile_out = File::Spec->catfile($tmp, 'compile.out');
    my $compile_err = File::Spec->catfile($tmp, 'compile.err');
-   my @compile_cmd = ($nc, '-I', $case_dir, '-I', $test_root, '-o', $main_s, $main_src);
+   my @compile_cmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $main_s, $main_src);
    my ($compile_exit) = run_cmd(\@compile_cmd, $compile_out, $compile_err);
    my $compile_stderr = slurp_file($compile_err);
 
@@ -198,7 +198,7 @@ for my $case (@cases) {
 
    my $asm_out = File::Spec->catfile($tmp, 'main_asm.out');
    my $asm_err = File::Spec->catfile($tmp, 'main_asm.err');
-   my @asm_cmd = ($na, '-i', $main_s, '-I', $nlib_inc, '--o65');
+   my @asm_cmd = ($n65asm, '-i', $main_s, '-I', $nlib_inc, '--o65');
    my ($asm_exit) = run_cmd(\@asm_cmd, $asm_out, $asm_err);
    if ($asm_exit != 0) {
       print "[$FAIL] $case assembler exit code $asm_exit\n";
@@ -215,7 +215,7 @@ for my $case (@cases) {
       my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
       my $out_path = File::Spec->catfile($tmp, "$stem.compile.out");
       my $err_path = File::Spec->catfile($tmp, "$stem.compile.err");
-      my @cmd = ($nc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
+      my @cmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
       my ($exit) = run_cmd(\@cmd, $out_path, $err_path);
       if ($exit != 0) {
          print "[$FAIL] $case extra object compile exit code $exit\n";
@@ -223,7 +223,7 @@ for my $case (@cases) {
          print slurp_file($err_path);
          exit(-1);
       }
-      my @acmd = ($na, '-i', $s_path, '-I', $nlib_inc, '--o65');
+      my @acmd = ($n65asm, '-i', $s_path, '-I', $nlib_inc, '--o65');
       my ($aexit) = run_cmd(\@acmd, File::Spec->catfile($tmp, "$stem.asm.out"), File::Spec->catfile($tmp, "$stem.asm.err"));
       if ($aexit != 0) {
          print "[$FAIL] $case extra object assemble exit code $aexit\n";
@@ -240,7 +240,7 @@ for my $case (@cases) {
       my $s_path   = File::Spec->catfile($tmp, "$stem.s");
       my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
       my $a_path   = File::Spec->catfile($tmp, "$stem.a65");
-      my @ccmd = ($nc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
+      my @ccmd = ($n65cc, '-I', $case_dir, '-I', $test_root, '-o', $s_path, $src_path);
       my ($cexit) = run_cmd(\@ccmd, File::Spec->catfile($tmp, "$stem.compile.out"), File::Spec->catfile($tmp, "$stem.compile.err"));
       if ($cexit != 0) {
          print "[$FAIL] $case archive member compile exit code $cexit\n";
@@ -248,7 +248,7 @@ for my $case (@cases) {
          print slurp_file(File::Spec->catfile($tmp, "$stem.compile.err"));
          exit(-1);
       }
-      my @acmd = ($na, '-i', $s_path, '-I', $nlib_inc, '--o65');
+      my @acmd = ($n65asm, '-i', $s_path, '-I', $nlib_inc, '--o65');
       my ($aexit) = run_cmd(\@acmd, File::Spec->catfile($tmp, "$stem.asm.out"), File::Spec->catfile($tmp, "$stem.asm.err"));
       if ($aexit != 0) {
          print "[$FAIL] $case archive member assemble exit code $aexit\n";
@@ -256,18 +256,18 @@ for my $case (@cases) {
          print slurp_file(File::Spec->catfile($tmp, "$stem.asm.err"));
          exit(-1);
       }
-      my @ncmd = ($nar, '-c', $a_path, $o_path);
-      my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$stem.nar.out"), File::Spec->catfile($tmp, "$stem.nar.err"));
+      my @ncmd = ($n65ar, '-c', $a_path, $o_path);
+      my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$stem.n65ar.out"), File::Spec->catfile($tmp, "$stem.n65ar.err"));
       if ($nexit != 0) {
          print "[$FAIL] $case archive creation exit code $nexit\n";
          print join(' ', @ncmd), "\n";
-         print slurp_file(File::Spec->catfile($tmp, "$stem.nar.err"));
+         print slurp_file(File::Spec->catfile($tmp, "$stem.n65ar.err"));
          exit(-1);
       }
       push @archives, $a_path;
    }
 
-   my @link_cmd = ($nl);
+   my @link_cmd = ($n65ld);
    if (defined $meta->{linkcfg}) {
       push @link_cmd, File::Spec->catfile($case_dir, $meta->{linkcfg});
    }
@@ -300,7 +300,7 @@ for my $case (@cases) {
 
    my $sim_out = File::Spec->catfile($tmp, 'sim.out');
    my $sim_err = File::Spec->catfile($tmp, 'sim.err');
-   my @sim_cmd = ('stdbuf', '-o0', $ns, $hex_path);
+   my @sim_cmd = ('stdbuf', '-o0', $n65sim, $hex_path);
    my ($timed_out, $sim_exit, $sim_sig) = run_cmd_with_timeout(\@sim_cmd, $sim_out, $sim_err, 2);
    my $sim_stdout = slurp_file($sim_out);
    my $sim_stderr = slurp_file($sim_err);

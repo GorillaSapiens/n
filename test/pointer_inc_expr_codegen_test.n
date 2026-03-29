@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: adc #$03
 // expectasm: sbc #$03
 

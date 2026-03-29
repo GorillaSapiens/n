@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: _sum:
 // expectasm: 	.byte $14, $00, $00
 // expectasm: _less:

@@ -19,10 +19,10 @@ unit:
 	( cd ./test ; ./test.pl )
 
 sieve:
-	./compiler/nc -I test -o sieve.s test/sieve.n
-	./assembler/na -i sieve.s -I libraries/nlib/ --o65
-	./linker/nl sieve.o65 libraries/nlib/nlib.a65 sieve.hex
-	simulator/ns sieve.hex  | head
+	./compiler/n65cc -I test -o sieve.s test/sieve.n
+	./assembler/n65asm -i sieve.s -I libraries/nlib/ --o65
+	./linker/n65ld sieve.o65 libraries/nlib/nlib.a65 sieve.hex
+	simulator/n65sim sieve.hex  | head
 
 e2e:
 	( cd ./test ; ./e2e.pl )

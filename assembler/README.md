@@ -1,8 +1,8 @@
-# 6502 Assembler Documentation
+# n65asm
 
 ## Overview
 
-This assembler is a custom two-pass 6502 assembler with:
+`n65asm` is a custom two-pass 6502 assembler with:
 
 - Intel HEX output
 - listing file output
@@ -32,7 +32,7 @@ This assembler uses flag-based command line options.
 ### Usage
 
 ```sh
-assembler -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]
+n65asm -i <input.s> [--hex[=file]] [--lst[=file]] [--map[=file]] [--o65[=file]]
 ```
 
 If assembly fails, the assembler returns nonzero and suppresses final HEX output.
@@ -48,7 +48,7 @@ This parameter is required.
 ##### Example
 
 ```sh
-assembler -i program.s --hex
+n65asm -i program.s --hex
 ```
 
 ### Optional Output Parameters
@@ -65,9 +65,9 @@ Enables Intel HEX output.
 ##### Examples
 
 ```sh
-assembler -i program.s --hex
-assembler -i program.s --hex=program.hex
-assembler -i src/program.s --hex
+n65asm -i program.s --hex
+n65asm -i program.s --hex=program.hex
+n65asm -i src/program.s --hex
 ```
 
 Derived filename examples:
@@ -85,8 +85,8 @@ Enables listing output.
 ##### Examples
 
 ```sh
-assembler -i program.s --lst
-assembler -i program.s --lst=program.lst
+n65asm -i program.s --lst
+n65asm -i program.s --lst=program.lst
 ```
 
 Derived filename examples:
@@ -103,8 +103,8 @@ Enables relocatable **o65 object** output.
 ##### Examples
 
 ```sh
-assembler -i program.s --o65
-assembler -i program.s --o65=program.o65
+n65asm -i program.s --o65
+n65asm -i program.s --o65=program.o65
 ```
 
 Derived filename examples:
@@ -121,8 +121,8 @@ Enables map output.
 ##### Examples
 
 ```sh
-assembler -i program.s --map
-assembler -i program.s --map=program.map
+n65asm -i program.s --map
+n65asm -i program.s --map=program.map
 ```
 
 Derived filename examples:
@@ -138,7 +138,7 @@ Displays command line usage information and exits.
 ##### Example
 
 ```sh
-assembler --help
+n65asm --help
 ```
 
 ### Behavior Notes
@@ -148,13 +148,13 @@ assembler --help
 For output options with optional filenames, use the `=` form when supplying a filename:
 
 ```sh
-assembler -i program.s --hex=program.hex --lst=program.lst --map=program.map --o65=program.o65
+n65asm -i program.s --hex=program.hex --lst=program.lst --map=program.map --o65=program.o65
 ```
 
 Do not rely on this form:
 
 ```sh
-assembler -i program.s --hex program.hex
+n65asm -i program.s --hex program.hex
 ```
 
 That may be interpreted as a positional argument instead of an optional value, depending on how `getopt_long()` parses the command line.
@@ -170,13 +170,13 @@ Only the outputs explicitly requested are generated.
 For example:
 
 ```sh
-assembler -i program.s --hex
+n65asm -i program.s --hex
 ```
 
 generates only the HEX file.
 
 ```sh
-assembler -i program.s --lst --map
+n65asm -i program.s --lst --map
 ```
 
 generates only the listing and map files.
@@ -186,31 +186,31 @@ generates only the listing and map files.
 #### Generate only HEX output
 
 ```sh
-assembler -i test.s --hex
+n65asm -i test.s --hex
 ```
 
 #### Generate HEX, listing, and map using default derived names
 
 ```sh
-assembler -i test.s --hex --lst --map
+n65asm -i test.s --hex --lst --map
 ```
 
 #### Generate all outputs with explicit filenames
 
 ```sh
-assembler -i test.s --hex=out.hex --lst=out.lst --map=out.map --o65=out.o65
+n65asm -i test.s --hex=out.hex --lst=out.lst --map=out.map --o65=out.o65
 ```
 
 #### Generate only an o65 object file
 
 ```sh
-assembler -i test.s --o65
+n65asm -i test.s --o65
 ```
 
 #### Generate only a listing file
 
 ```sh
-assembler --input test.s --lst
+n65asm --input test.s --lst
 ```
 
 ### Summary Table

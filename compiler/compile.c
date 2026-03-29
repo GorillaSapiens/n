@@ -9067,7 +9067,7 @@ void do_compile(FILE *out) {
 
    typesizes = pair_create();
 
-   emit(&es_header, "; this file produced by \"nc\" compiler\n");
+   emit(&es_header, "; this file produced by \"n65cc\" compiler\n");
    emit(&es_header, "; depends on --feature dollar_in_identifiers\n");
    emit(&es_header, ".include \"nlib.inc\"\n");
    emit(&es_code,   ".segment \"CODE\"\n");

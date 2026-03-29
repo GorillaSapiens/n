@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: and #$80
 // expectasm: ldy #3
 // expectasm: sta (fp),y

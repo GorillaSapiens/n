@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 
 include "machine_6502.n"
 

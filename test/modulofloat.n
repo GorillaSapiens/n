@@ -1,4 +1,4 @@
-// nc -X dumpexpr -X exproptonly -X invert -X dumpast
+// n65cc -X dumpexpr -X exproptonly -X invert -X dumpast
 
 include "machine_6502.n"
 

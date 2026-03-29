@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectfail
 // expecterr: absolute ref 'banked' does not have a single address
 

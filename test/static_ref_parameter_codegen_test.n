@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: _bump$x:
 // expectasm: 	.res 2
 // expectasm: sta _bump$x,y

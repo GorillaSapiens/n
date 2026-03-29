@@ -1,11 +1,11 @@
-# nl
+# n65ld
 
-`nl` is a small standalone linker for the 6502-oriented `.o65` objects emitted by this project family, plus `.a65` archives produced by `nar`.
+`n65ld` is a small standalone linker for the 6502-oriented `.o65` objects emitted by this project family, plus `.a65` archives produced by `n65ar`.
 
 ## Command line
 
 ```sh
-./nl [layout.cfg] input1.o65 [input2.a65 ... inputN.o65] output.hex [output.map]
+./n65ld [layout.cfg] input1.o65 [input2.a65 ... inputN.o65] output.hex [output.map]
 ```
 
 Rules:
@@ -17,14 +17,14 @@ Rules:
 Examples:
 
 ```sh
-./nl runtime.cfg crt0.o65 main.o65 libstuff.a65 out.hex out.map
-./nl crt0.o65 main.o65 out.hex
+./n65ld runtime.cfg crt0.o65 main.o65 libstuff.a65 out.hex out.map
+./n65ld crt0.o65 main.o65 out.hex
 ```
 
 ## What it does
 
 - reads relocatable `.o65` object files
-- reads `.a65` archives created by `nar`
+- reads `.a65` archives created by `n65ar`
 - treats both command-line `.o65` files and `.a65` archive members lazily
 - pulls in only objects that satisfy required symbols or later unresolved imports
 - warns when a command-line `.o65` file is not used
@@ -41,7 +41,7 @@ Examples:
 - optionally writes a map file
 
 Selection starts from the root symbols `__reset`, `__nmi`, and `__irqbrk`.
-From there, `nl` repeatedly scans inputs to satisfy unresolved imports, pulling in only the object files that define needed symbols, until no new objects are selected.
+From there, `n65ld` repeatedly scans inputs to satisfy unresolved imports, pulling in only the object files that define needed symbols, until no new objects are selected.
 
 Vector order is the normal 6502 order:
 - `$FFFA/$FFFB` ... NMI
@@ -50,7 +50,7 @@ Vector order is the normal 6502 order:
 
 ## Linker-generated symbols
 
-`nl` now generates these absolute symbols automatically:
+`n65ld` now generates these absolute symbols automatically:
 
 - `__data_load_start`
 - `__data_load_end`
@@ -66,7 +66,7 @@ Vector order is the normal 6502 order:
 
 These are intended for startup code. `__init_table` points at a null-terminated table of 16-bit function addresses collected from selected object files that export `__init` or `__init_*`.
 
-Typical usage:
+Typical `n65ld` usage:
 - copy initialized writable data from ROM at `__data_load_start` to RAM at `__data_run_start`
 - copy `__data_size` bytes
 - zero BSS starting at `__bss_start`
@@ -90,7 +90,7 @@ If there is no initialized DATA or no BSS, the corresponding size symbol will be
 
 ## Default memory layout
 
-If no config file is supplied, `nl` uses this built-in layout:
+If no config file is supplied, `n65ld` uses this built-in layout:
 
 ```cfg
 MEMORY {
@@ -111,7 +111,7 @@ SEGMENTS {
 
 ## Config support
 
-`nl` intentionally keeps the config parser simple. It understands the style shown above:
+`n65ld` intentionally keeps the config parser simple. It understands the style shown above:
 - `MEMORY { ... }`
 - `SEGMENTS { ... }`
 - `start = $1234`
@@ -125,7 +125,7 @@ It is not trying to be a full `ld65` config parser.
 
 ## Segment mapping
 
-For the current object format subset, `nl` maps o65 segments like this:
+For the current object format subset, `n65ld` maps o65 segments like this:
 - o65 `TEXT` -> linker `CODE`
 - o65 `DATA` -> linker `DATA`
 - o65 `BSS` -> linker `BSS`
@@ -135,7 +135,7 @@ For the current object format subset, `nl` maps o65 segments like this:
 
 ## Map file
 
-When you request a map file, `nl` writes:
+When you request a map file, `n65ld` writes:
 - memory regions
 - object placement
 - linker-generated symbols
@@ -167,7 +167,7 @@ make
 
 ## Weak symbols
 
-`nl` supports a custom weak-symbol convention.
+`n65ld` supports a custom weak-symbol convention.
 When a reference to `foo` cannot be satisfied by a strong exported `foo`, the linker falls back to `__weak_foo`.
 Resolution is symbol-driven and left-to-right over the command line, but strong definitions are preferred globally over weak fallbacks for the same symbol.
 For `.a65` inputs, only the single member object that defines the selected symbol is pulled in.

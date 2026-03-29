@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectfail
 // expecterr: negative shift count -1
 

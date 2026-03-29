@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectasm: .segment "BSS.banana"
 // expectasm: _bump$x:
 // expectasm: .segment "DATA.banana"

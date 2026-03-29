@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectasm: #<((0x00) + 0)
 // expectasm: #<((0x80) + 0)
 // expectasm: #<((0x100) + 0)

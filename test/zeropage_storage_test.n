@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectasm: .zpexport _z
 // expectasm: .zpexport _q
 // expectasm: .segment "ZEROPAGE"

@@ -1,6 +1,6 @@
-# nar
+# n65ar
 
-`nar` is a small standalone archiver for bundling `.o65` object files into a single `.a65` library file and unpacking them later.
+`n65ar` is a small standalone archiver for bundling `.o65` object files into a single `.a65` library file and unpacking them later.
 
 ## Build
 
@@ -13,13 +13,13 @@ make
 Create an archive:
 
 ```sh
-./nar -c output.a65 obj1.o65 obj2.o65 ... objN.o65
+./n65ar -c output.a65 obj1.o65 obj2.o65 ... objN.o65
 ```
 
 Extract an archive:
 
 ```sh
-./nar -x input.a65
+./n65ar -x input.a65
 ```
 
 ## Archive format

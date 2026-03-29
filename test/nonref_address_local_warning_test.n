@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expecterr: '@' on non-ref declaration 'port' is ignored
 include "machine_6502.n"
 

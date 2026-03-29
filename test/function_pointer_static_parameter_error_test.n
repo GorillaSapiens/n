@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectfail
 // expecterr: cannot create a pointer to function 'bad' because it has symbol-backed parameters
 include "machine_6502.n"

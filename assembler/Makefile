@@ -6,7 +6,7 @@ CFLAGS += -g # for debugging
 #CFLAGS += -DYYDEBUG # for yacc debugging
 #CFLAGS += -O2 # for obtimization
 
-TARGET = na
+TARGET = n65asm
 
 GENSRC = parser.tab.c lex.yy.c
 GENHDR = parser.tab.h
@@ -48,7 +48,7 @@ lex.yy.c: lexer.l
 	$(LEX) lexer.l
 
 tarball:
-	tar -czf na.`date "+%Y%m%d_%H%M%S"`.tar.gz *
+	tar -czf n65asm.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 tidy:
 	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d *.gz

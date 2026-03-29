@@ -1,4 +1,4 @@
-// nc -I .
+// n65cc -I .
 // expectfail
 // expecterr: call graph cycle reaches function 'a' with symbol-backed parameters
 include "machine_6502.n"

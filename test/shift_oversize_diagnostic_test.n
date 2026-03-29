@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectfail
 // expecterr: shift count 16 exceeds 16-bit left operand
 

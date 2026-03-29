@@ -1,4 +1,4 @@
-// nc -X invert
+// n65cc -X invert
 
 include "machine_6502.n"
 

@@ -6,7 +6,7 @@ CFLAGS += -g # for debugging
 #CFLAGS += -DYYDEBUG # for yacc debugging
 #CFLAGS += -O2 # for obtimization
 
-TARGET = ns
+TARGET = n65sim
 
 SRCSRC = \
    mos6502/mos6502.cpp \

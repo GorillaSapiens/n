@@ -1,3 +1,3 @@
-// nc -X parseonly
+// n65cc -X parseonly
 
 include "braindead.n"

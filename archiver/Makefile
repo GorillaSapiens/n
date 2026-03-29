@@ -2,10 +2,10 @@ CC ?= cc
 CFLAGS ?= -O2
 WARNINGS = -Wall -Wextra -Werror -pedantic
 
-all: nar
+all: n65ar
 
-nar: nar.c
-	$(CC) $(CFLAGS) $(WARNINGS) -o $@ nar.c
+n65ar: n65ar.c
+	$(CC) $(CFLAGS) $(WARNINGS) -o $@ n65ar.c
 
 clean:
-	rm -f nar
+	rm -f n65ar

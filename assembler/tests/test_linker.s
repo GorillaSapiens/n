@@ -34,7 +34,7 @@ counter:
    .byte 0
 
 message:
-   .asciiz "Hello from nl!\n"
+   .asciiz "Hello from n65ld!\n"
 
 scratch:
    .res 16

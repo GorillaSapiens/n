@@ -1,5 +1,5 @@
-ASM=../../assembler/na
-AR=../../archiver/nar
+ASM=../../assembler/n65asm
+AR=../../archiver/n65ar
 
 all:
 	rm -rf wrk nlib.a

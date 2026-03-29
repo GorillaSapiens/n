@@ -60,7 +60,7 @@ There is no free list, no block reuse, and no protection against later argument-
 `nlib` assumes the rest of this toolchain and its linker conventions.
 In practice that means:
 
-- the program is linked with `nl`
+- the program is linked with `n65ld`
 - the linker provides `__copy_table`, `__zero_table`, `__init_table`, `__stack_start`, and `__stack_top`
 - the linker config defines the standard runtime segments the startup code expects
 

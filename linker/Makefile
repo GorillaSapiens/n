@@ -1,14 +1,14 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -pedantic -O2
 
-all: nl
+all: n65ld
 
-nl: nl.c
-	$(CC) $(CFLAGS) nl.c -o nl
+n65ld: n65ld.c
+	$(CC) $(CFLAGS) n65ld.c -o n65ld
 
 tarball:
 	rm *.gz
-	tar -czf nl.`date "+%Y%m%d_%H%M%S"`.tar.gz *
+	tar -czf n65ld.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 clean:
-	rm -f nl
+	rm -f n65ld

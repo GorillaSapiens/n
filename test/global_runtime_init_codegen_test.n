@@ -1,4 +1,4 @@
-// nc
+// n65cc
 // expectasm: .export __init_
 // expectasm: .proc __init_
 // expectasm: jsr _twice

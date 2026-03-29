@@ -1,4 +1,4 @@
-// nc -X dumpast -X parseonly
+// n65cc -X dumpast -X parseonly
 
 type bool     { $size:1 };
 type void     { $size:0 };

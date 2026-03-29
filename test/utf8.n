@@ -1,4 +1,4 @@
-// nc -X parseonly -X dumpast
+// n65cc -X parseonly -X dumpast
 
 include "machine_6502.n"
 
