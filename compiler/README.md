@@ -304,6 +304,39 @@ void swap(ref s2 a, ref s2 b) {
 
 `static ref` parameters work. Their backing symbol storage is pointer-sized, not referent-sized.
 
+### Absolute `ref` declarations
+
+The compiler supports `ref` declarations bound directly to absolute addresses. This is intended for memory-mapped hardware registers and similar machine-defined storage that already exists outside normal compiler allocation.
+
+Supported forms:
+
+```n
+ref u8 port@0x10;
+ref u8 status@STATUS_REG;
+ref u8 vsync@[none/0x00];
+ref u8 cxm0p@[0x00/none];
+ref u16 banked@[0x100/0x180];
+```
+
+Meaning:
+
+- `ref T x@addr` is shorthand for `ref T x@[addr/addr]`
+- `@[read/write]` gives separate address expressions for loads and stores
+- either side may be `none` to model read-only or write-only hardware
+- each side currently accepts a single integer literal or identifier, not an arbitrary expression
+
+Current behavior and limits:
+
+- reading uses the read address
+- writing uses the write address
+- storing to a `@[read/none]` declaration is rejected as write to a read-only absolute ref
+- loading from a `@[none/write]` declaration is rejected as read from a write-only absolute ref
+- taking the address of a split-address absolute ref such as `@[0x100/0x180]` is rejected, because it does not have one canonical address
+- if both sides name the same address, `&name` behaves normally
+- identifiers used in the address slots are passed through to the assembler/linker; the compiler does not require them to be declared as N symbols
+
+Absolute address binding is only meaningful on `ref` declarations. Using `@...` on a non-`ref` declaration is accepted for compatibility but ignored, and the compiler now warns about it.
+
 ## Function parameters
 
 ### Ordinary parameters
