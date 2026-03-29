@@ -11,13 +11,34 @@
 #define NAR_MAGIC_SIZE 7
 #define COPY_BUFFER_SIZE 65536
 
+typedef struct
+{
+   char op;
+   bool suppress_create_message;
+   bool verbose;
+} ar_options_t;
+
 static void usage(FILE *fp)
 {
    fprintf(fp,
       "Usage:\n"
-      "  n65ar -c output.a65 obj1.o65 obj2.o65 ... objN.o65\n"
-      "  n65ar -x input.a65\n"
-      "  n65ar -l input.a65\n");
+      "  n65ar rcs archive.a65 file1.o65 file2.o65 ...\n"
+      "  n65ar t archive.a65 [member ...]\n"
+      "  n65ar x archive.a65 [member ...]\n"
+      "\n"
+      "Supported GNU ar-style operations/modifiers:\n"
+      "  r  replace or add members\n"
+      "  q  append members\n"
+      "  t  list members\n"
+      "  x  extract members\n"
+      "  c  suppress the 'creating archive' message\n"
+      "  s  accepted for compatibility; no index is written\n"
+      "  v  verbose output\n"
+      "\n"
+      "Legacy compatibility is also accepted:\n"
+      "  n65ar -c archive.a65 file1.o65 ...\n"
+      "  n65ar -l archive.a65\n"
+      "  n65ar -x archive.a65\n");
 }
 
 static const char *base_name(const char *path)
@@ -200,151 +221,471 @@ static int open_archive_for_read(const char *archive_name, FILE **out_fp)
    return 1;
 }
 
-static int create_archive(const char *archive_name, int input_count, char **inputs)
+static bool member_name_is_valid(const char *name)
 {
-   FILE *archive;
+   return strchr(name, '/') == NULL && strchr(name, '\\') == NULL && name[0] != '\0';
+}
+
+static int append_member_from_file(FILE *archive, const char *input_name)
+{
+   const char *stored_name;
+   FILE *input;
+   long size;
+   size_t name_len;
+
+   stored_name = base_name(input_name);
+   name_len = strlen(stored_name);
+
+   if (!ends_with(stored_name, ".o65"))
+      fprintf(stderr, "n65ar: warning: '%s' does not end with .o65\n", input_name);
+
+   if (name_len == 0 || name_len > UINT16_MAX || !member_name_is_valid(stored_name)) {
+      fprintf(stderr, "n65ar: invalid member name '%s'\n", input_name);
+      return 0;
+   }
+
+   input = fopen(input_name, "rb");
+   if (!input) {
+      fprintf(stderr, "n65ar: cannot open '%s': %s\n", input_name, strerror(errno));
+      return 0;
+   }
+
+   size = file_size(input);
+   if (size < 0) {
+      fprintf(stderr, "n65ar: cannot determine size of '%s'\n", input_name);
+      fclose(input);
+      return 0;
+   }
+
+   if ((uint64_t)size > UINT32_MAX) {
+      fprintf(stderr, "n65ar: '%s' is too large for this archive format\n", input_name);
+      fclose(input);
+      return 0;
+   }
+
+   if (!write_u16_le(archive, (uint16_t)name_len)
+         || !write_u32_le(archive, (uint32_t)size)
+         || fwrite(stored_name, 1, name_len, archive) != name_len) {
+      fprintf(stderr, "n65ar: failed writing member header for '%s': %s\n", input_name, strerror(errno));
+      fclose(input);
+      return 0;
+   }
+
+   if (fseek(input, 0, SEEK_SET) != 0) {
+      fprintf(stderr, "n65ar: seek failed on '%s'\n", input_name);
+      fclose(input);
+      return 0;
+   }
+
+   if (!copy_n_bytes(input, archive, (uint32_t)size)) {
+      fclose(input);
+      return 0;
+   }
+
+   fclose(input);
+   return 1;
+}
+
+static int write_archive_header(FILE *archive, const char *archive_name)
+{
+   if (fwrite(NAR_MAGIC, 1, NAR_MAGIC_SIZE, archive) != NAR_MAGIC_SIZE) {
+      fprintf(stderr, "n65ar: failed to write archive header for '%s': %s\n", archive_name, strerror(errno));
+      return 0;
+   }
+
+   return 1;
+}
+
+static int peek_archive_eof(FILE *archive, const char *archive_name, int *at_eof_out)
+{
+   int ch;
+
+   ch = fgetc(archive);
+   if (ch == EOF) {
+      if (feof(archive)) {
+         clearerr(archive);
+         *at_eof_out = 1;
+         return 1;
+      }
+
+      fprintf(stderr, "n65ar: read error on '%s'\n", archive_name);
+      return 0;
+   }
+
+   if (ungetc(ch, archive) == EOF) {
+      fprintf(stderr, "n65ar: internal read error on '%s'\n", archive_name);
+      return 0;
+   }
+
+   *at_eof_out = 0;
+   return 1;
+}
+
+static int read_member_header(FILE *archive,
+                              const char *archive_name,
+                              uint16_t *name_len_out,
+                              uint32_t *size_out,
+                              char **name_out,
+                              int *at_eof_out)
+{
+   uint16_t name_len;
+   uint32_t size;
+   char *name;
+
+   *name_out = NULL;
+
+   if (!peek_archive_eof(archive, archive_name, at_eof_out))
+      return 0;
+
+   if (*at_eof_out)
+      return 1;
+
+   if (!read_u16_le(archive, &name_len) || !read_u32_le(archive, &size)) {
+      fprintf(stderr, "n65ar: truncated member header in '%s'\n", archive_name);
+      return 0;
+   }
+
+   if (name_len == 0) {
+      fprintf(stderr, "n65ar: invalid zero-length member name in '%s'\n", archive_name);
+      return 0;
+   }
+
+   name = (char *)malloc((size_t)name_len + 1u);
+   if (!name) {
+      fprintf(stderr, "n65ar: out of memory\n");
+      return 0;
+   }
+
+   if (fread(name, 1, name_len, archive) != name_len) {
+      fprintf(stderr, "n65ar: truncated member name in '%s'\n", archive_name);
+      free(name);
+      return 0;
+   }
+
+   name[name_len] = '\0';
+   *name_len_out = name_len;
+   *size_out = size;
+   *name_out = name;
+   return 1;
+}
+
+static int write_member_record(FILE *out, FILE *in, const char *member_name, uint32_t size)
+{
+   size_t name_len;
+
+   name_len = strlen(member_name);
+   if (!write_u16_le(out, (uint16_t)name_len)
+         || !write_u32_le(out, size)
+         || fwrite(member_name, 1, name_len, out) != name_len) {
+      fprintf(stderr, "n65ar: failed writing member header for '%s': %s\n", member_name, strerror(errno));
+      return 0;
+   }
+
+   return copy_n_bytes(in, out, size);
+}
+
+static char *temp_archive_name(const char *archive_name)
+{
+   size_t len;
+   char *tmp_name;
+
+   len = strlen(archive_name);
+   tmp_name = (char *)malloc(len + 5u);
+   if (!tmp_name)
+      return NULL;
+
+   memcpy(tmp_name, archive_name, len);
+   memcpy(tmp_name + len, ".tmp", 5u);
+   return tmp_name;
+}
+
+static int member_name_index(const char *member_name, int count, char **names)
+{
    int i;
 
-   archive = fopen(archive_name, "wb");
-   if (!archive) {
-      fprintf(stderr, "n65ar: cannot create '%s': %s\n", archive_name, strerror(errno));
+   for (i = 0; i < count; ++i) {
+      if (strcmp(member_name, base_name(names[i])) == 0)
+         return i;
+   }
+
+   return -1;
+}
+
+static int append_archive(const char *archive_name, int input_count, char **inputs, bool quiet_create, bool verbose)
+{
+   FILE *old_archive;
+   FILE *new_archive;
+   char *tmp_name;
+   struct stat st;
+   bool have_old_archive;
+   int status;
+
+   status = 1;
+   old_archive = NULL;
+   new_archive = NULL;
+   tmp_name = NULL;
+   have_old_archive = stat(archive_name, &st) == 0;
+
+   if (!have_old_archive && !quiet_create)
+      fprintf(stderr, "n65ar: creating %s\n", archive_name);
+
+   if (have_old_archive) {
+      if (!open_archive_for_read(archive_name, &old_archive))
+         return 1;
+   }
+
+   tmp_name = temp_archive_name(archive_name);
+   if (!tmp_name) {
+      fprintf(stderr, "n65ar: out of memory\n");
+      if (old_archive)
+         fclose(old_archive);
       return 1;
    }
 
-   if (fwrite(NAR_MAGIC, 1, NAR_MAGIC_SIZE, archive) != NAR_MAGIC_SIZE) {
-      fprintf(stderr, "n65ar: failed to write archive header: %s\n", strerror(errno));
-      fclose(archive);
+   new_archive = fopen(tmp_name, "wb");
+   if (!new_archive) {
+      fprintf(stderr, "n65ar: cannot create '%s': %s\n", tmp_name, strerror(errno));
+      if (old_archive)
+         fclose(old_archive);
+      free(tmp_name);
       return 1;
+   }
+
+   if (!write_archive_header(new_archive, archive_name))
+      goto cleanup;
+
+   if (old_archive) {
+      if (fseek(old_archive, NAR_MAGIC_SIZE, SEEK_SET) != 0) {
+         fprintf(stderr, "n65ar: seek failed on '%s'\n", archive_name);
+         goto cleanup;
+      }
+
+      while (1) {
+         uint16_t name_len;
+         uint32_t size;
+         char *name;
+         int at_eof;
+
+         if (!read_member_header(old_archive, archive_name, &name_len, &size, &name, &at_eof))
+            goto cleanup;
+
+         if (at_eof)
+            break;
+
+         if (!write_member_record(new_archive, old_archive, name, size)) {
+            free(name);
+            goto cleanup;
+         }
+
+         if (verbose)
+            printf("a - %s\n", name);
+
+         free(name);
+      }
+   }
+
+   for (int i = 0; i < input_count; ++i) {
+      const char *member_name;
+
+      member_name = base_name(inputs[i]);
+      if (!append_member_from_file(new_archive, inputs[i]))
+         goto cleanup;
+
+      if (verbose)
+         printf("a - %s\n", member_name);
+   }
+
+   status = 0;
+
+cleanup:
+   if (old_archive)
+      fclose(old_archive);
+
+   if (new_archive && fclose(new_archive) != 0) {
+      fprintf(stderr, "n65ar: close failed on '%s': %s\n", tmp_name ? tmp_name : archive_name, strerror(errno));
+      status = 1;
+   }
+
+   if (status == 0) {
+      if (rename(tmp_name, archive_name) != 0) {
+         fprintf(stderr, "n65ar: cannot replace '%s': %s\n", archive_name, strerror(errno));
+         status = 1;
+      }
+   }
+
+   if (status != 0 && tmp_name)
+      remove(tmp_name);
+
+   free(tmp_name);
+   return status;
+}
+
+static int replace_archive(const char *archive_name, int input_count, char **inputs, bool quiet_create, bool verbose)
+{
+   FILE *old_archive;
+   FILE *new_archive;
+   char *tmp_name;
+   struct stat st;
+   bool have_old_archive;
+   bool *replaced_flags;
+   int status;
+   int i;
+
+   status = 1;
+   old_archive = NULL;
+   new_archive = NULL;
+   tmp_name = NULL;
+   replaced_flags = NULL;
+   have_old_archive = stat(archive_name, &st) == 0;
+
+   if (!have_old_archive && !quiet_create)
+      fprintf(stderr, "n65ar: creating %s\n", archive_name);
+
+   if (have_old_archive) {
+      if (!open_archive_for_read(archive_name, &old_archive))
+         return 1;
+   }
+
+   replaced_flags = (bool *)calloc((size_t)input_count, sizeof(bool));
+   if (!replaced_flags) {
+      fprintf(stderr, "n65ar: out of memory\n");
+      if (old_archive)
+         fclose(old_archive);
+      return 1;
+   }
+
+   tmp_name = temp_archive_name(archive_name);
+   if (!tmp_name) {
+      fprintf(stderr, "n65ar: out of memory\n");
+      fclose(old_archive);
+      free(replaced_flags);
+      return 1;
+   }
+
+   new_archive = fopen(tmp_name, "wb");
+   if (!new_archive) {
+      fprintf(stderr, "n65ar: cannot create '%s': %s\n", tmp_name, strerror(errno));
+      if (old_archive)
+         fclose(old_archive);
+      free(replaced_flags);
+      free(tmp_name);
+      return 1;
+   }
+
+   if (!write_archive_header(new_archive, archive_name))
+      goto cleanup;
+
+   if (old_archive) {
+      if (fseek(old_archive, NAR_MAGIC_SIZE, SEEK_SET) != 0) {
+         fprintf(stderr, "n65ar: seek failed on '%s'\n", archive_name);
+         goto cleanup;
+      }
+
+      while (1) {
+         uint16_t name_len;
+         uint32_t size;
+         char *name;
+         int at_eof;
+         int index;
+
+         if (!read_member_header(old_archive, archive_name, &name_len, &size, &name, &at_eof))
+            goto cleanup;
+
+         if (at_eof)
+            break;
+
+         index = member_name_index(name, input_count, inputs);
+         if (index >= 0) {
+            replaced_flags[index] = true;
+            if (!skip_n_bytes(old_archive, size)) {
+               free(name);
+               goto cleanup;
+            }
+            free(name);
+            continue;
+         }
+
+         if (!write_member_record(new_archive, old_archive, name, size)) {
+            free(name);
+            goto cleanup;
+         }
+
+         free(name);
+      }
    }
 
    for (i = 0; i < input_count; ++i) {
-      const char *input_name;
-      const char *stored_name;
-      size_t stored_name_len;
-      FILE *in;
-      long size;
+      const char *member_name;
+      char action;
 
-      input_name = inputs[i];
-      stored_name = base_name(input_name);
-      stored_name_len = strlen(stored_name);
+      member_name = base_name(inputs[i]);
+      action = replaced_flags[i] ? 'r' : 'a';
 
-      if (!ends_with(stored_name, ".o65")) {
-         fprintf(stderr, "n65ar: warning: '%s' does not end with .o65\n", input_name);
-      }
+      if (!append_member_from_file(new_archive, inputs[i]))
+         goto cleanup;
 
-      if (stored_name_len == 0 || stored_name_len > 65535u) {
-         fprintf(stderr, "n65ar: invalid member name '%s'\n", input_name);
-         fclose(archive);
-         return 1;
-      }
-
-      in = fopen(input_name, "rb");
-      if (!in) {
-         fprintf(stderr, "n65ar: cannot open '%s': %s\n", input_name, strerror(errno));
-         fclose(archive);
-         return 1;
-      }
-
-      size = file_size(in);
-      if (size < 0) {
-         fprintf(stderr, "n65ar: cannot determine size of '%s'\n", input_name);
-         fclose(in);
-         fclose(archive);
-         return 1;
-      }
-
-      if ((uint64_t)size > UINT32_MAX) {
-         fprintf(stderr, "n65ar: '%s' is too large for this archive format\n", input_name);
-         fclose(in);
-         fclose(archive);
-         return 1;
-      }
-
-      if (write_u16_le(archive, (uint16_t)stored_name_len) == 0
-            || write_u32_le(archive, (uint32_t)size) == 0
-            || fwrite(stored_name, 1, stored_name_len, archive) != stored_name_len) {
-         fprintf(stderr, "n65ar: failed writing member header for '%s': %s\n", input_name, strerror(errno));
-         fclose(in);
-         fclose(archive);
-         return 1;
-      }
-
-      if (fseek(in, 0, SEEK_SET) != 0) {
-         fprintf(stderr, "n65ar: seek failed on '%s'\n", input_name);
-         fclose(in);
-         fclose(archive);
-         return 1;
-      }
-
-      if (!copy_n_bytes(in, archive, (uint32_t)size)) {
-         fclose(in);
-         fclose(archive);
-         return 1;
-      }
-
-      fclose(in);
+      if (verbose)
+         printf("%c - %s\n", action, member_name);
    }
 
-   fclose(archive);
-   return 0;
+   status = 0;
+
+cleanup:
+   if (old_archive)
+      fclose(old_archive);
+
+   if (new_archive && fclose(new_archive) != 0) {
+      fprintf(stderr, "n65ar: close failed on '%s': %s\n", tmp_name ? tmp_name : archive_name, strerror(errno));
+      status = 1;
+   }
+
+   if (status == 0) {
+      if (rename(tmp_name, archive_name) != 0) {
+         fprintf(stderr, "n65ar: cannot replace '%s': %s\n", archive_name, strerror(errno));
+         status = 1;
+      }
+   }
+
+   if (status != 0 && tmp_name)
+      remove(tmp_name);
+
+   free(replaced_flags);
+   free(tmp_name);
+   return status;
 }
 
-static int extract_archive(const char *archive_name)
+static int extract_archive(const char *archive_name, int requested_count, char **requested_names, bool verbose)
 {
    FILE *archive;
 
    if (!open_archive_for_read(archive_name, &archive))
       return 1;
 
-   for (;;) {
+   while (1) {
       uint16_t name_len;
       uint32_t size;
       char *name;
+      int at_eof;
       FILE *out;
-      int c;
 
-      c = fgetc(archive);
-      if (c == EOF) {
-         if (feof(archive))
-            break;
-         fprintf(stderr, "n65ar: read error on '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
-      if (ungetc(c, archive) == EOF) {
-         fprintf(stderr, "n65ar: internal read error on '%s'\n", archive_name);
+      if (!read_member_header(archive, archive_name, &name_len, &size, &name, &at_eof)) {
          fclose(archive);
          return 1;
       }
 
-      if (!read_u16_le(archive, &name_len) || !read_u32_le(archive, &size)) {
-         fprintf(stderr, "n65ar: truncated member header in '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
+      if (at_eof)
+         break;
 
-      if (name_len == 0) {
-         fprintf(stderr, "n65ar: invalid zero-length member name in '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
-
-      name = (char *)malloc((size_t)name_len + 1u);
-      if (!name) {
-         fprintf(stderr, "n65ar: out of memory\n");
-         fclose(archive);
-         return 1;
-      }
-
-      if (fread(name, 1, name_len, archive) != name_len) {
-         fprintf(stderr, "n65ar: truncated member name in '%s'\n", archive_name);
+      if (requested_count > 0 && member_name_index(name, requested_count, requested_names) < 0) {
          free(name);
-         fclose(archive);
-         return 1;
+         if (!skip_n_bytes(archive, size)) {
+            fclose(archive);
+            return 1;
+         }
+         continue;
       }
-      name[name_len] = '\0';
 
-      if (strchr(name, '/') || strchr(name, '\\')) {
+      if (!member_name_is_valid(name)) {
          fprintf(stderr, "n65ar: refusing suspicious member name '%s'\n", name);
          free(name);
          fclose(archive);
@@ -358,6 +699,9 @@ static int extract_archive(const char *archive_name)
          fclose(archive);
          return 1;
       }
+
+      if (verbose)
+         printf("x - %s\n", name);
 
       if (!copy_n_bytes(archive, out, size)) {
          fclose(out);
@@ -374,63 +718,33 @@ static int extract_archive(const char *archive_name)
    return 0;
 }
 
-static int list_archive(const char *archive_name)
+static int list_archive(const char *archive_name, int requested_count, char **requested_names, bool verbose)
 {
    FILE *archive;
+
+   (void)verbose;
 
    if (!open_archive_for_read(archive_name, &archive))
       return 1;
 
-   for (;;) {
+   while (1) {
       uint16_t name_len;
       uint32_t size;
       char *name;
-      int c;
+      int at_eof;
 
-      c = fgetc(archive);
-      if (c == EOF) {
-         if (feof(archive))
-            break;
-         fprintf(stderr, "n65ar: read error on '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
-      if (ungetc(c, archive) == EOF) {
-         fprintf(stderr, "n65ar: internal read error on '%s'\n", archive_name);
+      if (!read_member_header(archive, archive_name, &name_len, &size, &name, &at_eof)) {
          fclose(archive);
          return 1;
       }
 
-      if (!read_u16_le(archive, &name_len) || !read_u32_le(archive, &size)) {
-         fprintf(stderr, "n65ar: truncated member header in '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
+      if (at_eof)
+         break;
 
-      if (name_len == 0) {
-         fprintf(stderr, "n65ar: invalid zero-length member name in '%s'\n", archive_name);
-         fclose(archive);
-         return 1;
-      }
+      if (requested_count == 0 || member_name_index(name, requested_count, requested_names) >= 0)
+         puts(name);
 
-      name = (char *)malloc((size_t)name_len + 1u);
-      if (!name) {
-         fprintf(stderr, "n65ar: out of memory\n");
-         fclose(archive);
-         return 1;
-      }
-
-      if (fread(name, 1, name_len, archive) != name_len) {
-         fprintf(stderr, "n65ar: truncated member name in '%s'\n", archive_name);
-         free(name);
-         fclose(archive);
-         return 1;
-      }
-      name[name_len] = '\0';
-
-      puts(name);
       free(name);
-
       if (!skip_n_bytes(archive, size)) {
          fclose(archive);
          return 1;
@@ -441,37 +755,123 @@ static int list_archive(const char *archive_name)
    return 0;
 }
 
-int main(int argc, char **argv)
+static int parse_legacy_mode(int argc, char **argv)
 {
-   if (argc < 3) {
-      usage(stderr);
-      return 1;
-   }
-
    if (strcmp(argv[1], "-c") == 0) {
       if (argc < 4) {
          usage(stderr);
          return 1;
       }
-      return create_archive(argv[2], argc - 3, &argv[3]);
+      return replace_archive(argv[2], argc - 3, &argv[3], true, false);
    }
 
    if (strcmp(argv[1], "-x") == 0) {
-      if (argc != 3) {
+      if (argc < 3) {
          usage(stderr);
          return 1;
       }
-      return extract_archive(argv[2]);
+      return extract_archive(argv[2], argc - 3, &argv[3], false);
    }
 
    if (strcmp(argv[1], "-l") == 0) {
-      if (argc != 3) {
+      if (argc < 3) {
          usage(stderr);
          return 1;
       }
-      return list_archive(argv[2]);
+      return list_archive(argv[2], argc - 3, &argv[3], false);
    }
 
-   usage(stderr);
-   return 1;
+   return -1;
+}
+
+static int parse_mode_string(const char *arg, ar_options_t *opts)
+{
+   const char *p;
+   bool have_op;
+
+   opts->op = '\0';
+   opts->suppress_create_message = false;
+   opts->verbose = false;
+   have_op = false;
+
+   p = arg;
+   if (*p == '-')
+      ++p;
+
+   if (*p == '\0')
+      return 0;
+
+   while (*p) {
+      switch (*p) {
+      case 'r':
+      case 'q':
+      case 't':
+      case 'x':
+         if (have_op)
+            return 0;
+         opts->op = *p;
+         have_op = true;
+         break;
+
+      case 'c':
+         opts->suppress_create_message = true;
+         break;
+
+      case 's':
+         break;
+
+      case 'v':
+         opts->verbose = true;
+         break;
+
+      default:
+         return 0;
+      }
+
+      ++p;
+   }
+
+   return have_op ? 1 : 0;
+}
+
+int main(int argc, char **argv)
+{
+   ar_options_t opts;
+   int legacy_status;
+
+   if (argc < 3) {
+      usage(stderr);
+      return 1;
+   }
+
+   legacy_status = parse_legacy_mode(argc, argv);
+   if (legacy_status >= 0)
+      return legacy_status;
+
+   if (!parse_mode_string(argv[1], &opts)) {
+      usage(stderr);
+      return 1;
+   }
+
+   switch (opts.op) {
+   case 'r':
+   case 'q':
+      if (argc < 4) {
+         usage(stderr);
+         return 1;
+      }
+      if (opts.op == 'r')
+         return replace_archive(argv[2], argc - 3, &argv[3], opts.suppress_create_message, opts.verbose);
+      return append_archive(argv[2], argc - 3, &argv[3], opts.suppress_create_message, opts.verbose);
+
+   case 't':
+      return list_archive(argv[2], argc - 3, &argv[3], opts.verbose);
+
+   case 'x':
+      return extract_archive(argv[2], argc - 3, &argv[3], opts.verbose);
+
+   default:
+      usage(stderr);
+      return 1;
+   }
 }

@@ -1,6 +1,6 @@
 # n65ar
 
-`n65ar` is a small standalone archiver for bundling `.o65` object files into a single `.a65` library file and unpacking them later.
+`n65ar` is a small standalone archiver for bundling `.o65` object files into a single `.a65` library file and unpacking them later. Its command line now follows the usual GNU `ar` shape for the operations this tool supports.
 
 ## Build
 
@@ -10,17 +10,39 @@ make
 
 ## Usage
 
-Create an archive:
+Create or update an archive:
 
 ```sh
-./n65ar -c output.a65 obj1.o65 obj2.o65 ... objN.o65
+./n65ar rcs output.a65 obj1.o65 obj2.o65 ... objN.o65
 ```
 
-Extract an archive:
+List members:
 
 ```sh
-./n65ar -x input.a65
+./n65ar t input.a65
 ```
+
+Extract all members, or only named members:
+
+```sh
+./n65ar x input.a65
+./n65ar x input.a65 obj1.o65
+```
+
+## Supported operation letters
+
+- `r` ... replace existing members or add new ones
+- `q` ... append members
+- `t` ... list members
+- `x` ... extract members
+
+## Supported modifiers
+
+- `c` ... suppress the "creating archive" message
+- `s` ... accepted for GNU `ar` compatibility; no symbol index is written
+- `v` ... verbose member-by-member output
+
+Legacy compatibility with the older `-c`, `-l`, and `-x` forms is still accepted, but new callers should use the GNU-style form above.
 
 ## Archive format
 
@@ -36,6 +58,6 @@ The format is intentionally simple:
 ## Notes
 
 - Member names are stored as basenames only, so extracting does not recreate directories.
-- Extraction refuses member names containing `/` or `\\`.
+- Extraction refuses member names containing `/` or `\`.
 - Files larger than 4 GiB are rejected.
-- This is a dumb bundle format, not a smart indexed librarian like `ar`.
+- This is a dumb bundle format, not a smart indexed librarian like GNU `ar`; the `s` modifier is accepted only so build scripts can use the usual `rcs` spelling.

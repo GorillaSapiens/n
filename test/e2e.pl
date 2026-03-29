@@ -256,7 +256,7 @@ for my $case (@cases) {
          print slurp_file(File::Spec->catfile($tmp, "$stem.asm.err"));
          exit(-1);
       }
-      my @ncmd = ($n65ar, '-c', $a_path, $o_path);
+      my @ncmd = ($n65ar, 'rcs', $a_path, $o_path);
       my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$stem.n65ar.out"), File::Spec->catfile($tmp, "$stem.n65ar.err"));
       if ($nexit != 0) {
          print "[$FAIL] $case archive creation exit code $nexit\n";
