@@ -1,4 +1,6 @@
-all:
+all: tools unit e2e
+
+tools:
 	( cd ./assembler ; make clean ; make )
 	( cd ./linker ; make clean ; make )
 	( cd ./archiver ; make clean ; make )
@@ -13,3 +15,11 @@ tarball:
 	rm -f n_*.gz
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
+
+unit:
+	( cd ./test ; ./test.pl )
+
+e2e:
+	( cd ./test ; ./e2e.pl )
+
+test: unit e2e

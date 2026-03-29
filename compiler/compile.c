@@ -3902,8 +3902,8 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
       }
    }
 
-   callee_tmp_offset = ret_size + arg_total;
-   call_size = callee_tmp_offset + ptr_size;
+   callee_tmp_offset = 0;
+   call_size = ptr_size + ret_size + arg_total;
 
    if (call_size > 0) {
       remember_runtime_import("pushN");
@@ -3916,7 +3916,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (params && !is_empty(params)) {
-      int arg_offset = ret_size;
+      int arg_offset = ptr_size + ret_size;
       int actual_index = 0;
       for (int i = 0; i < params->count && actual_index < arg_count; i++) {
          const ASTNode *parameter = params->children[i];
@@ -3984,7 +3984,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (dst && ret_size > 0) {
-      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals, ret_size, ret_type);
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals + ptr_size, ret_size, ret_type);
    }
 
    if (call_size > 0) {

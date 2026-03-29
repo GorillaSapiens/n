@@ -5,3 +5,8 @@
 This repository contains the lexer, parser, and AST generation logic for `n`.
 It also contains a 6502 assembler, archiver, linker, simulator, and
 support libraries.
+
+
+## Testing
+
+Run `make test` at the repository root to execute both the compiler-side source tests in `test/test.pl` and the end-to-end `nc -> na -> nl -> ns` regression tests in `test/e2e.pl`.
