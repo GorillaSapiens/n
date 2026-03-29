@@ -312,8 +312,8 @@ decl_item:
 
 decl_subitem:
     declarator                               { COVER; $$ = $1; }
-  | declarator '@' INTEGER                   { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
-  | declarator '@' IDENTIFIER                { COVER; $$ = MAKE_NODE($1, make_identifier_leaf($3)); }
+  | declarator '@' INTEGER                   { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", make_integer_leaf($3), make_integer_leaf($3))); }
+  | declarator '@' IDENTIFIER                { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", make_identifier_leaf($3), make_identifier_leaf($3))); }
   | declarator '@' '[' decl_addr_term '/' decl_addr_term ']'
                                              { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", $4, $6)); }
   ;
