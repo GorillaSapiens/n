@@ -21,7 +21,7 @@ unit:
 sieve:
 	./compiler/n65cc -I test -o sieve.s test/sieve.n
 	./assembler/n65asm -i sieve.s -I libraries/nlib/ --o65
-	./linker/n65ld sieve.o65 libraries/nlib/nlib.a65 sieve.hex
+	./linker/n65ld -o sieve.hex sieve.o65 libraries/nlib/nlib.a65
 	simulator/n65sim sieve.hex  | head
 
 e2e:

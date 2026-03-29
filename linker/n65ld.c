@@ -232,6 +232,18 @@ static void usage(FILE *fp)
 {
    fprintf(fp,
       "Usage:\n"
+      "  n65ld [options] file...\n"
+      "\n"
+      "Options:\n"
+      "  -o FILE              Write Intel HEX output to FILE (default: a.hex)\n"
+      "  -T FILE              Use FILE as linker script/config\n"
+      "  --script=FILE        Same as -T FILE\n"
+      "  -Map FILE            Write linker map to FILE\n"
+      "  -Map=FILE            Same as -Map FILE\n"
+      "  -h, --help           Show this help text\n"
+      "  -v, --version        Show linker version\n"
+      "\n"
+      "Compatibility:\n"
       "  n65ld [layout.cfg] input1.o65 [input2.o65 ... inputN.a65] output.hex [output.map]\n");
 }
 
@@ -2043,9 +2055,12 @@ static void free_object(object_file_t *obj)
 
 int main(int argc, char **argv)
 {
-   int argi = 1;
+   int argi;
+   int end_of_options = 0;
+   int hex_path_set = 0;
    const char *cfg_path = NULL;
-   const char *hex_path;
+   const char *compat_hex_path = NULL;
+   const char *hex_path = "a.hex";
    const char *map_path = NULL;
    linker_config_t cfg;
    input_set_t inputs;
@@ -2057,24 +2072,92 @@ int main(int argc, char **argv)
    memset(&inputs, 0, sizeof(inputs));
    memset(&layout, 0, sizeof(layout));
 
-   if (argc < 3) {
+   if (argc < 2) {
       usage(stderr);
       return 1;
    }
 
-   if (ends_with(argv[argi], ".cfg")) {
-      cfg_path = argv[argi++];
-      if (argc - argi < 2) {
-         usage(stderr);
+   for (argi = 1; argi < argc; ++argi) {
+      const char *arg = argv[argi];
+
+      if (!end_of_options && strcmp(arg, "--") == 0) {
+         end_of_options = 1;
+         continue;
+      }
+
+      if (!end_of_options && arg[0] == '-' && arg[1] != '\0') {
+         if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
+            usage(stdout);
+            return 0;
+         }
+         if (strcmp(arg, "-v") == 0 || strcmp(arg, "--version") == 0) {
+            printf("n65ld\n");
+            return 0;
+         }
+         if (strcmp(arg, "-o") == 0) {
+            if (++argi >= argc) {
+               fprintf(stderr, "n65ld: missing argument for -o\n");
+               return 1;
+            }
+            hex_path = argv[argi];
+            hex_path_set = 1;
+            continue;
+         }
+         if (strncmp(arg, "-o", 2) == 0 && arg[2] != '\0') {
+            hex_path = arg + 2;
+            hex_path_set = 1;
+            continue;
+         }
+         if (strcmp(arg, "-T") == 0) {
+            if (++argi >= argc) {
+               fprintf(stderr, "n65ld: missing argument for -T\n");
+               return 1;
+            }
+            cfg_path = argv[argi];
+            continue;
+         }
+         if (strncmp(arg, "-T", 2) == 0 && arg[2] != '\0') {
+            cfg_path = arg + 2;
+            continue;
+         }
+         if (strcmp(arg, "--script") == 0) {
+            if (++argi >= argc) {
+               fprintf(stderr, "n65ld: missing argument for --script\n");
+               return 1;
+            }
+            cfg_path = argv[argi];
+            continue;
+         }
+         if (strncmp(arg, "--script=", 9) == 0) {
+            cfg_path = arg + 9;
+            continue;
+         }
+         if (strcmp(arg, "-Map") == 0) {
+            if (++argi >= argc) {
+               fprintf(stderr, "n65ld: missing argument for -Map\n");
+               return 1;
+            }
+            map_path = argv[argi];
+            continue;
+         }
+         if (strncmp(arg, "-Map=", 5) == 0) {
+            map_path = arg + 5;
+            continue;
+         }
+
+         fprintf(stderr, "n65ld: unsupported option '%s'\n", arg);
          return 1;
       }
-   }
 
-   while (argi < argc && !ends_with(argv[argi], ".hex")) {
-      if (ends_with(argv[argi], ".o65")) {
+      if (ends_with(arg, ".cfg") && cfg_path == NULL) {
+         cfg_path = arg;
+         continue;
+      }
+
+      if (ends_with(arg, ".o65")) {
          inputs.cmd_objects = (object_file_t *)xrealloc(inputs.cmd_objects,
             (inputs.cmd_object_count + 1) * sizeof(*inputs.cmd_objects));
-         load_object(argv[argi], &inputs.cmd_objects[inputs.cmd_object_count]);
+         load_object(arg, &inputs.cmd_objects[inputs.cmd_object_count]);
          inputs.cmd_objects[inputs.cmd_object_count].from_cmdline = 1;
          inputs.order = (input_ref_t *)xrealloc(inputs.order,
             (inputs.order_count + 1) * sizeof(*inputs.order));
@@ -2082,37 +2165,41 @@ int main(int argc, char **argv)
          inputs.order[inputs.order_count].index = inputs.cmd_object_count;
          inputs.order_count++;
          inputs.cmd_object_count++;
-      } else if (ends_with(argv[argi], ".a65")) {
+         continue;
+      }
+
+      if (ends_with(arg, ".a65")) {
          inputs.archives = (archive_file_t *)xrealloc(inputs.archives,
             (inputs.archive_count + 1) * sizeof(*inputs.archives));
-         load_archive(argv[argi], &inputs.archives[inputs.archive_count]);
+         load_archive(arg, &inputs.archives[inputs.archive_count]);
          inputs.order = (input_ref_t *)xrealloc(inputs.order,
             (inputs.order_count + 1) * sizeof(*inputs.order));
          inputs.order[inputs.order_count].kind = INPUT_REF_ARCHIVE;
          inputs.order[inputs.order_count].index = inputs.archive_count;
          inputs.order_count++;
          inputs.archive_count++;
-      } else {
-         fprintf(stderr, "n65ld: cannot classify input '%s'\n", argv[argi]);
-         return 1;
+         continue;
       }
-      argi++;
+
+      if (!hex_path_set && compat_hex_path == NULL && ends_with(arg, ".hex")) {
+         compat_hex_path = arg;
+         continue;
+      }
+
+      if (compat_hex_path != NULL && map_path == NULL) {
+         map_path = arg;
+         continue;
+      }
+
+      fprintf(stderr, "n65ld: cannot classify input '%s'\n", arg);
+      return 1;
    }
+
+   if (compat_hex_path != NULL)
+      hex_path = compat_hex_path;
 
    if (inputs.cmd_object_count == 0 && inputs.archive_count == 0) {
       fprintf(stderr, "n65ld: no input objects or archives\n");
-      return 1;
-   }
-
-   if (argi >= argc || !ends_with(argv[argi], ".hex")) {
-      fprintf(stderr, "n65ld: missing output .hex filename\n");
-      return 1;
-   }
-   hex_path = argv[argi++];
-   if (argi < argc)
-      map_path = argv[argi++];
-   if (argi != argc) {
-      usage(stderr);
       return 1;
    }
 

@@ -267,11 +267,11 @@ for my $case (@cases) {
       push @archives, $a_path;
    }
 
-   my @link_cmd = ($n65ld);
+   my @link_cmd = ($n65ld, '-o', $hex_path, '-Map', $map_path);
    if (defined $meta->{linkcfg}) {
-      push @link_cmd, File::Spec->catfile($case_dir, $meta->{linkcfg});
+      push @link_cmd, '-T', File::Spec->catfile($case_dir, $meta->{linkcfg});
    }
-   push @link_cmd, @compiled_objects, @archives, $nlib, $hex_path, $map_path;
+   push @link_cmd, @compiled_objects, @archives, $nlib;
    my $link_out = File::Spec->catfile($tmp, 'link.out');
    my $link_err = File::Spec->catfile($tmp, 'link.err');
    my ($link_exit) = run_cmd(\@link_cmd, $link_out, $link_err);

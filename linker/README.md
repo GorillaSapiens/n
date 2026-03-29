@@ -4,21 +4,34 @@
 
 ## Command line
 
+`n65ld` now uses a GNU-`ld`-style command line.
+
 ```sh
-./n65ld [layout.cfg] input1.o65 [input2.a65 ... inputN.o65] output.hex [output.map]
+./n65ld [options] file...
 ```
 
-Rules:
-- the optional `*.cfg` comes first
-- then one or more `*.o65` and/or `*.a65` inputs
-- then the required `output.hex`
-- then an optional `output.map`
+Supported options:
+- `-o FILE` ... write Intel HEX output to `FILE` (default: `a.hex`)
+- `-T FILE` ... use `FILE` as the linker config/script
+- `--script=FILE` ... same as `-T FILE`
+- `-Map FILE` or `-Map=FILE` ... write a linker map file
+- `-h`, `--help` ... show usage
+- `-v`, `--version` ... print the linker name
+
+Inputs are ordinary positional `.o65` and `.a65` files and may appear before or after the options.
 
 Examples:
 
 ```sh
-./n65ld runtime.cfg crt0.o65 main.o65 libstuff.a65 out.hex out.map
-./n65ld crt0.o65 main.o65 out.hex
+./n65ld -T runtime.cfg -o out.hex -Map out.map crt0.o65 main.o65 libstuff.a65
+./n65ld -o out.hex crt0.o65 main.o65
+./n65ld crt0.o65 main.o65 out.hex              # old positional compatibility form
+```
+
+For compatibility with older scripts, `n65ld` still accepts the old positional form:
+
+```sh
+./n65ld [layout.cfg] input1.o65 [input2.a65 ... inputN.o65] output.hex [output.map]
 ```
 
 ## What it does
