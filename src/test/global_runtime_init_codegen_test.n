@@ -1,0 +1,21 @@
+// nc
+// expectasm: .export __init_
+// expectasm: .proc __init_
+// expectasm: jsr _twice
+// expectasm: lda #<(_g + 0)
+
+type void { $size:0 };
+type bool { $size:1 };
+type *    { $size:2 $unsigned $endian:little };
+type int  { $size:2 $signed $endian:little };
+
+int twice(int x) {
+   return x + x;
+}
+
+int seed := 3;
+int g := twice(seed) + 1;
+
+int main(void) {
+   return g;
+}

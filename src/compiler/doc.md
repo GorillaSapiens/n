@@ -305,6 +305,8 @@ The compiler supports real constant-expression evaluation for static/global init
 - nested aggregate initializers
 - simple relocatable address constants such as `&symbol + 1`
 
+When a non-constant global initializer cannot be emitted as static bytes, the compiler now places the object in writable storage and emits a translation-unit `__init_*` function so startup code can perform the runtime initialization before `main`.
+
 ### String initializers
 
 Strings can initialize pointer values and byte arrays where appropriate. String bytes may be translated through an `xform`.

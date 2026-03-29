@@ -817,7 +817,10 @@ static void load_archive(const char *path, archive_file_t *archive)
       snprintf(member_label, sizeof(member_label), "%s(%s)", path, m->member_name);
       parse_o65_object_from_memory(&m->obj, m->data, m->size, member_label);
       m->obj.selected_from_archive = 1;
-      m->obj.archive_member = m;
+   }
+
+   for (size_t i = 0; i < archive->member_count; ++i) {
+      archive->members[i].obj.archive_member = &archive->members[i];
    }
 
    free(buf);

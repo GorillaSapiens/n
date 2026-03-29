@@ -18,6 +18,7 @@
 #include "typename.h"
 #include "xform.h"
 #include "xray.h"
+#include "lextern.h"
 
 EmitSink es_header = EMIT_INIT;
 EmitSink es_import = EMIT_INIT;
@@ -107,6 +108,21 @@ typedef struct InitConstValue {
    const char *symbol;
    long long addend;
 } InitConstValue;
+
+typedef struct PendingGlobalInit {
+   const char *name;
+   const ASTNode *type;
+   const ASTNode *declarator;
+   ASTNode *expression;
+   int size;
+   bool is_zeropage;
+} PendingGlobalInit;
+
+static PendingGlobalInit *pending_global_inits = NULL;
+static int pending_global_init_count = 0;
+static int pending_global_init_max_size = 0;
+static char runtime_global_init_symbol_buf[64];
+static bool runtime_global_init_symbol_ready = false;
 
 static const ASTNode *global_decl_lookup(const char *name);
 static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
@@ -199,6 +215,10 @@ static bool encode_integer_initializer_value(long long value, unsigned char *buf
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type);
 static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend);
 static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size);
+static void emit_sink_append(EmitSink *dst, const EmitSink *src);
+static void remember_pending_global_init(const char *name, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage);
+static const char *runtime_global_init_symbol(void);
+static void emit_runtime_global_init_function(void);
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
 static int expr_value_size(ASTNode *expr, Context *ctx);
 static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
@@ -5483,6 +5503,130 @@ static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const AST
    return false;
 }
 
+static void emit_sink_append(EmitSink *dst, const EmitSink *src) {
+   if (!dst || !src) {
+      return;
+   }
+   for (EmitPiece *piece = src->head; piece; piece = piece->next) {
+      emit(dst, "%s", piece->txt);
+   }
+}
+
+static void remember_pending_global_init(const char *name, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage) {
+   PendingGlobalInit *items;
+   PendingGlobalInit *entry;
+
+   items = (PendingGlobalInit *) realloc(pending_global_inits,
+                                         sizeof(*pending_global_inits) * (pending_global_init_count + 1));
+   if (!items) {
+      error("out of memory");
+   }
+   pending_global_inits = items;
+
+   entry = &pending_global_inits[pending_global_init_count++];
+   entry->name = strdup(name);
+   entry->type = type;
+   entry->declarator = declarator;
+   entry->expression = expression;
+   entry->size = size;
+   entry->is_zeropage = is_zeropage;
+
+   if (size > pending_global_init_max_size) {
+      pending_global_init_max_size = size;
+   }
+}
+
+static unsigned long hash_runtime_init_name(const char *text) {
+   unsigned long hash = 2166136261u;
+
+   if (!text) {
+      return 0u;
+   }
+
+   for (const unsigned char *p = (const unsigned char *) text; *p; ++p) {
+      hash ^= (unsigned long) *p;
+      hash *= 16777619u;
+   }
+
+   return hash;
+}
+
+static const char *runtime_global_init_symbol(void) {
+   if (!runtime_global_init_symbol_ready) {
+      unsigned long hash = hash_runtime_init_name(root_filename ? root_filename : "<stdin>");
+      snprintf(runtime_global_init_symbol_buf, sizeof(runtime_global_init_symbol_buf), "__init_%08lx", hash & 0xfffffffful);
+      runtime_global_init_symbol_ready = true;
+   }
+   return runtime_global_init_symbol_buf;
+}
+
+static void emit_runtime_global_init_function(void) {
+   Context ctx;
+   const char *sym;
+
+   if (pending_global_init_count <= 0) {
+      return;
+   }
+
+   sym = runtime_global_init_symbol();
+   emit(&es_export, ".export %s\n", sym);
+
+   ctx.name = sym;
+   ctx.locals = pending_global_init_max_size;
+   ctx.params = 0;
+   ctx.vars = new_set();
+   ctx.break_label = NULL;
+   ctx.continue_label = NULL;
+
+   emit(&es_code, ".proc %s\n", sym);
+   emit(&es_code, "    lda sp+1\n");
+   emit(&es_code, "    sta fp+1\n");
+   emit(&es_code, "    lda sp\n");
+   emit(&es_code, "    sta fp\n");
+
+   if (ctx.locals > 0) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+   }
+
+   for (int i = 0; i < pending_global_init_count; i++) {
+      PendingGlobalInit *entry = &pending_global_inits[i];
+      LValueRef lv = {0};
+
+      if (entry->size > 0) {
+         emit_fill_fp_bytes(0, 0, entry->size, 0x00);
+      }
+      if (!compile_initializer_to_fp(entry->expression, &ctx, entry->type, entry->declarator, 0, entry->size)) {
+         error("[%s:%d.%d] could not compile runtime global initializer for '%s'",
+               entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
+      }
+
+      lv.name = entry->name;
+      lv.type = entry->type;
+      lv.declarator = entry->declarator;
+      lv.is_static = true;
+      lv.is_zeropage = entry->is_zeropage;
+      lv.is_global = !entry->is_zeropage;
+      lv.size = entry->size;
+
+      if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
+         error("[%s:%d.%d] could not emit runtime global initializer store for '%s'",
+               entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
+      }
+   }
+
+   if (ctx.locals > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   emit(&es_code, "    rts\n");
+   emit(&es_code, ".endproc\n");
+}
+
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size) {
    const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
    int size = scalar_storage_size(type, declarator, total_size);
@@ -6849,6 +6993,7 @@ static void compile_global_decl_item(ASTNode *node) {
    const char *name    = declarator->children[1]->strval;
    ASTNode *expression = node->children[node->count - 1];
    ASTNode *uexpr;
+   EmitSink init_es = EMIT_INIT;
 
    if (!globals) {
       globals = new_set();
@@ -6916,16 +7061,24 @@ static void compile_global_decl_item(ASTNode *node) {
       return;
    }
 
-   EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
-   emit(es, "_%s:\n", name);
    uexpr = (ASTNode *) unwrap_expr_node(expression);
 
-   if (!emit_global_initializer(es, type, declarator, uexpr ? uexpr : expression, size)) {
-      warning("[%s:%d.%d] complex global initializer for '%s' not implemented yet",
-            node->file, node->line, node->column, name);
-      emit(es, "	.res %d, $00\n", size);
+   if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
+      EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
+      emit(es, "_%s:\n", name);
+      emit_sink_append(es, &init_es);
+      return;
    }
 
+   if (is_zeropage) {
+      emit(&es_zp, "_%s:\n", name);
+      emit(&es_zp, "\t.res %d\n", size);
+   }
+   else {
+      emit(&es_bss, "_%s:\n", name);
+      emit(&es_bss, "\t.res %d\n", size);
+   }
+   remember_pending_global_init(name, type, declarator, uexpr ? uexpr : expression, size, is_zeropage);
 }
 
 static void remember_function(const ASTNode *node, const char *name) {
@@ -7315,6 +7468,7 @@ void do_compile(FILE *out) {
    emit(&es_export, "; exports\n");
 
    compile(root);
+   emit_runtime_global_init_function();
 
    emit_print(&es_header, out);
    fprintf(out, "\n");
