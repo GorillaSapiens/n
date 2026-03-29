@@ -69,6 +69,9 @@ typedef struct ContextEntry {
    bool is_zeropage;
    bool is_global;
    bool is_ref;
+   bool is_absolute_ref;
+   const char *read_expr;
+   const char *write_expr;
    int offset;
    int size;
 } ContextEntry;
@@ -84,6 +87,9 @@ typedef struct LValueRef {
    bool is_zeropage;
    bool is_global;
    bool is_ref;
+   bool is_absolute_ref;
+   const char *read_expr;
+   const char *write_expr;
    bool indirect;
    bool base_is_deref;
    bool needs_runtime_address;
@@ -142,6 +148,12 @@ typedef struct CallGraphEdge {
    int to;
 } CallGraphEdge;
 
+typedef enum LValueAccessMode {
+   LVALUE_ACCESS_READ = 0,
+   LVALUE_ACCESS_WRITE,
+   LVALUE_ACCESS_ADDRESS
+} LValueAccessMode;
+
 static CallGraphNode *call_graph_nodes = NULL;
 static int call_graph_node_count = 0;
 static CallGraphEdge *call_graph_edges = NULL;
@@ -199,11 +211,23 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx);
 static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx);
 static const ASTNode *parameter_type(const ASTNode *parameter);
 static const ASTNode *parameter_declarator(const ASTNode *parameter);
+static const ASTNode *decl_subitem_declarator(const ASTNode *node);
+static const ASTNode *decl_subitem_address_spec(const ASTNode *node);
+static const ASTNode *decl_node_declarator(const ASTNode *node);
+static const ASTNode *decl_node_address_spec(const ASTNode *node);
+static const char *address_spec_read_expr(const ASTNode *node);
+static const char *address_spec_write_expr(const ASTNode *node);
+static bool address_spec_has_read(const ASTNode *node);
+static bool address_spec_has_write(const ASTNode *node);
+static bool entry_has_read_address(const ContextEntry *entry);
+static bool entry_has_write_address(const ContextEntry *entry);
+static bool entry_is_absolute_ref(const ContextEntry *entry);
+static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g);
 static bool parameter_is_ref(const ASTNode *parameter);
 static int parameter_storage_size(const ASTNode *parameter);
 static bool parameter_is_void(const ASTNode *parameter);
 static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
-static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv);
+static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode);
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
@@ -272,6 +296,7 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
 static void emit_prepare_fp_ptr(int ptrno, int offset);
 static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size);
 static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend);
+static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend);
 static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend);
 static void emit_deref_ptr(int ptrno);
 static int expr_byte_index(const ASTNode *type, int size, int i);
@@ -1335,8 +1360,116 @@ static const ASTNode *global_decl_lookup(const char *name) {
    return (const ASTNode *) value;
 }
 
+static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
+   if (!node) {
+      return NULL;
+   }
+   if (strcmp(node->name, "decl_subitem") || node->count <= 0) {
+      return node;
+   }
+   return node->children[0];
+}
+
+static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
+   if (!node || strcmp(node->name, "decl_subitem") || node->count <= 1) {
+      return NULL;
+   }
+   return node->children[1];
+}
+
+static const ASTNode *decl_node_declarator(const ASTNode *node) {
+   if (!node || node->count <= 2) {
+      return NULL;
+   }
+   return decl_subitem_declarator(node->children[2]);
+}
+
+static const ASTNode *decl_node_address_spec(const ASTNode *node) {
+   if (!node || node->count <= 2) {
+      return NULL;
+   }
+   return decl_subitem_address_spec(node->children[2]);
+}
+
+static const char *address_spec_read_expr(const ASTNode *node) {
+   if (!node || is_empty(node)) {
+      return NULL;
+   }
+   if (!strcmp(node->name, "rw_addr_spec")) {
+      return (node->count > 0 && node->children[0] && !is_empty(node->children[0])) ? node->children[0]->strval : NULL;
+   }
+   return node->strval;
+}
+
+static const char *address_spec_write_expr(const ASTNode *node) {
+   if (!node || is_empty(node)) {
+      return NULL;
+   }
+   if (!strcmp(node->name, "rw_addr_spec")) {
+      return (node->count > 1 && node->children[1] && !is_empty(node->children[1])) ? node->children[1]->strval : NULL;
+   }
+   return node->strval;
+}
+
+static bool address_spec_has_read(const ASTNode *node) {
+   return address_spec_read_expr(node) != NULL;
+}
+
+static bool address_spec_has_write(const ASTNode *node) {
+   return address_spec_write_expr(node) != NULL;
+}
+
+static bool entry_has_read_address(const ContextEntry *entry) {
+   return entry && entry->is_absolute_ref && entry->read_expr && *entry->read_expr;
+}
+
+static bool entry_has_write_address(const ContextEntry *entry) {
+   return entry && entry->is_absolute_ref && entry->write_expr && *entry->write_expr;
+}
+
+static bool entry_is_absolute_ref(const ContextEntry *entry) {
+   return entry && entry->is_absolute_ref;
+}
+
+static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g) {
+   const ASTNode *modifiers;
+   const ASTNode *type;
+   const ASTNode *declarator;
+   const ASTNode *addrspec;
+
+   if (!entry || !g || g->count < 3) {
+      return false;
+   }
+
+   modifiers = g->children[0];
+   type = g->children[1];
+   declarator = decl_node_declarator(g);
+   addrspec = decl_node_address_spec(g);
+   if (!type || !declarator) {
+      return false;
+   }
+
+   memset(entry, 0, sizeof(*entry));
+   entry->name = name;
+   entry->type = type;
+   entry->declarator = declarator;
+   entry->is_static = false;
+   entry->is_zeropage = modifiers_imply_zeropage((ASTNode *) modifiers);
+   entry->is_global = true;
+   entry->is_ref = false;
+   entry->is_absolute_ref = has_modifier((ASTNode *) modifiers, "ref") && addrspec != NULL;
+   entry->read_expr = address_spec_read_expr(addrspec);
+   entry->write_expr = address_spec_write_expr(addrspec);
+   entry->offset = 0;
+   entry->size = declarator_storage_size(type, declarator);
+   return true;
+}
+
 static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize) {
    if (!entry || !entry->name || !buf || bufsize < 8) {
+      return false;
+   }
+   if (entry->is_absolute_ref) {
       return false;
    }
    if (entry->is_global) {
@@ -2145,6 +2278,9 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_zeropage = false;
    entry->is_global = false;
    entry->is_ref = false;
+   entry->is_absolute_ref = false;
+   entry->read_expr = NULL;
+   entry->write_expr = NULL;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -2169,6 +2305,9 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_zeropage = false;
    entry->is_global = false;
    entry->is_ref = false;
+   entry->is_absolute_ref = false;
+   entry->read_expr = NULL;
+   entry->write_expr = NULL;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -2210,6 +2349,9 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_zeropage = false;
    entry->is_global = false;
    entry->is_ref = false;
+   entry->is_absolute_ref = false;
+   entry->read_expr = NULL;
+   entry->write_expr = NULL;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -2233,6 +2375,9 @@ static void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
    entry->is_zeropage = true;
    entry->is_global = false;
    entry->is_ref = false;
+   entry->is_absolute_ref = false;
+   entry->read_expr = NULL;
+   entry->write_expr = NULL;
    entry->type = type;
    entry->declarator = NULL;
    entry->size = get_size(type_name_from_node(type));
@@ -2263,7 +2408,7 @@ static const ASTNode *parameter_type(const ASTNode *parameter) {
 
 static const ASTNode *parameter_declarator(const ASTNode *parameter) {
    const ASTNode *decl_item = parameter_decl_item(parameter);
-   return (decl_item && decl_item->count > 0) ? decl_item->children[0] : NULL;
+   return (decl_item && decl_item->count > 0) ? decl_subitem_declarator(decl_item->children[0]) : NULL;
 }
 
 static bool parameter_is_ref(const ASTNode *parameter) {
@@ -2403,6 +2548,13 @@ static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) 
    emit(&es_code, "    lda #<(%s + %d)\n", symbol, addend);
    emit(&es_code, "    sta ptr%d\n", ptrno);
    emit(&es_code, "    lda #>(%s + %d)\n", symbol, addend);
+   emit(&es_code, "    sta ptr%d+1\n", ptrno);
+}
+
+static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
+   emit(&es_code, "    lda #<((%s) + %d)\n", expr, addend);
+   emit(&es_code, "    sta ptr%d\n", ptrno);
+   emit(&es_code, "    lda #>(((%s) + %d))\n", expr, addend);
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
@@ -3062,16 +3214,9 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
       const ASTNode *g = global_decl_lookup(expr->strval);
       if (g && g->count >= 3) {
          static ContextEntry gtmp;
-         gtmp.name = expr->strval;
-         gtmp.type = g->children[1];
-         gtmp.declarator = g->children[2];
-         gtmp.is_static = false;
-         gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
-         gtmp.is_global = true;
-         gtmp.is_ref = false;
-         gtmp.offset = 0;
-         gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
-         entry = &gtmp;
+         if (init_context_entry_from_global_decl(&gtmp, expr->strval, g)) {
+            entry = &gtmp;
+         }
       }
    }
    if (!entry) {
@@ -3089,6 +3234,9 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
       out->is_ref = entry->is_ref;
+      out->is_absolute_ref = entry->is_absolute_ref;
+      out->read_expr = entry->read_expr;
+      out->write_expr = entry->write_expr;
       out->offset = entry->offset;
       out->size = entry->size;
       if (entry->is_ref) {
@@ -3103,7 +3251,7 @@ static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_of
    if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
       error("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
    }
-   if (!emit_prepare_lvalue_ptr(ctx, &lv)) {
+   if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
       return false;
    }
    emit_store_ptr_to_fp(dst_offset, 0, dst_size);
@@ -3259,20 +3407,53 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
    return true;
 }
 
-static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv) {
+static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode) {
    ContextEntry base_entry;
    char sym[256];
    const ASTNode *type;
    const ASTNode *decl;
+   const char *abs_expr = NULL;
 
    if (!lv) {
       return false;
    }
 
+   if (lv->is_absolute_ref) {
+      switch (mode) {
+         case LVALUE_ACCESS_READ:
+            abs_expr = lv->read_expr;
+            break;
+         case LVALUE_ACCESS_WRITE:
+            abs_expr = lv->write_expr;
+            break;
+         case LVALUE_ACCESS_ADDRESS:
+            if (lv->read_expr && lv->write_expr) {
+               if (strcmp(lv->read_expr, lv->write_expr)) {
+                  return false;
+               }
+               abs_expr = lv->read_expr;
+            }
+            else {
+               abs_expr = lv->read_expr ? lv->read_expr : lv->write_expr;
+            }
+            break;
+      }
+      if (!abs_expr || !*abs_expr) {
+         return false;
+      }
+      emit_load_expr_address_to_ptr(0, abs_expr, lv->ptr_adjust);
+      if (!lv->base_type) {
+         return true;
+      }
+      type = lv->base_type;
+      decl = lv->base_declarator;
+      return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
+   }
+
    if (!lv->base_type) {
       if (lv->indirect) {
          if (lv->is_static || lv->is_zeropage || lv->is_global) {
-            base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = lv->size };
+            base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = lv->size };
             if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
                return false;
             }
@@ -3285,7 +3466,7 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv) {
          return true;
       }
       if (lv->is_static || lv->is_zeropage || lv->is_global) {
-         base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = lv->size };
+         base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = lv->size };
          if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
             return false;
          }
@@ -3298,7 +3479,7 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv) {
       return true;
    }
 
-   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .offset = lv->offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
+   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
    type = lv->base_type;
    decl = lv->base_declarator;
 
@@ -3348,7 +3529,7 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
    if (ctx) {
       ctx->locals = protected_locals;
    }
-   if (!emit_prepare_lvalue_ptr(ctx, src)) {
+   if (!emit_prepare_lvalue_ptr(ctx, src, LVALUE_ACCESS_READ)) {
       if (ctx) {
          ctx->locals = saved_locals;
       }
@@ -3404,7 +3585,7 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
    if (ctx) {
       ctx->locals = protected_locals;
    }
-   if (!emit_prepare_lvalue_ptr(ctx, dst)) {
+   if (!emit_prepare_lvalue_ptr(ctx, dst, LVALUE_ACCESS_WRITE)) {
       if (ctx) {
          ctx->locals = saved_locals;
       }
@@ -3554,16 +3735,9 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
          const ASTNode *g = global_decl_lookup(base->children[0]->strval);
          if (g && g->count >= 3) {
             static ContextEntry gtmp;
-            gtmp.name = base->children[0]->strval;
-            gtmp.type = g->children[1];
-            gtmp.declarator = g->children[2];
-            gtmp.is_static = false;
-            gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
-            gtmp.is_global = true;
-            gtmp.is_ref = false;
-            gtmp.offset = 0;
-            gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
-            entry = &gtmp;
+            if (init_context_entry_from_global_decl(&gtmp, base->children[0]->strval, g)) {
+               entry = &gtmp;
+            }
          }
       }
       if (!entry) {
@@ -3578,6 +3752,9 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
       out->is_ref = entry->is_ref;
+      out->is_absolute_ref = entry->is_absolute_ref;
+      out->read_expr = entry->read_expr;
+      out->write_expr = entry->write_expr;
       out->offset = entry->offset;
       out->size = entry->size;
       if (entry->is_ref) {
@@ -3592,16 +3769,9 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
             const ASTNode *g = global_decl_lookup(inner->children[0]->strval);
             if (g && g->count >= 3) {
                static ContextEntry gtmp;
-               gtmp.name = inner->children[0]->strval;
-               gtmp.type = g->children[1];
-               gtmp.declarator = g->children[2];
-               gtmp.is_static = false;
-               gtmp.is_zeropage = modifiers_imply_zeropage((ASTNode *) g->children[0]);
-               gtmp.is_global = true;
-               gtmp.is_ref = false;
-               gtmp.offset = 0;
-               gtmp.size = declarator_storage_size(gtmp.type, gtmp.declarator);
-               entry = &gtmp;
+               if (init_context_entry_from_global_decl(&gtmp, inner->children[0]->strval, g)) {
+                  entry = &gtmp;
+               }
             }
          }
       }
@@ -3620,6 +3790,9 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->is_zeropage = entry->is_zeropage;
       out->is_global = entry->is_global;
       out->is_ref = entry->is_ref;
+      out->is_absolute_ref = entry->is_absolute_ref;
+      out->read_expr = entry->read_expr;
+      out->write_expr = entry->write_expr;
       out->indirect = true;
       out->base_is_deref = true;
       out->offset = entry->offset;
@@ -3957,6 +4130,9 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
          tmp.is_zeropage = false;
          tmp.is_global = false;
          tmp.is_ref = false;
+         tmp.is_absolute_ref = false;
+         tmp.read_expr = NULL;
+         tmp.write_expr = NULL;
          tmp.offset = base_locals + arg_offset;
          tmp.size = psz;
 
@@ -3981,6 +4157,9 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    callee_tmp.is_zeropage = false;
    callee_tmp.is_global = false;
    callee_tmp.is_ref = false;
+   callee_tmp.is_absolute_ref = false;
+   callee_tmp.read_expr = NULL;
+   callee_tmp.write_expr = NULL;
    callee_tmp.offset = base_locals + callee_tmp_offset;
    callee_tmp.size = ptr_size;
 
@@ -4143,6 +4322,9 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             tmp.is_zeropage = false;
             tmp.is_global = false;
             tmp.is_ref = false;
+            tmp.is_absolute_ref = false;
+            tmp.read_expr = NULL;
+            tmp.write_expr = NULL;
             tmp.size = psz;
 
             if (parameter_has_symbol_storage(parameter)) {
@@ -4159,6 +4341,9 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                pentry.is_zeropage = !pentry.is_static && modifiers_imply_zeropage(modifiers);
                pentry.is_global = false;
                pentry.is_ref = parameter_is_ref(parameter);
+               pentry.is_absolute_ref = false;
+               pentry.read_expr = NULL;
+               pentry.write_expr = NULL;
                pentry.offset = 0;
                pentry.size = declarator_storage_size(ptype, pdecl);
 
@@ -4325,6 +4510,32 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       const char *ident = expr_bare_identifier_name(expr);
       if (ident) {
          ContextEntry *entry = ctx_lookup(ctx, ident);
+         if (entry && entry_is_absolute_ref(entry)) {
+            LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = entry->is_static, .is_zeropage = entry->is_zeropage, .is_global = entry->is_global, .is_ref = entry->is_ref, .is_absolute_ref = entry->is_absolute_ref, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = entry->offset, .size = entry->size };
+            if (!entry_has_read_address(entry)) {
+               error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
+            }
+            if (dst->size == lv.size && dst->type == lv.type) {
+               return emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, lv.size);
+            }
+            remember_runtime_import("pushN");
+            emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _pushN\n");
+            if (!emit_copy_lvalue_to_fp(ctx, ctx->locals, &lv, lv.size)) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               return false;
+            }
+            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, lv.size, lv.type);
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            return true;
+         }
          if (entry && !entry->is_static && !entry->is_zeropage) {
             emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, entry->offset, entry->size, entry->type);
             return true;
@@ -4339,11 +4550,40 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          {
             const ASTNode *g = global_decl_lookup(ident);
             if (g && g->count >= 3) {
-               char sym[256];
-               int gsize = declarator_storage_size(g->children[1], g->children[2]);
-               snprintf(sym, sizeof(sym), "_%s", ident);
-               emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, gsize, g->children[1]);
-               return true;
+               ContextEntry gentry;
+               if (init_context_entry_from_global_decl(&gentry, ident, g) && entry_is_absolute_ref(&gentry)) {
+                  LValueRef lv = { .name = gentry.name, .type = gentry.type, .declarator = gentry.declarator, .base_type = gentry.type, .base_declarator = gentry.declarator, .is_static = gentry.is_static, .is_zeropage = gentry.is_zeropage, .is_global = gentry.is_global, .is_ref = gentry.is_ref, .is_absolute_ref = gentry.is_absolute_ref, .read_expr = gentry.read_expr, .write_expr = gentry.write_expr, .offset = gentry.offset, .size = gentry.size };
+                  if (!entry_has_read_address(&gentry)) {
+                     error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
+                  }
+                  if (dst->size == lv.size && dst->type == lv.type) {
+                     return emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, lv.size);
+                  }
+                  remember_runtime_import("pushN");
+                  emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+                  emit(&es_code, "    sta arg0\n");
+                  emit(&es_code, "    jsr _pushN\n");
+                  if (!emit_copy_lvalue_to_fp(ctx, ctx->locals, &lv, lv.size)) {
+                     remember_runtime_import("popN");
+                     emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+                     emit(&es_code, "    sta arg0\n");
+                     emit(&es_code, "    jsr _popN\n");
+                     return false;
+                  }
+                  emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, lv.size, lv.type);
+                  remember_runtime_import("popN");
+                  emit(&es_code, "    lda #$%02x\n", lv.size & 0xff);
+                  emit(&es_code, "    sta arg0\n");
+                  emit(&es_code, "    jsr _popN\n");
+                  return true;
+               }
+               else {
+                  char sym[256];
+                  int gsize = declarator_storage_size(g->children[1], decl_node_declarator(g));
+                  snprintf(sym, sizeof(sym), "_%s", ident);
+                  emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, gsize, g->children[1]);
+                  return true;
+               }
             }
          }
          {
@@ -4378,7 +4618,10 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       LValueRef lv;
       ASTNode *inner = (ASTNode *) unwrap_expr_node(expr->children[0]);
       if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv)) {
-         if (!emit_prepare_lvalue_ptr(ctx, &lv)) {
+         if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
+            if (lv.is_absolute_ref) {
+               error("[%s:%d.%d] absolute ref '%s' does not have a single address", inner->file, inner->line, inner->column, lv.name ? lv.name : "<unnamed>");
+            }
             return false;
          }
          emit_store_ptr_to_fp(dst->offset, 0, dst->size);
@@ -4421,6 +4664,14 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       const ASTNode *ofn;
       if (!resolve_lvalue(ctx, expr, &lv)) {
          return false;
+      }
+      if (lv.is_absolute_ref) {
+         if (!lv.read_expr) {
+            error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
+         }
+         if (!lv.write_expr) {
+            error("[%s:%d.%d] absolute ref '%s' is read-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
+         }
       }
       classify_incdec_lvalue_expr(expr, &inc, &pre);
       ofn = resolve_incdec_overload_expr(expr, ctx);
@@ -5951,13 +6202,38 @@ static void compile_continue_stmt(ASTNode *node, Context *ctx) {
 static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
-   ASTNode *declarator = node->children[2];
+   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
+   const ASTNode *addrspec = decl_node_address_spec(node);
    const char *name    = declarator_name(declarator);
-   //ASTNode *expression = node->children[node->count - 1];
    int size            = declarator_storage_size(type, declarator);
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
 
    if (entry != NULL) {
+      return;
+   }
+
+   if (has_modifier(modifiers, "ref") && addrspec != NULL) {
+      if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
+         error("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
+               node->file, node->line, node->column, name);
+      }
+      entry = (ContextEntry *) malloc(sizeof(ContextEntry));
+      if (!entry) {
+         error("out of memory");
+      }
+      entry->name = strdup(name);
+      entry->is_static = false;
+      entry->is_zeropage = false;
+      entry->is_global = false;
+      entry->is_ref = false;
+      entry->is_absolute_ref = true;
+      entry->read_expr = address_spec_read_expr(addrspec);
+      entry->write_expr = address_spec_write_expr(addrspec);
+      entry->type = type;
+      entry->declarator = declarator;
+      entry->size = size;
+      entry->offset = 0;
+      set_add(ctx->vars, strdup(name), entry);
       return;
    }
 
@@ -5982,6 +6258,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
       }
    }
 }
+
 
 
 static bool type_is_aggregate(const ASTNode *type) {
@@ -6908,7 +7185,7 @@ static void predeclare_statement_list(ASTNode *node, Context *ctx) {
 static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
-   ASTNode *declarator = node->children[2];
+   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
    const char *name    = declarator_name(declarator);
    ASTNode *expression = node->children[node->count - 1];
    int size            = declarator_storage_size(type, declarator);
@@ -6930,6 +7207,51 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
 
    if (entry == NULL) {
       warning("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
+      return;
+   }
+
+   if (entry->is_absolute_ref) {
+      if (is_empty(expression)) {
+         return;
+      }
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      if (initializer_is_list(unwrap_expr_node(expression)) || declarator_array_count(declarator) > 0 || type_is_aggregate(type)) {
+         emit_fill_fp_bytes(ctx->locals, 0, size, 0x00);
+         if (!compile_initializer_to_fp(expression, ctx, type, declarator, ctx->locals, size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            return;
+         }
+      }
+      else if (!compile_expr_to_slot(expression, ctx, &(ContextEntry){ .name = "$tmp", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = size })) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         return;
+      }
+      {
+         LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = entry->is_static, .is_zeropage = entry->is_zeropage, .is_global = entry->is_global, .is_ref = entry->is_ref, .is_absolute_ref = entry->is_absolute_ref, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = entry->offset, .size = entry->size };
+         if (!emit_copy_fp_to_lvalue(ctx, &lv, ctx->locals, size)) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            warning("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            return;
+         }
+      }
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
       return;
    }
 
@@ -6995,6 +7317,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       return;
    }
 }
+
 
 
 static void compile_do_stmt(ASTNode *node, Context *ctx) {
@@ -7301,12 +7624,25 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
       return;
    }
-   dst_store = (ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .offset = lv.offset, .size = lv.size };
+   dst_store = (ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .is_absolute_ref = lv.is_absolute_ref, .read_expr = lv.read_expr, .write_expr = lv.write_expr, .offset = lv.offset, .size = lv.size };
    dst = &dst_store;
 
+   if (lv.is_absolute_ref && (!op || !strcmp(op, ":="))) {
+      if (!entry_has_write_address(dst)) {
+         error("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+      }
+   }
+   else if (lv.is_absolute_ref) {
+      if (!entry_has_read_address(dst)) {
+         error("[%s:%d.%d] absolute ref '%s' is write-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+      }
+      if (!entry_has_write_address(dst)) {
+         error("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+      }
+   }
 
    if (!op || !strcmp(op, ":=")) {
-      if (!lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
+      if (!lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
             warning("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
@@ -7319,7 +7655,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_copy_fp_to_symbol(sym, ctx->locals, dst->size);
          return;
       }
-      if (lv.indirect || lv.needs_runtime_address) {
+      if (lv.indirect || lv.needs_runtime_address || lv.is_absolute_ref) {
          int tmp_size = dst->size > 0 ? dst->size : expr_value_size(rhs, ctx);
          if (tmp_size <= 0) {
             tmp_size = 1;
@@ -8030,7 +8366,8 @@ static int declarator_storage_size(const ASTNode *type, const ASTNode *declarato
 static void compile_global_decl_item(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
-   ASTNode *declarator = node->children[2];
+   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
+   const ASTNode *addrspec = decl_node_address_spec(node);
    const char *name    = declarator_name(declarator);
    ASTNode *expression = node->children[node->count - 1];
    ASTNode *uexpr;
@@ -8050,17 +8387,33 @@ static void compile_global_decl_item(ASTNode *node) {
    set_add(globals, strdup(name), node);
 
    bool is_extern = has_modifier(modifiers, "extern");
-   bool is_const  = has_modifier(modifiers, "const");
+   bool is_const = has_modifier(modifiers, "const");
    bool is_static = has_modifier(modifiers, "static");
-   bool is_zeropage  = modifiers_imply_zeropage(modifiers);
-   bool is_ref    = has_modifier(modifiers, "ref");
+   bool is_zeropage = modifiers_imply_zeropage(modifiers);
+   bool is_ref = has_modifier(modifiers, "ref");
+   bool is_absolute_ref = is_ref && addrspec != NULL;
+   int size = declarator_storage_size(type, declarator);
 
-   if (is_ref) {
-      error("[%s:%d.%d] 'ref' not allowed in global declaration",
+   if (is_ref && !is_absolute_ref) {
+      error("[%s:%d.%d] 'ref' not allowed in global declaration without an absolute address binding",
             node->file, node->line, node->column);
    }
 
-   int size = declarator_storage_size(type, declarator);
+   if (is_absolute_ref) {
+      if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
+         error("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
+               node->file, node->line, node->column, name);
+      }
+      if (is_extern) {
+         error("[%s:%d.%d] 'extern' not allowed on absolute ref '%s'",
+               node->file, node->line, node->column, name);
+      }
+      if (!is_empty(expression)) {
+         error("[%s:%d.%d] global absolute ref '%s' cannot have an initializer yet",
+               node->file, node->line, node->column, name);
+      }
+      return;
+   }
 
    if (is_extern) {
       if (is_static) {
@@ -8136,6 +8489,7 @@ static void compile_global_decl_item(ASTNode *node) {
    }
    remember_pending_global_init(name, type, declarator, uexpr ? uexpr : expression, size, is_zeropage);
 }
+
 
 static void remember_function(const ASTNode *node, const char *name) {
    bool name_present = false;

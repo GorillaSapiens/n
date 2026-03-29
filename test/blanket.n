@@ -43,6 +43,7 @@ zeropage const ref static int ic, id;
 
 zeropage int ie @ 12;
 zeropage int ie @ ia;
+ref int splitrw@[none/12];
 
 int ig := 5`int;
 

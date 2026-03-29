@@ -28,6 +28,13 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
    return parent;
 }
 
+static ASTNode *make_decl_addr_term(char *tok) {
+   if (!strcmp(tok, "none")) {
+      return make_empty_leaf();
+   }
+   return make_identifier_leaf(tok);
+}
+
 %}
 
 %union {
@@ -112,6 +119,7 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
 %type <node> decl_list
 %type <node> decl_specifiers
 %type <node> decl_subitem
+%type <node> decl_addr_term
 %type <node> declarator
 %type <node> defdecl_stmt
 %type <node> direct_declarator
@@ -306,6 +314,14 @@ decl_subitem:
     declarator                               { COVER; $$ = $1; }
   | declarator '@' INTEGER                   { COVER; $$ = MAKE_NODE($1, make_integer_leaf($3)); }
   | declarator '@' IDENTIFIER                { COVER; $$ = MAKE_NODE($1, make_identifier_leaf($3)); }
+  | declarator '@' '[' decl_addr_term '/' decl_addr_term ']'
+                                             { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", $4, $6)); }
+  ;
+
+
+decl_addr_term:
+    INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
+  | IDENTIFIER                               { COVER; $$ = make_decl_addr_term($1); }
   ;
 
 decl_specifiers:

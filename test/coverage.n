@@ -27,6 +27,7 @@ struct llnode { int data; llnode *next; };
 
 static int q[12] @ 27;
 static int qq[12] @ symbol;
+ref int splitrw@[none/27];
 int r[12] @ 27 := { .x := 1, 1, 1 };
 int s[12] @ 27 := { 1, 1, 1 };
 int five := 5;
