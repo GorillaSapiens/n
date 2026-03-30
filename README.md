@@ -38,7 +38,7 @@ Run `make test` at the repository root to execute both the compiler-side source 
 
 # Additional Details
 
-For additional details, see the READM.md files in the various subdirectories.
+For additional details, see the README.md files in the various subdirectories.
 
 ## Licensing
 
