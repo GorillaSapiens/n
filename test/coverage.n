@@ -207,6 +207,9 @@ int function3(void);
 
 int function3(void) {
 
+   if ((a + function1(1)) * b) {
+   }
+
    if (3 + 3 == 6) {
    label:
       goto label;

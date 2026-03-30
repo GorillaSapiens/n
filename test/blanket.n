@@ -169,6 +169,9 @@ label2:
 
    a := b || c && d || e ^ f | g & a;
 
+   if ((a + function1(1)) * b) {
+   }
+
    if (a < b) {
       if (c > d) {
       }

@@ -6176,6 +6176,64 @@ static const char *next_label(const char *prefix) {
    return strdup(buf);
 }
 
+static bool compile_truthy_expr_branch_false(ASTNode *expr, Context *ctx,
+                                             const ASTNode *type,
+                                             const ASTNode *declarator,
+                                             int size,
+                                             const char *false_label) {
+   int saved_locals = ctx ? ctx->locals : 0;
+   ContextEntry tmp;
+
+   if (size <= 0) {
+      size = expr_value_size(expr, ctx);
+   }
+   if (size <= 0) {
+      size = 1;
+   }
+   if (!type) {
+      type = expr_value_type(expr, ctx);
+   }
+
+   tmp = (ContextEntry){ .name = "$tmp", .type = type, .declarator = declarator, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = size };
+
+   remember_runtime_import("pushN");
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    jsr _pushN\n");
+   if (ctx) {
+      ctx->locals = saved_locals + size;
+   }
+
+   if (!compile_expr_to_slot(expr, ctx, &tmp)) {
+      if (ctx) {
+         ctx->locals = saved_locals;
+      }
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      return false;
+   }
+   if (ctx) {
+      ctx->locals = saved_locals;
+   }
+
+   emit(&es_code, "    lda #0\n");
+   for (int i = 0; i < size; i++) {
+      emit(&es_code, "    ldy #%d\n", tmp.offset + i);
+      emit(&es_code, "    ora (fp),y\n");
+   }
+   emit(&es_code, "    sta arg1\n");
+
+   remember_runtime_import("popN");
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    jsr _popN\n");
+   emit(&es_code, "    lda arg1\n");
+   emit(&es_code, "    beq %s\n", false_label);
+   return true;
+}
+
 static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
@@ -6245,7 +6303,6 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          const ASTNode *rtype = function_return_type(ofn);
          const ASTNode *rdecl = function_declarator_node(ofn);
          int rsize = declarator_storage_size(rtype, rdecl);
-         ContextEntry tmp;
          ASTNode *argv[2] = { NULL, NULL };
          ASTNode *call;
          if (rsize <= 0) {
@@ -6262,31 +6319,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          if (!call) {
             return false;
          }
-         tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
-         remember_runtime_import("pushN");
-         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _pushN\n");
-         if (!compile_call_expr_to_slot(call, ctx, &tmp)) {
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-            return false;
-         }
-         emit(&es_code, "    lda #0\n");
-         for (int i = 0; i < rsize; i++) {
-            emit(&es_code, "    ldy #%d\n", tmp.offset + i);
-            emit(&es_code, "    ora (fp),y\n");
-         }
-         emit(&es_code, "    sta arg1\n");
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-         emit(&es_code, "    lda arg1\n");
-         emit(&es_code, "    beq %s\n", false_label);
-         return true;
+         return compile_truthy_expr_branch_false(call, ctx, rtype, rdecl, rsize, false_label);
       }
    }
 
@@ -6298,7 +6331,6 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          const ASTNode *rtype = function_return_type(tfn);
          const ASTNode *rdecl = function_declarator_node(tfn);
          int rsize = declarator_storage_size(rtype, rdecl);
-         ContextEntry tmp;
          if (!call) {
             return false;
          }
@@ -6311,31 +6343,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          if (!type_is_bool(rtype)) {
             error("[%s:%d.%d] operator{} must return bool", expr->file, expr->line, expr->column);
          }
-         tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
-         remember_runtime_import("pushN");
-         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _pushN\n");
-         if (!compile_call_expr_to_slot(call, ctx, &tmp)) {
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-            return false;
-         }
-         emit(&es_code, "    lda #0\n");
-         for (int i = 0; i < rsize; i++) {
-            emit(&es_code, "    ldy #%d\n", tmp.offset + i);
-            emit(&es_code, "    ora (fp),y\n");
-         }
-         emit(&es_code, "    sta arg1\n");
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-         emit(&es_code, "    lda arg1\n");
-         emit(&es_code, "    beq %s\n", false_label);
-         return true;
+         return compile_truthy_expr_branch_false(call, ctx, rtype, rdecl, rsize, false_label);
       }
    }
 
@@ -6437,40 +6445,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
    {
       const ASTNode *type = expr_value_type(expr, ctx);
       int size = expr_value_size(expr, ctx);
-      ContextEntry tmp;
-
-      if (size <= 0) {
-         size = 1;
-      }
-      tmp = (ContextEntry){ .name = "$tmp", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = size };
-
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$%02x\n", size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-
-      if (!compile_expr_to_slot(expr, ctx, &tmp)) {
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", size & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-         return false;
-      }
-
-      emit(&es_code, "    lda #0\n");
-      for (int i = 0; i < size; i++) {
-         emit(&es_code, "    ldy #%d\n", tmp.offset + i);
-         emit(&es_code, "    ora (fp),y\n");
-      }
-      emit(&es_code, "    sta arg1\n");
-
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$%02x\n", size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-      emit(&es_code, "    lda arg1\n");
-      emit(&es_code, "    beq %s\n", false_label);
-      return true;
+      return compile_truthy_expr_branch_false(expr, ctx, type, NULL, size, false_label);
    }
 }
 
