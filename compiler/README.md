@@ -429,6 +429,27 @@ The compiler supports:
 - labeled `break` and `continue`
 - `goto`
 
+### `switch` / `case`
+
+`switch` compares the switch expression against each `case` label in source order.
+
+`case` labels now accept either a single numeric primary expression or an inclusive range:
+
+```n
+switch (x) {
+   case 1:
+      break;
+   case 2 .. 5:
+      break;
+   default:
+      break;
+}
+```
+
+Range bounds are inclusive on both ends. If the programmer writes a reversed range such as `case 9 .. 3:`, the compiler emits a warning and compiles it as `case 3 .. 9:`.
+
+`default` remains optional and may appear anywhere inside the switch body.
+
 ## Strings and xforms
 
 A string literal may optionally specify an `xform` name after a backtick.

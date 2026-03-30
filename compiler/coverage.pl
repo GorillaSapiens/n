@@ -28,10 +28,18 @@ while (<FILE>) {
 
 $n = 1;
 foreach $v (@map) {
-   printf "0x%02x, ", $v;
+   if (($n % 8) == 1) {
+      print("  ");
+   }
+   printf " 0x%02x,", $v;
    if (($n % 8) == 0) {
       print("\n");
    }
    $n++;
 }
-printf("0\n");
+if (($n % 8) != 1) {
+   print(" 0\n");
+}
+else {
+   printf("   0\n");
+}

@@ -1,0 +1,23 @@
+// n65cc
+// expectasm: jsr _leNs
+// expectasm: bne @case_
+
+type void      { $size:0 };
+type bool      { $size:1 };
+type char      { $size:1 $signed };
+type uchar     { $size:1 $unsigned };
+type *         { $size:2 $unsigned $endian:little };
+type short     { $size:2 $signed $endian:little };
+type ushort    { $size:2 $unsigned $endian:little };
+type int       { $size:4 $signed $endian:little };
+type uint      { $size:4 $unsigned $endian:little };
+
+int main(void) {
+   int x := 3;
+   int y := 0;
+   switch (x) {
+      case 1 .. 3: y := 33; break;
+      default: y := 99;
+   }
+   return y;
+}

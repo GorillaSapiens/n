@@ -7963,6 +7963,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    const ASTNode *type;
    int size;
    int compare_size;
+   int saved_locals;
    ContextEntry lhs;
    ContextEntry rhs;
    const char *cleanup_label;
@@ -7970,6 +7971,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    const char *end_label = NULL;
    const char **case_labels = NULL;
    int section_count;
+   bool is_signed;
 
    pending_loop_label_name = NULL;
 
@@ -7989,8 +7991,10 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       size = 1;
    }
    compare_size = size * 2;
-   lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = size };
-   rhs = (ContextEntry){ .name = "$rhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals + size, .size = size };
+   saved_locals = ctx ? ctx->locals : 0;
+   lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = size };
+   rhs = (ContextEntry){ .name = "$rhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals + size, .size = size };
+   is_signed = type_is_signed_integer(type);
    cleanup_label = next_label("switch_cleanup");
    end_label = next_label("switch_end");
    if (!cleanup_label || !end_label) {
@@ -8012,8 +8016,14 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
    emit(&es_code, "    sta arg0\n");
    emit(&es_code, "    jsr _pushN\n");
+   if (ctx) {
+      ctx->locals = saved_locals + compare_size;
+   }
 
    if (!compile_expr_to_slot(expr, ctx, &lhs)) {
+      if (ctx) {
+         ctx->locals = saved_locals;
+      }
       error("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
@@ -8023,6 +8033,9 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       free((void *) cleanup_label);
       free((void *) end_label);
       return;
+   }
+   if (ctx) {
+      ctx->locals = saved_locals;
    }
 
    for (int i = 0; i < section_count; i++) {
@@ -8044,9 +8057,134 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       if (!case_labels[i] || (case_expr && is_empty(case_expr))) {
          continue;
       }
+
+      if (!strcmp(case_expr->name, "case_choice")) {
+         ASTNode *low = case_expr->count > 0 ? case_expr->children[0] : NULL;
+         ASTNode *high = case_expr->count > 1 ? case_expr->children[1] : NULL;
+
+         if (!low) {
+            error("[%s:%d.%d] malformed case label", section->file, section->line, section->column);
+            continue;
+         }
+
+         if (!high) {
+            if (ctx) {
+               ctx->locals = saved_locals + compare_size;
+            }
+            if (!compile_expr_to_slot(low, ctx, &rhs)) {
+               if (ctx) {
+                  ctx->locals = saved_locals;
+               }
+               error("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+               continue;
+            }
+            if (ctx) {
+               ctx->locals = saved_locals;
+            }
+            emit_prepare_fp_ptr(0, lhs.offset);
+            emit_prepare_fp_ptr(1, rhs.offset);
+            emit(&es_code, "    lda #$%02x\n", size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import("eqN");
+            emit(&es_code, "    jsr _eqN\n");
+            emit(&es_code, "    lda arg1\n");
+            emit(&es_code, "    bne %s\n", case_labels[i]);
+            continue;
+         }
+
+         {
+            InitConstValue low_value = {0};
+            InitConstValue high_value = {0};
+            bool swapped = false;
+            ASTNode *ordered_low = low;
+            ASTNode *ordered_high = high;
+            const char *skip_label = next_label("case_skip");
+            const char *le_helper = is_signed ? "leNs" : "leNu";
+
+            if (!skip_label) {
+               warning("[%s:%d.%d] switch case label generation failed", section->file, section->line, section->column);
+               continue;
+            }
+
+            if (eval_constant_initializer_expr(low, &low_value) &&
+                eval_constant_initializer_expr(high, &high_value) &&
+                low_value.kind == high_value.kind) {
+               if ((low_value.kind == INIT_CONST_INT && low_value.i > high_value.i) ||
+                   (low_value.kind == INIT_CONST_FLOAT && low_value.f > high_value.f)) {
+                  swapped = true;
+                  ordered_low = high;
+                  ordered_high = low;
+               }
+            }
+
+            if (swapped) {
+               warning("[%s:%d.%d] case range bounds were reversed; compiling as the inclusive range in ascending order",
+                       section->file, section->line, section->column);
+            }
+
+            if (ctx) {
+               ctx->locals = saved_locals + compare_size;
+            }
+            if (!compile_expr_to_slot(ordered_low, ctx, &rhs)) {
+               if (ctx) {
+                  ctx->locals = saved_locals;
+               }
+               free((void *) skip_label);
+               error("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
+               continue;
+            }
+            if (ctx) {
+               ctx->locals = saved_locals;
+            }
+            emit_prepare_fp_ptr(0, rhs.offset);
+            emit_prepare_fp_ptr(1, lhs.offset);
+            emit(&es_code, "    lda #$%02x\n", size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import(le_helper);
+            emit(&es_code, "    jsr _%s\n", le_helper);
+            emit(&es_code, "    lda arg1\n");
+            emit(&es_code, "    beq %s\n", skip_label);
+
+            if (ctx) {
+               ctx->locals = saved_locals + compare_size;
+            }
+            if (!compile_expr_to_slot(ordered_high, ctx, &rhs)) {
+               if (ctx) {
+                  ctx->locals = saved_locals;
+               }
+               free((void *) skip_label);
+               error("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
+               continue;
+            }
+            if (ctx) {
+               ctx->locals = saved_locals;
+            }
+            emit_prepare_fp_ptr(0, lhs.offset);
+            emit_prepare_fp_ptr(1, rhs.offset);
+            emit(&es_code, "    lda #$%02x\n", size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import(le_helper);
+            emit(&es_code, "    jsr _%s\n", le_helper);
+            emit(&es_code, "    lda arg1\n");
+            emit(&es_code, "    bne %s\n", case_labels[i]);
+            emit(&es_code, "%s:\n", skip_label);
+            free((void *) skip_label);
+            continue;
+         }
+      }
+
+      if (ctx) {
+         ctx->locals = saved_locals + compare_size;
+      }
       if (!compile_expr_to_slot(case_expr, ctx, &rhs)) {
+         if (ctx) {
+            ctx->locals = saved_locals;
+         }
          error("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
          continue;
+      }
+      if (ctx) {
+         ctx->locals = saved_locals;
       }
       emit_prepare_fp_ptr(0, lhs.offset);
       emit_prepare_fp_ptr(1, rhs.offset);

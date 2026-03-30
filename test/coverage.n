@@ -208,6 +208,8 @@ int function2(int i @ 12, int j @ 13) {
       case 2 .. 3:
          i ^= j;
          break;
+      case 4 .. 6:
+         break;
       default:
          break;
    }
