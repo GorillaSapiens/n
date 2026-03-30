@@ -22,5 +22,8 @@ int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_
 int emit_mode_size(emit_mode_t mode);
 int opcode_is_conditional_branch(const char *mnemonic);
 int opcode_invert_branch(const char *mnemonic, unsigned char *opcode_out);
+int opcode_parse_raw_byte(const char *mnemonic, unsigned char *opcode_out);
+int opcode_raw_is_conditional_branch(unsigned char opcode);
+int opcode_raw_is_accumulator_shorthand(unsigned char opcode);
 
 #endif

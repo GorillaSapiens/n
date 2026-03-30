@@ -315,3 +315,39 @@ for my $case (@cases) {
    require_substrings($sim_stdout, $meta->{expectsim}, 'simulator output', $case, $sim_out);
    print "[$PASS] $case\n";
 }
+
+my $asm_smoke_tmp = tempdir("n_e2e_asm_smoke_XXXX", TMPDIR => 1, CLEANUP => 1);
+my $asm_src = File::Spec->catfile($asm_smoke_tmp, 'opxx.s');
+my $asm_hex = File::Spec->catfile($asm_smoke_tmp, 'opxx.hex');
+my $asm_out = File::Spec->catfile($asm_smoke_tmp, 'opxx.out');
+my $asm_err = File::Spec->catfile($asm_smoke_tmp, 'opxx.err');
+open(my $asmfh, '>', $asm_src) or die "[$FAIL] could not write $asm_src: $!\n";
+print $asmfh <<'EOF_ASM';
+.segmentdef "CODE", $8000, $0100
+.segment "CODE"
+.def XYZ LDA
+.proc demo
+   XYZ #$12
+   op8D.a $1234
+   opF0 target
+   opEA
+target:
+   opEA
+.endproc
+EOF_ASM
+close($asmfh);
+my @asm_smoke_cmd = ($n65asm, '--hex=' . $asm_hex, $asm_src);
+my ($asm_smoke_exit) = run_cmd(\@asm_smoke_cmd, $asm_out, $asm_err);
+if ($asm_smoke_exit != 0) {
+   print "[$FAIL] assembler raw-opcode smoke exit code $asm_smoke_exit\n";
+   print join(' ', @asm_smoke_cmd), "\n";
+   print slurp_file($asm_err);
+   exit(-1);
+}
+my $asm_hex_text = slurp_file($asm_hex);
+if (index($asm_hex_text, 'A9128D3412F001EAEA') < 0) {
+   print "[$FAIL] assembler raw-opcode smoke missing expected bytes\n";
+   print "$asm_hex\n";
+   exit(-1);
+}
+print "[$PASS] assembler_raw_opcode_smoke\n";

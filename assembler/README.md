@@ -16,6 +16,7 @@
 - relaxation from absolute-family encodings to zero-page-family encodings where legal
 - simple source-level macros
 - simple source-level textual aliases with `.def`
+- raw `opXX` opcode tokens for hand-written illegal or undocumented opcode includes
 - multi-error reporting
 
 It can operate in two primary modes:
@@ -200,4 +201,33 @@ This means `.include` and macros are **source-level features**, not parser-level
 
 ## Syntax
 
-See the source and tests for the full directive and expression surface. The command-line changes above do not alter assembly syntax.
+### `.def` textual aliases
+
+`.def` performs a simple source-level textual replacement on identifier boundaries before lexing/parsing.
+
+```asm
+.def sp _nl_sp
+.def XYZ LDA
+```
+
+That means opcode aliases work too:
+
+```asm
+XYZ #$42     ; same as LDA #$42
+```
+
+The replacement text runs to end-of-line (before any `;` comment), so it can also expand to other identifiers or tokens, not just a single bare word. The substitution is not applied inside strings or comments.
+
+### Raw `opXX` opcode form
+
+The assembler also accepts `opXX` where `XX` is a hexadecimal opcode byte:
+
+```asm
+opA9 #$42        ; emit opcode $A9 with immediate operand
+op8D.a $1234     ; emit opcode $8D with explicit absolute operand size
+opF0 target      ; conditional-branch opcodes still infer relative mode
+```
+
+This is intended for illegal or undocumented opcode include files. For ambiguous operand shapes, use the existing mode suffixes (`.z`, `.zx`, `.zy`, `.a`, `.ax`, `.ay`, `.i`, `.ix`, `.iy`) instead of expecting relaxation to rescue you later.
+
+See the source and tests for the full directive and expression surface.

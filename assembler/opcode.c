@@ -7,6 +7,50 @@ typedef struct opcode_entry {
    unsigned char opcode;
 } opcode_entry_t;
 
+static int hex_nibble(int ch)
+{
+   if (ch >= '0' && ch <= '9')
+      return ch - '0';
+   if (ch >= 'A' && ch <= 'F')
+      return 10 + (ch - 'A');
+   if (ch >= 'a' && ch <= 'f')
+      return 10 + (ch - 'a');
+   return -1;
+}
+
+int opcode_parse_raw_byte(const char *mnemonic, unsigned char *opcode_out)
+{
+   int hi;
+   int lo;
+
+   if (!mnemonic || strlen(mnemonic) != 4)
+      return 0;
+
+   if (mnemonic[0] != 'O' && mnemonic[0] != 'o')
+      return 0;
+   if (mnemonic[1] != 'P' && mnemonic[1] != 'p')
+      return 0;
+
+   hi = hex_nibble((unsigned char)mnemonic[2]);
+   lo = hex_nibble((unsigned char)mnemonic[3]);
+   if (hi < 0 || lo < 0)
+      return 0;
+
+   *opcode_out = (unsigned char)((hi << 4) | lo);
+   return 1;
+}
+
+int opcode_raw_is_conditional_branch(unsigned char opcode)
+{
+   return opcode == 0x10 || opcode == 0x30 || opcode == 0x50 || opcode == 0x70 ||
+          opcode == 0x90 || opcode == 0xB0 || opcode == 0xD0 || opcode == 0xF0;
+}
+
+int opcode_raw_is_accumulator_shorthand(unsigned char opcode)
+{
+   return opcode == 0x0A || opcode == 0x2A || opcode == 0x4A || opcode == 0x6A;
+}
+
 static const opcode_entry_t g_opcodes[] = {
    { "ADC", EM_IMMEDIATE, 0x69 }, { "ADC", EM_ZP, 0x65 }, { "ADC", EM_ZPX, 0x75 }, { "ADC", EM_ABS, 0x6D }, { "ADC", EM_ABSX, 0x7D }, { "ADC", EM_ABSY, 0x79 }, { "ADC", EM_INDX, 0x61 }, { "ADC", EM_INDY, 0x71 },
    { "AND", EM_IMMEDIATE, 0x29 }, { "AND", EM_ZP, 0x25 }, { "AND", EM_ZPX, 0x35 }, { "AND", EM_ABS, 0x2D }, { "AND", EM_ABSX, 0x3D }, { "AND", EM_ABSY, 0x39 }, { "AND", EM_INDX, 0x21 }, { "AND", EM_INDY, 0x31 },
@@ -47,6 +91,9 @@ static const opcode_entry_t g_opcodes[] = {
 int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_out)
 {
    const opcode_entry_t *e;
+
+   if (opcode_parse_raw_byte(mnemonic, opcode_out) && mode != EM_REL_LONG)
+      return 1;
 
    for (e = g_opcodes; e->mnemonic; ++e) {
       if (!strcmp(e->mnemonic, mnemonic) && e->mode == mode) {

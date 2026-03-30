@@ -728,10 +728,16 @@ static void validate_segment_defs(asm_context_t *ctx)
 
 static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
 {
-   if (is_branch_opcode(opcode) && mode == AM_ZP_OR_ABS)
+   unsigned char raw_opcode;
+
+   if ((is_branch_opcode(opcode) ||
+        (opcode_parse_raw_byte(opcode, &raw_opcode) && opcode_raw_is_conditional_branch(raw_opcode))) &&
+       mode == AM_ZP_OR_ABS)
       return AM_RELATIVE;
 
-   if (is_accum_shorthand_opcode(opcode) && mode == AM_IMPLIED)
+   if ((is_accum_shorthand_opcode(opcode) ||
+        (opcode_parse_raw_byte(opcode, &raw_opcode) && opcode_raw_is_accumulator_shorthand(raw_opcode))) &&
+       mode == AM_IMPLIED)
       return AM_ACCUMULATOR;
 
    return mode;
@@ -856,8 +862,10 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
 {
    addr_mode_t mode;
    unsigned char dummy;
+   int is_raw_opcode;
 
    mode = normalize_mode(insn->opcode, insn->mode);
+   is_raw_opcode = opcode_parse_raw_byte(insn->opcode, &dummy);
 
    if (insn->spec != MODE_SPEC_NONE) {
       if (!parsed_mode_accepts_spec(mode, insn->spec)) {
@@ -907,6 +915,11 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
          return 1;
 
       case AM_ZP_OR_ABS:
+         if (is_raw_opcode) {
+            if (why)
+               *why = "raw opcodes need an explicit mode suffix (.z/.a/.i) for ambiguous operand shapes";
+            return 0;
+         }
          if (opcode_lookup(insn->opcode, EM_ABS, &dummy)) {
             *out_mode = EM_ABS;
             return 1;
@@ -918,6 +931,11 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
          break;
 
       case AM_ZPX_OR_ABSX:
+         if (is_raw_opcode) {
+            if (why)
+               *why = "raw opcodes need an explicit mode suffix (.zx/.ax) for indexed ambiguous operand shapes";
+            return 0;
+         }
          if (opcode_lookup(insn->opcode, EM_ABSX, &dummy)) {
             *out_mode = EM_ABSX;
             return 1;
@@ -929,6 +947,11 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
          break;
 
       case AM_ZPY_OR_ABSY:
+         if (is_raw_opcode) {
+            if (why)
+               *why = "raw opcodes need an explicit mode suffix (.zy/.ay) for indexed ambiguous operand shapes";
+            return 0;
+         }
          if (opcode_lookup(insn->opcode, EM_ABSY, &dummy)) {
             *out_mode = EM_ABSY;
             return 1;
