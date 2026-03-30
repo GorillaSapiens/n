@@ -4637,9 +4637,11 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       if (callable_decl && declarator_has_parameter_list(callable_decl) && declarator_function_pointer_depth(callable_decl) > 0) {
          return compile_indirect_call_expr_to_slot(expr, ctx, dst, callee, args, callable_type, callable_decl);
       }
-      if (arg_count > 0) {
-         warning("[%s:%d.%d] call target has no visible signature", expr->file, expr->line, expr->column);
+      if (expr_bare_identifier_name(callee)) {
+         error("[%s:%d.%d] call target '%s' has no visible signature; declare it in this translation unit or with extern",
+               expr->file, expr->line, expr->column, expr_bare_identifier_name(callee));
       }
+      error("[%s:%d.%d] call target has no visible signature", expr->file, expr->line, expr->column);
       return false;
    }
 

@@ -78,7 +78,7 @@ int twice(int x) {
 }
 ```
 
-`extern` function declarations are also supported and cause the compiler to emit an import for the referenced symbol.
+`extern` function declarations are also supported and cause the compiler to emit an import for the referenced symbol. Direct calls require a visible function signature in the current translation unit or via an `extern` declaration; the compiler rejects bare calls to unknown symbols instead of guessing at a call ABI.
 
 ### Ordinary function overloading
 

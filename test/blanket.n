@@ -33,6 +33,7 @@ struct undeclared;
 union also_undeclared;
 
 extern int floopy(void);
+extern int foreign_add(int a, int b);
 
 xform nulxform {
    '\0' 0
