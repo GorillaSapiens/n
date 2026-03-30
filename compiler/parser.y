@@ -67,6 +67,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %token DEFAULT
 %token DIV_ASSIGN
 %token DO
+%token DOTDOT
 %token ELSE
 %token EQ
 %token EXTERN
@@ -111,6 +112,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> break_stmt
 %type <node> cast_type
 %type <node> case_block
+%type <node> case_choice
 %type <node> case_section
 %type <node> comma_expr
 %type <node> conditional_expr
@@ -150,6 +152,8 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> modifier_list
 %type <node> multiplicative_expr
 %type <node> named_expr
+%type <node> nonnum_primary_expr
+%type <node> num_primary_expr
 %type <node> opt_expr
 %type <node> opt_flags
 %type <node> opt_identifier
@@ -590,14 +594,22 @@ postfix_expr:
   ;
 
 primary_expr:
+    num_primary_expr                         { COVER; $$ = $1; }
+  | nonnum_primary_expr                      { COVER; $$ = $1; }
+  ;
+
+num_primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | INTEGER '`' TYPENAME                     { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
   | FLOAT '`' TYPENAME                       { COVER; $$ = make_float_leaf_with_type($1, make_typename_leaf($3)); }
-  | STRING                                   { COVER; $$ = do_xform(make_string_leaf($1), NULL); }
-  | STRING '`' XFORMNAME                     { COVER; $$ = do_xform(make_string_leaf($1), $3); }
   | CHAR                                     { COVER; $$ = do_xform(make_string_leaf($1), NULL); }
   | CHAR '`' XFORMNAME                       { COVER; $$ = do_xform(make_string_leaf($1), $3); }
+  ;
+
+nonnum_primary_expr:
+    STRING                                   { COVER; $$ = do_xform(make_string_leaf($1), NULL); }
+  | STRING '`' XFORMNAME                     { COVER; $$ = do_xform(make_string_leaf($1), $3); }
   | lvalue                                   { COVER; $$ = $1; }
   | '(' expr ')'                             { COVER; $$ = $2; }
   ;
@@ -619,8 +631,13 @@ case_section:
   ;
 
 case_block:
-    CASE assign_expr ':' statement_list      { COVER; $$ = MAKE_NODE($2, $4); }
+    CASE case_choice ':' statement_list      { COVER; $$ = MAKE_NODE($2, $4); }
   | DEFAULT ':' statement_list               { COVER; $$ = MAKE_NODE(make_empty_leaf(), $3); }
+  ;
+
+case_choice:
+    num_primary_expr                         { COVER; $$ = MAKE_NODE($1); }
+  | num_primary_expr DOTDOT num_primary_expr { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 opt_flags:

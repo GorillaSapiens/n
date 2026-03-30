@@ -167,6 +167,8 @@ label2:
       default:
       case 1:
          break;
+      case 2 .. 3:
+         break;
    }
 
    a.b := 12;

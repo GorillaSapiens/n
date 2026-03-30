@@ -205,6 +205,9 @@ int function2(int i @ 12, int j @ 13) {
          i &= j;
          j |= i;
          break;
+      case 2 .. 3:
+         i ^= j;
+         break;
       default:
          break;
    }
