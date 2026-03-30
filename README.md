@@ -35,3 +35,7 @@ n65sim sieve.hex
 ## Testing
 
 Run `make test` at the repository root to execute both the compiler-side source tests in `test/test.pl` and the end-to-end `n65cc -> n65asm -> n65ld -> n65sim` regression tests in `test/e2e.pl`. Run `make sieve` for a quick `n65driver` smoke build.
+
+# Additional Details
+
+For additional details, see the READM.md files in the various subdirectories.
