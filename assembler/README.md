@@ -277,6 +277,82 @@ XYZ #$42     ; same as LDA #$42
 
 The replacement text runs to end-of-line (before any `;` comment), so it can also expand to other identifiers or tokens, not just a single bare word. The substitution is not applied inside strings or comments.
 
+### Why `illegals.cfg` omits some unofficial opcodes
+
+The bundled `illegals.cfg` is intentionally **not** a complete catalog of every known unofficial 6502 opcode encoding.
+
+The current rich-opcode model is:
+
+- one mnemonic
+- one addressing mode
+- one opcode byte
+
+That works well for most unofficial mnemonics such as `LAX`, `SAX`, `DCP`, `ISC`, `SLO`, `RLA`, `SRE`, and `RRA`, but it does **not** represent families where the same mnemonic has multiple opcode bytes for the **same** addressing mode.
+
+#### Why `HLT` is missing
+
+`HLT` (also called `KIL` or `JAM` in some references) is the clearest example. It has many implied-mode encodings, including:
+
+```text
+$02 $12 $22 $32 $42 $52 $62 $72 $92 $B2 $D2 $F2
+```
+
+Under the current config model, a single entry such as:
+
+```text
+HLT imp $02
+```
+
+would only keep one encoding and would silently discard the rest. Rather than pretend there is one canonical `HLT` byte, the bundled config leaves `HLT` out.
+
+#### Other omissions for the same reason
+
+Other unofficial encodings are omitted or only partially represented for similar reasons:
+
+- the unofficial `NOP` family, because multiple unofficial `NOP` bytes exist for the same modes, while official `NOP imp $EA` already exists in `default.cfg`
+- duplicate same-mode aliases such as unofficial `SBC imm $EB`, because official `SBC imm $E9` already occupies that mnemonic ... mode slot in `default.cfg`
+- duplicate same-mode encodings such as `ANC`, where only one immediate encoding is named in `illegals.cfg`
+
+So `illegals.cfg` is best understood as a **useful named subset** of unofficial opcodes that fit the current table shape honestly.
+
+#### Workarounds when the config model is too small
+
+When you need an omitted unofficial encoding, there are two practical escape hatches.
+
+##### 1. Use raw `opXX`
+
+This is the most direct workaround, and it is why raw `opXX` support remains available:
+
+```asm
+op02              ; one HLT/KIL/JAM encoding
+op12              ; another HLT/KIL/JAM encoding
+opEB #$42         ; unofficial SBC immediate encoding
+op1A              ; one of the unofficial NOP encodings
+```
+
+Use explicit addressing-mode suffixes when the operand shape would otherwise be ambiguous:
+
+```asm
+op0C.a $1234      ; absolute NOP form
+op14.zx $20       ; zero-page,X NOP form
+```
+
+##### 2. Use `.def` as a source-level alias
+
+If you want a nicer local spelling, `.def` can alias an identifier to a raw opcode token or to an existing mnemonic:
+
+```asm
+.def HLT op02
+.def NOPABS op0C.a
+.def XYZ LDA
+
+HLT
+NOPABS $1234
+XYZ #$42
+```
+
+This is still only a textual alias, not a second rich-opcode table. It is useful for private include files or one-off projects where you are willing to choose the exact encoding yourself.
+
 ### Raw `opXX` opcode form
 
 The assembler still accepts `opXX` where `XX` is a hexadecimal opcode byte:
