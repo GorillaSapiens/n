@@ -297,6 +297,7 @@ static long long arithmetic_right_shift_ll(long long value, unsigned int count);
 static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type);
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type);
 static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend);
+static void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size);
 static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size);
 static void emit_sink_append(EmitSink *dst, const EmitSink *src);
 static void remember_pending_global_init(const char *name, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage);
@@ -446,6 +447,10 @@ static bool decode_char_constant_value(const char *text, long long *value_out) {
 }
 
 static const char *remember_string_literal(const char *text);
+static const char *emit_data_literal_object(const unsigned char *bytes, int size);
+static const char *emit_data_string_object(const char *text);
+static bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr);
+static const char *emit_pointer_initializer_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr);
 static void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label);
 static bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size, const char *text);
 static bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *type, const ASTNode *declarator, int total_size, const char *text);
@@ -1606,6 +1611,155 @@ static const char *remember_string_literal(const char *text) {
    return label;
 }
 
+static const char *emit_data_literal_object(const unsigned char *bytes, int size) {
+   char *label;
+
+   if (size < 0) {
+      return NULL;
+   }
+
+   label = (char *) malloc(64);
+   if (!label) {
+      error("out of memory");
+   }
+   snprintf(label, 64, "__data_%d", label_counter++);
+   emit(&es_data, "%s:\n", label);
+   if (size <= 0) {
+      emit(&es_data, "\t.byte $00\n");
+      return label;
+   }
+   emit_initializer_bytes_line(&es_data, bytes, size);
+   return label;
+}
+
+static const char *emit_data_string_object(const char *text) {
+   unsigned char *bytes;
+   unsigned char *buf;
+   const char *label;
+   int n = 0;
+
+   if (!text) {
+      text = "";
+   }
+   bytes = decode_string_literal_bytes(text, &n);
+   buf = (unsigned char *) calloc((size_t) n + 1u, 1);
+   if (!buf) {
+      free(bytes);
+      error("out of memory");
+   }
+   if (n > 0) {
+      memcpy(buf, bytes, (size_t) n);
+   }
+   free(bytes);
+   label = emit_data_literal_object(buf, n + 1);
+   free(buf);
+   return label;
+}
+
+static bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr) {
+   const ASTNode *uexpr = unwrap_expr_node((ASTNode *) expr);
+
+   (void) type;
+   if (!uexpr || is_empty(uexpr) || !declarator) {
+      return false;
+   }
+   if (declarator_function_pointer_depth(declarator) > 0) {
+      return false;
+   }
+   if (declarator_pointer_depth(declarator) <= 0 && (!type || strcmp(type_name_from_node(type), "*"))) {
+      return false;
+   }
+   if (uexpr->kind == AST_STRING && !string_literal_is_char_constant(uexpr->strval)) {
+      return true;
+   }
+   if (uexpr->count == 1 && !strcmp(uexpr->name, "&")) {
+      ASTNode *inner = (ASTNode *) unwrap_expr_node(uexpr->children[0]);
+      InitConstValue value = {0};
+      const char *ident = expr_bare_identifier_name(inner);
+
+      if (inner && !strcmp(inner->name, "lvalue")) {
+         return false;
+      }
+      if (ident && resolve_function_designator_target(ident, NULL, NULL)) {
+         return false;
+      }
+      return eval_constant_initializer_expr(inner, &value) && value.kind == INIT_CONST_INT;
+   }
+   return false;
+}
+
+static const char *emit_pointer_initializer_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr) {
+   const ASTNode *uexpr = unwrap_expr_node((ASTNode *) expr);
+
+   if (!pointer_initializer_uses_backing_object(type, declarator, uexpr)) {
+      return NULL;
+   }
+
+   if (uexpr->kind == AST_STRING) {
+      return emit_data_string_object(uexpr->strval);
+   }
+
+   if (uexpr->count == 1 && !strcmp(uexpr->name, "&")) {
+      ASTNode *inner = (ASTNode *) unwrap_expr_node(uexpr->children[0]);
+      InitConstValue value = {0};
+      const ASTNode *obj_type = NULL;
+      const ASTNode *obj_decl = NULL;
+      const ASTNode *annotated = NULL;
+      const char *obj_name = NULL;
+      unsigned char *bytes;
+      int obj_size = 0;
+
+      if (!eval_constant_initializer_expr(inner, &value) || value.kind != INIT_CONST_INT) {
+         return NULL;
+      }
+
+      if (declarator && declarator_pointer_depth(declarator) > 0) {
+         obj_decl = declarator_after_deref(declarator);
+         obj_type = type;
+         obj_name = type ? type_name_from_node(type) : NULL;
+         if (!obj_name || !strcmp(obj_name, "void") || !strcmp(obj_name, "*")) {
+            obj_type = NULL;
+            obj_decl = NULL;
+         }
+      }
+      if (!obj_type) {
+         annotated = literal_annotation_type(inner);
+         if (annotated && type_size_from_node(annotated) > 0) {
+            obj_type = annotated;
+         }
+         else {
+            obj_type = required_typename_node("int");
+         }
+      }
+      if (obj_decl) {
+         obj_size = declarator_storage_size(obj_type, obj_decl);
+      }
+      else {
+         obj_size = type_size_from_node(obj_type);
+      }
+      if (obj_size <= 0) {
+         obj_type = required_typename_node("int");
+         obj_decl = NULL;
+         obj_size = type_size_from_node(obj_type);
+      }
+      bytes = (unsigned char *) calloc((size_t) obj_size, 1);
+      if (!bytes) {
+         error("out of memory");
+      }
+      if (!encode_integer_initializer_value(value.i, bytes, obj_size, obj_type)) {
+         free(bytes);
+         return NULL;
+      }
+      {
+         const char *label = emit_data_literal_object(bytes, obj_size);
+         free(bytes);
+         return label;
+      }
+   }
+
+   return NULL;
+}
+
 static void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label) {
    if (!label || dst_size <= 0) {
       return;
@@ -1648,7 +1802,7 @@ static bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *de
       return true;
    }
    if (declarator_pointer_depth(declarator) > 0 || (type && !strcmp(type_name_from_node(type), "*"))) {
-      const char *label = remember_string_literal(text);
+      const char *label = emit_data_string_object(text);
       emit_store_label_address_to_fp(base_offset, total_size > 0 ? total_size : declarator_storage_size(type, declarator), label);
       return true;
    }
@@ -4669,7 +4823,11 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          free(bytes);
       }
       else {
-         const char *label = remember_string_literal(expr->strval);
+         const char *label = emit_pointer_initializer_backing_object(dst ? dst->type : NULL,
+               dst ? dst->declarator : NULL, expr);
+         if (!label) {
+            label = remember_string_literal(expr->strval);
+         }
          emit_store_label_address_to_fp(dst->offset, dst->size, label);
       }
       return true;
@@ -4821,7 +4979,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          }
       }
       {
+         const char *label = emit_pointer_initializer_backing_object(dst ? dst->type : NULL,
+               dst ? dst->declarator : NULL, expr);
          InitConstValue value = {0};
+         if (label) {
+            emit_store_label_address_to_fp(dst->offset, dst->size, label);
+            return true;
+         }
          if (eval_constant_initializer_expr(inner, &value) && value.kind == INIT_CONST_INT) {
             unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
             char tmp[64];
@@ -6973,9 +7137,11 @@ static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const AST
       return false;
    }
 
-   if (uexpr && uexpr->kind == AST_STRING && !string_literal_is_char_constant(uexpr->strval) && declarator_pointer_depth(declarator) > 0) {
-      const char *label = remember_string_literal(uexpr->strval);
-      return emit_symbol_address_initializer(es, size, type, label, 0);
+   if (uexpr) {
+      const char *label = emit_pointer_initializer_backing_object(type, declarator, uexpr);
+      if (label) {
+         return emit_symbol_address_initializer(es, size, type, label, 0);
+      }
    }
 
    bytes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
@@ -7232,6 +7398,10 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
 
    if (uinit->kind == AST_STRING && !string_literal_is_char_constant(uinit->strval)) {
       return emit_string_initializer_bytes(buf, buf_size, base_offset, type, declarator, size, uinit->strval);
+   }
+
+   if (pointer_initializer_uses_backing_object(type, declarator, uinit)) {
+      return false;
    }
 
    if (!initializer_is_list(uinit)) {
