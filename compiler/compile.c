@@ -7922,6 +7922,12 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
             compile_local_decl_item(list->children[j], ctx);
          }
       }
+      else if (!strcmp(stmt->name, "asm_stmt")) {
+         compile_asm_stmt(stmt, ctx);
+      }
+      else if (!strcmp(stmt->name, "statement_list")) {
+         compile_statement_list(stmt, ctx);
+      }
       else {
          error("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }

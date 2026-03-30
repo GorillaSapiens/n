@@ -76,6 +76,11 @@ void useless() {
 
    asm nop
 
+blk_cov: {
+      asm nop;
+   }
+here_cov: asm rts;
+
    foo := bar;
 
    a[12] := 5;

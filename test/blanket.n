@@ -72,6 +72,11 @@ void foo(void) {
 
 void foob(void) {
    asm nop
+
+blk_cov: {
+      asm nop;
+   }
+here_cov: asm rts;
 }
 
 int operator==(int l, int r) {
