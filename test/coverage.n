@@ -50,6 +50,10 @@ float a := 5.0`float;
 
 void (*fruitloops)(int n);
 
+struct callbox {
+   int (*func)(int);
+};
+
 void useless() {
    static int q[12] @ 27;
    int r[12] @ 27 := { {0,0,0}, {0,0,0}, {0,0,0} };
@@ -115,6 +119,9 @@ void useless() {
    a := { 3 };
    a := { -3 };
    a := { "hello" };
+
+   callbox boxes[2];
+   boxes[0].func(1);
 
    useless();
    useless(1, 2, 3);

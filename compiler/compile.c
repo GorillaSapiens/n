@@ -8835,16 +8835,19 @@ static bool crosscheck_helper(Pair *markers, const char *name) {
    if (strcmp(node->name, "type_decl_stmt")) {
       for (int i = 1; i < node->count; i++) {
          child = node->children[i];
-         if (!strcmp(child->children[2]->children[0]->strval, "0")) {
-            childname = child->children[1]->strval;
-            void *color = pair_get(markers, childname);
-            if (color == 0) {
-               if (crosscheck_helper(markers, childname)) {
+         {
+            const ASTNode *child_decl = child->children[2];
+            if (declarator_pointer_depth(child_decl) <= 0 && declarator_function_pointer_depth(child_decl) <= 0) {
+               childname = child->children[1]->strval;
+               void *color = pair_get(markers, childname);
+               if (color == 0) {
+                  if (crosscheck_helper(markers, childname)) {
+                     goto problem;
+                  }
+               }
+               else if ((intptr_t)color == 1) {
                   goto problem;
                }
-            }
-            else if ((intptr_t)color == 1) {
-               goto problem;   
             }
          }
       }
@@ -8927,24 +8930,18 @@ static void calculate_struct_union_sizes(ASTNode *program) {
                for (int i = 1; i < node->count; i++) {
                   ASTNode *item = node->children[i];
                   const char *tname = item->children[1]->strval;
-                  int isptr = atoi(item->children[2]->children[0]->strval);
-                  int mult = 1;
-
-                  // arrays get multipliers
-                  for (int j = 2; j < item->children[2]->count; j++) {
-                     mult *= atoi(item->children[2]->children[j]->strval);
-                  }
+                  const ASTNode *decl = item->children[2];
+                  int mult = declarator_array_multiplier(decl);
+                  bool isptr = declarator_pointer_depth(decl) > 0 || declarator_function_pointer_depth(decl) > 0;
 
                   if (isptr) {
                      othersize = sizeof_ptr;
                   }
+                  else if (pair_exists(typesizes, tname)) {
+                     othersize = (intptr_t) pair_get(typesizes, tname);
+                  }
                   else {
-                     if (pair_exists(typesizes, tname)) {
-                        othersize = (intptr_t) pair_get(typesizes, tname);
-                     }
-                     else {
-                        othersize = -1;
-                     }
+                     othersize = -1;
                   }
 
                   if (othersize == -1) {

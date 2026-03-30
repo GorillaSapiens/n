@@ -20,6 +20,10 @@ union ofthesnake {
    float fdata;
 };
 
+struct callbox {
+   int (*func)(int);
+};
+
 struct undeclared;
 union also_undeclared;
 
@@ -183,5 +187,8 @@ label2:
 
    a := 'x';
    a := 'x'`cp437;
+
+   callbox boxes[2];
+   boxes[1].func(5);
 }
 

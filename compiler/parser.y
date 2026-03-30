@@ -579,8 +579,8 @@ unary_expr:
   ;
 
 postfix_expr:
-    IDENTIFIER '(' arg_list ')'              { COVER; $$ = MAKE_NAMED_NODE("()", make_identifier_leaf($1), $3); }
-  | primary_expr                             { COVER; $$ = $1; }
+    primary_expr                             { COVER; $$ = $1; }
+  | postfix_expr '(' arg_list ')'            { COVER; $$ = MAKE_NAMED_NODE("()", $1, $3); }
   ;
 
 primary_expr:
