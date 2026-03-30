@@ -109,6 +109,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> bitwise_xor_expr
 %type <node> block
 %type <node> break_stmt
+%type <node> cast_type
 %type <node> case_block
 %type <node> case_section
 %type <node> comma_expr
@@ -359,6 +360,10 @@ parameter:
     decl_specifiers decl_item                { COVER; $$ = MAKE_NODE($1, $2); }
   ;
 
+cast_type:
+    decl_specifiers declarator               { COVER; $$ = MAKE_NAMED_NODE("cast_type", $1, $2); }
+  ;
+
 block:
     '{' statement_list '}'                   { COVER; $$ = $2; }
   ;
@@ -576,6 +581,7 @@ unary_expr:
   | '-' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
   | '+' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("+", $2); }
   | '&' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
+  | '(' cast_type ')' unary_expr             { COVER; $$ = MAKE_NAMED_NODE("cast", $2, $4); }
   ;
 
 postfix_expr:

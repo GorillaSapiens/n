@@ -201,6 +201,8 @@ label2:
    int *addr := &3;
    char *datamsg := "data";
    int *rawptr := 3;
+   int *castptr := (int *) 3;
+   a := (char) a;
    voidcallbox vboxes[1] := { { &3, takes_voidp } };
    vboxes[0].func("x", vboxes[0].data);
 

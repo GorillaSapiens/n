@@ -238,6 +238,10 @@ static bool parameter_is_void(const ASTNode *parameter);
 static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
 static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode);
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
+static const ASTNode *cast_expr_target_type(const ASTNode *expr);
+static const ASTNode *cast_expr_target_declarator(const ASTNode *expr);
+static int cast_expr_target_size(const ASTNode *expr);
+static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out);
 static void predeclare_top_level_functions(ASTNode *program);
 static int declarator_storage_size(const ASTNode *type, const ASTNode *declarator);
 static int declarator_value_size(const ASTNode *type, const ASTNode *declarator);
@@ -2938,6 +2942,60 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
    return expr;
 }
 
+static const ASTNode *cast_expr_target_type(const ASTNode *expr) {
+   const ASTNode *cast_type;
+   const ASTNode *specifiers;
+
+   expr = unwrap_expr_node(expr);
+   if (!expr || strcmp(expr->name, "cast") || expr->count < 2) {
+      return NULL;
+   }
+
+   cast_type = expr->children[0];
+   if (!cast_type || strcmp(cast_type->name, "cast_type") || cast_type->count < 2) {
+      return NULL;
+   }
+
+   specifiers = cast_type->children[0];
+   if (!specifiers || specifiers->count < 2) {
+      return NULL;
+   }
+
+   return specifiers->children[1];
+}
+
+static const ASTNode *cast_expr_target_declarator(const ASTNode *expr) {
+   const ASTNode *cast_type;
+
+   expr = unwrap_expr_node(expr);
+   if (!expr || strcmp(expr->name, "cast") || expr->count < 2) {
+      return NULL;
+   }
+
+   cast_type = expr->children[0];
+   if (!cast_type || strcmp(cast_type->name, "cast_type") || cast_type->count < 2) {
+      return NULL;
+   }
+
+   return cast_type->children[1];
+}
+
+static int cast_expr_target_size(const ASTNode *expr) {
+   const ASTNode *type = cast_expr_target_type(expr);
+   const ASTNode *declarator = cast_expr_target_declarator(expr);
+   int size;
+
+   if (!type) {
+      return 0;
+   }
+
+   size = declarator_storage_size(type, declarator);
+   if (size <= 0) {
+      size = type_size_from_node(type);
+   }
+   return size;
+}
+
 static int expr_byte_index(const ASTNode *type, int size, int i) {
    if (has_flag(type_name_from_node(type), "$endian:big")) {
       return size - 1 - i;
@@ -4780,6 +4838,34 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return compile_call_expr_to_slot(expr, ctx, dst);
    }
 
+   if (!strcmp(expr->name, "cast")) {
+      const ASTNode *target_type = cast_expr_target_type(expr);
+      const ASTNode *target_decl = cast_expr_target_declarator(expr);
+      int target_size = cast_expr_target_size(expr);
+      ContextEntry tmp;
+      if (!target_type || target_size <= 0 || expr->count < 2) {
+         return false;
+      }
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      tmp = (ContextEntry){ .name = "$cast", .type = target_type, .declarator = target_decl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = target_size };
+      if (!compile_expr_to_slot(expr->children[1], ctx, &tmp)) {
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         return false;
+      }
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, tmp.offset, tmp.size, tmp.type);
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+      return true;
+   }
+
    if (expr->kind == AST_INTEGER) {
       unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
       if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
@@ -5787,6 +5873,10 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return required_typename_node("*");
    }
 
+   if (!strcmp(expr->name, "cast")) {
+      return cast_expr_target_type(expr);
+   }
+
    {
       const char *ident = expr_bare_identifier_name(expr);
       if (ident) {
@@ -5946,6 +6036,10 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
             }
          }
       }
+   }
+
+   if (!strcmp(expr->name, "cast")) {
+      return cast_expr_target_declarator(expr);
    }
 
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
@@ -6735,6 +6829,86 @@ static long long arithmetic_right_shift_ll(long long value, unsigned int count) 
    return (long long) (~((~bits) >> count));
 }
 
+static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out) {
+   InitConstValue inner = {0};
+   const ASTNode *target_type = cast_expr_target_type(expr);
+   const ASTNode *target_decl = cast_expr_target_declarator(expr);
+   int target_size;
+   bool target_is_pointer;
+   bool target_is_float;
+   bool target_is_signed;
+   unsigned long long bits;
+   unsigned long long mask;
+   long long ival;
+
+   if (!expr || !out || !target_type || expr->count < 2) {
+      return false;
+   }
+   if (!eval_constant_initializer_expr(expr->children[1], &inner)) {
+      return false;
+   }
+
+   target_size = declarator_storage_size(target_type, target_decl);
+   if (target_size <= 0) {
+      target_size = type_size_from_node(target_type);
+   }
+   if (target_size <= 0) {
+      return false;
+   }
+
+   target_is_pointer = (target_decl && declarator_pointer_depth(target_decl) > 0) ||
+      !strcmp(type_name_from_node(target_type), "*");
+   target_is_float = has_flag(type_name_from_node(target_type), "$float");
+   target_is_signed = has_flag(type_name_from_node(target_type), "$signed");
+
+   if (target_is_float) {
+      if (inner.kind == INIT_CONST_FLOAT) {
+         *out = inner;
+         return true;
+      }
+      if (inner.kind == INIT_CONST_INT) {
+         out->kind = INIT_CONST_FLOAT;
+         out->f = (double) inner.i;
+         return true;
+      }
+      return false;
+   }
+
+   if (inner.kind == INIT_CONST_ADDRESS) {
+      if (target_is_pointer) {
+         *out = inner;
+         return true;
+      }
+      return false;
+   }
+
+   if (inner.kind == INIT_CONST_FLOAT) {
+      ival = (long long) inner.f;
+   }
+   else if (inner.kind == INIT_CONST_INT) {
+      ival = inner.i;
+   }
+   else {
+      return false;
+   }
+
+   bits = (unsigned long long) ival;
+   if (target_size < (int) sizeof(bits)) {
+      mask = (1ULL << (target_size * 8)) - 1ULL;
+      bits &= mask;
+      if (target_is_signed && target_size > 0) {
+         unsigned long long sign = 1ULL << (target_size * 8 - 1);
+         if (bits & sign) {
+            bits |= ~mask;
+         }
+      }
+   }
+
+   out->kind = INIT_CONST_INT;
+   out->i = (long long) bits;
+   return true;
+}
+
 static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    InitConstValue lhs = {0};
    InitConstValue rhs = {0};
@@ -6750,6 +6924,10 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
 
    if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {
       return eval_constant_initializer_expr(expr->children[expr->count - 1], out);
+   }
+
+   if (!strcmp(expr->name, "cast")) {
+      return eval_constant_cast_expr(expr, out);
    }
 
    if (expr->kind == AST_INTEGER) {
