@@ -2560,7 +2560,11 @@ static bool parameter_is_void(const ASTNode *parameter) {
       return false;
    }
 
-   if (!declarator || declarator_name(declarator)) {
+   if (declarator && declarator_name(declarator)) {
+      return false;
+   }
+
+   if (declarator && !declarator_is_plain_value(declarator)) {
       return false;
    }
 
@@ -4816,6 +4820,23 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             }
          }
       }
+      {
+         InitConstValue value = {0};
+         if (eval_constant_initializer_expr(inner, &value) && value.kind == INIT_CONST_INT) {
+            unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+            char tmp[64];
+            snprintf(tmp, sizeof(tmp), "%lld", value.i);
+            if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+               make_be_int(tmp, bytes, dst->size);
+            }
+            else {
+               make_le_int(tmp, bytes, dst->size);
+            }
+            emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
+            free(bytes);
+            return true;
+         }
+      }
    }
 
 
@@ -6699,6 +6720,11 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
                   return true;
                }
             }
+         }
+         if (eval_constant_initializer_expr(inner, &lhs) && lhs.kind == INIT_CONST_INT) {
+            out->kind = INIT_CONST_INT;
+            out->i = lhs.i;
+            return true;
          }
          return false;
       }

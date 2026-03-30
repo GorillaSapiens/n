@@ -24,6 +24,11 @@ struct callbox {
    int (*func)(int);
 };
 
+struct voidcallbox {
+   void *data;
+   int (*func)(char *, void *);
+};
+
 struct undeclared;
 union also_undeclared;
 
@@ -72,6 +77,11 @@ void foob(void) {
 int operator==(int l, int r) {
    return 0;
 }
+
+int takes_voidp(char *out, void *v) {
+   return 0;
+}
+
 
 int array[12];
 int (*fnptrs)()[12];
@@ -187,6 +197,10 @@ label2:
 
    a := 'x';
    a := 'x'`cp437;
+
+   int *addr := &3;
+   voidcallbox vboxes[1] := { { &3, takes_voidp } };
+   vboxes[0].func("x", vboxes[0].data);
 
    callbox boxes[2];
    boxes[1].func(5);

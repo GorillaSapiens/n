@@ -54,6 +54,11 @@ struct callbox {
    int (*func)(int);
 };
 
+struct voidcallbox {
+   void *data;
+   int (*func)(char *, void *);
+};
+
 void useless() {
    static int q[12] @ 27;
    int r[12] @ 27 := { {0,0,0}, {0,0,0}, {0,0,0} };
@@ -120,8 +125,11 @@ void useless() {
    a := { -3 };
    a := { "hello" };
 
+   int *addr := &3;
    callbox boxes[2];
    boxes[0].func(1);
+   voidcallbox vboxes[1] := { { &3, function_voidcall } };
+   vboxes[0].func("x", vboxes[0].data);
 
    useless();
    useless(1, 2, 3);
@@ -160,6 +168,12 @@ int function0(void **);
 int function0(void **) {
    return 5;
 }
+int function_voidcall(char *, void *);
+
+int function_voidcall(char *, void *) {
+   return 5;
+}
+
 
 const int function1(int i);
 
