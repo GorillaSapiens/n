@@ -1,8 +1,10 @@
 // n65cc
 // expectasm: .export __init_
 // expectasm: .proc __init_
+// expectasm: _demo$s:
+// expectasm: .res 2
 // expectasm: jsr _twice
-// expectasm: sta _g,y
+// expectasm: sta _demo$s,y
 
 type void { $size:0 };
 type bool { $size:1 };
@@ -13,9 +15,7 @@ int twice(int x) {
    return x + x;
 }
 
-int seed := 3;
-int g := twice(seed) + 1;
-
-int main(void) {
-   return g;
+int demo(void) {
+   static int s := twice(3) + 1;
+   return s;
 }

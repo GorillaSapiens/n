@@ -247,3 +247,11 @@ int function3(void) {
    for (i := 0, j := 2; i < 3; j++) {
    }
 }
+
+
+int function4(void);
+
+int function4(void) {
+   static int runtime_seed := function1(1) + 2;
+   return runtime_seed;
+}

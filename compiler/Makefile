@@ -1,10 +1,16 @@
 LEX = flex
-YACC = bison
+YACC = bison -Werror=conflicts-sr,conflicts-rr
 CC = gcc
 CFLAGS = -Wall -Wextra -pedantic -MMD -MP
-CFLAGS += -g # for debugging
-#CFLAGS += -DYYDEBUG # for yacc debugging
-#CFLAGS += -O2 # for obtimization
+
+# for debugging
+CFLAGS += -g
+
+# for yacc debugging
+#CFLAGS += -DYYDEBUG
+
+# for optimization
+#CFLAGS += -O2
 
 TARGET = n65cc
 TEST   = test

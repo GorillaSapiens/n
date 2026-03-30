@@ -218,3 +218,9 @@ label2:
    boxes[1].func(5);
 }
 
+
+
+void blanket_local_runtime_init(void) {
+   static int runtime_seed := function1(1) + 2;
+   runtime_seed++;
+}

@@ -125,6 +125,7 @@ typedef struct InitConstValue {
 
 typedef struct PendingGlobalInit {
    const char *name;
+   const char *symbol;
    const ASTNode *type;
    const ASTNode *declarator;
    ASTNode *expression;
@@ -304,7 +305,7 @@ static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNod
 static void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size);
 static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size);
 static void emit_sink_append(EmitSink *dst, const EmitSink *src);
-static void remember_pending_global_init(const char *name, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage);
+static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage);
 static const char *runtime_global_init_symbol(void);
 static void emit_runtime_global_init_function(void);
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
@@ -7327,7 +7328,7 @@ static void emit_sink_append(EmitSink *dst, const EmitSink *src) {
    }
 }
 
-static void remember_pending_global_init(const char *name, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage) {
+static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage) {
    PendingGlobalInit *items;
    PendingGlobalInit *entry;
 
@@ -7340,6 +7341,7 @@ static void remember_pending_global_init(const char *name, const ASTNode *type, 
 
    entry = &pending_global_inits[pending_global_init_count++];
    entry->name = strdup(name);
+   entry->symbol = strdup(symbol ? symbol : name);
    entry->type = type;
    entry->declarator = declarator;
    entry->expression = expression;
@@ -7408,7 +7410,6 @@ static void emit_runtime_global_init_function(void) {
 
    for (int i = 0; i < pending_global_init_count; i++) {
       PendingGlobalInit *entry = &pending_global_inits[i];
-      LValueRef lv = {0};
 
       if (entry->size > 0) {
          emit_fill_fp_bytes(0, 0, entry->size, 0x00);
@@ -7417,19 +7418,12 @@ static void emit_runtime_global_init_function(void) {
          error("[%s:%d.%d] could not compile runtime global initializer for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
-
-      lv.name = entry->name;
-      lv.type = entry->type;
-      lv.declarator = entry->declarator;
-      lv.is_static = true;
-      lv.is_zeropage = entry->is_zeropage;
-      lv.is_global = !entry->is_zeropage;
-      lv.size = entry->size;
-
-      if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
-         error("[%s:%d.%d] could not emit runtime global initializer store for '%s'",
+      if (!entry->symbol) {
+         error("[%s:%d.%d] missing runtime initializer symbol for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
+
+      emit_copy_fp_to_symbol(entry->symbol, 0, entry->size);
    }
 
    if (ctx.locals > 0) {
@@ -7818,19 +7812,36 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          return;
       }
 
-      if (modifiers_imply_named_nonzeropage(modifiers)) {
-         char segbuf[256];
-         sink = &es_data;
-         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
-         emit(sink, ".segment \"%s\"\n", segbuf);
-      }
-      else {
-         sink = has_modifier(modifiers, "const") ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
-      }
-      emit(sink, "%s:\n", sym);
-      if (!emit_global_initializer(sink, type, declarator, expression, size)) {
-         error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-         emit(sink, "\t.res %d\n", size);
+      {
+         EmitSink init_es = EMIT_INIT;
+
+         if (emit_global_initializer(&init_es, type, declarator, expression, size)) {
+            if (modifiers_imply_named_nonzeropage(modifiers)) {
+               char segbuf[256];
+               sink = &es_data;
+               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
+               emit(sink, ".segment \"%s\"\n", segbuf);
+            }
+            else {
+               sink = has_modifier(modifiers, "const") ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
+            }
+            emit(sink, "%s:\n", sym);
+            emit_sink_append(sink, &init_es);
+         }
+         else {
+            if (entry->is_zeropage) {
+               sink = &es_zp;
+            }
+            else {
+               char segbuf[256];
+               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+               sink = &es_bss;
+               emit(sink, ".segment \"%s\"\n", segbuf);
+            }
+            emit(sink, "%s:\n", sym);
+            emit(sink, "\t.res %d\n", size);
+            remember_pending_global_init(name, sym, type, declarator, expression, size, entry->is_zeropage);
+         }
       }
       return;
    }
@@ -8989,34 +9000,39 @@ static void compile_global_decl_item(ASTNode *node) {
 
    uexpr = (ASTNode *) unwrap_expr_node(expression);
 
-   if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
-      if (modifiers_imply_named_nonzeropage(modifiers)) {
-         char segbuf[256];
-         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
-         emit(&es_data, ".segment \"%s\"\n", segbuf);
-         emit(&es_data, "_%s:\n", name);
-         emit_sink_append(&es_data, &init_es);
+   {
+      char symbuf[256];
+      snprintf(symbuf, sizeof(symbuf), "_%s", name);
+
+      if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
+         if (modifiers_imply_named_nonzeropage(modifiers)) {
+            char segbuf[256];
+            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
+            emit(&es_data, ".segment \"%s\"\n", segbuf);
+            emit(&es_data, "_%s:\n", name);
+            emit_sink_append(&es_data, &init_es);
+         }
+         else {
+            EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
+            emit(es, "_%s:\n", name);
+            emit_sink_append(es, &init_es);
+         }
+         return;
+      }
+
+      if (is_zeropage) {
+         emit(&es_zp, "_%s:\n", name);
+         emit(&es_zp, "\t.res %d\n", size);
       }
       else {
-         EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
-         emit(es, "_%s:\n", name);
-         emit_sink_append(es, &init_es);
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
+         emit(&es_bss, ".segment \"%s\"\n", segbuf);
+         emit(&es_bss, "_%s:\n", name);
+         emit(&es_bss, "\t.res %d\n", size);
       }
-      return;
+      remember_pending_global_init(name, symbuf, type, declarator, uexpr ? uexpr : expression, size, is_zeropage);
    }
-
-   if (is_zeropage) {
-      emit(&es_zp, "_%s:\n", name);
-      emit(&es_zp, "\t.res %d\n", size);
-   }
-   else {
-      char segbuf[256];
-      build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
-      emit(&es_bss, ".segment \"%s\"\n", segbuf);
-      emit(&es_bss, "_%s:\n", name);
-      emit(&es_bss, "\t.res %d\n", size);
-   }
-   remember_pending_global_init(name, type, declarator, uexpr ? uexpr : expression, size, is_zeropage);
 }
 
 
