@@ -1,11 +1,18 @@
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "opcode.h"
+#include "util.h"
 
 typedef struct opcode_entry {
-   const char *mnemonic;
+   char *mnemonic;
    emit_mode_t mode;
    unsigned char opcode;
+   struct opcode_entry *next;
 } opcode_entry_t;
+
+static opcode_entry_t *g_opcodes;
 
 static int hex_nibble(int ch)
 {
@@ -16,6 +23,267 @@ static int hex_nibble(int ch)
    if (ch >= 'a' && ch <= 'f')
       return 10 + (ch - 'a');
    return -1;
+}
+
+static int ascii_tolower(int ch)
+{
+   if (ch >= 'A' && ch <= 'Z')
+      return ch - 'A' + 'a';
+   return ch;
+}
+
+static int ascii_toupper(int ch)
+{
+   if (ch >= 'a' && ch <= 'z')
+      return ch - 'a' + 'A';
+   return ch;
+}
+
+static int ascii_strcasecmp(const char *a, const char *b)
+{
+   while (*a && *b) {
+      int ca = ascii_tolower((unsigned char)*a);
+      int cb = ascii_tolower((unsigned char)*b);
+      if (ca != cb)
+         return ca - cb;
+      ++a;
+      ++b;
+   }
+
+   return ascii_tolower((unsigned char)*a) - ascii_tolower((unsigned char)*b);
+}
+
+static char *upper_copy_n(const char *s, size_t n)
+{
+   char *out;
+   size_t i;
+
+   out = (char *)malloc(n + 1);
+   if (!out) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   for (i = 0; i < n; ++i)
+      out[i] = (char)ascii_toupper((unsigned char)s[i]);
+   out[n] = '\0';
+   return out;
+}
+
+static opcode_entry_t *find_entry(const char *mnemonic, emit_mode_t mode)
+{
+   opcode_entry_t *e;
+
+   for (e = g_opcodes; e; e = e->next) {
+      if (e->mode == mode && !strcmp(e->mnemonic, mnemonic))
+         return e;
+   }
+
+   return NULL;
+}
+
+static void opcode_add_mapping(const char *mnemonic, emit_mode_t mode, unsigned char opcode)
+{
+   opcode_entry_t *e;
+
+   e = find_entry(mnemonic, mode);
+   if (e) {
+      e->opcode = opcode;
+      return;
+   }
+
+   e = (opcode_entry_t *)calloc(1, sizeof(*e));
+   if (!e) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   e->mnemonic = xstrdup(mnemonic);
+   e->mode = mode;
+   e->opcode = opcode;
+   e->next = g_opcodes;
+   g_opcodes = e;
+}
+
+static int parse_emit_mode_name(const char *text, emit_mode_t *mode_out)
+{
+   struct mode_name {
+      const char *name;
+      emit_mode_t mode;
+   };
+   static const struct mode_name names[] = {
+      { "imp", EM_IMPLIED },
+      { "implied", EM_IMPLIED },
+      { "acc", EM_ACCUMULATOR },
+      { "accumulator", EM_ACCUMULATOR },
+      { "imm", EM_IMMEDIATE },
+      { "immediate", EM_IMMEDIATE },
+      { "zp", EM_ZP },
+      { "zeropage", EM_ZP },
+      { "zpx", EM_ZPX },
+      { "zeropagex", EM_ZPX },
+      { "zpy", EM_ZPY },
+      { "zeropagey", EM_ZPY },
+      { "abs", EM_ABS },
+      { "absolute", EM_ABS },
+      { "absx", EM_ABSX },
+      { "absolutex", EM_ABSX },
+      { "absy", EM_ABSY },
+      { "absolutey", EM_ABSY },
+      { "ind", EM_IND },
+      { "indirect", EM_IND },
+      { "indx", EM_INDX },
+      { "indexed_indirect", EM_INDX },
+      { "indirectx", EM_INDX },
+      { "iyx", EM_INDX },
+      { "indy", EM_INDY },
+      { "indirect_indexed", EM_INDY },
+      { "indirecty", EM_INDY },
+      { "rel", EM_REL },
+      { "relative", EM_REL },
+      { NULL, 0 }
+   };
+   const struct mode_name *m;
+
+   for (m = names; m->name; ++m) {
+      if (ascii_strcasecmp(text, m->name) == 0) {
+         *mode_out = m->mode;
+         return 1;
+      }
+   }
+
+   return 0;
+}
+
+static int parse_opcode_byte(const char *text, unsigned char *opcode_out)
+{
+   const char *p;
+   char *end;
+   unsigned long value;
+
+   p = text;
+   if (*p == '$')
+      ++p;
+   else if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X'))
+      p += 2;
+
+   if (!*p)
+      return 0;
+
+   value = strtoul(p, &end, 16);
+   if (*end != '\0' || value > 0xFFUL)
+      return 0;
+
+   *opcode_out = (unsigned char)value;
+   return 1;
+}
+
+static char *trim_left(char *s)
+{
+   while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
+      ++s;
+   return s;
+}
+
+static void trim_right(char *s)
+{
+   size_t n = strlen(s);
+
+   while (n > 0) {
+      unsigned char ch = (unsigned char)s[n - 1];
+      if (ch != ' ' && ch != '\t' && ch != '\r' && ch != '\n')
+         break;
+      s[n - 1] = '\0';
+      --n;
+   }
+}
+
+void opcode_registry_reset(void)
+{
+   opcode_registry_free();
+   g_opcodes = NULL;
+}
+
+void opcode_registry_free(void)
+{
+   opcode_entry_t *e = g_opcodes;
+   while (e) {
+      opcode_entry_t *next = e->next;
+      free(e->mnemonic);
+      free(e);
+      e = next;
+   }
+   g_opcodes = NULL;
+}
+
+int opcode_load_config_file(const char *path)
+{
+   FILE *fp;
+   char linebuf[512];
+   int lineno;
+
+   fp = fopen(path, "r");
+   if (!fp) {
+      perror(path);
+      return 0;
+   }
+
+   lineno = 0;
+   while (fgets(linebuf, sizeof(linebuf), fp)) {
+      char *line;
+      char *mnemonic_tok;
+      char *mode_tok;
+      char *opcode_tok;
+      char *extra_tok;
+      emit_mode_t mode;
+      unsigned char opcode;
+      char *mnemonic_up;
+
+      ++lineno;
+      line = linebuf;
+
+      for (char *p = line; *p; ++p) {
+         if (*p == '#' || *p == ';') {
+            *p = '\0';
+            break;
+         }
+      }
+
+      trim_right(line);
+      line = trim_left(line);
+      if (*line == '\0')
+         continue;
+
+      mnemonic_tok = strtok(line, " \t");
+      mode_tok = strtok(NULL, " \t");
+      opcode_tok = strtok(NULL, " \t");
+      extra_tok = strtok(NULL, " \t");
+
+      if (!mnemonic_tok || !mode_tok || !opcode_tok || extra_tok) {
+         fprintf(stderr, "%s:%d: malformed opcode config line\n", path, lineno);
+         fclose(fp);
+         return 0;
+      }
+
+      if (!parse_emit_mode_name(mode_tok, &mode)) {
+         fprintf(stderr, "%s:%d: unknown opcode mode '%s'\n", path, lineno, mode_tok);
+         fclose(fp);
+         return 0;
+      }
+
+      if (!parse_opcode_byte(opcode_tok, &opcode)) {
+         fprintf(stderr, "%s:%d: invalid opcode byte '%s'\n", path, lineno, opcode_tok);
+         fclose(fp);
+         return 0;
+      }
+
+      mnemonic_up = upper_copy_n(mnemonic_tok, strlen(mnemonic_tok));
+      opcode_add_mapping(mnemonic_up, mode, opcode);
+      free(mnemonic_up);
+   }
+
+   fclose(fp);
+   return 1;
 }
 
 int opcode_parse_raw_byte(const char *mnemonic, unsigned char *opcode_out)
@@ -51,58 +319,60 @@ int opcode_raw_is_accumulator_shorthand(unsigned char opcode)
    return opcode == 0x0A || opcode == 0x2A || opcode == 0x4A || opcode == 0x6A;
 }
 
-static const opcode_entry_t g_opcodes[] = {
-   { "ADC", EM_IMMEDIATE, 0x69 }, { "ADC", EM_ZP, 0x65 }, { "ADC", EM_ZPX, 0x75 }, { "ADC", EM_ABS, 0x6D }, { "ADC", EM_ABSX, 0x7D }, { "ADC", EM_ABSY, 0x79 }, { "ADC", EM_INDX, 0x61 }, { "ADC", EM_INDY, 0x71 },
-   { "AND", EM_IMMEDIATE, 0x29 }, { "AND", EM_ZP, 0x25 }, { "AND", EM_ZPX, 0x35 }, { "AND", EM_ABS, 0x2D }, { "AND", EM_ABSX, 0x3D }, { "AND", EM_ABSY, 0x39 }, { "AND", EM_INDX, 0x21 }, { "AND", EM_INDY, 0x31 },
-   { "ASL", EM_ACCUMULATOR, 0x0A }, { "ASL", EM_ZP, 0x06 }, { "ASL", EM_ZPX, 0x16 }, { "ASL", EM_ABS, 0x0E }, { "ASL", EM_ABSX, 0x1E },
-   { "BCC", EM_REL, 0x90 }, { "BCS", EM_REL, 0xB0 }, { "BEQ", EM_REL, 0xF0 }, { "BMI", EM_REL, 0x30 }, { "BNE", EM_REL, 0xD0 }, { "BPL", EM_REL, 0x10 }, { "BVC", EM_REL, 0x50 }, { "BVS", EM_REL, 0x70 },
-   { "BIT", EM_ZP, 0x24 }, { "BIT", EM_ABS, 0x2C },
-   { "BRK", EM_IMPLIED, 0x00 },
-   { "CLC", EM_IMPLIED, 0x18 }, { "CLD", EM_IMPLIED, 0xD8 }, { "CLI", EM_IMPLIED, 0x58 }, { "CLV", EM_IMPLIED, 0xB8 },
-   { "CMP", EM_IMMEDIATE, 0xC9 }, { "CMP", EM_ZP, 0xC5 }, { "CMP", EM_ZPX, 0xD5 }, { "CMP", EM_ABS, 0xCD }, { "CMP", EM_ABSX, 0xDD }, { "CMP", EM_ABSY, 0xD9 }, { "CMP", EM_INDX, 0xC1 }, { "CMP", EM_INDY, 0xD1 },
-   { "CPX", EM_IMMEDIATE, 0xE0 }, { "CPX", EM_ZP, 0xE4 }, { "CPX", EM_ABS, 0xEC },
-   { "CPY", EM_IMMEDIATE, 0xC0 }, { "CPY", EM_ZP, 0xC4 }, { "CPY", EM_ABS, 0xCC },
-   { "DEC", EM_ZP, 0xC6 }, { "DEC", EM_ZPX, 0xD6 }, { "DEC", EM_ABS, 0xCE }, { "DEC", EM_ABSX, 0xDE },
-   { "DEX", EM_IMPLIED, 0xCA }, { "DEY", EM_IMPLIED, 0x88 },
-   { "EOR", EM_IMMEDIATE, 0x49 }, { "EOR", EM_ZP, 0x45 }, { "EOR", EM_ZPX, 0x55 }, { "EOR", EM_ABS, 0x4D }, { "EOR", EM_ABSX, 0x5D }, { "EOR", EM_ABSY, 0x59 }, { "EOR", EM_INDX, 0x41 }, { "EOR", EM_INDY, 0x51 },
-   { "INC", EM_ZP, 0xE6 }, { "INC", EM_ZPX, 0xF6 }, { "INC", EM_ABS, 0xEE }, { "INC", EM_ABSX, 0xFE },
-   { "INX", EM_IMPLIED, 0xE8 }, { "INY", EM_IMPLIED, 0xC8 },
-   { "JMP", EM_ABS, 0x4C }, { "JMP", EM_IND, 0x6C },
-   { "JSR", EM_ABS, 0x20 },
-   { "LDA", EM_IMMEDIATE, 0xA9 }, { "LDA", EM_ZP, 0xA5 }, { "LDA", EM_ZPX, 0xB5 }, { "LDA", EM_ABS, 0xAD }, { "LDA", EM_ABSX, 0xBD }, { "LDA", EM_ABSY, 0xB9 }, { "LDA", EM_INDX, 0xA1 }, { "LDA", EM_INDY, 0xB1 },
-   { "LDX", EM_IMMEDIATE, 0xA2 }, { "LDX", EM_ZP, 0xA6 }, { "LDX", EM_ZPY, 0xB6 }, { "LDX", EM_ABS, 0xAE }, { "LDX", EM_ABSY, 0xBE },
-   { "LDY", EM_IMMEDIATE, 0xA0 }, { "LDY", EM_ZP, 0xA4 }, { "LDY", EM_ZPX, 0xB4 }, { "LDY", EM_ABS, 0xAC }, { "LDY", EM_ABSX, 0xBC },
-   { "LSR", EM_ACCUMULATOR, 0x4A }, { "LSR", EM_ZP, 0x46 }, { "LSR", EM_ZPX, 0x56 }, { "LSR", EM_ABS, 0x4E }, { "LSR", EM_ABSX, 0x5E },
-   { "NOP", EM_IMPLIED, 0xEA },
-   { "ORA", EM_IMMEDIATE, 0x09 }, { "ORA", EM_ZP, 0x05 }, { "ORA", EM_ZPX, 0x15 }, { "ORA", EM_ABS, 0x0D }, { "ORA", EM_ABSX, 0x1D }, { "ORA", EM_ABSY, 0x19 }, { "ORA", EM_INDX, 0x01 }, { "ORA", EM_INDY, 0x11 },
-   { "PHA", EM_IMPLIED, 0x48 }, { "PHP", EM_IMPLIED, 0x08 }, { "PLA", EM_IMPLIED, 0x68 }, { "PLP", EM_IMPLIED, 0x28 },
-   { "ROL", EM_ACCUMULATOR, 0x2A }, { "ROL", EM_ZP, 0x26 }, { "ROL", EM_ZPX, 0x36 }, { "ROL", EM_ABS, 0x2E }, { "ROL", EM_ABSX, 0x3E },
-   { "ROR", EM_ACCUMULATOR, 0x6A }, { "ROR", EM_ZP, 0x66 }, { "ROR", EM_ZPX, 0x76 }, { "ROR", EM_ABS, 0x6E }, { "ROR", EM_ABSX, 0x7E },
-   { "RTI", EM_IMPLIED, 0x40 }, { "RTS", EM_IMPLIED, 0x60 },
-   { "SBC", EM_IMMEDIATE, 0xE9 }, { "SBC", EM_ZP, 0xE5 }, { "SBC", EM_ZPX, 0xF5 }, { "SBC", EM_ABS, 0xED }, { "SBC", EM_ABSX, 0xFD }, { "SBC", EM_ABSY, 0xF9 }, { "SBC", EM_INDX, 0xE1 }, { "SBC", EM_INDY, 0xF1 },
-   { "SEC", EM_IMPLIED, 0x38 }, { "SED", EM_IMPLIED, 0xF8 }, { "SEI", EM_IMPLIED, 0x78 },
-   { "STA", EM_ZP, 0x85 }, { "STA", EM_ZPX, 0x95 }, { "STA", EM_ABS, 0x8D }, { "STA", EM_ABSX, 0x9D }, { "STA", EM_ABSY, 0x99 }, { "STA", EM_INDX, 0x81 }, { "STA", EM_INDY, 0x91 },
-   { "STX", EM_ZP, 0x86 }, { "STX", EM_ZPY, 0x96 }, { "STX", EM_ABS, 0x8E },
-   { "STY", EM_ZP, 0x84 }, { "STY", EM_ZPX, 0x94 }, { "STY", EM_ABS, 0x8C },
-   { "TAX", EM_IMPLIED, 0xAA }, { "TAY", EM_IMPLIED, 0xA8 }, { "TSX", EM_IMPLIED, 0xBA }, { "TXA", EM_IMPLIED, 0x8A }, { "TXS", EM_IMPLIED, 0x9A }, { "TYA", EM_IMPLIED, 0x98 },
-   { NULL, 0, 0 }
-};
+int opcode_mnemonic_known(const char *mnemonic)
+{
+   opcode_entry_t *e;
+   unsigned char dummy;
+
+   if (opcode_parse_raw_byte(mnemonic, &dummy))
+      return 1;
+
+   for (e = g_opcodes; e; e = e->next) {
+      if (!strcmp(e->mnemonic, mnemonic))
+         return 1;
+   }
+
+   return 0;
+}
+
+int opcode_token_is_mnemonic(const char *token)
+{
+   const char *dot;
+   char *mnemonic;
+   int result;
+
+   if (!token)
+      return 0;
+
+   dot = strchr(token, '.');
+   if (dot)
+      mnemonic = upper_copy_n(token, (size_t)(dot - token));
+   else
+      mnemonic = upper_copy_n(token, strlen(token));
+
+   result = opcode_mnemonic_known(mnemonic);
+   free(mnemonic);
+   return result;
+}
+
+int opcode_has_mode(const char *mnemonic, emit_mode_t mode)
+{
+   return find_entry(mnemonic, mode) != NULL;
+}
 
 int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_out)
 {
-   const opcode_entry_t *e;
+   opcode_entry_t *e;
 
    if (opcode_parse_raw_byte(mnemonic, opcode_out) && mode != EM_REL_LONG)
       return 1;
 
-   for (e = g_opcodes; e->mnemonic; ++e) {
-      if (!strcmp(e->mnemonic, mnemonic) && e->mode == mode) {
-         *opcode_out = e->opcode;
-         return 1;
-      }
-   }
+   e = find_entry(mnemonic, mode);
+   if (!e)
+      return 0;
 
-   return 0;
+   *opcode_out = e->opcode;
+   return 1;
 }
 
 int opcode_is_conditional_branch(const char *mnemonic)

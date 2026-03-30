@@ -18,6 +18,12 @@ typedef enum emit_mode {
    EM_REL_LONG
 } emit_mode_t;
 
+void opcode_registry_reset(void);
+void opcode_registry_free(void);
+int opcode_load_config_file(const char *path);
+int opcode_mnemonic_known(const char *mnemonic);
+int opcode_token_is_mnemonic(const char *token);
+int opcode_has_mode(const char *mnemonic, emit_mode_t mode);
 int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_out);
 int emit_mode_size(emit_mode_t mode);
 int opcode_is_conditional_branch(const char *mnemonic);

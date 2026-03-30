@@ -10,6 +10,7 @@
 #include "listing.h"
 #include "source_loader.h"
 #include "o65.h"
+#include "opcode.h"
 #include "util.h"
 
 int yyparse(void);
@@ -21,6 +22,9 @@ typedef struct
    const char *input_path;
    char **include_dirs;
    int include_dir_count;
+   char **opcode_cfgs;
+   int opcode_cfg_count;
+   bool want_illegals;
 
    bool want_hex;
    bool want_lst;
@@ -44,24 +48,27 @@ static void usage(const char *argv0)
       "usage: %s [options] file\n"
       "\n"
       "options:\n"
-      "   -o, --output <file>  write relocatable o65 object output\n"
-      "   -I, --include <dir>  add directory to include search path\n"
-      "       --hex[=file]     write Intel HEX output\n"
-      "       --lst[=file]     write listing output\n"
-      "       --map[=file]     write map output\n"
-      "   -i, --input <file>   compatibility alias for positional input file\n"
-      "       --o65[=file]     compatibility alias for object output\n"
-      "   -h, --help           show this help\n"
+      "   -o, --output <file>     write relocatable o65 object output\n"
+      "   -I, --include <dir>     add directory to include search path\n"
+      "       --hex[=file]        write Intel HEX output\n"
+      "       --lst[=file]        write listing output\n"
+      "       --map[=file]        write map output\n"
+      "       --opcode-cfg <file> load an additional opcode config file\n"
+      "       --illegals          load the bundled illegals.cfg opcode set\n"
+      "   -i, --input <file>      compatibility alias for positional input file\n"
+      "       --o65[=file]        compatibility alias for object output\n"
+      "   -h, --help              show this help\n"
       "\n"
       "notes:\n"
+      "   bundled default.cfg is always loaded from the assembler directory\n"
       "   if no primary output is selected, relocatable o65 output is written to a.out\n"
       "   use --o65 without a filename to preserve the old derived-name behavior (.o65)\n"
       "\n"
       "examples:\n"
       "   %s prog.s\n"
       "   %s -o prog.o65 prog.s\n"
-      "   %s -I include --hex=prog.hex --lst --map prog.s\n"
-      "   %s --input prog.s -I common -I board --o65=prog.o65\n",
+      "   %s --illegals --hex=prog.hex prog.s\n"
+      "   %s --opcode-cfg cpu65c02.cfg -I include prog.s\n",
       argv0, argv0, argv0, argv0, argv0);
 }
 
@@ -100,7 +107,7 @@ static char *make_output_path(const char *input_path, const char *ext)
 
    ext_len = strlen(ext);
 
-   out = malloc(dir_len + stem_len + 1 + ext_len + 1);
+   out = (char *)malloc(dir_len + stem_len + 1 + ext_len + 1);
    if (!out) {
       fprintf(stderr, "out of memory\n");
       exit(1);
@@ -117,11 +124,72 @@ static char *make_output_path(const char *input_path, const char *ext)
    return out;
 }
 
+static char *join_path2(const char *dir, const char *name)
+{
+   size_t dir_len;
+   size_t name_len;
+   int need_sep;
+   char *out;
+
+   if (!dir || !*dir)
+      return xstrdup(name);
+
+   dir_len = strlen(dir);
+   name_len = strlen(name);
+   need_sep = dir_len > 0 && dir[dir_len - 1] != '/' && dir[dir_len - 1] != '\\';
+
+   out = (char *)malloc(dir_len + (size_t)need_sep + name_len + 1);
+   if (!out) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   memcpy(out, dir, dir_len);
+   if (need_sep)
+      out[dir_len++] = '/';
+   memcpy(out + dir_len, name, name_len);
+   out[dir_len + name_len] = '\0';
+   return out;
+}
+
+static char *dirname_copy(const char *path)
+{
+   const char *slash;
+   size_t len;
+   char *out;
+
+   slash = strrchr(path, '/');
+#ifdef _WIN32
+   {
+      const char *bslash = strrchr(path, '\\');
+      if (!slash || (bslash && bslash > slash))
+         slash = bslash;
+   }
+#endif
+
+   if (!slash)
+      return xstrdup("");
+
+   len = (size_t)(slash - path);
+   if (len == 0)
+      len = 1;
+
+   out = (char *)malloc(len + 1);
+   if (!out) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   memcpy(out, path, len);
+   out[len] = '\0';
+   return out;
+}
+
 static void add_include_dir(options_t *opt, const char *dir)
 {
    char **new_dirs;
 
-   new_dirs = realloc(opt->include_dirs, sizeof(*opt->include_dirs) * (size_t)(opt->include_dir_count + 1));
+   new_dirs = (char **)realloc(opt->include_dirs, sizeof(*opt->include_dirs) * (size_t)(opt->include_dir_count + 1));
    if (!new_dirs) {
       fprintf(stderr, "out of memory\n");
       exit(1);
@@ -129,6 +197,146 @@ static void add_include_dir(options_t *opt, const char *dir)
 
    opt->include_dirs = new_dirs;
    opt->include_dirs[opt->include_dir_count++] = xstrdup(dir);
+}
+
+static void add_opcode_cfg(options_t *opt, const char *path)
+{
+   char **new_cfgs;
+
+   new_cfgs = (char **)realloc(opt->opcode_cfgs, sizeof(*opt->opcode_cfgs) * (size_t)(opt->opcode_cfg_count + 1));
+   if (!new_cfgs) {
+      fprintf(stderr, "out of memory\n");
+      exit(1);
+   }
+
+   opt->opcode_cfgs = new_cfgs;
+   opt->opcode_cfgs[opt->opcode_cfg_count++] = xstrdup(path);
+}
+
+static int file_exists(const char *path)
+{
+   FILE *fp = fopen(path, "r");
+   if (!fp)
+      return 0;
+   fclose(fp);
+   return 1;
+}
+
+
+static char *find_cfg_next_to_program_in_path(const char *argv0, const char *cfg_name)
+{
+   const char *path_env;
+   const char *p;
+
+   path_env = getenv("PATH");
+   if (!path_env || !*path_env || strchr(argv0, '/') || strchr(argv0, '\\'))
+      return NULL;
+
+   p = path_env;
+   while (*p) {
+      const char *end = strchr(p, ':');
+      size_t len = end ? (size_t)(end - p) : strlen(p);
+      char *dir;
+      char *prog_path;
+      char *cfg_path;
+
+      dir = (char *)malloc(len + 1);
+      if (!dir) {
+         fprintf(stderr, "out of memory\n");
+         exit(1);
+      }
+      memcpy(dir, p, len);
+      dir[len] = '\0';
+
+      prog_path = join_path2(dir, argv0);
+      if (file_exists(prog_path)) {
+         cfg_path = join_path2(dir, cfg_name);
+         free(prog_path);
+         free(dir);
+         if (file_exists(cfg_path))
+            return cfg_path;
+         free(cfg_path);
+      } else {
+         free(prog_path);
+         free(dir);
+      }
+
+      if (!end)
+         break;
+      p = end + 1;
+   }
+
+   return NULL;
+}
+
+static char *find_bundled_cfg_path(const char *argv0, const char *cfg_name)
+{
+   char *dir;
+   char *path;
+
+   dir = dirname_copy(argv0);
+   path = join_path2(dir, cfg_name);
+   free(dir);
+   if (file_exists(path))
+      return path;
+   free(path);
+
+   path = find_cfg_next_to_program_in_path(argv0, cfg_name);
+   if (path)
+      return path;
+
+   path = xstrdup(cfg_name);
+   if (file_exists(path))
+      return path;
+   free(path);
+
+   path = join_path2("assembler", cfg_name);
+   if (file_exists(path))
+      return path;
+   free(path);
+
+   return NULL;
+}
+
+static bool load_opcode_configs(const char *argv0, const options_t *opt)
+{
+   char *default_cfg;
+   char *illegals_cfg;
+   int i;
+
+   opcode_registry_reset();
+
+   default_cfg = find_bundled_cfg_path(argv0, "default.cfg");
+   if (!default_cfg) {
+      fprintf(stderr, "error: could not locate bundled default.cfg for opcode table\n");
+      return false;
+   }
+
+   if (!opcode_load_config_file(default_cfg)) {
+      free(default_cfg);
+      return false;
+   }
+   free(default_cfg);
+
+   if (opt->want_illegals) {
+      illegals_cfg = find_bundled_cfg_path(argv0, "illegals.cfg");
+      if (!illegals_cfg) {
+         fprintf(stderr, "error: could not locate bundled illegals.cfg\n");
+         return false;
+      }
+      if (!opcode_load_config_file(illegals_cfg)) {
+         free(illegals_cfg);
+         return false;
+      }
+      free(illegals_cfg);
+   }
+
+   for (i = 0; i < opt->opcode_cfg_count; ++i) {
+      if (!opcode_load_config_file(opt->opcode_cfgs[i]))
+         return false;
+   }
+
+   return true;
 }
 
 static bool parse_args(int argc, char **argv, options_t *opt)
@@ -142,12 +350,14 @@ static bool parse_args(int argc, char **argv, options_t *opt)
       { "input", required_argument, NULL, 'i' },
       { "include", required_argument, NULL, 'I' },
       { "output", required_argument, NULL, 'o' },
-      { "hex",   optional_argument, NULL, 1000 },
-      { "lst",   optional_argument, NULL, 1001 },
-      { "map",   optional_argument, NULL, 1002 },
-      { "o65",   optional_argument, NULL, 1003 },
-      { "help",  no_argument,       NULL, 'h' },
-      { NULL,    0,                 NULL, 0 }
+      { "hex", optional_argument, NULL, 1000 },
+      { "lst", optional_argument, NULL, 1001 },
+      { "map", optional_argument, NULL, 1002 },
+      { "o65", optional_argument, NULL, 1003 },
+      { "opcode-cfg", required_argument, NULL, 1004 },
+      { "illegals", no_argument, NULL, 1005 },
+      { "help", no_argument, NULL, 'h' },
+      { NULL, 0, NULL, 0 }
    };
 
    memset(opt, 0, sizeof(*opt));
@@ -194,6 +404,14 @@ static bool parse_args(int argc, char **argv, options_t *opt)
       case 1003:
          opt->want_o65 = true;
          opt->o65_path_arg = optarg;
+         break;
+
+      case 1004:
+         add_opcode_cfg(opt, optarg);
+         break;
+
+      case 1005:
+         opt->want_illegals = true;
          break;
 
       default:
@@ -272,6 +490,10 @@ static void free_options(options_t *opt)
       free(opt->include_dirs[i]);
    free(opt->include_dirs);
 
+   for (i = 0; i < opt->opcode_cfg_count; i++)
+      free(opt->opcode_cfgs[i]);
+   free(opt->opcode_cfgs);
+
    free(opt->hex_path);
    free(opt->lst_path);
    free(opt->map_path);
@@ -294,6 +516,12 @@ int main(int argc, char **argv)
    if (!parse_args(argc, argv, &opt))
       return 1;
 
+   if (!load_opcode_configs(argv[0], &opt)) {
+      free_options(&opt);
+      opcode_registry_free();
+      return 1;
+   }
+
    for (int i = 0; i < opt.include_dir_count; i++)
       source_loader_add_include_dir(opt.include_dirs[i]);
 
@@ -301,6 +529,7 @@ int main(int argc, char **argv)
    if (!yyin) {
       perror(opt.input_path);
       free_options(&opt);
+      opcode_registry_free();
       return 1;
    }
 
@@ -401,5 +630,6 @@ cleanup:
       program_ir_free(&g_program);
 
    free_options(&opt);
+   opcode_registry_free();
    return rc;
 }

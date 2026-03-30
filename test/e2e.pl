@@ -317,10 +317,10 @@ for my $case (@cases) {
 }
 
 my $asm_smoke_tmp = tempdir("n_e2e_asm_smoke_XXXX", TMPDIR => 1, CLEANUP => 1);
-my $asm_src = File::Spec->catfile($asm_smoke_tmp, 'opxx.s');
-my $asm_hex = File::Spec->catfile($asm_smoke_tmp, 'opxx.hex');
-my $asm_out = File::Spec->catfile($asm_smoke_tmp, 'opxx.out');
-my $asm_err = File::Spec->catfile($asm_smoke_tmp, 'opxx.err');
+my $asm_src = File::Spec->catfile($asm_smoke_tmp, 'rich.s');
+my $asm_hex = File::Spec->catfile($asm_smoke_tmp, 'rich.hex');
+my $asm_out = File::Spec->catfile($asm_smoke_tmp, 'rich.out');
+my $asm_err = File::Spec->catfile($asm_smoke_tmp, 'rich.err');
 open(my $asmfh, '>', $asm_src) or die "[$FAIL] could not write $asm_src: $!\n";
 print $asmfh <<'EOF_ASM';
 .segmentdef "CODE", $8000, $0100
@@ -328,6 +328,7 @@ print $asmfh <<'EOF_ASM';
 .def XYZ LDA
 .proc demo
    XYZ #$12
+   LAX #$34
    op8D.a $1234
    opF0 target
    opEA
@@ -336,18 +337,46 @@ target:
 .endproc
 EOF_ASM
 close($asmfh);
-my @asm_smoke_cmd = ($n65asm, '--hex=' . $asm_hex, $asm_src);
+my @asm_smoke_cmd = ($n65asm, '--illegals', '--hex=' . $asm_hex, $asm_src);
 my ($asm_smoke_exit) = run_cmd(\@asm_smoke_cmd, $asm_out, $asm_err);
 if ($asm_smoke_exit != 0) {
-   print "[$FAIL] assembler raw-opcode smoke exit code $asm_smoke_exit\n";
+   print "[$FAIL] assembler rich-opcode smoke exit code $asm_smoke_exit\n";
    print join(' ', @asm_smoke_cmd), "\n";
    print slurp_file($asm_err);
    exit(-1);
 }
 my $asm_hex_text = slurp_file($asm_hex);
-if (index($asm_hex_text, 'A9128D3412F001EAEA') < 0) {
-   print "[$FAIL] assembler raw-opcode smoke missing expected bytes\n";
+if (index($asm_hex_text, 'A912AB348D3412F001EAEA') < 0) {
+   print "[$FAIL] assembler rich-opcode smoke missing expected bytes\n";
    print "$asm_hex\n";
    exit(-1);
 }
-print "[$PASS] assembler_raw_opcode_smoke\n";
+print "[$PASS] assembler_rich_opcode_smoke\n";
+
+my $asm_bad_src = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.s');
+my $asm_bad_hex = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.hex');
+my $asm_bad_out = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.out');
+my $asm_bad_err = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.err');
+open(my $badfh, '>', $asm_bad_src) or die "[$FAIL] could not write $asm_bad_src: $!\n";
+print $badfh <<'EOF_BAD';
+.segmentdef "CODE", $8000, $0100
+.segment "CODE"
+.proc demo
+   LAX ($44)
+.endproc
+EOF_BAD
+close($badfh);
+my @asm_bad_cmd = ($n65asm, '--illegals', '--hex=' . $asm_bad_hex, $asm_bad_src);
+my ($asm_bad_exit) = run_cmd(\@asm_bad_cmd, $asm_bad_out, $asm_bad_err);
+if ($asm_bad_exit == 0) {
+   print "[$FAIL] assembler rich-opcode illegal-mode smoke unexpectedly succeeded\n";
+   print join(' ', @asm_bad_cmd), "\n";
+   exit(-1);
+}
+my $asm_bad_text = slurp_file($asm_bad_err);
+if (index($asm_bad_text, 'illegal addressing mode for LAX') < 0) {
+   print "[$FAIL] assembler rich-opcode illegal-mode smoke missing expected diagnostic\n";
+   print "$asm_bad_err\n";
+   exit(-1);
+}
+print "[$PASS] assembler_rich_opcode_illegal_mode_smoke\n";

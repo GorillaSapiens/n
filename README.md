@@ -10,7 +10,7 @@ The command-line tools are being aligned with the usual GCC/binutils habits:
 
 - `n65driver` is the high-level GCC-like entry point; it drives `n65cc`, `n65asm`, and `n65ld` for the normal compile/assemble/link flow
 - `n65cc` now accepts a GCC-`cc1`-style single input file anywhere on the line, uses `-o output.s`, and accepts `-quiet`, `-dumpbase`, `-dumpbase-ext`, and `-dumpdir` as compatibility flags
-- `n65asm` takes a positional input file and uses `-o output.o65` for relocatable object output, similar to GNU `as`; it also supports `.def` text aliases and raw `opXX` opcode tokens for hand-written opcode includes
+- `n65asm` takes a positional input file and uses `-o output.o65` for relocatable object output, similar to GNU `as`; it auto-loads `assembler/default.cfg`, can add `assembler/illegals.cfg` with `--illegals`, supports extra opcode tables with `--opcode-cfg`, and still keeps `.def` aliases plus raw `opXX` tokens
 - `n65ar` accepts GNU-`ar` style operation strings such as `rcs`
 - `n65ld` accepts GNU-`ld` style `-o`, `-T`, and `-Map`
 

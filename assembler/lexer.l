@@ -6,6 +6,7 @@
 #include <string.h>
 #include "util.h"
 #include "addr_mode.h"
+#include "opcode.h"
 #include "parser.tab.h"
 
 static char g_source_file[4096] = "<input>";
@@ -67,15 +68,7 @@ IDCHAR       [A-Za-z0-9_@?$]
 IDENT        {IDSTART}{IDCHAR}*
 DIRECTIVE    [.!][A-Za-z_][A-Za-z0-9_]*
 MODE_SUFFIX  \.(z|zx|zy|a|ax|ay|i|ix|iy)
-
-OPC_BRANCH   BCC|BCS|BEQ|BMI|BNE|BPL|BVC|BVS
-OPC_FLAGS    CLC|CLD|CLI|CLV|SEC|SED|SEI
-OPC_LOADST   LDA|LDX|LDY|STA|STX|STY
-OPC_ALU      ADC|AND|ASL|BIT|CMP|CPX|CPY|DEC|EOR|INC|LSR|ORA|ROL|ROR|SBC
-OPC_MISC     BRK|DEX|DEY|INX|INY|JMP|JSR|NOP|PHA|PHP|PLA|PLP|RTI|RTS|TAX|TAY|TSX|TXA|TXS|TYA
-OPCODE6502   {OPC_BRANCH}|{OPC_FLAGS}|{OPC_LOADST}|{OPC_ALU}|{OPC_MISC}
-OPHEX        OP[0-9A-Fa-f][0-9A-Fa-f]
-OPCODETOK    ({OPCODE6502}|{OPHEX}){MODE_SUFFIX}?
+OPCODETOK    {IDENT}{MODE_SUFFIX}?
 
 %%
 
@@ -85,7 +78,6 @@ OPCODETOK    ({OPCODE6502}|{OPHEX}){MODE_SUFFIX}?
 {WS}                       { }
 \n                         { g_source_line++; return EOL; }
 
-{OPCODETOK}                { yylval.str = xstrdup(yytext); return OPCODE; }
 {DIRECTIVE}                { yylval.str = xstrdup(yytext); return DIRECTIVE; }
 
 ","                        { return ','; }
@@ -131,7 +123,14 @@ OPCODETOK    ({OPCODE6502}|{OPHEX}){MODE_SUFFIX}?
                               return LABEL_DEF;
                            }
 
-{IDENT}                    { yylval.str = xstrdup(yytext); return IDENT; }
+{OPCODETOK}                {
+                              if (opcode_token_is_mnemonic(yytext)) {
+                                 yylval.str = xstrdup(yytext);
+                                 return OPCODE;
+                              }
+                              yylval.str = xstrdup(yytext);
+                              return IDENT;
+                           }
 
 .                          {
                               fprintf(stderr,

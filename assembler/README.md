@@ -16,6 +16,7 @@
 - relaxation from absolute-family encodings to zero-page-family encodings where legal
 - simple source-level macros
 - simple source-level textual aliases with `.def`
+- rich opcode-table support via bundled `default.cfg`, optional `illegals.cfg`, and user-supplied opcode config files
 - raw `opXX` opcode tokens for hand-written illegal or undocumented opcode includes
 - multi-error reporting
 
@@ -97,6 +98,24 @@ Write a map file. If no filename is supplied, the name is derived from the input
 ```sh
 n65asm --map program.s
 n65asm --map=program.map program.s
+```
+
+### Opcode-table options
+
+#### `--opcode-cfg <file>`
+
+Load an additional opcode configuration file after the bundled `default.cfg`. May be repeated. Later files can extend or override earlier mnemonic ... mode mappings.
+
+```sh
+n65asm --opcode-cfg cpu65c02.cfg -o program.o65 program.s
+```
+
+#### `--illegals`
+
+Load the bundled `illegals.cfg` in addition to the always-loaded `default.cfg`. This enables named unofficial or illegal opcodes such as `LAX`, `SAX`, `DCP`, `ISC`, `SLO`, `RLA`, `SRE`, and `RRA`.
+
+```sh
+n65asm --illegals --hex=program.hex program.s
 ```
 
 ### Compatibility aliases
@@ -201,6 +220,46 @@ This means `.include` and macros are **source-level features**, not parser-level
 
 ## Syntax
 
+### Rich opcode support
+
+`n65asm` now loads its opcode table from config files:
+
+- `default.cfg` is always loaded automatically from the assembler directory
+- `--illegals` additionally loads `illegals.cfg`
+- `--opcode-cfg <file>` loads one or more extra opcode tables
+
+Opcode config files are line-oriented and use this syntax:
+
+```text
+MNEMONIC MODE OPCODE
+```
+
+For example:
+
+```text
+LDA imm  $A9
+LDA zp   $A5
+LDA abs  $AD
+LAX imm  $AB
+```
+
+Supported mode names are:
+
+- `imp`, `acc`, `imm`
+- `zp`, `zpx`, `zpy`
+- `abs`, `absx`, `absy`
+- `ind`, `indx`, `indy`
+- `rel`
+
+Opcode bytes may be written as plain hex, `$xx`, or `0xXX`. Blank lines and lines beginning with `#` or `;` are ignored.
+
+Once a mnemonic is present in the loaded opcode tables, the assembler picks the opcode byte from the parsed addressing mode and emits an error if that mnemonic has no mapping for the requested mode.
+
+```asm
+LDA #$42      ; uses LDA imm from default.cfg
+LAX $10,Y     ; requires --illegals or an extra opcode config file
+```
+
 ### `.def` textual aliases
 
 `.def` performs a simple source-level textual replacement on identifier boundaries before lexing/parsing.
@@ -220,7 +279,7 @@ The replacement text runs to end-of-line (before any `;` comment), so it can als
 
 ### Raw `opXX` opcode form
 
-The assembler also accepts `opXX` where `XX` is a hexadecimal opcode byte:
+The assembler still accepts `opXX` where `XX` is a hexadecimal opcode byte:
 
 ```asm
 opA9 #$42        ; emit opcode $A9 with immediate operand
@@ -228,6 +287,6 @@ op8D.a $1234     ; emit opcode $8D with explicit absolute operand size
 opF0 target      ; conditional-branch opcodes still infer relative mode
 ```
 
-This is intended for illegal or undocumented opcode include files. For ambiguous operand shapes, use the existing mode suffixes (`.z`, `.zx`, `.zy`, `.a`, `.ax`, `.ay`, `.i`, `.ix`, `.iy`) instead of expecting relaxation to rescue you later.
+This remains useful for hand-written opcode includes, duplicate unofficial encodings, or one-off bytes that you do not want to name in a config file. For ambiguous operand shapes, use the existing mode suffixes (`.z`, `.zx`, `.zy`, `.a`, `.ax`, `.ay`, `.i`, `.ix`, `.iy`) instead of expecting relaxation to rescue you later.
 
 See the source and tests for the full directive and expression surface.
