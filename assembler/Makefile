@@ -32,9 +32,6 @@ DEP = $(OBJ:.o=.d)
 all:
 	@make --no-print-directory $(TARGET)
 
-nid: nid.c
-	$(CC) $(CFLAGS) -o nid nid.c
-
 $(TARGET): $(GENHDR) $(GENSRC) $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
 
