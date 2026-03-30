@@ -110,6 +110,7 @@ int main(int argc, char **argv) {
    ib >>= ia;
 
 label:
+empty_label: ;
    if (ia == ib) {
       ic := 12;
    }

@@ -80,6 +80,8 @@ blk_cov: {
       asm nop;
    }
 here_cov: asm rts;
+empty_cov: ;
+
 
    foo := bar;
 

@@ -7939,6 +7939,9 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
       else if (!strcmp(stmt->name, "statement_list")) {
          compile_statement_list(stmt, ctx);
       }
+      else if (is_empty(stmt) || !strcmp(stmt->name, "empty")) {
+         /* labeled empty statement: no-op */
+      }
       else {
          error("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }
