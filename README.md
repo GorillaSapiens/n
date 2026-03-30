@@ -39,3 +39,9 @@ Run `make test` at the repository root to execute both the compiler-side source 
 # Additional Details
 
 For additional details, see the READM.md files in the various subdirectories.
+
+## Licensing
+
+Unless a subdirectory says otherwise, the toolchain sources and top-level build/test glue are licensed under GPL-3.0-or-later.
+The runtime libraries in `libraries/nlib/` and `libraries/nint/` are licensed under BSD-2-Clause so code linked into user binaries stays permissive.
+The exact license texts live in the repository root `LICENSE`/`COPYING` files and in the per-library `LICENSE` files.

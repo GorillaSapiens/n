@@ -113,3 +113,8 @@ make
 ```
 
 That builds `nlib.a65`.
+
+## License
+
+This library directory is licensed under BSD-2-Clause.
+See the local `LICENSE` file for the full text.

@@ -189,16 +189,61 @@ static void path_stem(const char *path, char *out, size_t out_sz)
    out[len] = '\0';
 }
 
+static void copy_cstr(char *out, size_t out_sz, const char *src)
+{
+   size_t len = strlen(src);
+
+   if (len + 1 > out_sz)
+      die("path too long");
+
+   memcpy(out, src, len + 1);
+}
+
+static void join_path3(char *out, size_t out_sz, const char *a, const char *b, const char *c)
+{
+   size_t alen = strlen(a);
+   size_t blen = strlen(b);
+   size_t clen = strlen(c);
+
+   if (alen + 1 + blen + 1 + clen + 1 > out_sz)
+      die("path too long");
+
+   memcpy(out, a, alen);
+   out[alen] = '/';
+   memcpy(out + alen + 1, b, blen);
+   out[alen + 1 + blen] = '/';
+   memcpy(out + alen + 1 + blen + 1, c, clen + 1);
+}
+
 static void make_suffixed_path(const char *path, const char *suffix, char *out, size_t out_sz)
 {
    char dir[PATH_MAX];
    char stem[PATH_MAX];
+   size_t dir_len;
+   size_t stem_len;
+   size_t suffix_len;
+
    path_dirname(path, dir, sizeof(dir));
    path_stem(path, stem, sizeof(stem));
-   if (strcmp(dir, ".") == 0)
-      snprintf(out, out_sz, "%s%s", stem, suffix);
-   else
-      snprintf(out, out_sz, "%s/%s%s", dir, stem, suffix);
+   dir_len = strlen(dir);
+   stem_len = strlen(stem);
+   suffix_len = strlen(suffix);
+
+   if (strcmp(dir, ".") == 0) {
+      if (stem_len + suffix_len + 1 > out_sz)
+         die("path too long");
+      memcpy(out, stem, stem_len);
+      memcpy(out + stem_len, suffix, suffix_len + 1);
+      return;
+   }
+
+   if (dir_len + 1 + stem_len + suffix_len + 1 > out_sz)
+      die("path too long");
+
+   memcpy(out, dir, dir_len);
+   out[dir_len] = '/';
+   memcpy(out + dir_len + 1, stem, stem_len);
+   memcpy(out + dir_len + 1 + stem_len, suffix, suffix_len + 1);
 }
 
 static bool ends_with(const char *s, const char *suffix)
@@ -283,7 +328,7 @@ static void get_self_path(char *out, size_t out_sz, const char *argv0)
    ssize_t n;
    if (strchr(argv0, '/')) {
       if (argv0[0] == '/') {
-         snprintf(out, out_sz, "%s", argv0);
+         copy_cstr(out, out_sz, argv0);
          return;
       }
       if (!getcwd(out, out_sz))
@@ -299,7 +344,7 @@ static void get_self_path(char *out, size_t out_sz, const char *argv0)
       out[n] = '\0';
       return;
    }
-   snprintf(out, out_sz, "%s", argv0);
+   copy_cstr(out, out_sz, argv0);
 }
 
 static void build_tool_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *tool)
@@ -308,7 +353,7 @@ static void build_tool_path(char *out, size_t out_sz, const char *self_path, con
    char repo_dir[PATH_MAX];
    path_dirname(self_path, self_dir, sizeof(self_dir));
    path_dirname(self_dir, repo_dir, sizeof(repo_dir));
-   snprintf(out, out_sz, "%s/%s/%s", repo_dir, subdir, tool);
+   join_path3(out, out_sz, repo_dir, subdir, tool);
 }
 
 static void temp_store_init(temp_store_t *ts)
@@ -332,7 +377,7 @@ static void temp_store_add(temp_store_t *ts, const char *path, bool keep)
       ts->cap = ts->cap ? ts->cap * 2 : 8;
       ts->items = xrealloc(ts->items, ts->cap * sizeof(ts->items[0]));
    }
-   snprintf(ts->items[ts->count].path, sizeof(ts->items[ts->count].path), "%s", path);
+   copy_cstr(ts->items[ts->count].path, sizeof(ts->items[ts->count].path), path);
    ts->items[ts->count].keep = keep;
    ts->count++;
 }
@@ -345,7 +390,26 @@ static const char *temp_store_make_file(temp_store_t *ts, const char *stem, cons
 
    temp_store_make_dir(ts);
    for (;;) {
-      snprintf(path, sizeof(path), "%s/%s.%06lu%s", ts->tempdir, stem, counter++, suffix);
+      char serial[32];
+      size_t dir_len = strlen(ts->tempdir);
+      size_t stem_len = strlen(stem);
+      size_t suffix_len = strlen(suffix);
+      int n = snprintf(serial, sizeof(serial), "%06lu", counter++);
+      size_t serial_len;
+
+      if (n < 0 || (size_t)n >= sizeof(serial))
+         die("temporary filename serial formatting failed");
+      serial_len = (size_t)n;
+      if (dir_len + 1 + stem_len + 1 + serial_len + suffix_len + 1 > sizeof(path))
+         die("temporary path too long");
+
+      memcpy(path, ts->tempdir, dir_len);
+      path[dir_len] = '/';
+      memcpy(path + dir_len + 1, stem, stem_len);
+      path[dir_len + 1 + stem_len] = '.';
+      memcpy(path + dir_len + 1 + stem_len + 1, serial, serial_len);
+      memcpy(path + dir_len + 1 + stem_len + 1 + serial_len, suffix, suffix_len + 1);
+
       fd = open(path, O_CREAT | O_EXCL | O_RDWR, 0600);
       if (fd >= 0)
          break;
