@@ -5107,6 +5107,30 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return true;
    }
 
+   if (!strcmp(expr->name, "assign_expr") && expr->count == 3) {
+      LValueRef lv;
+      int load_size;
+
+      compile_expr(expr, ctx);
+      if (!resolve_lvalue(ctx, expr->children[1], &lv)) {
+         return false;
+      }
+
+      load_size = lv.size < dst->size ? lv.size : dst->size;
+      if (load_size <= 0) {
+         load_size = dst->size > 0 ? dst->size : lv.size;
+      }
+      if (load_size <= 0) {
+         return false;
+      }
+
+      if (!emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, load_size)) {
+         return false;
+      }
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, dst->offset, load_size, lv.type);
+      return true;
+   }
+
    if (!strcmp(expr->name, "()")) {
       return compile_call_expr_to_slot(expr, ctx, dst);
    }

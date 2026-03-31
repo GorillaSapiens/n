@@ -217,6 +217,11 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    return STRING;
 }
 
+{INT}/\.\. {
+   yylval.str = strip_underscores(yytext);
+   return INTEGER;
+}
+
 {INT} {
    yylval.str = strip_underscores(yytext);
    return INTEGER;
