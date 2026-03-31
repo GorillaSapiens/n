@@ -98,6 +98,9 @@ void dispatch(uint8_t op, uint16_t arg) {
       case 0:
          printf("%s", mem+arg);
          break;
+      case 0xff:
+         exit(arg);
+         break;
       default:
          fprintf(stderr, "unknown dispatch op %02x\n", op);
          break;
