@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "ast.h"
+#include "enumname.h"
 #include "lextern.h"
 #include "memname.h"
 #include "messages.h"
@@ -37,6 +38,14 @@ int register_typename(const char* name) {
    if (memname_exists(name)) {
       ASTNode *previous = get_memname_node(name);
       yyerror ("typename at %s:%d.%d cannot be the same as existing memname at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
+      return -1;
+   }
+
+   if (enumname_exists(name)) {
+      ASTNode *previous = get_enumname_node(name);
+      yyerror ("typename at %s:%d.%d cannot be the same as existing enum name at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ast.h"
+#include "enumname.h"
 #include "lextern.h"
 #include "main.h"
 #include "md5seen.h"
@@ -153,6 +154,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 "default"       return DEFAULT;
 "do"            return DO;
 "else"          return ELSE;
+"enum"          return ENUM;
 "extern"        return EXTERN;
 "for"           return FOR;
 "goto"          return GOTO;
@@ -237,6 +239,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    if (xform_exists(yytext)) return XFORMNAME;
    if (memname_exists(yytext)) return MEMNAME;
    if (typename_exists(yytext)) return TYPENAME;
+   if (enumname_exists(yytext)) return ENUMNAME;
    return IDENTIFIER;
 }
 

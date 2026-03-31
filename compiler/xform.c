@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "ast.h"
+#include "enumname.h"
 #include "lextern.h"
 #include "memname.h"
 #include "messages.h"
@@ -29,6 +30,14 @@ int register_xform(const char *name, ASTNode *node) {
    if (typename_exists(name)) {
       ASTNode *previous = get_typename_node(name);
       error ("xform at %s:%d.%d cannot be the same as existing typename at %s:%d.%d",
+         current_filename, yylineno, yycolumn,
+         previous->file, previous->line, previous->column);
+      return -1;
+   }
+
+   if (enumname_exists(name)) {
+      ASTNode *previous = get_enumname_node(name);
+      error ("xform at %s:%d.%d cannot be the same as existing enum name at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;

@@ -20,6 +20,11 @@ union ofthesnake {
    float fdata;
 };
 
+enum enumtest {
+   enumval1 := 1,
+   enumval2
+};
+
 struct callbox {
    int (*func)(int);
 };

@@ -8,6 +8,7 @@
 
 #include "ast.h"
 #include "coverage.h"
+#include "enumname.h"
 #include "lextern.h"
 #include "memname.h"
 #include "messages.h"
@@ -52,6 +53,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %token <str> STRING
 %token <str> ASM
 %token <str> TYPENAME
+%token <str> ENUMNAME
 %token <str> XFORMNAME
 
 %token ADD_ASSIGN
@@ -69,6 +71,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %token DO
 %token DOTDOT
 %token ELSE
+%token ENUM
 %token EQ
 %token EXTERN
 %token FOR
@@ -128,6 +131,9 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> defdecl_stmt
 %type <node> direct_declarator
 %type <node> do_stmt
+%type <node> enum_decl_stmt
+%type <node> enum_names
+%type <node> enum_value
 %type <node> equality_expr
 %type <node> expr
 %type <node> expr_args
@@ -200,6 +206,7 @@ program_item:
   | xform_decl_stmt                          { COVER; $$ = $1; register_xform($$->children[0]->strval, $$->children[1]); }
   | mem_decl_stmt                            { COVER; $$ = $1; }
   | type_decl_stmt                           { COVER; $$ = $1; }
+  | enum_decl_stmt                           { COVER; $$ = $1; }
   | struct_decl_stmt                         { COVER; $$ = $1; }
   | union_decl_stmt                          { COVER; $$ = $1; }
   | defdecl_stmt                             { COVER; $$ = $1; }
@@ -243,6 +250,20 @@ mem_decl_stmt:
 type_decl_stmt:
     TYPE IDENTIFIER '{' opt_flags '}' ';'    { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); }
   | TYPE '*' '{' opt_flags '}' ';'           { COVER; if (register_typename("*") < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf("*"), $4); }
+  ;
+
+enum_decl_stmt:
+    ENUM IDENTIFIER '{' enum_names '}' ';'   { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); register_enumnames($$); }
+  ;
+
+enum_names:
+    enum_value                               { COVER; $$ = MAKE_NODE($1); }
+  | enum_names ',' enum_value                { COVER; $$ = append_child($1, $3); }
+  ;
+
+enum_value:
+    IDENTIFIER                               { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | IDENTIFIER ASSIGN INTEGER                { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_string_leaf($3)); }
   ;
 
 struct_decl_stmt:
@@ -617,6 +638,8 @@ primary_expr:
 num_primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | INTEGER '`' TYPENAME                     { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
+  | ENUMNAME                                 { COVER; $$ = make_integer_leaf($1); }
+  | ENUMNAME '`' TYPENAME                    { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
   | FLOAT '`' TYPENAME                       { COVER; $$ = make_float_leaf_with_type($1, make_typename_leaf($3)); }
   | CHAR                                     { COVER; $$ = do_xform(make_string_leaf($1), NULL); }

@@ -23,6 +23,7 @@ SRCSRC = \
    compile.c \
    coverage.c \
    emit.c \
+   enumname.c \
    expropt.c \
    float.c \
    integer.c \

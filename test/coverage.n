@@ -13,6 +13,8 @@ xform testxform2 {
    'b' 0x41,
 };
 
+enum enum1 { enumv1 := 1, enumv2 };
+
 struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
