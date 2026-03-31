@@ -119,6 +119,10 @@ empty_label: ;
       ic := 13;
    }
 
+
+   ia := sizeof(ia);
+   ia := sizeof(int *);
+
    ia := fa < fb;
    ia := fa > fb;
    ia := fa <= fb;

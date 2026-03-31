@@ -139,6 +139,9 @@ empty_cov: ;
    int *castptr := (int *) 3;
    a := (char) a;
 
+   a := sizeof(a);
+   a := sizeof(int *);
+
    float fc := 1.5;
    float fd := 2.5;
    a := fc < fd;

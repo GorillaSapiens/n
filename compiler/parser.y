@@ -92,6 +92,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %token RSHIFT_ASSIGN
 %token STATIC
 %token STRUCT
+%token SIZEOF
 %token SUB_ASSIGN
 %token SWITCH
 %token TYPE
@@ -171,6 +172,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> statement_list
 %type <node> struct_decl_stmt
 %type <node> switch_stmt
+%type <node> sizeof_operand
 %type <node> type_decl_stmt
 %type <node> unary_expr
 %type <node> union_decl_stmt
@@ -580,12 +582,19 @@ lvalue_suffixes:
 
 unary_expr:
     postfix_expr                             { COVER; $$ = $1; }
+  | SIZEOF sizeof_operand                    { COVER; $$ = MAKE_NAMED_NODE("sizeof", $2); }
   | '!' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
   | '~' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("~", $2); }
   | '-' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
   | '+' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("+", $2); }
   | '&' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
   | '(' cast_type ')' unary_expr             { COVER; $$ = MAKE_NAMED_NODE("cast", $2, $4); }
+  ;
+
+
+sizeof_operand:
+    '(' expr ')'                             { COVER; $$ = MAKE_NAMED_NODE("sizeof_expr", $2); }
+  | '(' cast_type ')'                        { COVER; $$ = MAKE_NAMED_NODE("sizeof_type", $2); }
   ;
 
 postfix_expr:

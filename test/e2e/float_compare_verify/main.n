@@ -33,23 +33,13 @@ void main(void) {
    mone.f := -1.0;
    mtwo.f := -2.0;
 
-   asm ldy #3;
-   asm lda #$80;
-   asm sta _negzero,y;
+   negzero.b[sizeof(negzero.b) - 1] := 0x80;
 
-   asm ldy #2;
-   asm lda #$80;
-   asm sta _pinf,y;
-   asm ldy #3;
-   asm lda #$7f;
-   asm sta _pinf,y;
+   pinf.b[sizeof(pinf.b) - 2] := 0x80;
+   pinf.b[sizeof(pinf.b) - 1] := 0x7f;
 
-   asm ldy #2;
-   asm lda #$80;
-   asm sta _ninf,y;
-   asm ldy #3;
-   asm lda #$ff;
-   asm sta _ninf,y;
+   ninf.b[sizeof(ninf.b) - 2] := 0x80;
+   ninf.b[sizeof(ninf.b) - 1] := 0xff;
 
    if (!(poszero.f == negzero.f)) { asm lda #$ff; asm ldx #1;  asm ldy #0; asm jsr $ffff; }
    if (!(poszero.f <= negzero.f)) { asm lda #$ff; asm ldx #2;  asm ldy #0; asm jsr $ffff; }

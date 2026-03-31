@@ -161,6 +161,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 "mem"           return MEM;
 "ref"           return REF;
 "return"        return RETURN;
+"sizeof"        return SIZEOF;
 "static"        return STATIC;
 "struct"        return STRUCT;
 "switch"        return SWITCH;

@@ -1568,7 +1568,7 @@ static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf
    return false;
 }
 
-static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size) {
+static void emit_copy_fp_to_symbol_offset(const char *symbol, int symbol_offset, int src_offset, int size) {
    bool src_direct = src_offset >= 0 && src_offset + size <= 256;
    if (!src_direct) {
       emit_prepare_fp_ptr(1, src_offset);
@@ -1576,9 +1576,13 @@ static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size)
    for (int i = 0; i < size; i++) {
       emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
       emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
-      emit(&es_code, "    ldy #%d\n", i);
+      emit(&es_code, "    ldy #%d\n", symbol_offset + i);
       emit(&es_code, "    sta %s,y\n", symbol);
    }
+}
+
+static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size) {
+   emit_copy_fp_to_symbol_offset(symbol, 0, src_offset, size);
 }
 
 static const char *remember_string_literal(const char *text) {
@@ -1951,7 +1955,7 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
    }
 }
 
-static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type) {
+static void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
    bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
@@ -1972,11 +1976,11 @@ static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const A
       int sig = dst_big_endian ? (dst_size - 1 - j) : j;
       if (sig < src_size) {
          int src_mem = endian_mem_index_for_significance(src_size, src_big_endian, sig);
-         emit(&es_code, "    ldy #%d\n", src_mem);
+         emit(&es_code, "    ldy #%d\n", src_offset + src_mem);
          emit(&es_code, "    lda %s,y\n", symbol);
       }
       else if (is_signed) {
-         emit(&es_code, "    ldy #%d\n", sign_src_mem);
+         emit(&es_code, "    ldy #%d\n", src_offset + sign_src_mem);
          emit(&es_code, "    lda %s,y\n", symbol);
          emit(&es_code, "    and #$80\n");
          emit(&es_code, "    beq :+\n");
@@ -1992,6 +1996,10 @@ static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const A
       emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + j) : j);
       emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
    }
+}
+
+static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type) {
+   emit_copy_symbol_to_fp_convert_offset(dst_offset, dst_size, dst_type, symbol, 0, src_size, src_type);
 }
 
 static void remember_runtime_import(const char *name) {
@@ -3105,6 +3113,39 @@ static int cast_expr_target_size(const ASTNode *expr) {
    }
    return size;
 }
+
+static int sizeof_operand_size(const ASTNode *operand, Context *ctx) {
+   operand = unwrap_expr_node(operand);
+   if (!operand || is_empty(operand)) {
+      return 0;
+   }
+   if (!strcmp(operand->name, "sizeof_expr") && operand->count > 0) {
+      return expr_value_size((ASTNode *) operand->children[0], ctx);
+   }
+   if (!strcmp(operand->name, "sizeof_type") && operand->count > 0) {
+      const ASTNode *cast_type = operand->children[0];
+      const ASTNode *specifiers;
+      const ASTNode *type;
+      const ASTNode *declarator;
+      int size;
+      if (!cast_type || strcmp(cast_type->name, "cast_type") || cast_type->count < 2) {
+         return 0;
+      }
+      specifiers = cast_type->children[0];
+      if (!specifiers || specifiers->count < 2) {
+         return 0;
+      }
+      type = specifiers->children[1];
+      declarator = cast_type->children[1];
+      size = declarator_storage_size(type, declarator);
+      if (size <= 0) {
+         size = type_size_from_node(type);
+      }
+      return size;
+   }
+   return 0;
+}
+
 
 static int expr_byte_index(const ASTNode *type, int size, int i) {
    if (has_flag(type_name_from_node(type), "$endian:big")) {
@@ -4989,6 +5030,25 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return true;
    }
 
+   if (!strcmp(expr->name, "sizeof")) {
+      int size_value = sizeof_operand_size(expr->children[0], ctx);
+      unsigned char *bytes;
+      if (size_value <= 0) {
+         return false;
+      }
+      bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (!bytes) {
+         error("out of memory");
+      }
+      if (!encode_integer_initializer_value(size_value, bytes, dst->size, dst->type)) {
+         free(bytes);
+         return false;
+      }
+      emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
+      free(bytes);
+      return true;
+   }
+
    if (expr->kind == AST_INTEGER) {
       unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
       if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
@@ -6000,6 +6060,10 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return cast_expr_target_type(expr);
    }
 
+   if (!strcmp(expr->name, "sizeof")) {
+      return required_typename_node("int");
+   }
+
    {
       const char *ident = expr_bare_identifier_name(expr);
       if (ident) {
@@ -6165,6 +6229,10 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       return cast_expr_target_declarator(expr);
    }
 
+   if (!strcmp(expr->name, "sizeof")) {
+      return NULL;
+   }
+
    if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
@@ -6274,6 +6342,10 @@ static int expr_value_size(ASTNode *expr, Context *ctx) {
    if (expr->kind == AST_FLOAT) {
       type = literal_annotation_type(expr);
       return type ? type_size_from_node(type) : 0;
+   }
+
+   if (!strcmp(expr->name, "sizeof")) {
+      return get_size("int");
    }
 
    type = expr_value_type(expr, ctx);
@@ -8510,7 +8582,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
-         emit_copy_fp_to_symbol(sym, ctx->locals, dst->size);
+         emit_copy_fp_to_symbol_offset(sym, lv.offset, ctx->locals, dst->size);
          return;
       }
       if (lv.indirect || lv.needs_runtime_address || lv.is_absolute_ref) {
@@ -8666,14 +8738,14 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _pushN\n");
                emit_copy_fp_to_fp_convert(store_offset, dst_size, dst->type, tmp.offset, rsize, rtype);
-               emit_copy_fp_to_symbol(sym, store_offset, dst_size);
+               emit_copy_fp_to_symbol_offset(sym, lv.offset, store_offset, dst_size);
                remember_runtime_import("popN");
                emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
             }
             else {
-               emit_copy_fp_to_symbol(sym, tmp.offset, dst_size);
+               emit_copy_fp_to_symbol_offset(sym, lv.offset, tmp.offset, dst_size);
             }
          }
          else if (lv.indirect || lv.needs_runtime_address) {
@@ -8834,7 +8906,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       emit(&es_code, "    jsr _pushN\n");
 
       if (dst_symbol) {
-         emit_copy_symbol_to_fp_convert(lhs_tmp_offset, work_size, work_type, dst_sym, dst->size, dst->type);
+         emit_copy_symbol_to_fp_convert_offset(lhs_tmp_offset, work_size, work_type, dst_sym, lv.offset, dst->size, dst->type);
       }
       else if (lv.indirect || lv.needs_runtime_address) {
          int lhs_src_size = dst->size < work_size ? dst->size : work_size;
@@ -8932,7 +9004,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       if (need_store_tmp) {
          emit_copy_fp_to_fp_convert(store_offset, dst->size, dst->type, lhs_tmp_offset, work_size, work_type);
          if (dst_symbol) {
-            emit_copy_fp_to_symbol(dst_sym, store_offset, dst->size);
+            emit_copy_fp_to_symbol_offset(dst_sym, lv.offset, store_offset, dst->size);
          }
          else {
             if (!emit_copy_fp_to_lvalue(ctx, &lv, store_offset, dst->size)) {
