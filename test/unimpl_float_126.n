@@ -1,0 +1,9 @@
+// n65cc -I .
+// expectfail
+// expecterr: [float.c:126] size 3 floats not supported (yet)
+include "machine_6502.n"
+type f3be { $size:3 $float:SE8M15 $endian:big };
+int main(void) {
+   f3be x := 1.0;
+   return 0;
+}

@@ -1,0 +1,8 @@
+// n65cc -I .
+// expectfail
+// expecterr: local initializer for 'x_list' not compiled yet
+include "machine_6502.n"
+int main(void) {
+   int x_list := { 1, 2 };
+   return 0;
+}

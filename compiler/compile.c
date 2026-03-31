@@ -7941,7 +7941,7 @@ static void emit_runtime_global_init_function(void) {
       if (entry->is_absolute_ref) {
          LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = false, .is_zeropage = false, .is_global = true, .is_ref = true, .is_absolute_ref = true, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = 0, .size = entry->size };
          if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
-            error_unimplemented("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
+            error_unreachable("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
                   entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
          }
       }
@@ -8253,7 +8253,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 
    if (entry == NULL) {
-      error_unimplemented("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
+      error_unreachable("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
       return;
    }
 
@@ -8291,7 +8291,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -8329,7 +8329,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       char sym[256];
       EmitSink *sink;
       if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
-         error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          return;
       }
       if (is_empty(expression)) {
@@ -8478,7 +8478,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
          /* labeled empty statement: no-op */
       }
       else {
-         error_unimplemented("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+         error_unreachable("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }
       pending_loop_label_name = saved_pending;
    }
@@ -8611,7 +8611,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
-               error_unimplemented("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8667,7 +8667,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unimplemented("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8691,7 +8691,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unimplemented("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8718,7 +8718,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          if (ctx) {
             ctx->locals = saved_locals;
          }
-         error_unimplemented("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+         error_unreachable("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
          continue;
       }
       if (ctx) {
@@ -8859,7 +8859,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       if (!lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
-            error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          if (!compile_expr_to_slot(rhs, ctx, &(ContextEntry){ .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = dst->size })) {
@@ -8908,7 +8908,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 
    rhs = (ASTNode *) unwrap_expr_node(rhs);
    if (!rhs) {
-      error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
       return;
    }
 
@@ -8988,7 +8988,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
          call = make_synthetic_call_expr(node, declarator_name(function_declarator_node(ofn)), argv, 2);
          if (!call) {
-            error_unimplemented("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_unreachable("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
             return;
          }
 
@@ -9012,7 +9012,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                return;
             }
             if (dst_size != rsize || dst->type != rtype) {
@@ -9045,7 +9045,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                   return;
                }
                remember_runtime_import("popN");
@@ -9059,7 +9059,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                   return;
                }
             }
@@ -9322,7 +9322,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unimplemented("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
+         error_unreachable("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
          return;
       }
 
@@ -9337,7 +9337,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                return;
             }
          }
@@ -9353,7 +9353,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   error_unimplemented("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
+   error_unreachable("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
 }
 
 
@@ -9484,7 +9484,7 @@ static void compile_function_decl(ASTNode *node) {
          compile_statement_list(body, &ctx);
       }
       else {
-         error_unimplemented("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
+         error_unreachable("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
       }
    }
 

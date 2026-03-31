@@ -1,0 +1,10 @@
+// n65cc -I .
+// expectfail
+// expecterr: if condition not compiled yet
+include "machine_6502.n"
+int main(void) {
+   int y;
+   if (++*y) {
+   }
+   return 0;
+}

@@ -1,0 +1,10 @@
+// n65cc -I .
+// expectfail
+// expecterr: compound assignment target not compiled yet
+include "machine_6502.n"
+int main(void) {
+   int y;
+   int *p;
+   p[++*y] += 2;
+   return 0;
+}

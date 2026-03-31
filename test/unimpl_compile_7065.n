@@ -1,0 +1,10 @@
+// n65cc -I .
+// expectfail
+// expecterr: for condition not compiled yet
+include "machine_6502.n"
+int main(void) {
+   int y;
+   for (; ++*y; ) {
+   }
+   return 0;
+}
