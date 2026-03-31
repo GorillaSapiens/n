@@ -48,6 +48,7 @@ sub parse_case_directives {
       linkcfg   => undef,
       expectfail => 0,
       expectlinkfail => 0,
+      expectexit => undef,
    );
 
    open(my $fh, '<', $main_path) or die "[$FAIL] could not open $main_path: $!\n";
@@ -80,6 +81,10 @@ sub parse_case_directives {
       }
       elsif ($line =~ m{^//\s*expectlinkfail\s*$}) {
          $meta{expectlinkfail} = 1;
+      }
+      elsif ($line =~ m{^//\s*expectexit:\s*(0x[0-9A-Fa-f]+|[0-9]+)\s*$}) {
+         my $value = $1;
+         $meta{expectexit} = ($value =~ /^0x/i) ? hex($value) : int($value);
       }
    }
    close($fh);
@@ -305,7 +310,21 @@ for my $case (@cases) {
    my $sim_stdout = slurp_file($sim_out);
    my $sim_stderr = slurp_file($sim_err);
 
-   if (!$timed_out && $sim_exit != 0) {
+   if (defined $meta->{expectexit}) {
+      if ($timed_out) {
+         print "[$FAIL] $case simulator timed out before expected exit $meta->{expectexit}\n";
+         print join(' ', @sim_cmd), "\n";
+         print $sim_stderr;
+         exit(-1);
+      }
+      if ($sim_exit != $meta->{expectexit}) {
+         print "[$FAIL] $case simulator exit code $sim_exit signal $sim_sig expected $meta->{expectexit}\n";
+         print join(' ', @sim_cmd), "\n";
+         print $sim_stderr;
+         exit(-1);
+      }
+   }
+   elsif ($sim_exit != 0) {
       print "[$FAIL] $case simulator exit code $sim_exit signal $sim_sig\n";
       print join(' ', @sim_cmd), "\n";
       print $sim_stderr;
