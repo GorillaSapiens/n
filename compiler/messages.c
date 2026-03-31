@@ -34,12 +34,14 @@ static void noreturn verror_impl(const char *fmt, va_list args) {
    exit(-1);
 }
 
+#if 0
 void error(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
    verror_impl(fmt, args);
    va_end(args);
 }
+#endif
 
 void error_user(const char *fmt, ...) {
    va_list args;

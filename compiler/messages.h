@@ -10,7 +10,7 @@ void noreturn yyerror(const char *fmt, ...);
 void yywarn(const char *fmt, ...);
 void message(const char *fmt, ...);
 void debug(const char *fmt, ...);
-void noreturn error(const char *fmt, ...);
+//void noreturn error(const char *fmt, ...);
 void noreturn error_user(const char *fmt, ...);
 void noreturn error_unimplemented(const char *fmt, ...);
 void noreturn error_unreachable(const char *fmt, ...);
