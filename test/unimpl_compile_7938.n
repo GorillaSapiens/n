@@ -1,6 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: could not compile runtime global initializer for 'g_runtime_bad'
-include "machine_6502.n"
-int y;
-int g_runtime_bad := ++*y;

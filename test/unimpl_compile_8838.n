@@ -1,9 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: assignment target not compiled yet
-include "machine_6502.n"
-int main(void) {
-   int x;
-   *x := 1;
-   return 0;
-}

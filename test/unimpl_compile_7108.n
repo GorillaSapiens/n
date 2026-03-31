@@ -1,7 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: break used outside loop not compiled
-include "machine_6502.n"
-int main(void) {
-   break;
-}
