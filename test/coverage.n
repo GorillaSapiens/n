@@ -215,17 +215,17 @@ int function2(int i @ 12, int j @ 13) {
    static int q[12] @ 27;
    static int r[12] @ 27 := { 1, 1, 1 };
    switch (i+j) {
-      case 0:
+      case 0 + 0:
          i := i - j;
          break;
-      case 1:
+      case (0 ? 9 : 1):
          i &= j;
          j |= i;
          break;
-      case 2 .. 3:
+      case 1 + 1 .. 1 << 1 | 1:
          i ^= j;
          break;
-      case 4 .. 6:
+      case 8 >> 1 .. 2 * 3:
          break;
       default:
          break;
@@ -276,6 +276,46 @@ int function3(void) {
 
 
 int function4(void);
+
+void coverage_case_expr_coverage(float f) {
+   switch(0) {
+      case 1 || 0:
+      case 1 && 1:
+      case 7 ^ 3:
+      case 7 & 3:
+      case 4 == 4:
+      case 4 != 5:
+      case 1 < 2:
+      case 2 > 1:
+      case 2 <= 2:
+      case 2 >= 2:
+      case 8 >> 1:
+      case 7 - 3:
+      case 2 * 2:
+      case 8 / 2:
+      case 9 % 5:
+      case !0:
+      case ~0:
+      case -1:
+      case +1:
+      case enumv1:
+      case enumv2`int:
+      case 1`int:
+      case '\f':
+      case '\f' `testxform:
+         break;
+      default:
+         break;
+   }
+
+   switch(0.0) {
+      case 1.0:
+      case 1.0`float:
+         break;
+      default:
+         break;
+   }
+}
 
 int function4(void) {
    static int runtime_seed := function1(1) + 2;

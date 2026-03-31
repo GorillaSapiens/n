@@ -286,19 +286,23 @@ static void expropt(ASTNode **noderef) {
       return;
    }
 
-   if (!strcmp(node->name, "conditional_expr") && node->count == 4 && node->children[0] &&
-       node->children[0]->kind == AST_IDENTIFIER && !strcmp(node->children[0]->strval, "?:")) {
+   if (((!strcmp(node->name, "conditional_expr") && node->count == 4 && node->children[0] &&
+         node->children[0]->kind == AST_IDENTIFIER && !strcmp(node->children[0]->strval, "?:"))) ||
+       (!strcmp(node->name, "?:") && node->count == 3)) {
       bool truthy;
+      ASTNode **test = !strcmp(node->name, "?:") ? &(node->children[0]) : &(node->children[1]);
+      ASTNode **iftrue = !strcmp(node->name, "?:") ? &(node->children[1]) : &(node->children[2]);
+      ASTNode **iffalse = !strcmp(node->name, "?:") ? &(node->children[2]) : &(node->children[3]);
 
-      expropt(&(node->children[1]));
-      if (node_truthy(node->children[1], &truthy)) {
-         ASTNode *selected = truthy ? node->children[2] : node->children[3];
+      expropt(test);
+      if (node_truthy(*test, &truthy)) {
+         ASTNode *selected = truthy ? *iftrue : *iffalse;
          expropt(&selected);
          *noderef = selected;
          return;
       }
-      expropt(&(node->children[2]));
-      expropt(&(node->children[3]));
+      expropt(iftrue);
+      expropt(iffalse);
       return;
    }
 

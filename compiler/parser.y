@@ -117,6 +117,22 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> cast_type
 %type <node> case_block
 %type <node> case_choice
+%type <node> case_additive_expr
+%type <node> case_enum_primary_expr
+%type <node> case_bitwise_and_expr
+%type <node> case_bitwise_or_expr
+%type <node> case_bitwise_xor_expr
+%type <node> case_conditional_expr
+%type <node> case_equality_expr
+%type <node> case_logical_and_expr
+%type <node> case_logical_or_expr
+%type <node> case_multiplicative_expr
+%type <node> case_num_primary_expr
+%type <node> case_primary_expr
+%type <node> case_relational_expr
+%type <node> case_shift_expr
+%type <node> case_term
+%type <node> case_unary_expr
 %type <node> case_section
 %type <node> comma_expr
 %type <node> conditional_expr
@@ -512,7 +528,7 @@ comma_expr:
 
 conditional_expr:
     assign_expr                                { COVER; $$ = $1; }
-  | assign_expr '?' expr ':' conditional_expr  { COVER; $$ = MAKE_NODE(make_identifier_leaf("?:"), $1, $3, $5); }
+  | assign_expr '?' expr ':' conditional_expr  { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
   ;
 
 assign_expr:
@@ -675,8 +691,104 @@ case_block:
   ;
 
 case_choice:
-    num_primary_expr                         { COVER; $$ = MAKE_NODE($1); }
-  | num_primary_expr DOTDOT num_primary_expr { COVER; $$ = MAKE_NODE($1, $3); }
+    case_term                                              { COVER; $$ = MAKE_NODE($1); }
+  | case_term DOTDOT case_term                             { COVER; $$ = MAKE_NODE($1, $3); }
+  ;
+
+case_term:
+    case_conditional_expr                                  { COVER; $$ = $1; }
+  | case_enum_primary_expr                                 { COVER; $$ = $1; }
+  ;
+
+case_enum_primary_expr:
+    ENUMNAME                                               { COVER; $$ = make_enumname_expr($1); }
+  | ENUMNAME '`' TYPENAME                                  { COVER; $$ = make_enumname_expr_with_type($1, make_typename_leaf($3)); }
+  ;
+
+case_conditional_expr:
+    case_logical_or_expr                                   { COVER; $$ = $1; }
+  | case_logical_or_expr '?' case_conditional_expr ':' case_conditional_expr
+                                                         { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
+  ;
+
+case_logical_or_expr:
+    case_logical_and_expr                                  { COVER; $$ = $1; }
+  | case_logical_or_expr OR case_logical_and_expr          { COVER; $$ = MAKE_NAMED_NODE("||", $1, $3); }
+  ;
+
+case_logical_and_expr:
+    case_bitwise_or_expr                                   { COVER; $$ = $1; }
+  | case_logical_and_expr AND case_bitwise_or_expr         { COVER; $$ = MAKE_NAMED_NODE("&&", $1, $3); }
+  ;
+
+case_bitwise_or_expr:
+    case_bitwise_xor_expr                                  { COVER; $$ = $1; }
+  | case_bitwise_or_expr '|' case_bitwise_xor_expr         { COVER; $$ = MAKE_NAMED_NODE("|", $1, $3); }
+  ;
+
+case_bitwise_xor_expr:
+    case_bitwise_and_expr                                  { COVER; $$ = $1; }
+  | case_bitwise_xor_expr '^' case_bitwise_and_expr        { COVER; $$ = MAKE_NAMED_NODE("^", $1, $3); }
+  ;
+
+case_bitwise_and_expr:
+    case_equality_expr                                     { COVER; $$ = $1; }
+  | case_bitwise_and_expr '&' case_equality_expr           { COVER; $$ = MAKE_NAMED_NODE("&", $1, $3); }
+  ;
+
+case_equality_expr:
+    case_relational_expr                                   { COVER; $$ = $1; }
+  | case_equality_expr EQ case_relational_expr             { COVER; $$ = MAKE_NAMED_NODE("==", $1, $3); }
+  | case_equality_expr NE case_relational_expr             { COVER; $$ = MAKE_NAMED_NODE("!=", $1, $3); }
+  ;
+
+case_relational_expr:
+    case_shift_expr                                        { COVER; $$ = $1; }
+  | case_relational_expr '<' case_shift_expr               { COVER; $$ = MAKE_NAMED_NODE("<", $1, $3); }
+  | case_relational_expr '>' case_shift_expr               { COVER; $$ = MAKE_NAMED_NODE(">", $1, $3); }
+  | case_relational_expr LE case_shift_expr                { COVER; $$ = MAKE_NAMED_NODE("<=", $1, $3); }
+  | case_relational_expr GE case_shift_expr                { COVER; $$ = MAKE_NAMED_NODE(">=", $1, $3); }
+  ;
+
+case_shift_expr:
+    case_additive_expr                                     { COVER; $$ = $1; }
+  | case_shift_expr LSHIFT case_additive_expr              { COVER; $$ = MAKE_NAMED_NODE("<<", $1, $3); }
+  | case_shift_expr RSHIFT case_additive_expr              { COVER; $$ = MAKE_NAMED_NODE(">>", $1, $3); }
+  ;
+
+case_additive_expr:
+    case_multiplicative_expr                               { COVER; $$ = $1; }
+  | case_additive_expr '+' case_multiplicative_expr        { COVER; $$ = MAKE_NAMED_NODE("+", $1, $3); }
+  | case_additive_expr '-' case_multiplicative_expr        { COVER; $$ = MAKE_NAMED_NODE("-", $1, $3); }
+  ;
+
+case_multiplicative_expr:
+    case_unary_expr                                        { COVER; $$ = $1; }
+  | case_multiplicative_expr '*' case_unary_expr           { COVER; $$ = MAKE_NAMED_NODE("*", $1, $3); }
+  | case_multiplicative_expr '/' case_unary_expr           { COVER; $$ = MAKE_NAMED_NODE("/", $1, $3); }
+  | case_multiplicative_expr '%' case_unary_expr           { COVER; $$ = MAKE_NAMED_NODE("%", $1, $3); }
+  ;
+
+case_unary_expr:
+    case_primary_expr                                      { COVER; $$ = $1; }
+  | '!' case_unary_expr                                    { COVER; $$ = MAKE_NAMED_NODE("!", $2); }
+  | '~' case_unary_expr                                    { COVER; $$ = MAKE_NAMED_NODE("~", $2); }
+  | '-' case_unary_expr                                    { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
+  | '+' case_unary_expr                                    { COVER; $$ = MAKE_NAMED_NODE("+", $2); }
+  ;
+
+case_primary_expr:
+    case_num_primary_expr                                  { COVER; $$ = $1; }
+  | '(' case_conditional_expr ')'                          { COVER; $$ = $2; }
+  ;
+
+case_num_primary_expr:
+    INTEGER                                                { COVER; $$ = make_integer_leaf($1); }
+  | INTEGER '`' TYPENAME                                   { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
+  | FLOAT                                                  { COVER; $$ = make_float_leaf($1); }
+  | FLOAT '`' TYPENAME                                     { COVER; $$ = make_float_leaf_with_type($1, make_typename_leaf($3)); }
+  | CHAR                                                   { COVER; $$ = do_xform(make_string_leaf($1), NULL); }
+  | CHAR '`' XFORMNAME                                     { COVER; $$ = do_xform(make_string_leaf($1), $3); }
   ;
 
 opt_flags:

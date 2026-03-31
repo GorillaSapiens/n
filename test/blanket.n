@@ -72,6 +72,8 @@ char *msg2 := "hello, world!"`ascii;
 
 int *pia;
 
+enum blanket_case_enum { BLANKET_CASE_ZERO := 0, BLANKET_CASE_ONE };
+
 int ** @ 13; // TODO FIX
 int *;
 
@@ -185,12 +187,12 @@ label2:
    } while (i >= 5);
 
    switch(n) {
-      case 0:
+      case 0 + 0:
          break;
       default:
-      case 1:
+      case (0 ? 9 : 1):
          break;
-      case 2 .. 3:
+      case 1 + 1 .. 1 << 1 | 1:
          break;
    }
 
@@ -245,6 +247,46 @@ label2:
 }
 
 
+
+void blanket_case_expr_coverage(float f) {
+   switch(0) {
+      case 1 || 0:
+      case 1 && 1:
+      case 7 ^ 3:
+      case 7 & 3:
+      case 4 == 4:
+      case 4 != 5:
+      case 1 < 2:
+      case 2 > 1:
+      case 2 <= 2:
+      case 2 >= 2:
+      case 8 >> 1:
+      case 7 - 3:
+      case 2 * 2:
+      case 8 / 2:
+      case 9 % 5:
+      case !0:
+      case ~0:
+      case -1:
+      case +1:
+      case BLANKET_CASE_ZERO:
+      case BLANKET_CASE_ONE`int:
+      case 1`int:
+      case '\0':
+      case '\0' `nulxform:
+         break;
+      default:
+         break;
+   }
+
+   switch(0.0) {
+      case 1.0:
+      case 1.0`float:
+         break;
+      default:
+         break;
+   }
+}
 
 void blanket_local_runtime_init(void) {
    static int runtime_seed := function1(1) + 2;

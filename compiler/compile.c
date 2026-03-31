@@ -306,6 +306,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
 static void calculate_struct_union_sizes(ASTNode *program);
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size);
 static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size);
+static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
 static int constant_shift_width_bits(ASTNode *expr);
 static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits);
@@ -3067,6 +3068,51 @@ static void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, i
    }
 }
 
+
+static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
+   InitConstValue value = {0};
+   unsigned char *bytes;
+   (void) ctx;
+
+   if (!dst || !eval_constant_initializer_expr(expr, &value)) {
+      return false;
+   }
+
+   if (value.kind == INIT_CONST_FLOAT || type_is_float_like(dst->type)) {
+      if (value.kind != INIT_CONST_FLOAT && value.kind != INIT_CONST_INT) {
+         return false;
+      }
+      bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+      if (!bytes) {
+         error("out of memory");
+      }
+      if (!encode_float_initializer_value(value.kind == INIT_CONST_FLOAT ? value.f : (double) value.i,
+                                          bytes, dst->size, dst->type)) {
+         free(bytes);
+         return false;
+      }
+      emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
+      free(bytes);
+      return true;
+   }
+
+   if (value.kind != INIT_CONST_INT) {
+      return false;
+   }
+
+   bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
+   if (!bytes) {
+      error("out of memory");
+   }
+   if (!encode_integer_initializer_value(value.i, bytes, dst->size, dst->type)) {
+      free(bytes);
+      return false;
+   }
+   emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
+   free(bytes);
+   return true;
+}
+
 static bool make_incdec_delta_bytes(const ASTNode *type, const ASTNode *declarator, int size, unsigned char *bytes) {
    int step = 1;
    char step_buf[64];
@@ -3125,7 +3171,9 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
            !strcmp(expr->name, "assign_expr") ||
            !strcmp(expr->name, "conditional_expr") ||
            !strcmp(expr->name, "initializer") ||
-           !strcmp(expr->name, "opt_expr"))) {
+           !strcmp(expr->name, "opt_expr") ||
+           !strcmp(expr->name, "case_choice") ||
+           !strcmp(expr->name, "case_term"))) {
       expr = expr->children[0];
    }
    return expr;
@@ -8558,7 +8606,8 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
             if (ctx) {
                ctx->locals = saved_locals + compare_size;
             }
-            if (!compile_expr_to_slot(low, ctx, &rhs)) {
+            if (!compile_constant_expr_to_slot(low, ctx, &rhs) &&
+                !compile_expr_to_slot(low, ctx, &rhs)) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
@@ -8612,7 +8661,8 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
             if (ctx) {
                ctx->locals = saved_locals + compare_size;
             }
-            if (!compile_expr_to_slot(ordered_low, ctx, &rhs)) {
+            if (!compile_constant_expr_to_slot(ordered_low, ctx, &rhs) &&
+                !compile_expr_to_slot(ordered_low, ctx, &rhs)) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
@@ -8635,7 +8685,8 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
             if (ctx) {
                ctx->locals = saved_locals + compare_size;
             }
-            if (!compile_expr_to_slot(ordered_high, ctx, &rhs)) {
+            if (!compile_constant_expr_to_slot(ordered_high, ctx, &rhs) &&
+                !compile_expr_to_slot(ordered_high, ctx, &rhs)) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
