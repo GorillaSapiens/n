@@ -132,6 +132,9 @@ typedef struct PendingGlobalInit {
    ASTNode *expression;
    int size;
    bool is_zeropage;
+   bool is_absolute_ref;
+   const char *read_expr;
+   const char *write_expr;
 } PendingGlobalInit;
 
 static PendingGlobalInit *pending_global_inits = NULL;
@@ -310,7 +313,7 @@ static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNod
 static void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size);
 static bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size);
 static void emit_sink_append(EmitSink *dst, const EmitSink *src);
-static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage);
+static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage, bool is_absolute_ref, const char *read_expr, const char *write_expr);
 static const char *runtime_global_init_symbol(void);
 static void emit_runtime_global_init_function(void);
 static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
@@ -319,6 +322,7 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
 static void emit_prepare_fp_ptr(int ptrno, int offset);
 static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size);
 static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend);
+static const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size);
 static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend);
 static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend);
 static void emit_deref_ptr(int ptrno);
@@ -2930,10 +2934,45 @@ static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) 
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+static const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size) {
+   const char *p = expr;
+   bool neg = false;
+
+   if (!expr || !*expr) {
+      if (buf_size > 0) {
+         buf[0] = '\0';
+      }
+      return expr;
+   }
+
+   if (*p == '-') {
+      neg = true;
+      p++;
+   }
+
+   if (*p >= '0' && *p <= '9') {
+      if (p[0] == '0' && (p[1] == 'x' || p[1] == 'X')) {
+         snprintf(buf, buf_size, "%s$%s", neg ? "-" : "", p + 2);
+         return buf;
+      }
+      if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
+         snprintf(buf, buf_size, "%s%%%s", neg ? "-" : "", p + 2);
+         return buf;
+      }
+      snprintf(buf, buf_size, "%s%s", neg ? "-" : "", p);
+      return buf;
+   }
+
+   return expr;
+}
+
 static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
-   emit(&es_code, "    lda #<((%s) + %d)\n", expr, addend);
+   char expr_buf[256];
+   const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
+
+   emit(&es_code, "    lda #<(%s + %d)\n", asm_expr, addend);
    emit(&es_code, "    sta ptr%d\n", ptrno);
-   emit(&es_code, "    lda #>(((%s) + %d))\n", expr, addend);
+   emit(&es_code, "    lda #>(%s + %d)\n", asm_expr, addend);
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
@@ -7698,7 +7737,7 @@ static void emit_sink_append(EmitSink *dst, const EmitSink *src) {
    }
 }
 
-static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage) {
+static void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage, bool is_absolute_ref, const char *read_expr, const char *write_expr) {
    PendingGlobalInit *items;
    PendingGlobalInit *entry;
 
@@ -7717,6 +7756,9 @@ static void remember_pending_global_init(const char *name, const char *symbol, c
    entry->expression = expression;
    entry->size = size;
    entry->is_zeropage = is_zeropage;
+   entry->is_absolute_ref = is_absolute_ref;
+   entry->read_expr = read_expr ? strdup(read_expr) : NULL;
+   entry->write_expr = write_expr ? strdup(write_expr) : NULL;
 
    if (size > pending_global_init_max_size) {
       pending_global_init_max_size = size;
@@ -7788,12 +7830,21 @@ static void emit_runtime_global_init_function(void) {
          error("[%s:%d.%d] could not compile runtime global initializer for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
-      if (!entry->symbol) {
-         error("[%s:%d.%d] missing runtime initializer symbol for '%s'",
-               entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
+      if (entry->is_absolute_ref) {
+         LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = false, .is_zeropage = false, .is_global = true, .is_ref = true, .is_absolute_ref = true, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = 0, .size = entry->size };
+         if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
+            error("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
+                  entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
+         }
       }
+      else {
+         if (!entry->symbol) {
+            error("[%s:%d.%d] missing runtime initializer symbol for '%s'",
+                  entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
+         }
 
-      emit_copy_fp_to_symbol(entry->symbol, 0, entry->size);
+         emit_copy_fp_to_symbol(entry->symbol, 0, entry->size);
+      }
    }
 
    if (ctx.locals > 0) {
@@ -8210,7 +8261,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             }
             emit(sink, "%s:\n", sym);
             emit(sink, "\t.res %d\n", size);
-            remember_pending_global_init(name, sym, type, declarator, expression, size, entry->is_zeropage);
+            remember_pending_global_init(name, sym, type, declarator, expression, size, entry->is_zeropage, false, NULL, NULL);
          }
       }
       return;
@@ -9541,8 +9592,21 @@ static void compile_global_decl_item(ASTNode *node) {
                node->file, node->line, node->column, name);
       }
       if (!is_empty(expression)) {
-         error("[%s:%d.%d] global absolute ref '%s' cannot have an initializer yet",
-               node->file, node->line, node->column, name);
+         ASTNode *runtime_expr = (ASTNode *) unwrap_expr_node(expression);
+         if (!address_spec_has_write(addrspec)) {
+            error("[%s:%d.%d] global absolute ref '%s' with initializer must be writable",
+                  node->file, node->line, node->column, name);
+         }
+         remember_pending_global_init(name,
+                                      NULL,
+                                      type,
+                                      declarator,
+                                      runtime_expr ? runtime_expr : expression,
+                                      size,
+                                      false,
+                                      true,
+                                      address_spec_read_expr(addrspec),
+                                      address_spec_write_expr(addrspec));
       }
       return;
    }
@@ -9623,7 +9687,7 @@ static void compile_global_decl_item(ASTNode *node) {
          emit(&es_bss, "_%s:\n", name);
          emit(&es_bss, "\t.res %d\n", size);
       }
-      remember_pending_global_init(name, symbuf, type, declarator, uexpr ? uexpr : expression, size, is_zeropage);
+      remember_pending_global_init(name, symbuf, type, declarator, uexpr ? uexpr : expression, size, is_zeropage, false, NULL, NULL);
    }
 }
 

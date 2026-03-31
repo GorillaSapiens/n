@@ -1,0 +1,31 @@
+// n65cc
+// expectasm: .export __init_
+// expectasm: .proc __init_
+// expectasm: jsr _twice
+// expectasm: lda #<($0600 + 0)
+// expectasm: lda #>($0600 + 0)
+// expectasm: sta ptr0
+// expectasm: sta ptr0+1
+// expectasm: ldy #1
+// expectasm: sta (ptr0),y
+// expectasm: lda #$34
+// expectasm: lda #$12
+// expectasm: lda #<($0608 + 0)
+// expectasm: lda #>($0608 + 0)
+
+include "machine_6502.n"
+
+type u8 { $size:1 $unsigned };
+
+type intlit { $size:2 $signed $endian:little };
+
+int twice(int x) {
+   return x + x;
+}
+
+ref int direct@0x0600 := twice(3) + 1;
+ref u8 split[2]@[none/0x0608] := { 52, 18 };
+
+int main(void) {
+   return 0;
+}
