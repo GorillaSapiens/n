@@ -27,14 +27,39 @@ void debug(const char *fmt, ...) {
    }
 }
 
-void error(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
+static void noreturn verror_impl(const char *fmt, va_list args) {
    fprintf(stderr, "Error: ");
    vfprintf(stderr, fmt, args);
    fprintf(stderr, "\n");
-   va_end(args);
    exit(-1);
+}
+
+void error(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   verror_impl(fmt, args);
+   va_end(args);
+}
+
+void error_user(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   verror_impl(fmt, args);
+   va_end(args);
+}
+
+void error_unimplemented(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   verror_impl(fmt, args);
+   va_end(args);
+}
+
+void error_unreachable(const char *fmt, ...) {
+   va_list args;
+   va_start(args, fmt);
+   verror_impl(fmt, args);
+   va_end(args);
 }
 
 void warning(const char *fmt, ...) {

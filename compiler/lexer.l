@@ -53,7 +53,7 @@ int push_file(const char *filename) {
 
    FILE *f = fopen(filename, "r");
    if (!f) {
-      error("cannot open include file: %s", filename);
+      error_user("cannot open include file: %s", filename);
       return -1;
    }
 

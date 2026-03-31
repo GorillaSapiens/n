@@ -21,7 +21,7 @@ int register_xform(const char *name, ASTNode *node) {
 
    if (memname_exists(name)) {
       ASTNode *previous = get_memname_node(name);
-      error ("xform at %s:%d.%d cannot be the same as existing memname at %s:%d.%d",
+      error_user("xform at %s:%d.%d cannot be the same as existing memname at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;
@@ -29,7 +29,7 @@ int register_xform(const char *name, ASTNode *node) {
 
    if (typename_exists(name)) {
       ASTNode *previous = get_typename_node(name);
-      error ("xform at %s:%d.%d cannot be the same as existing typename at %s:%d.%d",
+      error_user("xform at %s:%d.%d cannot be the same as existing typename at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;
@@ -37,7 +37,7 @@ int register_xform(const char *name, ASTNode *node) {
 
    if (enumname_exists(name)) {
       ASTNode *previous = get_enumname_node(name);
-      error ("xform at %s:%d.%d cannot be the same as existing enum name at %s:%d.%d",
+      error_user("xform at %s:%d.%d cannot be the same as existing enum name at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;
@@ -45,7 +45,7 @@ int register_xform(const char *name, ASTNode *node) {
 
    if (pair_exists(xforms, name)) {
       ASTNode *previous = get_xform_node(name);
-      error ("xform at %s:%d.%d already exists at %s:%d.%d",
+      error_user("xform at %s:%d.%d already exists at %s:%d.%d",
          current_filename, yylineno, yycolumn,
          previous->file, previous->line, previous->column);
       return -1;
@@ -250,7 +250,7 @@ ASTNode *do_xform(ASTNode *node, const char *name) {
             int skip = decode_utf8(s, &codepoint);
             if (skip == 0) {
                // TODO FIX give a bit more information
-               error("invalid utf8 found");
+               error_user("invalid utf8 found");
                exit(-1);
             }
             s += skip;

@@ -27,12 +27,12 @@ double parse_float(const char *p) {
 
    if (strstr(p, "0x") || strstr(p, "0X")) {
       if (sscanf(p, "%la", &ret) != 1) {
-         error("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
+         error_unreachable("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
       }
    }
    else {
       if (sscanf(p, "%lf", &ret) != 1) {
-         error("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
+         error_unreachable("[%s:%d] could not sscanf '%s'", __FILE__, __LINE__, p);
       }
    }
 
@@ -50,7 +50,7 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
 
    total_bits = size * 8;
    if (size <= 0 || expbits <= 0 || 1 + expbits >= total_bits) {
-      error("[%s:%d] invalid float layout size=%d expbits=%d", __FILE__, __LINE__, size, expbits);
+      error_unreachable("[%s:%d] invalid float layout size=%d expbits=%d", __FILE__, __LINE__, size, expbits);
    }
 
    memset(target, 0, size);
@@ -100,7 +100,7 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
 int make_le_float(const char *p, unsigned char *target, int size) {
    int expbits = default_float_expbits_for_size(size);
    if (expbits < 0) {
-      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+      error_unimplemented("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
    }
    return make_le_float_layout(p, target, size, expbits);
 }
@@ -123,7 +123,7 @@ int make_be_float_layout(const char *p, unsigned char *target, int size, int exp
 int make_be_float(const char *p, unsigned char *target, int size) {
    int expbits = default_float_expbits_for_size(size);
    if (expbits < 0) {
-      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+      error_unimplemented("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
    }
    return make_be_float_layout(p, target, size, expbits);
 }

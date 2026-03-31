@@ -40,7 +40,7 @@ static int search_entry_by_key(const void *a, const void *b) {
 Set *new_set(void) {
    Set *set = (Set *) malloc(sizeof(Set));
    if (!set) {
-      error("[%s:%d] malloc returned null", __FILE__, __LINE__);
+      error_unreachable("[%s:%d] malloc returned null", __FILE__, __LINE__);
    }
 
    set->size = 0;

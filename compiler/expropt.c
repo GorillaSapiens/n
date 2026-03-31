@@ -200,7 +200,7 @@ static void handle_binary_divide(ASTNode **noderef) {
       long long right = parse_int(node->children[1]->strval);
 
       if (right == 0) {
-         error("integer divide by zero at [%s:%d.%d]", node->file, node->line, node->column);
+         error_user("integer divide by zero at [%s:%d.%d]", node->file, node->line, node->column);
       }
       long long result = left / right;
       sprintf(buf, "%lld", result);
@@ -224,14 +224,14 @@ static void handle_binary_modulo(ASTNode **noderef) {
       long long right = parse_int(node->children[1]->strval);
 
       if (right == 0) {
-         error("integer modulo by zero at [%s:%d.%d]", node->file, node->line, node->column);
+         error_user("integer modulo by zero at [%s:%d.%d]", node->file, node->line, node->column);
       }
       long long result = left % right;
       sprintf(buf, "%lld", result);
       *noderef = make_integer_leaf(strdup(buf));
    }
    else {
-      error("float modulo undefined at [%s:%d.%d]",
+      error_user("float modulo undefined at [%s:%d.%d]",
          node->file, node->line, node->column);
       // error calls exit
    }

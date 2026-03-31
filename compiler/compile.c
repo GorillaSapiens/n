@@ -361,7 +361,7 @@ static unsigned char *decode_string_literal_bytes(const char *text, int *out_len
    raw_len = strlen(text);
    buf = (unsigned char *) malloc(raw_len + 1);
    if (!buf) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
 
    for (size_t i = 0; i < raw_len; i++) {
@@ -453,7 +453,7 @@ static bool decode_char_constant_value(const char *text, long long *value_out) {
    len = strlen(text);
    raw = (char *) malloc(len > 1 ? len - 1 : 1);
    if (!raw) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    memcpy(raw, text + 1, len - 2);
    raw[len - 2] = '\0';
@@ -857,7 +857,7 @@ static void remember_operator_overload(const ASTNode *node, const char *name) {
          continue;
       }
       if (value->count >= 4 && node->count >= 4) {
-         error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+         error_user("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
                node->file, node->line, node->column,
                value->file, value->line, value->column,
                name);
@@ -871,7 +871,7 @@ static void remember_operator_overload(const ASTNode *node, const char *name) {
    operator_overloads = (OperatorOverload *) realloc(operator_overloads,
          sizeof(*operator_overloads) * (operator_overload_count + 1));
    if (!operator_overloads) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    operator_overloads[operator_overload_count].name = strdup(name);
    operator_overloads[operator_overload_count].node = node;
@@ -1135,7 +1135,7 @@ static const ASTNode *lookup_operator_overload(const char *name, int arg_count, 
       }
    }
    if (ambiguous && best) {
-      error("ambiguous overloaded operator '%s'", name);
+      error_user("ambiguous overloaded operator '%s'", name);
    }
    return best;
 }
@@ -1274,10 +1274,10 @@ static const ASTNode *lookup_ordinary_function_overload(const char *name, int ar
    }
 
    if (ambiguous && best) {
-      error("ambiguous call to overloaded function '%s'", name);
+      error_user("ambiguous call to overloaded function '%s'", name);
    }
    if (!best && saw_name) {
-      error("no viable overload for function '%s'", name);
+      error_user("no viable overload for function '%s'", name);
    }
 
    return best;
@@ -1318,11 +1318,11 @@ static const ASTNode *resolve_function_designator_target(const char *name, const
       if (total == 1) {
          return first;
       }
-      error("ambiguous reference to overloaded function '%s'", name);
+      error_user("ambiguous reference to overloaded function '%s'", name);
    }
 
    if (matches > 1) {
-      error("ambiguous reference to overloaded function '%s'", name);
+      error_user("ambiguous reference to overloaded function '%s'", name);
    }
    if (matches == 1) {
       return best;
@@ -1331,7 +1331,7 @@ static const ASTNode *resolve_function_designator_target(const char *name, const
       return NULL;
    }
 
-   error("no overload of function '%s' matches the target function pointer type", name);
+   error_user("no overload of function '%s' matches the target function pointer type", name);
    return NULL;
 }
 
@@ -1615,7 +1615,7 @@ static const char *remember_string_literal(const char *text) {
    }
    label = (char *) malloc(64);
    if (!label) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    snprintf(label, 64, "__str_%d", label_counter++);
    set_add(string_literals, strdup(text), label);
@@ -1645,7 +1645,7 @@ static const char *emit_data_literal_object(const unsigned char *bytes, int size
 
    label = (char *) malloc(64);
    if (!label) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    snprintf(label, 64, "__data_%d", label_counter++);
    emit(&es_data, "%s:\n", label);
@@ -1670,7 +1670,7 @@ static const char *emit_data_string_object(const char *text) {
    buf = (unsigned char *) calloc((size_t) n + 1u, 1);
    if (!buf) {
       free(bytes);
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    if (n > 0) {
       memcpy(buf, bytes, (size_t) n);
@@ -1769,7 +1769,7 @@ static const char *emit_pointer_initializer_backing_object(const ASTNode *type, 
       }
       bytes = (unsigned char *) calloc((size_t) obj_size, 1);
       if (!bytes) {
-         error("out of memory");
+         error_unreachable("out of memory");
       }
       if (!encode_integer_initializer_value(value.i, bytes, obj_size, obj_type)) {
          free(bytes);
@@ -2140,12 +2140,12 @@ static const ASTNode *required_typename_node(const char *name) {
    const ASTNode *node;
 
    if (!name) {
-      error("[%s:%d] internal missing required type name", __FILE__, __LINE__);
+      error_unreachable("[%s:%d] internal missing required type name", __FILE__, __LINE__);
    }
 
    node = get_typename_node(name);
    if (!node) {
-      error("type %s is not defined", name);
+      error_user("type %s is not defined", name);
    }
 
    return node;
@@ -2547,7 +2547,7 @@ static const char *find_mem_modifier_name(const ASTNode *modifiers) {
          continue;
       }
       if (found && strcmp(found, name)) {
-         error("[%s:%d.%d] multiple mem modifiers '%s' and '%s' are not allowed",
+         error_user("[%s:%d.%d] multiple mem modifiers '%s' and '%s' are not allowed",
                modifiers->file, modifiers->line, modifiers->column,
                found, name);
       }
@@ -2631,7 +2631,7 @@ static int get_size(const char *type) {
    const char *backing;
 
    if (!type) {
-      error("[%s:%d] internal could not find NULL type", __FILE__, __LINE__);
+      error_unreachable("[%s:%d] internal could not find NULL type", __FILE__, __LINE__);
    }
 
    if (typesizes && pair_exists(typesizes, type)) {
@@ -2645,12 +2645,12 @@ static int get_size(const char *type) {
 
    node = get_typename_node(type);
    if (!node) {
-      error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+      error_unreachable("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
    }
 
    if (!strcmp(node->name, "type_decl_stmt")) {
       if (node->count < 2 || is_empty(node->children[1])) {
-         error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+         error_unreachable("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
       }
 
       const ASTNode *flags = node->children[1];
@@ -2667,14 +2667,14 @@ static int get_size(const char *type) {
       }
    }
 
-   error("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
+   error_unreachable("[%s:%d] internal could not find '%s'", __FILE__, __LINE__, type);
    return -1;
 }
 
 static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
-      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
             type->file, type->line, type->column,
             name,
             entry->type->file, entry->type->line, entry->type->column);
@@ -2701,7 +2701,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
 static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
-      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
             type->file, type->line, type->column,
             name,
             entry->type->file, entry->type->line, entry->type->column);
@@ -2745,7 +2745,7 @@ static void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNod
 static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
-      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
             type->file, type->line, type->column,
             name,
             entry->type->file, entry->type->line, entry->type->column);
@@ -2771,7 +2771,7 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
 static void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
-      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
             type->file, type->line, type->column,
             name,
             entry->type->file, entry->type->line, entry->type->column);
@@ -3084,7 +3084,7 @@ static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEn
       }
       bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
       if (!bytes) {
-         error("out of memory");
+         error_unreachable("out of memory");
       }
       if (!encode_float_initializer_value(value.kind == INIT_CONST_FLOAT ? value.f : (double) value.i,
                                           bytes, dst->size, dst->type)) {
@@ -3102,7 +3102,7 @@ static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEn
 
    bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
    if (!bytes) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    if (!encode_integer_initializer_value(value.i, bytes, dst->size, dst->type)) {
       free(bytes);
@@ -3855,7 +3855,7 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
 static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_offset, int dst_size) {
    LValueRef lv;
    if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
-      error("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
+      error_user("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
    }
    if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
       return false;
@@ -4526,7 +4526,7 @@ static int call_graph_node_index_for_function(const ASTNode *fn) {
 
    call_graph_nodes = (CallGraphNode *) realloc(call_graph_nodes, sizeof(CallGraphNode) * (call_graph_node_count + 1));
    if (!call_graph_nodes) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    call_graph_nodes[call_graph_node_count].fn = fn;
    call_graph_nodes[call_graph_node_count].sym = strdup(sym);
@@ -4570,7 +4570,7 @@ static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee)
 
    call_graph_edges = (CallGraphEdge *) realloc(call_graph_edges, sizeof(CallGraphEdge) * (call_graph_edge_count + 1));
    if (!call_graph_edges) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    call_graph_edges[call_graph_edge_count].from = from;
    call_graph_edges[call_graph_edge_count].to = to;
@@ -4644,7 +4644,7 @@ static void analyze_static_parameter_call_graph(void) {
    component_has_static = (unsigned char *) calloc(n, sizeof(unsigned char));
    component_has_cycle = (unsigned char *) calloc(n, sizeof(unsigned char));
    if (!indices || !lowlink || !stack || !component || !component_sizes || !onstack || !component_has_static || !component_has_cycle) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
 
    for (int i = 0; i < n; i++) {
@@ -4684,7 +4684,7 @@ static void analyze_static_parameter_call_graph(void) {
          if (component[j] != i || !call_graph_nodes[j].has_static_params) {
             continue;
          }
-         error("call graph cycle reaches function '%s' with symbol-backed parameters", call_graph_nodes[j].sym);
+         error_user("call graph cycle reaches function '%s' with symbol-backed parameters", call_graph_nodes[j].sym);
       }
    }
 
@@ -4706,7 +4706,7 @@ static void emit_symbol_backed_call_graph_metadata(void) {
          continue;
       }
       if (!symbol_backed_metadata_function_name(meta, sizeof(meta), call_graph_nodes[i].sym)) {
-         error("symbol-backed metadata name too long for function '%s'", call_graph_nodes[i].sym);
+         error_user("symbol-backed metadata name too long for function '%s'", call_graph_nodes[i].sym);
       }
       emit(&es_export, ".export %s\n", meta);
       emit(&es_export, "%s = 0\n", meta);
@@ -4723,7 +4723,7 @@ static void emit_symbol_backed_call_graph_metadata(void) {
          continue;
       }
       if (!symbol_backed_metadata_edge_name(meta, sizeof(meta), call_graph_nodes[from].sym, call_graph_nodes[to].sym)) {
-         error("symbol-backed metadata edge name too long for '%s' -> '%s'", call_graph_nodes[from].sym, call_graph_nodes[to].sym);
+         error_user("symbol-backed metadata edge name too long for '%s' -> '%s'", call_graph_nodes[from].sym, call_graph_nodes[to].sym);
       }
       emit(&es_export, ".export %s\n", meta);
       emit(&es_export, "%s = 0\n", meta);
@@ -4830,7 +4830,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
             continue;
          }
          if (parameter_has_symbol_storage(parameter)) {
-            error("[%s:%d.%d] indirect call target type cannot use symbol-backed parameters", expr->file, expr->line, expr->column);
+            error_user("[%s:%d.%d] indirect call target type cannot use symbol-backed parameters", expr->file, expr->line, expr->column);
          }
          fixed_params++;
          arg_total += parameter_storage_size(parameter);
@@ -4983,10 +4983,10 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
          return compile_indirect_call_expr_to_slot(expr, ctx, dst, callee, args, callable_type, callable_decl);
       }
       if (expr_bare_identifier_name(callee)) {
-         error("[%s:%d.%d] call target '%s' has no visible signature; declare it in this translation unit or with extern",
+         error_user("[%s:%d.%d] call target '%s' has no visible signature; declare it in this translation unit or with extern",
                expr->file, expr->line, expr->column, expr_bare_identifier_name(callee));
       }
-      error("[%s:%d.%d] call target has no visible signature", expr->file, expr->line, expr->column);
+      error_user("[%s:%d.%d] call target has no visible signature", expr->file, expr->line, expr->column);
       return false;
    }
 
@@ -5246,7 +5246,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
       bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
       if (!bytes) {
-         error("out of memory");
+         error_unreachable("out of memory");
       }
       if (!encode_integer_initializer_value(size_value, bytes, dst->size, dst->type)) {
          free(bytes);
@@ -5317,7 +5317,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          if (entry && entry_is_absolute_ref(entry)) {
             LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = entry->is_static, .is_zeropage = entry->is_zeropage, .is_global = entry->is_global, .is_ref = entry->is_ref, .is_absolute_ref = entry->is_absolute_ref, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = entry->offset, .size = entry->size };
             if (!entry_has_read_address(entry)) {
-               error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
+               error_user("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
             }
             if (dst->size == lv.size && dst->type == lv.type) {
                return emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, lv.size);
@@ -5358,7 +5358,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
                if (init_context_entry_from_global_decl(&gentry, ident, g) && entry_is_absolute_ref(&gentry)) {
                   LValueRef lv = { .name = gentry.name, .type = gentry.type, .declarator = gentry.declarator, .base_type = gentry.type, .base_declarator = gentry.declarator, .is_static = gentry.is_static, .is_zeropage = gentry.is_zeropage, .is_global = gentry.is_global, .is_ref = gentry.is_ref, .is_absolute_ref = gentry.is_absolute_ref, .read_expr = gentry.read_expr, .write_expr = gentry.write_expr, .offset = gentry.offset, .size = gentry.size };
                   if (!entry_has_read_address(&gentry)) {
-                     error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
+                     error_user("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, ident);
                   }
                   if (dst->size == lv.size && dst->type == lv.type) {
                      return emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, lv.size);
@@ -5402,7 +5402,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
+                  error_user("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
                }
                if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   return false;
@@ -5424,7 +5424,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       if (inner && !strcmp(inner->name, "lvalue") && resolve_lvalue(ctx, inner, &lv)) {
          if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
             if (lv.is_absolute_ref) {
-               error("[%s:%d.%d] absolute ref '%s' does not have a single address", inner->file, inner->line, inner->column, lv.name ? lv.name : "<unnamed>");
+               error_user("[%s:%d.%d] absolute ref '%s' does not have a single address", inner->file, inner->line, inner->column, lv.name ? lv.name : "<unnamed>");
             }
             return false;
          }
@@ -5445,7 +5445,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             if (fn) {
                char sym[256];
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
+                  error_user("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
                }
                if (!function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   return false;
@@ -5494,10 +5494,10 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
       if (lv.is_absolute_ref) {
          if (!lv.read_expr) {
-            error("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
+            error_user("[%s:%d.%d] absolute ref '%s' is write-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
          }
          if (!lv.write_expr) {
-            error("[%s:%d.%d] absolute ref '%s' is read-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
+            error_user("[%s:%d.%d] absolute ref '%s' is read-only", expr->file, expr->line, expr->column, lv.name ? lv.name : "<unnamed>");
          }
       }
       classify_incdec_lvalue_expr(expr, &inc, &pre);
@@ -5520,7 +5520,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             result_size = type_size_from_node(rtype);
          }
          if (result_size <= 0) {
-            error("[%s:%d.%d] overloaded %s has unknown return size", expr->file, expr->line, expr->column, inc ? "operator++" : "operator--");
+            error_user("[%s:%d.%d] overloaded %s has unknown return size", expr->file, expr->line, expr->column, inc ? "operator++" : "operator--");
          }
          result_offset = ctx->locals + old_size;
          store_offset = result_offset + result_size;
@@ -6040,7 +6040,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(work_type));
+               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(work_type));
                return false;
             }
             emit_runtime_float_binary_fp_fp(!strcmp(expr->name, "+") ? "faddN" : "fsubN", lhs_offset, lhs_offset, value_offset, work_size, expbits);
@@ -6218,7 +6218,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
                return false;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -6239,7 +6239,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
                return false;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -6759,7 +6759,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
             rsize = type_size_from_node(rtype);
          }
          if (rsize <= 0) {
-            error("[%s:%d.%d] overloaded operator '%s' has unknown return size", expr->file, expr->line, expr->column, expr->name);
+            error_user("[%s:%d.%d] overloaded operator '%s' has unknown return size", expr->file, expr->line, expr->column, expr->name);
          }
          argv[0] = expr->children[0];
          if (expr->count > 1) {
@@ -6788,10 +6788,10 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
             rsize = type_size_from_node(rtype);
          }
          if (rsize <= 0) {
-            error("[%s:%d.%d] truthiness overload has unknown return size", expr->file, expr->line, expr->column);
+            error_user("[%s:%d.%d] truthiness overload has unknown return size", expr->file, expr->line, expr->column);
          }
          if (!type_is_bool(rtype)) {
-            error("[%s:%d.%d] operator{} must return bool", expr->file, expr->line, expr->column);
+            error_user("[%s:%d.%d] operator{} must return bool", expr->file, expr->line, expr->column);
          }
          return compile_truthy_expr_branch_false(call, ctx, rtype, rdecl, rsize, false_label);
       }
@@ -6849,7 +6849,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       if (is_float_compare) {
          expbits = type_float_expbits(type);
          if (expbits <= 0) {
-            error("[%s:%d.%d] float comparison type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(type));
+            error_unreachable("[%s:%d.%d] float comparison type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(type));
          }
       }
 
@@ -6962,7 +6962,7 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
    ASTNode *else_block = (node->count > 2) ? node->children[2] : NULL;
 
    if (!compile_condition_branch_false(cond, ctx, false_label)) {
-      error("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
       free((void *) false_label);
       free((void *) end_label);
       return;
@@ -7003,7 +7003,7 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    }
    emit(&es_code, "%s:\n", start_label);
    if (!compile_condition_branch_false(cond, ctx, end_label)) {
-      error("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
       pop_loop_labels();
       if (named_loop) {
          pop_named_loop_labels();
@@ -7062,7 +7062,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "%s:\n", start_label);
    if (cond && !is_empty(cond)) {
       if (!compile_condition_branch_false(cond, ctx, end_label)) {
-         error("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
+         error_unimplemented("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
          pop_loop_labels();
          if (named_loop) {
             pop_named_loop_labels();
@@ -7105,7 +7105,7 @@ static void compile_break_stmt(ASTNode *node, Context *ctx) {
       }
    }
    else if (!target) {
-      error("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
       return;
    }
 
@@ -7124,7 +7124,7 @@ static void compile_continue_stmt(ASTNode *node, Context *ctx) {
       }
    }
    else if (!target) {
-      error("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
       return;
    }
 
@@ -7150,12 +7150,12 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
 
    if (has_modifier(modifiers, "ref") && addrspec != NULL) {
       if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
-         error("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
+         error_user("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
                node->file, node->line, node->column, name);
       }
       entry = (ContextEntry *) malloc(sizeof(ContextEntry));
       if (!entry) {
-         error("out of memory");
+         error_unreachable("out of memory");
       }
       entry->name = strdup(name);
       entry->is_static = false;
@@ -7293,10 +7293,10 @@ static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits) {
    }
 
    if (value.i < 0) {
-      error("[%s:%d.%d] negative shift count %lld", count_expr->file, count_expr->line, count_expr->column, value.i);
+      error_user("[%s:%d.%d] negative shift count %lld", count_expr->file, count_expr->line, count_expr->column, value.i);
    }
    if (value.i >= lhs_bits) {
-      error("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", count_expr->file, count_expr->line, count_expr->column, value.i, lhs_bits);
+      error_user("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", count_expr->file, count_expr->line, count_expr->column, value.i, lhs_bits);
    }
 }
 
@@ -7452,7 +7452,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
          char sym[512];
          if (fn) {
             if (function_has_static_parameters(fn)) {
-               error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
+               error_user("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", expr->file, expr->line, expr->column, ident);
             }
             if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                char label[sizeof(sym) + 2];
@@ -7539,7 +7539,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             const ASTNode *fn = ident ? resolve_function_designator_target(ident, NULL, NULL) : NULL;
             if (fn) {
                if (function_has_static_parameters(fn)) {
-                  error("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
+                  error_user("[%s:%d.%d] cannot create a pointer to function '%s' because it has symbol-backed parameters", inner->file, inner->line, inner->column, ident);
                }
                if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   char label[sizeof(sym) + 2];
@@ -7656,10 +7656,10 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             unsigned int shift_count;
 
             if (rhs.i < 0) {
-               error("[%s:%d.%d] negative shift count %lld", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i);
+               error_user("[%s:%d.%d] negative shift count %lld", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i);
             }
             if (rhs.i >= lhs_bits) {
-               error("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i, lhs_bits);
+               error_user("[%s:%d.%d] shift count %lld exceeds %d-bit left operand", expr->children[1]->file, expr->children[1]->line, expr->children[1]->column, rhs.i, lhs_bits);
             }
             shift_count = (unsigned int) rhs.i;
             if (!strcmp(expr->name, "<<")) {
@@ -7852,7 +7852,7 @@ static void remember_pending_global_init(const char *name, const char *symbol, c
    items = (PendingGlobalInit *) realloc(pending_global_inits,
                                          sizeof(*pending_global_inits) * (pending_global_init_count + 1));
    if (!items) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    pending_global_inits = items;
 
@@ -7935,19 +7935,19 @@ static void emit_runtime_global_init_function(void) {
          emit_fill_fp_bytes(0, 0, entry->size, 0x00);
       }
       if (!compile_initializer_to_fp(entry->expression, &ctx, entry->type, entry->declarator, 0, entry->size)) {
-         error("[%s:%d.%d] could not compile runtime global initializer for '%s'",
+         error_unimplemented("[%s:%d.%d] could not compile runtime global initializer for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
       if (entry->is_absolute_ref) {
          LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = false, .is_zeropage = false, .is_global = true, .is_ref = true, .is_absolute_ref = true, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = 0, .size = entry->size };
          if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
-            error("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
+            error_unimplemented("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
                   entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
          }
       }
       else {
          if (!entry->symbol) {
-            error("[%s:%d.%d] missing runtime initializer symbol for '%s'",
+            error_unreachable("[%s:%d.%d] missing runtime initializer symbol for '%s'",
                   entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
          }
 
@@ -8253,7 +8253,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 
    if (entry == NULL) {
-      error("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
+      error_unimplemented("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
       return;
    }
 
@@ -8272,7 +8272,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -8281,7 +8281,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          return;
       }
       {
@@ -8291,7 +8291,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -8303,7 +8303,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 
    if (is_empty(expression) && has_modifier(modifiers, "const")) {
-      error("[%s:%d.%d] 'const' missing initializer", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] 'const' missing initializer", node->file, node->line, node->column);
    }
 
    if (!entry->is_static && !entry->is_zeropage) {
@@ -8315,11 +8315,11 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
                free(zeroes);
             }
             if (!compile_initializer_to_fp(expression, ctx, type, declarator, entry->offset, size)) {
-               error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+               error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             }
          }
          else if (!compile_expr_to_slot(expression, ctx, entry)) {
-            error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          }
       }
       return;
@@ -8329,7 +8329,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       char sym[256];
       EmitSink *sink;
       if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
-         error("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          return;
       }
       if (is_empty(expression)) {
@@ -8406,7 +8406,7 @@ static void compile_do_stmt(ASTNode *node, Context *ctx) {
    compile_statement_list(node->children[0], ctx);
    emit(&es_code, "%s:\n", cond_label);
    if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
-      error("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
@@ -8478,7 +8478,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
          /* labeled empty statement: no-op */
       }
       else {
-         error("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+         error_unimplemented("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
       }
       pending_loop_label_name = saved_pending;
    }
@@ -8544,7 +8544,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    if (!case_labels) {
       free((void *) cleanup_label);
       free((void *) end_label);
-      error("out of memory");
+      error_unreachable("out of memory");
    }
 
    remember_runtime_import("pushN");
@@ -8559,7 +8559,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       if (ctx) {
          ctx->locals = saved_locals;
       }
-      error("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
       emit(&es_code, "    sta arg0\n");
@@ -8598,7 +8598,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          ASTNode *high = case_expr->count > 1 ? case_expr->children[1] : NULL;
 
          if (!low) {
-            error("[%s:%d.%d] malformed case label", section->file, section->line, section->column);
+            error_unreachable("[%s:%d.%d] malformed case label", section->file, section->line, section->column);
             continue;
          }
 
@@ -8611,7 +8611,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
-               error("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+               error_unimplemented("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8667,7 +8667,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
+               error_unimplemented("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8691,7 +8691,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
+               error_unimplemented("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
                continue;
             }
             if (ctx) {
@@ -8718,7 +8718,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          if (ctx) {
             ctx->locals = saved_locals;
          }
-         error("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+         error_unimplemented("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
          continue;
       }
       if (ctx) {
@@ -8776,7 +8776,7 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
 
    if (!ret) {
-      error("[%s:%d.%d] internal missing return slot", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] internal missing return slot", node->file, node->line, node->column);
    }
 
    if (!expr || is_empty(expr)) {
@@ -8785,7 +8785,7 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    }
 
    if (!compile_expr_to_return_slot(expr, ctx, ret)) {
-      error("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp @fini\n");
 }
@@ -8799,7 +8799,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 
    if (!strcmp(node->name, "()")) {
       if (!compile_call_expr_to_slot(node, ctx, NULL)) {
-         error("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
+         error_unimplemented("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
       }
       return;
    }
@@ -8819,7 +8819,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       emit(&es_code, "    lda #$%02x\n", size & 0xff);
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _popN\n");
-         error("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+         error_unimplemented("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
          return;
       }
       remember_runtime_import("popN");
@@ -8835,7 +8835,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    const char *op = node->children[0] ? node->children[0]->strval : NULL;
    ASTNode *rhs = node->children[2];
    if (!resolve_lvalue(ctx, node->children[1], &lv)) {
-      error("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
       return;
    }
    dst_store = (ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .is_absolute_ref = lv.is_absolute_ref, .read_expr = lv.read_expr, .write_expr = lv.write_expr, .offset = lv.offset, .size = lv.size };
@@ -8843,15 +8843,15 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 
    if (lv.is_absolute_ref && (!op || !strcmp(op, ":="))) {
       if (!entry_has_write_address(dst)) {
-         error("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+         error_user("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
       }
    }
    else if (lv.is_absolute_ref) {
       if (!entry_has_read_address(dst)) {
-         error("[%s:%d.%d] absolute ref '%s' is write-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+         error_user("[%s:%d.%d] absolute ref '%s' is write-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
       }
       if (!entry_has_write_address(dst)) {
-         error("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
+         error_user("[%s:%d.%d] absolute ref '%s' is read-only", node->file, node->line, node->column, lv.name ? lv.name : "<unnamed>");
       }
    }
 
@@ -8859,11 +8859,11 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       if (!lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
-            error("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          if (!compile_expr_to_slot(rhs, ctx, &(ContextEntry){ .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = dst->size })) {
-            error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_symbol_offset(sym, lv.offset, ctx->locals, dst->size);
@@ -8884,7 +8884,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
          if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, tmp.size)) {
@@ -8892,7 +8892,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          remember_runtime_import("popN");
@@ -8901,14 +8901,14 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    jsr _popN\n");
       }
       else if (!compile_expr_to_slot(rhs, ctx, dst)) {
-         error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
       }
       return;
    }
 
    rhs = (ASTNode *) unwrap_expr_node(rhs);
    if (!rhs) {
-      error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
       return;
    }
 
@@ -8979,7 +8979,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             rsize = type_size_from_node(rtype);
          }
          if (rsize <= 0) {
-            error("[%s:%d.%d] overloaded compound assignment '%s' has unknown return size", node->file, node->line, node->column, op);
+            error_user("[%s:%d.%d] overloaded compound assignment '%s' has unknown return size", node->file, node->line, node->column, op);
          }
          if (dst_size <= 0) {
             dst_size = rsize;
@@ -8988,7 +8988,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
          call = make_synthetic_call_expr(node, declarator_name(function_declarator_node(ofn)), argv, 2);
          if (!call) {
-            error("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_unimplemented("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
             return;
          }
 
@@ -9001,7 +9001,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_unimplemented("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
             return;
          }
 
@@ -9012,7 +9012,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                return;
             }
             if (dst_size != rsize || dst->type != rtype) {
@@ -9045,7 +9045,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                   return;
                }
                remember_runtime_import("popN");
@@ -9059,7 +9059,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                   return;
                }
             }
@@ -9199,7 +9199,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+            error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_fp_convert(lhs_tmp_offset, work_size, work_type, lhs_tmp_offset, lhs_src_size, dst->type);
@@ -9213,7 +9213,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
          return;
       }
 
@@ -9247,7 +9247,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+            error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
             return;
          }
          emit_runtime_float_binary_fp_fp(!strcmp(op, "+=") ? "faddN" : "fsubN", lhs_tmp_offset, lhs_tmp_offset, rhs_value_offset, work_size, expbits);
@@ -9275,7 +9275,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
                return;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
@@ -9293,7 +9293,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
                return;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
@@ -9322,7 +9322,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
+         error_unimplemented("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
          return;
       }
 
@@ -9337,7 +9337,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
                return;
             }
          }
@@ -9353,7 +9353,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   error("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
+   error_unimplemented("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
 }
 
 
@@ -9443,7 +9443,7 @@ static void compile_function_decl(ASTNode *node) {
 
    remember_function(node, name);
    if (!function_symbol_name(node, name, sym, sizeof(sym))) {
-      error("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
+      error_unreachable("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
    }
 
    if (!has_modifier(modifiers, "static")) {
@@ -9484,7 +9484,7 @@ static void compile_function_decl(ASTNode *node) {
          compile_statement_list(body, &ctx);
       }
       else {
-         error("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
+         error_unimplemented("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
       }
    }
 
@@ -9528,7 +9528,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
          // check for $size, must be nonnegative
          if (!strncmp(item->strval, "$size:", 6)) {
             if (haveSize) {
-               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$size:' flags",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$size:' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
@@ -9536,7 +9536,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
             p++;
             size = atoi(p);
             if (size < 0 || (size == 0 && strcmp(p, "0"))) {
-               error("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$size:%s' flag",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$size:%s' flag",
                      node->file, node->line, node->column,
                      node->children[0]->strval, p);
             }
@@ -9547,14 +9547,14 @@ static void compile_type_decl_stmt(ASTNode *node) {
          // check for $endian, must be "big" or "little"
          if (!strncmp(item->strval, "$endian:", 8)) {
             if (haveEndian) {
-               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$endian:' flags",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$endian:' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
             endian = strchr(item->strval, ':');
             endian++;
             if (strcmp(endian, "big") && strcmp(endian, "little")) {
-               error("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$endian:%s' flag",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$endian:%s' flag",
                      node->file, node->line, node->column,
                      node->children[0]->strval, endian);
             }
@@ -9564,7 +9564,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
 
          if (!strcmp(item->strval, "$float")) {
             if (haveFloat) {
-               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
@@ -9572,12 +9572,12 @@ static void compile_type_decl_stmt(ASTNode *node) {
          }
          else if (!strncmp(item->strval, "$float:", 7)) {
             if (haveFloat) {
-               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
             if (!parse_float_layout_flag_text(item->strval, &float_expbits, &float_mbits)) {
-               error("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
+               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
                      node->file, node->line, node->column,
                      node->children[0]->strval, item->strval);
             }
@@ -9589,19 +9589,19 @@ static void compile_type_decl_stmt(ASTNode *node) {
    }
 
    if (!haveSize) {
-      error("[%s:%d.%d] type_decl_stmt '%s' missing '$size:' flag",
+      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$size:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
 
    if (!haveEndian && size > 1) {
-      error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
+      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
    }
 
    if (haveFloatLayout) {
       int total_bits = size * 8;
       if (1 + float_expbits + float_mbits != total_bits) {
-         error("[%s:%d.%d] type_decl_stmt '%s' float layout '%s' does not match $size:%d",
+         error_user("[%s:%d.%d] type_decl_stmt '%s' float layout '%s' does not match $size:%d",
                node->file, node->line, node->column,
                node->children[0]->strval,
                float_flag_text ? float_flag_text : "$float",
@@ -9690,7 +9690,7 @@ static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
    int best_size = INT_MAX;
 
    if (!node || node->count < 2 || !node->children[1]) {
-      error("[%s:%d.%d] invalid enum declaration", node ? node->file : __FILE__, node ? node->line : __LINE__, node ? node->column : 0);
+      error_unreachable("[%s:%d.%d] invalid enum declaration", node ? node->file : __FILE__, node ? node->line : __LINE__, node ? node->column : 0);
    }
 
    for (int i = 0; i < node->children[1]->count; i++) {
@@ -9698,7 +9698,7 @@ static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
       long long value;
       unsigned long long uvalue;
       if (!entry || entry->count < 2 || !entry->children[1] || entry->children[1]->kind != AST_INTEGER) {
-         error("[%s:%d.%d] enum value '%s' is not an integer constant", entry ? entry->file : node->file, entry ? entry->line : node->line, entry ? entry->column : node->column, (entry && entry->count > 0 && entry->children[0]) ? entry->children[0]->strval : "?");
+         error_user("[%s:%d.%d] enum value '%s' is not an integer constant", entry ? entry->file : node->file, entry ? entry->line : node->line, entry ? entry->column : node->column, (entry && entry->count > 0 && entry->children[0]) ? entry->children[0]->strval : "?");
       }
       value = parse_int(entry->children[1]->strval);
       uvalue = value < 0 ? 0ULL : (unsigned long long) value;
@@ -9721,7 +9721,7 @@ static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
    }
 
    if (!have_range) {
-      error("[%s:%d.%d] enum '%s' is empty", node->file, node->line, node->column, node->children[0]->strval);
+      error_user("[%s:%d.%d] enum '%s' is empty", node->file, node->line, node->column, node->children[0]->strval);
    }
 
    for (int i = 0; root && i < root->count; i++) {
@@ -9738,7 +9738,7 @@ static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
    }
 
    if (!best) {
-      error("[%s:%d.%d] enum '%s' has no declared integer type that can represent values %lld..%llu",
+      error_user("[%s:%d.%d] enum '%s' has no declared integer type that can represent values %lld..%llu",
             node->file, node->line, node->column,
             node->children[0]->strval,
             min_value, max_value);
@@ -9823,7 +9823,7 @@ static void compile_global_decl_item(ASTNode *node) {
 
    const ASTNode *value = set_get(globals, name);
    if (value != NULL) {
-      error("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
+      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
             node->file, node->line, node->column,
             name,
             value->file, value->line, value->column);
@@ -9843,23 +9843,23 @@ static void compile_global_decl_item(ASTNode *node) {
    }
 
    if (is_ref && !is_absolute_ref) {
-      error("[%s:%d.%d] 'ref' not allowed in global declaration without an absolute address binding",
+      error_user("[%s:%d.%d] 'ref' not allowed in global declaration without an absolute address binding",
             node->file, node->line, node->column);
    }
 
    if (is_absolute_ref) {
       if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
-         error("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
+         error_user("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
                node->file, node->line, node->column, name);
       }
       if (is_extern) {
-         error("[%s:%d.%d] 'extern' not allowed on absolute ref '%s'",
+         error_user("[%s:%d.%d] 'extern' not allowed on absolute ref '%s'",
                node->file, node->line, node->column, name);
       }
       if (!is_empty(expression)) {
          ASTNode *runtime_expr = (ASTNode *) unwrap_expr_node(expression);
          if (!address_spec_has_write(addrspec)) {
-            error("[%s:%d.%d] global absolute ref '%s' with initializer must be writable",
+            error_user("[%s:%d.%d] global absolute ref '%s' with initializer must be writable",
                   node->file, node->line, node->column, name);
          }
          remember_pending_global_init(name,
@@ -9878,7 +9878,7 @@ static void compile_global_decl_item(ASTNode *node) {
 
    if (is_extern) {
       if (is_static) {
-         error("[%s:%d.%d] 'extern' and 'static' don't mix",
+         error_user("[%s:%d.%d] 'extern' and 'static' don't mix",
                node->file, node->line, node->column);
       }
 
@@ -9902,7 +9902,7 @@ static void compile_global_decl_item(ASTNode *node) {
 
    if (is_empty(expression)) {
       if (is_const) {
-         error("[%s:%d.%d] 'const' missing initializer",
+         error_user("[%s:%d.%d] 'const' missing initializer",
                node->file, node->line, node->column);
       }
       if (is_zeropage) {
@@ -9961,7 +9961,7 @@ static void remember_function(const ASTNode *node, const char *name) {
    bool name_present = false;
 
    if (!name) {
-      error("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
+      error_unimplemented("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
    }
 
    if (is_operator_function_name(name)) {
@@ -9986,13 +9986,13 @@ static void remember_function(const ASTNode *node, const char *name) {
       }
       if (function_same_signature(value, node)) {
          if (!function_same_declaration(value, node)) {
-            error("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for overloaded '%s'",
+            error_user("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for overloaded '%s'",
                   node->file, node->line, node->column,
                   value->file, value->line, value->column,
                   name);
          }
          if (function_has_body(value) && function_has_body(node)) {
-            error("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
+            error_user("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
                   node->file, node->line, node->column,
                   value->file, value->line, value->column,
                   name);
@@ -10011,7 +10011,7 @@ static void remember_function(const ASTNode *node, const char *name) {
    ordinary_functions = (OrdinaryFunction *) realloc(ordinary_functions,
          sizeof(*ordinary_functions) * (ordinary_function_count + 1));
    if (!ordinary_functions) {
-      error("out of memory");
+      error_unreachable("out of memory");
    }
    ordinary_functions[ordinary_function_count].name = strdup(name);
    ordinary_functions[ordinary_function_count].node = node;
@@ -10060,7 +10060,7 @@ static void compile_function_signature(ASTNode *node) {
 
    if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
       if (!function_symbol_name(node, name, sym, sizeof(sym))) {
-         error("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
+         error_unreachable("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
       }
       remember_symbol_import(sym);
    }
@@ -10088,7 +10088,7 @@ static void compile_defdecl_stmt(ASTNode *node) {
       return;
    }
 
-   error("[%s:%d.%d] unsupported defdecl_stmt shape", node->file, node->line, node->column);
+   error_unreachable("[%s:%d.%d] unsupported defdecl_stmt shape", node->file, node->line, node->column);
 }
 
 static void check_struct_union_undefined(ASTNode *program) {
@@ -10109,13 +10109,13 @@ static void check_struct_union_undefined(ASTNode *program) {
       }
 
       if (node) {
-         error("undefined struct/union '%s' [%s:%d.%d]",
+         error_user("undefined struct/union '%s' [%s:%d.%d]",
                undefined, node->file, node->line, node->column);
       }
       else {
-         error("undefined struct/union '%s'", undefined); // this is probably unreachable
+         error_unreachable("undefined struct/union '%s'", undefined); // this is probably unreachable
       }
-      // error() calls exit()
+      // error_user() calls exit()
    }
 }
 
@@ -10171,8 +10171,8 @@ static void crosscheck_struct_union_nesting(ASTNode *program) {
          ASTNode *node = program->children[i]->children[0];
          if (pair_get(markers, node->strval) == 0) {
             if (crosscheck_helper(markers, node->strval)) {
-               error("cyclic struct/union detected");
-               // error() calls exit()
+               error_user("cyclic struct/union detected");
+               // error_user() calls exit()
             }
          }
       }
@@ -10185,8 +10185,8 @@ static void calculate_struct_union_sizes(ASTNode *program) {
    // everybody uses pointers, let's just do that now...
 
    if (!typename_exists("*")) {
-      error("type * is not defined, pointer size is unknown");
-      // error() calls exit()
+      error_unreachable("type * is not defined, pointer size is unknown");
+      // error_user() calls exit()
    }
 
    int sizeof_ptr = (intptr_t) pair_get(typesizes, "*");
@@ -10266,12 +10266,12 @@ static void calculate_struct_union_sizes(ASTNode *program) {
 static void compile(ASTNode *program) {
 
    if (!program) {
-      error("internal NULL program node");
+      error_unreachable("internal NULL program node");
       // error calls exit()
    }
 
    if (strcmp(program->name, "program")) {
-      error("internal non program node '%s' [%s:%d.%d]",
+      error_unreachable("internal non program node '%s' [%s:%d.%d]",
             program->name,
             program->file, program->line, program->column);
       // error calls exit()
@@ -10318,10 +10318,10 @@ static void compile(ASTNode *program) {
    }
 
    if (!typename_exists("bool")) {
-      error("type bool is not defined");
+      error_unreachable("type bool is not defined");
    }
    if (!typename_exists("void")) {
-      error("type void is not defined");
+      error_unreachable("type void is not defined");
    }
 
    for (int i = 0; i < program->count; i++) {
@@ -10352,7 +10352,7 @@ static void compile(ASTNode *program) {
    for (int i = 0; i < program->count; i++) {
       ASTNode *node = program->children[i];
       if (!node->handled) {
-         error("[%s:%d.%d] unrecognized AST node '%s'",
+         error_unreachable("[%s:%d.%d] unrecognized AST node '%s'",
                node->file, node->line, node->column,
                node->name);
          // error calls exit()

@@ -270,7 +270,7 @@ int main(int argc, char** argv) {
          exit(0);
       }
    } else {
-      error(";Parse failed.\n");
+      error_unreachable(";Parse failed.\n");
       exit(-1);
    }
 

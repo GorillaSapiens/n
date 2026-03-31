@@ -56,14 +56,14 @@ int lookup_xray(const char *name) {
 
 void set_xray(int n) {
    if (n < 0 || n >= MAX_XRAY) {
-      error("xray %d out of bounds", n);
+      error_unreachable("xray %d out of bounds", n);
    }
    xrays[n / (8 * sizeof(unsigned int))] |= 1 << (n % (8 * sizeof(unsigned int)));
 }
 
 int get_xray(int n) {
    if (n < 0 || n >= MAX_XRAY) {
-      error("xray %d out of bounds", n);
+      error_unreachable("xray %d out of bounds", n);
    }
    if (xrays[n / (8 * sizeof(unsigned int))] & (1 << (n % (8 * sizeof(unsigned int))))) {
       return 1;
