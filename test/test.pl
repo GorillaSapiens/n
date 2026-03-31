@@ -27,11 +27,15 @@ foreach my $file (`ls *.n`) {
    }
 
    my @expectasm;
+   my @expectasmordered;
    my @expecterr;
    my $expectfail = 0;
    for my $line (@lines) {
       if ($line =~ /^\/\/ expectasm:\s*(.*?)\s*$/) {
          push @expectasm, $1;
+      }
+      if ($line =~ /^\/\/ expectasmordered:\s*(.*?)\s*$/) {
+         push @expectasmordered, $1;
       }
       if ($line =~ /^\/\/ expecterr:\s*(.*?)\s*$/) {
          push @expecterr, $1;
@@ -66,18 +70,34 @@ foreach my $file (`ls *.n`) {
       exit(-1);
    }
 
-   if (@expectasm) {
+   my $asm;
+   if (@expectasm || @expectasmordered) {
       open(my $out, '<', $outfile) or die "[$FAIL] could not read $outfile: $!\n";
       local $/;
-      my $asm = <$out>;
+      $asm = <$out>;
       close($out);
+   }
 
+   if (@expectasm) {
       for my $needle (@expectasm) {
          if (index($asm, $needle) < 0) {
             print "[$FAIL] $file missing assembly fragment: $needle\n";
             print "$runner\n";
             exit(-1);
          }
+      }
+   }
+
+   if (@expectasmordered) {
+      my $start = 0;
+      for my $needle (@expectasmordered) {
+         my $pos = index($asm, $needle, $start);
+         if ($pos < 0) {
+            print "[$FAIL] $file missing ordered assembly fragment: $needle\n";
+            print "$runner\n";
+            exit(-1);
+         }
+         $start = $pos + length($needle);
       }
    }
 

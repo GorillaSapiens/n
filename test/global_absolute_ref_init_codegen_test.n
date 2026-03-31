@@ -2,16 +2,19 @@
 // expectasm: .export __init_
 // expectasm: .proc __init_
 // expectasm: jsr _twice
-// expectasm: lda #<($0600 + 0)
-// expectasm: lda #>($0600 + 0)
-// expectasm: sta ptr0
-// expectasm: sta ptr0+1
-// expectasm: ldy #1
-// expectasm: sta (ptr0),y
-// expectasm: lda #$34
-// expectasm: lda #$12
-// expectasm: lda #<($0608 + 0)
-// expectasm: lda #>($0608 + 0)
+// expectasmordered: jsr _twice
+// expectasmordered: lda #<($0600 + 0)
+// expectasmordered: sta ptr0
+// expectasmordered: lda #>($0600 + 0)
+// expectasmordered: sta ptr0+1
+// expectasmordered: sta (ptr0),y
+// expectasmordered: lda #$34
+// expectasmordered: lda #$12
+// expectasmordered: lda #<($0608 + 0)
+// expectasmordered: sta ptr0
+// expectasmordered: lda #>($0608 + 0)
+// expectasmordered: sta ptr0+1
+// expectasmordered: sta (ptr0),y
 
 include "machine_6502.n"
 
