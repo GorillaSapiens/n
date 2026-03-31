@@ -1,0 +1,12 @@
+// n65cc -I .
+// expectasm: jsr _fcmp
+// expectasm: lda #$04
+// expectasm: sta arg0
+// expectasm: lda #$08
+// expectasm: sta arg1
+
+include "machine_6502.n"
+
+bool less(float a, float b) {
+   return a < b;
+}

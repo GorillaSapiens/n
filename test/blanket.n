@@ -119,6 +119,13 @@ empty_label: ;
       ic := 13;
    }
 
+   ia := fa < fb;
+   ia := fa > fb;
+   ia := fa <= fb;
+   ia := fa >= fb;
+   ia := fa == fb;
+   ia := fa != fb;
+
    if (ia != ia) {
       fnord();
       err(6, "ouch!");

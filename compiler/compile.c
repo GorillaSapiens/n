@@ -3703,6 +3703,17 @@ static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lh
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+static void emit_runtime_float_compare(int lhs_offset, int rhs_offset, int size, int expbits) {
+   emit_prepare_fp_ptr(0, lhs_offset);
+   emit_prepare_fp_ptr(1, rhs_offset);
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    lda #$%02x\n", expbits & 0xff);
+   emit(&es_code, "    sta arg1\n");
+   remember_runtime_import("fcmp");
+   emit(&es_code, "    jsr _fcmp\n");
+}
+
 static void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset, int size) {
    emit_prepare_fp_ptr(0, value_offset);
    emit_prepare_fp_ptr(1, scratch_offset);
@@ -6465,7 +6476,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
         !strcmp(expr->name, "<=") || !strcmp(expr->name, ">="))) {
       const ASTNode *lhs_type = expr_value_type(expr->children[0], ctx);
       const ASTNode *rhs_type = expr_value_type(expr->children[1], ctx);
-      const ASTNode *type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
+      const ASTNode *type = NULL;
       int size;
       int compare_size;
       ContextEntry lhs;
@@ -6473,7 +6484,22 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       const char *helper = NULL;
       bool invert = false;
       bool is_signed;
+      bool is_float_compare;
+      int expbits = -1;
 
+      if ((lhs_type && type_is_float_like(lhs_type)) || (rhs_type && type_is_float_like(rhs_type))) {
+         int lhs_size = lhs_type ? type_size_from_node(lhs_type) : 0;
+         int rhs_size = rhs_type ? type_size_from_node(rhs_type) : 0;
+         if (lhs_type && type_is_float_like(lhs_type) && (!rhs_type || !type_is_float_like(rhs_type) || lhs_size >= rhs_size)) {
+            type = lhs_type;
+         }
+         else {
+            type = rhs_type;
+         }
+      }
+      else {
+         type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
+      }
       if (!type) {
          type = lhs_type ? lhs_type : rhs_type;
       }
@@ -6492,6 +6518,13 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = size };
       rhs = (ContextEntry){ .name = "$rhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals + size, .size = size };
       is_signed = type_is_signed_integer(type);
+      is_float_compare = type_is_float_like(type);
+      if (is_float_compare) {
+         expbits = type_float_expbits(type);
+         if (expbits <= 0) {
+            error("[%s:%d.%d] float comparison type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(type));
+         }
+      }
 
       remember_runtime_import("pushN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
@@ -6514,6 +6547,39 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       }
       if (ctx) {
          ctx->locals = saved_locals;
+      }
+
+      if (is_float_compare) {
+         emit_runtime_float_compare(lhs.offset, rhs.offset, size, expbits);
+
+         remember_runtime_import("popN");
+         emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
+         emit(&es_code, "    sta arg0\n");
+         emit(&es_code, "    jsr _popN\n");
+         emit(&es_code, "    lda arg1\n");
+         if (!strcmp(expr->name, "==")) {
+            emit(&es_code, "    bne %s\n", false_label);
+         }
+         else if (!strcmp(expr->name, "!=")) {
+            emit(&es_code, "    beq %s\n", false_label);
+         }
+         else if (!strcmp(expr->name, "<")) {
+            emit(&es_code, "    cmp #$ff\n");
+            emit(&es_code, "    bne %s\n", false_label);
+         }
+         else if (!strcmp(expr->name, ">")) {
+            emit(&es_code, "    cmp #$01\n");
+            emit(&es_code, "    bne %s\n", false_label);
+         }
+         else if (!strcmp(expr->name, "<=")) {
+            emit(&es_code, "    cmp #$01\n");
+            emit(&es_code, "    beq %s\n", false_label);
+         }
+         else if (!strcmp(expr->name, ">=")) {
+            emit(&es_code, "    cmp #$ff\n");
+            emit(&es_code, "    beq %s\n", false_label);
+         }
+         return true;
       }
 
       if (!strcmp(expr->name, "==")) {
