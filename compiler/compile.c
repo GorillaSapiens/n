@@ -332,6 +332,9 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type);
 static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
 static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
+static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size);
+static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset);
+static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out);
 static unsigned char hex_value(unsigned char c) {
    if (c >= '0' && c <= '9') return (unsigned char) (c - '0');
    if (c >= 'a' && c <= 'f') return (unsigned char) (10 + c - 'a');
@@ -3190,8 +3193,20 @@ static void emit_sub_immediate_from_fp(const ASTNode *type, int offset, const un
 }
 
 static void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   bool helper_is_generic = false;
+   const char *helper = int_addsub_helper_name(type, size, false, &helper_is_generic);
    bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
    bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+
+   if (helper) {
+      if (helper_is_generic) {
+         emit_runtime_binary_fp_fp(helper, dst_offset, dst_offset, src_offset, size);
+      }
+      else {
+         emit_runtime_fixed_binary_fp_fp(helper, dst_offset, dst_offset, src_offset);
+      }
+      return;
+   }
 
    if (!dst_direct) {
       emit_prepare_fp_ptr(0, dst_offset);
@@ -3213,8 +3228,20 @@ static void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offse
 }
 
 static void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
+   bool helper_is_generic = false;
+   const char *helper = int_addsub_helper_name(type, size, true, &helper_is_generic);
    bool dst_direct = dst_offset >= 0 && dst_offset + size <= 256;
    bool src_direct = src_offset >= 0 && src_offset + size <= 256;
+
+   if (helper) {
+      if (helper_is_generic) {
+         emit_runtime_binary_fp_fp(helper, dst_offset, dst_offset, src_offset, size);
+      }
+      else {
+         emit_runtime_fixed_binary_fp_fp(helper, dst_offset, dst_offset, src_offset);
+      }
+      return;
+   }
 
    if (!dst_direct) {
       emit_prepare_fp_ptr(0, dst_offset);
@@ -3744,6 +3771,32 @@ static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lh
    emit(&es_code, "    sta arg0\n");
    remember_runtime_import(helper);
    emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset) {
+   emit_prepare_fp_ptr(0, lhs_offset);
+   emit_prepare_fp_ptr(1, rhs_offset);
+   emit_prepare_fp_ptr(2, dst_offset);
+   remember_runtime_import(helper);
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out) {
+   if (is_generic_out) {
+      *is_generic_out = false;
+   }
+   if (size < 3 || !type || has_flag(type_name_from_node(type), "$endian:big")) {
+      return NULL;
+   }
+   switch (size) {
+      case 3: return subtract ? "sub24" : "add24";
+      case 4: return subtract ? "sub32" : "add32";
+      default:
+         if (is_generic_out) {
+            *is_generic_out = true;
+         }
+         return subtract ? "subN" : "addN";
+   }
 }
 
 static void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size, int expbits) {
