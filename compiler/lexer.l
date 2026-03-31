@@ -217,7 +217,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    return STRING;
 }
 
-{INT}/\.\. {
+{INT}/\.\. { // this rule prevents the float rule from swollowing our dots!
    yylval.str = strip_underscores(yytext);
    return INTEGER;
 }
