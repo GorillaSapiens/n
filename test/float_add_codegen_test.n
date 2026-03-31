@@ -1,0 +1,14 @@
+// n65cc -I .
+// expectasm: jsr _faddN
+// expectasm: sta arg1
+// expectasm: .import _faddN
+
+include "machine_6502.n"
+
+float addf(float a, float b) {
+   return a + b;
+}
+
+void add_assignf(ref float a, float b) {
+   a += b;
+}

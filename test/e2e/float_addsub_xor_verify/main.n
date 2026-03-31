@@ -1,0 +1,55 @@
+// expectexit: 0
+include "machine_6502.n"
+
+union f32bits {
+   float f;
+   char b[4];
+};
+
+void pass(void) {
+   asm lda #$ff;
+   asm ldx #0;
+   asm ldy #0;
+   asm jsr $ffff;
+}
+
+void main(void) {
+   f32bits a;
+   f32bits b;
+   f32bits c;
+   f32bits d;
+   f32bits e;
+   f32bits g;
+
+   a.f := 1.0;
+   b.f := 2.0;
+
+   c.f := a.f + b.f;
+   d.f := a.f - b.f;
+   e.f := a.f;
+   e.f += b.f;
+   g.f := a.f;
+   g.f -= b.f;
+
+   if (c.b[0] != 0) { asm lda #$ff; asm ldx #1;  asm ldy #0; asm jsr $ffff; }
+   if (c.b[1] != 0) { asm lda #$ff; asm ldx #2;  asm ldy #0; asm jsr $ffff; }
+   if (c.b[2] != 128) { asm lda #$ff; asm ldx #3;  asm ldy #0; asm jsr $ffff; }
+   if (c.b[3] != 127) { asm lda #$ff; asm ldx #4;  asm ldy #0; asm jsr $ffff; }
+
+   if (d.b[0] != 0) { asm lda #$ff; asm ldx #5;  asm ldy #0; asm jsr $ffff; }
+   if (d.b[1] != 0) { asm lda #$ff; asm ldx #6;  asm ldy #0; asm jsr $ffff; }
+   if (d.b[2] != 128) { asm lda #$ff; asm ldx #7;  asm ldy #0; asm jsr $ffff; }
+   if (d.b[3] != 127) { asm lda #$ff; asm ldx #8;  asm ldy #0; asm jsr $ffff; }
+
+   if (e.b[0] != 0) { asm lda #$ff; asm ldx #9;  asm ldy #0; asm jsr $ffff; }
+   if (e.b[1] != 0) { asm lda #$ff; asm ldx #10; asm ldy #0; asm jsr $ffff; }
+   if (e.b[2] != 128) { asm lda #$ff; asm ldx #11; asm ldy #0; asm jsr $ffff; }
+   if (e.b[3] != 127) { asm lda #$ff; asm ldx #12; asm ldy #0; asm jsr $ffff; }
+
+   if (g.b[0] != 0) { asm lda #$ff; asm ldx #13; asm ldy #0; asm jsr $ffff; }
+   if (g.b[1] != 0) { asm lda #$ff; asm ldx #14; asm ldy #0; asm jsr $ffff; }
+   if (g.b[2] != 128) { asm lda #$ff; asm ldx #15; asm ldy #0; asm jsr $ffff; }
+   if (g.b[3] != 127) { asm lda #$ff; asm ldx #16; asm ldy #0; asm jsr $ffff; }
+
+   pass();
+}

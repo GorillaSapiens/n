@@ -94,6 +94,7 @@ typedef struct LValueRef {
    bool indirect;
    bool base_is_deref;
    bool needs_runtime_address;
+   int base_offset;
    int offset;
    int size;
    int ptr_adjust;
@@ -3699,6 +3700,7 @@ static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *
       out->is_absolute_ref = entry->is_absolute_ref;
       out->read_expr = entry->read_expr;
       out->write_expr = entry->write_expr;
+      out->base_offset = entry->offset;
       out->offset = entry->offset;
       out->size = entry->size;
       if (entry->is_ref) {
@@ -3740,6 +3742,18 @@ static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lh
    emit_prepare_fp_ptr(2, dst_offset);
    emit(&es_code, "    lda #$%02x\n", size & 0xff);
    emit(&es_code, "    sta arg0\n");
+   remember_runtime_import(helper);
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size, int expbits) {
+   emit_prepare_fp_ptr(0, lhs_offset);
+   emit_prepare_fp_ptr(1, rhs_offset);
+   emit_prepare_fp_ptr(2, dst_offset);
+   emit(&es_code, "    lda #$%02x\n", size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   emit(&es_code, "    lda #$%02x\n", expbits & 0xff);
+   emit(&es_code, "    sta arg1\n");
    remember_runtime_import(helper);
    emit(&es_code, "    jsr _%s\n", helper);
 }
@@ -3952,7 +3966,7 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
       return true;
    }
 
-   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
+   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->base_offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
    type = lv->base_type;
    decl = lv->base_declarator;
 
@@ -3972,13 +3986,13 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
    }
    else {
       if (lv->base_is_deref || lv->is_ref) {
-         emit_load_ptr_from_fpvar(0, lv->offset);
+         emit_load_ptr_from_fpvar(0, lv->base_offset);
          if (lv->base_is_deref && lv->is_ref) {
             emit_deref_ptr(0);
          }
       }
       else {
-         emit_prepare_fp_ptr(0, lv->offset);
+         emit_prepare_fp_ptr(0, lv->base_offset);
       }
    }
 
@@ -4228,6 +4242,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->is_absolute_ref = entry->is_absolute_ref;
       out->read_expr = entry->read_expr;
       out->write_expr = entry->write_expr;
+      out->base_offset = entry->offset;
       out->offset = entry->offset;
       out->size = entry->size;
       if (entry->is_ref) {
@@ -4268,6 +4283,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       out->write_expr = entry->write_expr;
       out->indirect = true;
       out->base_is_deref = true;
+      out->base_offset = entry->offset;
       out->offset = entry->offset;
       out->size = out->declarator ? declarator_storage_size(entry->type, out->declarator) : get_size(type_name_from_node(entry->type));
    }
@@ -5825,7 +5841,19 @@ unary_not_done:
             emit_runtime_binary_fp_fp("mulN", scaled_offset, rhs_offset, factor_offset, work_size);
          }
 
-         if (!strcmp(expr->name, "+")) {
+         if (work_type && type_is_float_like(work_type)) {
+            int expbits = type_float_expbits(work_type);
+            if (expbits < 0) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(work_type));
+               return false;
+            }
+            emit_runtime_float_binary_fp_fp(!strcmp(expr->name, "+") ? "faddN" : "fsubN", lhs_offset, lhs_offset, value_offset, work_size, expbits);
+         }
+         else if (!strcmp(expr->name, "+")) {
             emit_add_fp_to_fp(work_type, lhs_offset, value_offset, work_size);
          }
          else {
@@ -8956,7 +8984,19 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_runtime_binary_fp_fp("mulN", scaled_rhs_offset, rhs_tmp_offset, factor_offset, work_size);
       }
 
-      if (!strcmp(op, "+=")) {
+      if ((!strcmp(op, "+=") || !strcmp(op, "-=")) && work_type && type_is_float_like(work_type)) {
+         int expbits = type_float_expbits(work_type);
+         if (expbits < 0) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+            error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+            return;
+         }
+         emit_runtime_float_binary_fp_fp(!strcmp(op, "+=") ? "faddN" : "fsubN", lhs_tmp_offset, lhs_tmp_offset, rhs_value_offset, work_size, expbits);
+      }
+      else if (!strcmp(op, "+=")) {
          emit_add_fp_to_fp(work_type, lhs_tmp_offset, rhs_value_offset, work_size);
       }
       else if (!strcmp(op, "-=")) {

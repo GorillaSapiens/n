@@ -9,19 +9,22 @@
 ; Layout is always SEM from the most-significant bit down.
 ;
 ; NOTE:
-;   This file establishes the helper ABI and assembles into nlib.
-;   The current implementation clears the destination buffer.
+;   This is currently a bytewise XOR debug stub so compiler plumbing can be
+;   validated independently from real floating-point arithmetic.
 ;
 .include "nlib.inc"
 
 .proc _fsubN
     ldx arg0
+    beq @done
     ldy #0
-    lda #0
 @loop:
+    lda (ptr0), y
+    eor (ptr1), y
     sta (ptr2), y
     iny
     dex
     bne @loop
+@done:
     rts
 .endproc
