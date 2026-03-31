@@ -241,7 +241,7 @@ include_stmt:
 
 xform_decl_stmt:
     XFORM opt_identifier '{' xform_list ',' '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
-  | XFORM opt_identifier '{' xform_list '}' ';' { COVER; $$ = MAKE_NODE($2, $4); }
+  | XFORM opt_identifier '{' xform_list '}' ';'     { COVER; $$ = MAKE_NODE($2, $4); }
   ;
 
 opt_identifier:
@@ -269,7 +269,8 @@ type_decl_stmt:
   ;
 
 enum_decl_stmt:
-    ENUM IDENTIFIER '{' enum_names '}' ';'   { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); register_enumnames($$); }
+    ENUM IDENTIFIER '{' enum_names '}' ';'     { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); register_enumnames($$); }
+  | ENUM IDENTIFIER '{' enum_names ',' '}' ';' { COVER; if (register_typename($2) < 0) YYABORT; $$ = MAKE_NODE(make_identifier_leaf($2), $4); register_enumnames($$); }
   ;
 
 enum_names:
@@ -708,7 +709,7 @@ case_enum_primary_expr:
 case_conditional_expr:
     case_logical_or_expr                                   { COVER; $$ = $1; }
   | case_logical_or_expr '?' case_conditional_expr ':' case_conditional_expr
-                                                         { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
+                                                           { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
   ;
 
 case_logical_or_expr:

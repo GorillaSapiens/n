@@ -27,6 +27,11 @@ enum enumtest {
 int enumuse := enumval2;
 int enumusetyped := enumval1`int;
 
+enum anotherenumtest {
+   anotherenumval1 := 1,
+   anotherenumval2,
+};
+
 struct callbox {
    int (*func)(int);
 };

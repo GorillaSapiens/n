@@ -17,6 +17,8 @@ enum enum1 { enumv1 := 1, enumv2 };
 int enumuse := enumv2;
 int enumusetyped := enumv1`int;
 
+enum enum2 { enum2v1 := 1, enum2v2, };
+
 struct xyz { int x; int y; int *z; };
 union  abc { int a; int b; int c; };
 
