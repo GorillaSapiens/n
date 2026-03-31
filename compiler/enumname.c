@@ -26,6 +26,7 @@ int register_enumnames(ASTNode *ast) {
       enums = pair_create();
    }
 
+   // register all the enum names for this enum type.
    for (int i = 0; ast->children[1]->children[i]; i++) {
       const char *name = ast->children[1]->children[i]->children[0]->strval;
 
@@ -53,7 +54,7 @@ int register_enumnames(ASTNode *ast) {
          return -1;
       }
 
-      pair_insert(enums, name, ast->children[1]->children[i]->children[0]);
+      pair_insert(enums, name, ast->children[1]->children[i]);
    }
 
    return 0;
