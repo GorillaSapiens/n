@@ -27,6 +27,8 @@
 .endproc
 
 .proc _add8
+    ; setup here is long, so the compiler just does it
+    ; and this is never used
     ldy #0
     clc
     lda (ptr0), y
@@ -36,6 +38,8 @@
 .endproc
 
 .proc _add16
+    ; setup here is long, so the compiler just does it
+    ; and this is never used
     ldy #0
     clc
     lda (ptr0), y

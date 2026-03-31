@@ -31,6 +31,8 @@
 ; Fixed-width versions
 
 .proc _sub8
+    ; setup here is long, so the compiler just does it
+    ; and this is never used
     ldy #0
     sec
     lda (ptr0), y
@@ -40,6 +42,8 @@
 .endproc
 
 .proc _sub16
+    ; setup here is long, so the compiler just does it
+    ; and this is never used
     ldy #0
     sec
     lda (ptr0), y
