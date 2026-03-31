@@ -31,6 +31,7 @@ EmitSink es_zp     = EMIT_INIT;
 EmitSink es_zpdata = EMIT_INIT;
 
 Pair *typesizes = NULL;
+static Pair *enumbackings = NULL;
 
 Set *globals = NULL;
 Set *functions = NULL;
@@ -194,6 +195,7 @@ static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode
 static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
 static bool has_flag_prefix(const char *type, const char *prefix);
+static const char *enum_backing_type_name(const char *type);
 static bool parse_float_layout_flag_text(const char *text, int *expbits_out, int *mbits_out);
 static bool type_is_float_like(const ASTNode *type);
 static int type_float_expbits(const ASTNode *type);
@@ -2340,11 +2342,24 @@ static int integer_literal_min_size(const ASTNode *expr) {
 
 // for parameterless flags (e.g. "$signed")
 // also for complete flags (e.g. "$endian:little")
+static const char *enum_backing_type_name(const char *type) {
+   if (!type || !enumbackings || !pair_exists(enumbackings, type)) {
+      return NULL;
+   }
+   return pair_get(enumbackings, type);
+}
+
 static bool has_flag(const char *type, const char *flag) {
    const ASTNode *node;
+   const char *backing;
 
    if (!type || !flag) {
       return false;
+   }
+
+   backing = enum_backing_type_name(type);
+   if (backing) {
+      return has_flag(backing, flag);
    }
 
    node = get_typename_node(type);
@@ -2363,10 +2378,16 @@ static bool has_flag(const char *type, const char *flag) {
 
 static bool has_flag_prefix(const char *type, const char *prefix) {
    const ASTNode *node;
+   const char *backing;
    size_t prefix_len;
 
    if (!type || !prefix) {
       return false;
+   }
+
+   backing = enum_backing_type_name(type);
+   if (backing) {
+      return has_flag_prefix(backing, prefix);
    }
 
    node = get_typename_node(type);
@@ -2606,6 +2627,7 @@ static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode
 
 static int get_size(const char *type) {
    const ASTNode *node;
+   const char *backing;
 
    if (!type) {
       error("[%s:%d] internal could not find NULL type", __FILE__, __LINE__);
@@ -2613,6 +2635,11 @@ static int get_size(const char *type) {
 
    if (typesizes && pair_exists(typesizes, type)) {
       return (int)(intptr_t) pair_get(typesizes, type);
+   }
+
+   backing = enum_backing_type_name(type);
+   if (backing) {
+      return get_size(backing);
    }
 
    node = get_typename_node(type);
@@ -9536,6 +9563,154 @@ static void compile_type_decl_stmt(ASTNode *node) {
    }
 }
 
+static bool enum_candidate_is_integer_type(const ASTNode *node) {
+   const char *name;
+
+   if (!node || strcmp(node->name, "type_decl_stmt")) {
+      return false;
+   }
+
+   name = node->children[0]->strval;
+   if (!name || !strcmp(name, "void") || !strcmp(name, "*") || !strcmp(name, "bool")) {
+      return false;
+   }
+
+   if (has_flag(name, "$float") || has_flag_prefix(name, "$float:")) {
+      return false;
+   }
+
+   return get_size(name) > 0;
+}
+
+static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_value, unsigned long long max_value, bool have_negative) {
+   int size;
+   int bits;
+   bool is_unsigned;
+   bool is_signed;
+   unsigned long long signed_max;
+   long long signed_min;
+   unsigned long long unsigned_max;
+
+   if (!enum_candidate_is_integer_type(node)) {
+      return false;
+   }
+
+   size = type_size_from_node(node);
+   if (size <= 0 || size > 8) {
+      return false;
+   }
+
+   bits = size * 8;
+   is_unsigned = has_flag(type_name_from_node(node), "$unsigned");
+   is_signed = has_flag(type_name_from_node(node), "$signed");
+
+   if (bits >= 64) {
+      signed_max = LLONG_MAX;
+      signed_min = LLONG_MIN;
+      unsigned_max = ULLONG_MAX;
+   }
+   else {
+      signed_max = (1ULL << (bits - 1)) - 1ULL;
+      signed_min = -(long long) (1ULL << (bits - 1));
+      unsigned_max = (1ULL << bits) - 1ULL;
+   }
+
+   if (is_unsigned) {
+      return !have_negative && max_value <= unsigned_max;
+   }
+
+   if (have_negative) {
+      return min_value >= signed_min && max_value <= signed_max;
+   }
+
+   if (is_signed) {
+      return max_value <= signed_max;
+   }
+
+   return max_value <= unsigned_max;
+}
+
+static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
+   long long min_value = 0;
+   unsigned long long max_value = 0;
+   bool have_range = false;
+   bool have_negative = false;
+   const ASTNode *best = NULL;
+   int best_size = INT_MAX;
+
+   if (!node || node->count < 2 || !node->children[1]) {
+      error("[%s:%d.%d] invalid enum declaration", node ? node->file : __FILE__, node ? node->line : __LINE__, node ? node->column : 0);
+   }
+
+   for (int i = 0; i < node->children[1]->count; i++) {
+      ASTNode *entry = node->children[1]->children[i];
+      long long value;
+      unsigned long long uvalue;
+      if (!entry || entry->count < 2 || !entry->children[1] || entry->children[1]->kind != AST_INTEGER) {
+         error("[%s:%d.%d] enum value '%s' is not an integer constant", entry ? entry->file : node->file, entry ? entry->line : node->line, entry ? entry->column : node->column, (entry && entry->count > 0 && entry->children[0]) ? entry->children[0]->strval : "?");
+      }
+      value = parse_int(entry->children[1]->strval);
+      uvalue = value < 0 ? 0ULL : (unsigned long long) value;
+      if (!have_range) {
+         min_value = value;
+         max_value = uvalue;
+         have_range = true;
+      }
+      else {
+         if (value < min_value) {
+            min_value = value;
+         }
+         if (uvalue > max_value) {
+            max_value = uvalue;
+         }
+      }
+      if (value < 0) {
+         have_negative = true;
+      }
+   }
+
+   if (!have_range) {
+      error("[%s:%d.%d] enum '%s' is empty", node->file, node->line, node->column, node->children[0]->strval);
+   }
+
+   for (int i = 0; root && i < root->count; i++) {
+      ASTNode *cand = root->children[i];
+      int cand_size;
+      if (!enum_candidate_can_hold_range(cand, min_value, max_value, have_negative)) {
+         continue;
+      }
+      cand_size = type_size_from_node(cand);
+      if (!best || cand_size < best_size) {
+         best = cand;
+         best_size = cand_size;
+      }
+   }
+
+   if (!best) {
+      error("[%s:%d.%d] enum '%s' has no declared integer type that can represent values %lld..%llu",
+            node->file, node->line, node->column,
+            node->children[0]->strval,
+            min_value, max_value);
+   }
+
+   return best;
+}
+
+static void compile_enum_decl_stmt(ASTNode *node) {
+   const char *key = node->children[0]->strval;
+   const ASTNode *backing = find_best_enum_backing_type(node);
+   const char *backing_name = type_name_from_node(backing);
+   int size = type_size_from_node(backing);
+
+   attach_typename(key, node);
+   pair_insert(typesizes, key, (void *)(intptr_t) size);
+   pair_insert(enumbackings, key, (void *) backing_name);
+
+   if (get_xray(XRAY_TYPEINFO)) {
+      message("TYPEINFO: enum %s %d %s", key, size, backing_name ? backing_name : "?");
+   }
+}
+
 static void compile_struct_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
@@ -9898,7 +10073,7 @@ static bool crosscheck_helper(Pair *markers, const char *name) {
    ASTNode *child;
    pair_insert(markers, name, (void *)1);
    ASTNode *node = get_typename_node(name);
-   if (strcmp(node->name, "type_decl_stmt")) {
+   if (node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"))) {
       for (int i = 1; i < node->count; i++) {
          child = node->children[i];
          {
@@ -10083,6 +10258,14 @@ static void compile(ASTNode *program) {
       }
    }
 
+   for (int i = 0; i < program->count; i++) {
+      ASTNode *node = program->children[i];
+      if (!strcmp(node->name, "enum_decl_stmt")) {
+         node->handled = true;
+         compile_enum_decl_stmt(node);
+      }
+   }
+
    if (!typename_exists("bool")) {
       error("type bool is not defined");
    }
@@ -10129,6 +10312,7 @@ static void compile(ASTNode *program) {
 void do_compile(FILE *out) {
 
    typesizes = pair_create();
+   enumbackings = pair_create();
 
    emit(&es_header, "; this file produced by \"n65cc\" compiler\n");
    emit(&es_header, "; depends on --feature dollar_in_identifiers\n");

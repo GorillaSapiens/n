@@ -263,7 +263,7 @@ enum_names:
 
 enum_value:
     IDENTIFIER                               { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
-  | IDENTIFIER ASSIGN INTEGER                { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_string_leaf($3)); }
+  | IDENTIFIER ASSIGN INTEGER                { COVER; $$ = MAKE_NODE(make_identifier_leaf($1), make_integer_leaf($3)); }
   ;
 
 struct_decl_stmt:
@@ -638,8 +638,8 @@ primary_expr:
 num_primary_expr:
     INTEGER                                  { COVER; $$ = make_integer_leaf($1); }
   | INTEGER '`' TYPENAME                     { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
-  | ENUMNAME                                 { COVER; $$ = make_integer_leaf($1); }
-  | ENUMNAME '`' TYPENAME                    { COVER; $$ = make_integer_leaf_with_type($1, make_typename_leaf($3)); }
+  | ENUMNAME                                 { COVER; $$ = make_enumname_expr($1); }
+  | ENUMNAME '`' TYPENAME                    { COVER; $$ = make_enumname_expr_with_type($1, make_typename_leaf($3)); }
   | FLOAT                                    { COVER; $$ = make_float_leaf($1); }
   | FLOAT '`' TYPENAME                       { COVER; $$ = make_float_leaf_with_type($1, make_typename_leaf($3)); }
   | CHAR                                     { COVER; $$ = do_xform(make_string_leaf($1), NULL); }

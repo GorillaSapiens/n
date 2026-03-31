@@ -80,7 +80,7 @@ static int make_le_helper(const char *p, int bpc,
    }
    if (a) {
       target[n++] = a;
-      if (n >= size) {
+      if (n > size) {
          warning("integer '%s' is too big for %d bytes!", op, size);
             // TODO FIX should this be an error?
          return size;
@@ -116,7 +116,7 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
       }
       if (carry) {
          target[max++] = carry;
-         if (max >= size) {
+         if (max > size) {
             warning("integer '%s' is too big for %d bytes!", op, size);
             // TODO FIX should this be an error?
             return size;
@@ -135,7 +135,7 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
       }
       if (carry) {
          target[max++] = carry;
-         if (max >= size) {
+         if (max > size) {
             warning("integer '%s' is too big for %d bytes!", op, size);
             // TODO FIX should this be an error?
             return size;

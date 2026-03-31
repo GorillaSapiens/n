@@ -24,6 +24,8 @@ enum enumtest {
    enumval1 := 1,
    enumval2
 };
+int enumuse := enumval2;
+int enumusetyped := enumval1`int;
 
 struct callbox {
    int (*func)(int);

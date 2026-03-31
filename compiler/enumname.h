@@ -8,14 +8,15 @@
 // determine if enumname exists
 bool enumname_exists(const char* name);
 
-// register a new enumname
+// register all enum names for an enum declaration and assign their values
 int register_enumnames(ASTNode *node);
 
-// attach an ASTNode to a registered enumname
-void attach_enumname(const char *name, ASTNode *node);
-
-// get the node attached to a enumname
+// get the node attached to an enum name
 ASTNode *get_enumname_node(const char *name);
+
+// make an integer-literal AST node for a registered enum constant
+ASTNode *make_enumname_expr(const char *name);
+ASTNode *make_enumname_expr_with_type(const char *name, ASTNode *type);
 
 // check for any null valued typenames
 const char *enumname_find_null(void);
