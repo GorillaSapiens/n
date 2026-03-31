@@ -6069,20 +6069,55 @@ unary_not_done:
          emit_runtime_binary_fp_fp(helper, lhs_offset, lhs_offset, rhs_offset, op_size);
       }
       else if (!strcmp(op, "*")) {
-         emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_offset, rhs_offset, op_size);
+         if (op_type && type_is_float_like(op_type)) {
+            int expbits = type_float_expbits(op_type);
+            if (expbits < 0) {
+               if (ctx) {
+                  ctx->locals = saved_locals;
+               }
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               return false;
+            }
+            emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
+         }
+         else {
+            emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_offset, rhs_offset, op_size);
+         }
          emit_copy_fp_to_fp(lhs_offset, aux_offset, op_size);
       }
       else if (!strcmp(op, "/") || !strcmp(op, "%")) {
-         int rem_offset = aux_offset + op_size;
-         emit_prepare_fp_ptr(0, lhs_offset);
-         emit_prepare_fp_ptr(1, rhs_offset);
-         emit_prepare_fp_ptr(2, aux_offset);
-         emit_prepare_fp_ptr(3, rem_offset);
-         emit(&es_code, "    lda #$%02x\n", op_size & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         remember_runtime_import("divN");
-         emit(&es_code, "    jsr _divN\n");
-         emit_copy_fp_to_fp(lhs_offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
+         if (!strcmp(op, "/") && op_type && type_is_float_like(op_type)) {
+            int expbits = type_float_expbits(op_type);
+            if (expbits < 0) {
+               if (ctx) {
+                  ctx->locals = saved_locals;
+               }
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               return false;
+            }
+            emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
+            emit_copy_fp_to_fp(lhs_offset, aux_offset, op_size);
+         }
+         else {
+            int rem_offset = aux_offset + op_size;
+            emit_prepare_fp_ptr(0, lhs_offset);
+            emit_prepare_fp_ptr(1, rhs_offset);
+            emit_prepare_fp_ptr(2, aux_offset);
+            emit_prepare_fp_ptr(3, rem_offset);
+            emit(&es_code, "    lda #$%02x\n", op_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import("divN");
+            emit(&es_code, "    jsr _divN\n");
+            emit_copy_fp_to_fp(lhs_offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
+         }
       }
 
       emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, lhs_offset, op_size, op_type);
@@ -9065,21 +9100,50 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_runtime_binary_fp_fp("bit_xorN", lhs_tmp_offset, lhs_tmp_offset, rhs_tmp_offset, work_size);
       }
       else if (!strcmp(op, "*=")) {
-         emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size);
+         if (work_type && type_is_float_like(work_type)) {
+            int expbits = type_float_expbits(work_type);
+            if (expbits < 0) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               return;
+            }
+            emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
+         }
+         else {
+            emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size);
+         }
          emit_copy_fp_to_fp(lhs_tmp_offset, aux_offset, work_size);
       }
       else if (!strcmp(op, "/=") || !strcmp(op, "%=")) {
-         int quo_offset = aux_offset;
-         int rem_offset = aux_offset + work_size;
-         emit_prepare_fp_ptr(0, lhs_tmp_offset);
-         emit_prepare_fp_ptr(1, rhs_tmp_offset);
-         emit_prepare_fp_ptr(2, quo_offset);
-         emit_prepare_fp_ptr(3, rem_offset);
-         emit(&es_code, "    lda #$%02x\n", work_size & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         remember_runtime_import("divN");
-         emit(&es_code, "    jsr _divN\n");
-         emit_copy_fp_to_fp(lhs_tmp_offset, !strcmp(op, "/=") ? quo_offset : rem_offset, work_size);
+         if (!strcmp(op, "/=") && work_type && type_is_float_like(work_type)) {
+            int expbits = type_float_expbits(work_type);
+            if (expbits < 0) {
+               remember_runtime_import("popN");
+               emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
+               emit(&es_code, "    sta arg0\n");
+               emit(&es_code, "    jsr _popN\n");
+               error("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               return;
+            }
+            emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
+            emit_copy_fp_to_fp(lhs_tmp_offset, aux_offset, work_size);
+         }
+         else {
+            int quo_offset = aux_offset;
+            int rem_offset = aux_offset + work_size;
+            emit_prepare_fp_ptr(0, lhs_tmp_offset);
+            emit_prepare_fp_ptr(1, rhs_tmp_offset);
+            emit_prepare_fp_ptr(2, quo_offset);
+            emit_prepare_fp_ptr(3, rem_offset);
+            emit(&es_code, "    lda #$%02x\n", work_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            remember_runtime_import("divN");
+            emit(&es_code, "    jsr _divN\n");
+            emit_copy_fp_to_fp(lhs_tmp_offset, !strcmp(op, "/=") ? quo_offset : rem_offset, work_size);
+         }
       }
       else if (!strcmp(op, "<<=") || !strcmp(op, ">>=")) {
          helper = !strcmp(op, "<<=") ? "lslN" : (work_type && has_flag(type_name_from_node(work_type), "$signed") ? "asrN" : "lsrN");

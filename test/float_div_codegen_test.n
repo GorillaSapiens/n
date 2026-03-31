@@ -1,0 +1,14 @@
+// n65cc -I .
+// expectasm: jsr _fdivN
+// expectasm: sta arg1
+// expectasm: .import _fdivN
+
+include "machine_6502.n"
+
+float divf(float a, float b) {
+   return a / b;
+}
+
+void div_assignf(ref float a, float b) {
+   a /= b;
+}

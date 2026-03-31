@@ -1,0 +1,14 @@
+// n65cc -I .
+// expectasm: jsr _fmulN
+// expectasm: sta arg1
+// expectasm: .import _fmulN
+
+include "machine_6502.n"
+
+float mulf(float a, float b) {
+   return a * b;
+}
+
+void mul_assignf(ref float a, float b) {
+   a *= b;
+}
