@@ -189,6 +189,10 @@ static bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers);
 static void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment);
 static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
+static bool has_flag_prefix(const char *type, const char *prefix);
+static bool parse_float_layout_flag_text(const char *text, int *expbits_out, int *mbits_out);
+static bool type_is_float_like(const ASTNode *type);
+static int type_float_expbits(const ASTNode *type);
 static bool has_modifier(ASTNode *node, const char *modifier);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
 static const ASTNode *function_modifiers_node(const ASTNode *fn);
@@ -2338,6 +2342,111 @@ static bool has_flag(const char *type, const char *flag) {
       }
    }
    return false;
+}
+
+static bool has_flag_prefix(const char *type, const char *prefix) {
+   const ASTNode *node;
+   size_t prefix_len;
+
+   if (!type || !prefix) {
+      return false;
+   }
+
+   node = get_typename_node(type);
+   if (!node || node->count < 2 || is_empty(node->children[1])) {
+      return false;
+   }
+
+   prefix_len = strlen(prefix);
+   const ASTNode *flags = node->children[1];
+   for (int i = 0; i < flags->count; i++) {
+      const char *text;
+      if (!flags->children[i] || !flags->children[i]->strval) {
+         continue;
+      }
+      text = flags->children[i]->strval;
+      if (!strncmp(text, prefix, prefix_len)) {
+         return true;
+      }
+   }
+   return false;
+}
+
+static bool parse_float_layout_flag_text(const char *text, int *expbits_out, int *mbits_out) {
+   const char *p;
+   char *end;
+   long expbits;
+   long mbits;
+
+   if (!text || strncmp(text, "$float:", 7)) {
+      return false;
+   }
+
+   p = text + 7;
+   if (*p != 'S') {
+      return false;
+   }
+   p++;
+   if (*p != 'E') {
+      return false;
+   }
+   p++;
+
+   expbits = strtol(p, &end, 10);
+   if (end == p || expbits <= 0 || *end != 'M') {
+      return false;
+   }
+   p = end + 1;
+   mbits = strtol(p, &end, 10);
+   if (end == p || mbits < 0 || *end != '\0') {
+      return false;
+   }
+
+   if (expbits_out) {
+      *expbits_out = (int) expbits;
+   }
+   if (mbits_out) {
+      *mbits_out = (int) mbits;
+   }
+   return true;
+}
+
+static bool type_is_float_like(const ASTNode *type) {
+   const char *name = type_name_from_node(type);
+   return name && (has_flag(name, "$float") || has_flag_prefix(name, "$float:"));
+}
+
+static int type_float_expbits(const ASTNode *type) {
+   const ASTNode *node;
+   const ASTNode *flags;
+   int size;
+
+   if (!type) {
+      return -1;
+   }
+
+   node = get_typename_node(type_name_from_node(type));
+   if (!node || node->count < 2 || is_empty(node->children[1])) {
+      return -1;
+   }
+
+   flags = node->children[1];
+   for (int i = 0; i < flags->count; i++) {
+      int expbits;
+      if (!flags->children[i] || !flags->children[i]->strval) {
+         continue;
+      }
+      if (parse_float_layout_flag_text(flags->children[i]->strval, &expbits, NULL)) {
+         return expbits;
+      }
+   }
+
+   if (!type_is_float_like(type)) {
+      return -1;
+   }
+
+   size = type_size_from_node(type);
+   return default_float_expbits_for_size(size);
 }
 
 static bool has_modifier(ASTNode *node, const char *modifier) {
@@ -6836,7 +6945,7 @@ static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out) {
 
    target_is_pointer = (target_decl && declarator_pointer_depth(target_decl) > 0) ||
       !strcmp(type_name_from_node(target_type), "*");
-   target_is_float = has_flag(type_name_from_node(target_type), "$float");
+   target_is_float = type_is_float_like(target_type);
    target_is_signed = has_flag(type_name_from_node(target_type), "$signed");
 
    if (target_is_float) {
@@ -7247,15 +7356,20 @@ static bool encode_integer_initializer_value(long long value, unsigned char *buf
 
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type) {
    char tmp[256];
+   int expbits;
    if (!buf || size < 0 || !type) {
+      return false;
+   }
+   expbits = type_float_expbits(type);
+   if (expbits < 0) {
       return false;
    }
    snprintf(tmp, sizeof(tmp), "%la", value);
    if (has_flag(type_name_from_node(type), "$endian:big")) {
-      make_be_float(tmp, buf, size);
+      make_be_float_layout(tmp, buf, size, expbits);
    }
    else {
-      make_le_float(tmp, buf, size);
+      make_le_float_layout(tmp, buf, size, expbits);
    }
    return true;
 }
@@ -7558,7 +7672,7 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
       if (!eval_constant_initializer_expr((ASTNode *) uinit, &value)) {
          return false;
       }
-      if (value.kind == INIT_CONST_FLOAT || has_flag(type_name_from_node(type), "$float")) {
+      if (value.kind == INIT_CONST_FLOAT || type_is_float_like(type)) {
          if (value.kind != INIT_CONST_FLOAT && value.kind != INIT_CONST_INT) {
             return false;
          }
@@ -8937,6 +9051,11 @@ static void compile_type_decl_stmt(ASTNode *node) {
    int size = -1;
    bool haveEndian = false;
    const char *endian = NULL;
+   bool haveFloat = false;
+   bool haveFloatLayout = false;
+   int float_expbits = -1;
+   int float_mbits = -1;
+   const char *float_flag_text = NULL;
 
    // we need to guarantee a "size" and "endian"
    if (strcmp(node->children[1]->name, "empty")) {
@@ -8979,6 +9098,30 @@ static void compile_type_decl_stmt(ASTNode *node) {
 
             haveEndian = true;
          }
+
+         if (!strcmp(item->strval, "$float")) {
+            if (haveFloat) {
+               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
+                     node->file, node->line, node->column,
+                     node->children[0]->strval);
+            }
+            haveFloat = true;
+         }
+         else if (!strncmp(item->strval, "$float:", 7)) {
+            if (haveFloat) {
+               error("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
+                     node->file, node->line, node->column,
+                     node->children[0]->strval);
+            }
+            if (!parse_float_layout_flag_text(item->strval, &float_expbits, &float_mbits)) {
+               error("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
+                     node->file, node->line, node->column,
+                     node->children[0]->strval, item->strval);
+            }
+            haveFloat = true;
+            haveFloatLayout = true;
+            float_flag_text = item->strval;
+         }
       }
    }
 
@@ -8990,6 +9133,17 @@ static void compile_type_decl_stmt(ASTNode *node) {
    if (!haveEndian && size > 1) {
       error("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
             node->file, node->line, node->column, node->children[0]->strval);
+   }
+
+   if (haveFloatLayout) {
+      int total_bits = size * 8;
+      if (1 + float_expbits + float_mbits != total_bits) {
+         error("[%s:%d.%d] type_decl_stmt '%s' float layout '%s' does not match $size:%d",
+               node->file, node->line, node->column,
+               node->children[0]->strval,
+               float_flag_text ? float_flag_text : "$float",
+               size);
+      }
    }
 
    if (get_xray(XRAY_TYPEINFO)) {

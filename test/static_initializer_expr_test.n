@@ -14,7 +14,7 @@ type bool     { $size:1 };
 type void     { $size:0 };
 type *        { $size:2 $unsigned $endian:little };
 type uint24_t { $size:3 $unsigned $endian:little };
-type float_t  { $size:4 $float $endian:little };
+type float_t  { $size:4 $float:SE8M23 $endian:little }; // IEEE 754 binary32
 
 uint24_t sum := (2 + 3) * 4;
 bool less := 2 + 1 < 5;

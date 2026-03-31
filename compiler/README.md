@@ -27,7 +27,7 @@ type bool   { $size:1 };
 type *      { $size:2 $unsigned $endian:little };
 type s2     { $size:2 $signed   $endian:little };
 type u4     { $size:4 $unsigned $endian:little };
-type f4     { $size:4 $float    $endian:little };
+type f4     { $size:4 $float:SE8M23 $endian:little }; // IEEE 754 binary32
 ```
 
 ### Required type declarations
@@ -48,6 +48,7 @@ Recognized flags include:
 - `$signed`
 - `$unsigned`
 - `$float`
+- `$float:SExMy` ... explicit SEM float layout, for example `$float:SE8M23` for IEEE 754 binary32
 - `$endian:little`
 - `$endian:big`
 

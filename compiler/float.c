@@ -11,42 +11,15 @@
 static_assert(sizeof(double) == 8);
 static_assert(sizeof(unsigned long long) == 8);
 
-// TODO FIX later we can add variable length mantissa and exponent,
-// variable offset, and variable ordering.  for right now, you get
-// IEEE 754 based on size.
-
-typedef struct Bytes2EBits {
-   int bytes;
-   int ebits;
-} Bytes2EBits;
-
-// table containing default number of exponent bits for N byte float
-// TODO FIX: in the future, allow setting the ebits with a $flag
-static Bytes2EBits exponent_bits[] = {
-   {  1,  4 }, // proposed binary8
-   {  2,  5 }, // half / binary16
-   {  3,  7 }, // hypothetical binary24
-   {  4,  8 }, // single / float / binary32
-   {  5, 10 }, // matches some legacy x86 hardware
-   {  6, 12 }, // hypothetical binary48
-   {  7, 13 }, // hypothetical binary56
-   {  8, 11 }, // double / binary64
-
-   // TODO FIX more here!
-   { 16, 15 }, // quad / binary128
-   { 32, 19 }  // binary256
-};
-
-static int ebits(int size) {
-   for (size_t i = 0;
-        i < sizeof(exponent_bits) /
-            sizeof(exponent_bits[0]);
-        i++) {
-      if (exponent_bits[i].bytes == size) {
-         return exponent_bits[i].ebits;
-      }
+int default_float_expbits_for_size(int size) {
+   switch (size) {
+      case 1: return 4;  // FP8-style default (custom, not IEEE 754 interchange)
+      case 2: return 5;  // IEEE 754 binary16
+      case 4: return 8;  // IEEE 754 binary32
+      case 8: return 11; // IEEE 754 binary64
+      default:
+         return -1;
    }
-   return -1;
 }
 
 double parse_float(const char *p) {
@@ -66,11 +39,18 @@ double parse_float(const char *p) {
    return ret;
 }
 
-int make_le_float(const char *p, unsigned char *target, int size) {
+int make_le_float_layout(const char *p, unsigned char *target, int size, int expbits) {
+   int total_bits;
+   int mbits;
+   int bias;
 
-   int expbits = ebits(size);
-   if (expbits == -1) {
-      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__);
+   if (!target) {
+      return -1;
+   }
+
+   total_bits = size * 8;
+   if (size <= 0 || expbits <= 0 || 1 + expbits >= total_bits) {
+      error("[%s:%d] invalid float layout size=%d expbits=%d", __FILE__, __LINE__, size, expbits);
    }
 
    memset(target, 0, size);
@@ -79,41 +59,58 @@ int make_le_float(const char *p, unsigned char *target, int size) {
    // bit twiddling voodoo that only works for size <= sizeof(double)
 
    double value = parse_float(p);
-
    unsigned long long ivalue;
 
    // TODO FIX this may depend on host byte ordering
-
    ivalue = *((unsigned long long *) &value);
 
-   if (size != 8) {
-      unsigned long long mantissa = ivalue & ((1LL << 52) - 1);
-      unsigned long long exponent = (ivalue >> 52) & ((1LL << 11) - 1);
+   mbits = total_bits - 1 - expbits;
+   bias = (1 << (expbits - 1)) - 1;
+
+   if (size != 8 || expbits != 11) {
+      unsigned long long mantissa = ivalue & ((1ULL << 52) - 1ULL);
+      unsigned long long exponent = (ivalue >> 52) & ((1ULL << 11) - 1ULL);
       unsigned long long sign = ivalue >> 63;
 
-      int bias  = (1 << (expbits - 1)) - 1;
-      int mbits = (8 * size) - 1 - expbits;
-
-      mantissa >>= 52 - mbits;
+      if (mbits < 52) {
+         mantissa >>= (52 - mbits);
+      }
+      else if (mbits > 52) {
+         mantissa <<= (mbits - 52);
+      }
       exponent = exponent - 1023 + bias;
 
-      ivalue = (sign << (8 * size - 1)) | (exponent << mbits) | mantissa;
+      if (total_bits < 64) {
+         unsigned long long mask = (1ULL << total_bits) - 1ULL;
+         ivalue = ((sign << (total_bits - 1)) | (exponent << mbits) | mantissa) & mask;
+      }
+      else {
+         ivalue = (sign << (total_bits - 1)) | (exponent << mbits) | mantissa;
+      }
    }
 
    for (int i = 0; i < size; i++) {
-      target[i] = ivalue;
+      target[i] = (unsigned char) ivalue;
       ivalue >>= 8;
    }
 
    return 0;
 }
 
+int make_le_float(const char *p, unsigned char *target, int size) {
+   int expbits = default_float_expbits_for_size(size);
+   if (expbits < 0) {
+      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+   }
+   return make_le_float_layout(p, target, size, expbits);
+}
+
 void negate_le_float(unsigned char *target, int size) {
    target[size-1] |= 0x80;
 }
 
-int make_be_float(const char *p, unsigned char *target, int size) {
-   int ret = make_le_float(p, target, size);
+int make_be_float_layout(const char *p, unsigned char *target, int size, int expbits) {
+   int ret = make_le_float_layout(p, target, size, expbits);
    int tmp;
    for (int i = 0; i < size/2; i++) {
       tmp = target[i];
@@ -123,8 +120,15 @@ int make_be_float(const char *p, unsigned char *target, int size) {
    return ret;
 }
 
+int make_be_float(const char *p, unsigned char *target, int size) {
+   int expbits = default_float_expbits_for_size(size);
+   if (expbits < 0) {
+      error("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+   }
+   return make_be_float_layout(p, target, size, expbits);
+}
+
 void negate_be_float(unsigned char *target, int size) {
    (void) size; // unused parameter
    target[0] |= 0x80;
 }
-

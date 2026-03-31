@@ -45,3 +45,17 @@ For additional details, see the README.md files in the various subdirectories.
 Unless a subdirectory says otherwise, the toolchain sources and top-level build/test glue are licensed under GPL-3.0-or-later.
 The runtime libraries in `libraries/nlib/` and `libraries/nint/` are licensed under BSD-2-Clause so code linked into user binaries stays permissive.
 The exact license texts live in the repository root `LICENSE`/`COPYING` files and in the per-library `LICENSE` files.
+
+## Floating-point layout flags
+
+The compiler now accepts explicit float layout flags in type declarations with the form `$float:SExMy`, where the bit layout is always sign/exponent/mantissa from most-significant bit to least-significant bit.
+
+Examples:
+
+```n
+type half   { $size:2 $endian:little $float:SE5M10  }; // IEEE 754 binary16
+type float  { $size:4 $endian:little $float:SE8M23  }; // IEEE 754 binary32
+type double { $size:8 $endian:little $float:SE11M52 }; // IEEE 754 binary64
+```
+
+Bare `$float` still uses the compiler's default IEEE-style layout for the supported sizes.

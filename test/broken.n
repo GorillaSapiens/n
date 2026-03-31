@@ -14,9 +14,9 @@ type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
 type longlong { $size:4 $endian:little };
-type half     { $size:2 $endian:little $float };
-type float    { $size:4 $endian:little $float };
-type double   { $size:8 $endian:little $float };
+type half     { $size:2 $endian:little $float:SE5M10 };  // IEEE 754 binary16
+type float    { $size:4 $endian:little $float:SE8M23 };  // IEEE 754 binary32
+type double   { $size:8 $endian:little $float:SE11M52 }; // IEEE 754 binary64
 
 xform { // default xform has no name
    // canonical escapes
