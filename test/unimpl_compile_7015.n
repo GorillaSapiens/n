@@ -1,10 +1,10 @@
 // n65cc -I .
 // expectfail
-// expecterr: assignment target not compiled yet
+// expecterr: while condition not compiled yet
 include "machine_6502.n"
 int main(void) {
    int **pp;
-   int *p;
-   p[**pp] := 2;
+   while (**pp) {
+   }
    return 0;
 }

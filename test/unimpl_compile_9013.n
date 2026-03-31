@@ -1,0 +1,13 @@
+// n65cc -I .
+// expectfail
+// expecterr: overloaded compound assignment '+=' not compiled yet
+include "machine_6502.n"
+int operator+(int a, int b) {
+   return a;
+}
+int main(void) {
+   int **pp;
+   int x;
+   x += **pp;
+   return 0;
+}

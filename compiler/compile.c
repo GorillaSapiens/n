@@ -4322,7 +4322,9 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
          }
       }
       else {
-         return false;
+         error_user("[%s:%d.%d] cannot subscript non-pointer/non-array '%s'",
+               suffixes->file, suffixes->line, suffixes->column,
+               out->name ? out->name : "<unnamed>");
       }
       out->declarator = next_decl;
       out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
@@ -4337,7 +4339,9 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
       }
       if (!strcmp(suffixes->name, "->")) {
          if (declarator_pointer_depth(out->declarator) <= 0) {
-            return false;
+            error_user("[%s:%d.%d] cannot use '->' on non-pointer '%s'",
+                  suffixes->file, suffixes->line, suffixes->column,
+                  out->name ? out->name : "<unnamed>");
          }
          out->indirect = true;
          if (out->needs_runtime_address) {
@@ -4434,8 +4438,13 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       else {
          entry = NULL;
       }
-      if (!entry || declarator_pointer_depth(entry->declarator) <= 0) {
+      if (!entry) {
          return false;
+      }
+      if (declarator_pointer_depth(entry->declarator) <= 0) {
+         error_user("[%s:%d.%d] cannot dereference non-pointer '%s'",
+               base->file, base->line, base->column,
+               entry->name ? entry->name : inner->children[0]->strval);
       }
       out->name = entry->name ? entry->name : inner->children[0]->strval;
       out->type = entry->type;
@@ -7105,7 +7114,7 @@ static void compile_break_stmt(ASTNode *node, Context *ctx) {
       }
    }
    else if (!target) {
-      error_unimplemented("[%s:%d.%d] break used outside loop not compiled", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] break used outside loop", node->file, node->line, node->column);
       return;
    }
 
@@ -7124,7 +7133,7 @@ static void compile_continue_stmt(ASTNode *node, Context *ctx) {
       }
    }
    else if (!target) {
-      error_unimplemented("[%s:%d.%d] continue used outside loop not compiled", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] continue used outside loop", node->file, node->line, node->column);
       return;
    }
 

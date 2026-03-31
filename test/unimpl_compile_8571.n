@@ -1,0 +1,11 @@
+// n65cc -I .
+// expectfail
+// expecterr: switch expression not compiled yet
+include "machine_6502.n"
+int main(void) {
+   int **pp;
+   switch (**pp) {
+      default:
+         return 0;
+   }
+}

@@ -4,7 +4,6 @@
 include "machine_6502.n"
 int main(void) {
    int **pp;
-   int *p;
-   p[**pp] := 2;
+   **pp := 1;
    return 0;
 }
