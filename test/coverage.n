@@ -243,12 +243,14 @@ int function3(void) {
       return 1 + 2 - 3 * 4 / 5;
    }
 
-   int i;
-
-   for (i := 0; i < 10; i++) {
+   for (int i := 0; i < 10; i++) {
       if (i == 3) {
          continue;
       }
+   }
+
+   for (; a < 10; a++) {
+      break;
    }
 
    while_label:

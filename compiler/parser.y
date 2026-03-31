@@ -138,6 +138,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> flag
 %type <node> flag_list
 %type <node> for_stmt
+%type <node> for_init
 %type <node> goto_stmt
 %type <node> if_stmt
 %type <node> include_stmt
@@ -431,8 +432,14 @@ while_stmt:
     WHILE '(' expr ')' block                 { COVER; $$ = MAKE_NODE($3, $5); }
   ;
 
+for_init:
+    %empty                                   { COVER; $$ = make_empty_leaf(); }
+  | expr                                     { COVER; $$ = $1; }
+  | decl                                     { COVER; $$ = MAKE_NAMED_NODE("defdecl_stmt", $1); }
+  ;
+
 for_stmt:
-    FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' block { COVER; $$ = MAKE_NODE($3, $5, $7, $9); }
+    FOR '(' for_init ';' opt_expr ';' opt_expr ')' block { COVER; $$ = MAKE_NODE($3, $5, $7, $9); }
   ;
 
 do_stmt:

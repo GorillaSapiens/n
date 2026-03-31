@@ -269,6 +269,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx);
 static void compile_break_stmt(ASTNode *node, Context *ctx);
 static void compile_continue_stmt(ASTNode *node, Context *ctx);
 static void compile_do_stmt(ASTNode *node, Context *ctx);
+static void compile_local_decl_item(ASTNode *node, Context *ctx);
 static void compile_label_stmt(ASTNode *node, Context *ctx);
 static void compile_goto_stmt(ASTNode *node, Context *ctx);
 static void compile_switch_stmt(ASTNode *node, Context *ctx);
@@ -6948,7 +6949,15 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
       push_named_loop_labels(named_loop, end_label, step_label);
    }
    if (init && !is_empty(init)) {
-      compile_expr(init, ctx);
+      if (!strcmp(init->name, "defdecl_stmt")) {
+         ASTNode *list = init->children[0];
+         for (int i = 0; i < list->count; i++) {
+            compile_local_decl_item(list->children[i], ctx);
+         }
+      }
+      else {
+         compile_expr(init, ctx);
+      }
    }
 
    emit(&es_code, "%s:\n", start_label);
@@ -8095,6 +8104,12 @@ static void predeclare_statement_list(ASTNode *node, Context *ctx) {
          predeclare_statement_list(stmt->children[1], ctx);
       }
       else if (!strcmp(stmt->name, "for_stmt")) {
+         if (stmt->count > 0 && stmt->children[0] && !is_empty(stmt->children[0]) && !strcmp(stmt->children[0]->name, "defdecl_stmt")) {
+            ASTNode *list = stmt->children[0]->children[0];
+            for (int j = 0; j < list->count; j++) {
+               predeclare_local_decl_item(list->children[j], ctx);
+            }
+         }
          if (stmt->count > 3) {
             predeclare_statement_list(stmt->children[3], ctx);
          }
