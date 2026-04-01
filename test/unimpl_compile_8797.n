@@ -1,8 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: return expression not compiled yet
-include "machine_6502.n"
-int main(void) {
-   int **pp;
-   return **pp;
-}

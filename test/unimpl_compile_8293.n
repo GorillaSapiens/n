@@ -1,9 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: local initializer for 'port_expr' not compiled yet
-include "machine_6502.n"
-int main(void) {
-   int **pp;
-   ref int port_expr @ 16 := **pp;
-   return 0;
-}

@@ -93,7 +93,7 @@ typedef struct LValueRef {
    const char *read_expr;
    const char *write_expr;
    bool indirect;
-   bool base_is_deref;
+   int deref_depth;
    bool needs_runtime_address;
    int base_offset;
    int offset;
@@ -300,6 +300,7 @@ static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, cons
 static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const char *caller_sym, const char *callee_sym);
 static void emit_symbol_backed_call_graph_metadata(void);
 static void analyze_static_parameter_call_graph(void);
+static bool is_identifier_spelling(const char *s);
 static const char *expr_bare_identifier_name(ASTNode *expr);
 static bool declarator_is_function(const ASTNode *declarator);
 static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
@@ -4142,9 +4143,13 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
       if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
          return false;
       }
-      if (lv->base_is_deref || lv->is_ref) {
+      if (lv->deref_depth > 0 || lv->is_ref) {
+         int extra_derefs = lv->deref_depth;
          emit_load_ptr_from_symbol(0, sym, 0);
-         if (lv->base_is_deref && lv->is_ref) {
+         if (!lv->is_ref && extra_derefs > 0) {
+            extra_derefs--;
+         }
+         for (int i = 0; i < extra_derefs; i++) {
             emit_deref_ptr(0);
          }
       }
@@ -4153,9 +4158,13 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
       }
    }
    else {
-      if (lv->base_is_deref || lv->is_ref) {
+      if (lv->deref_depth > 0 || lv->is_ref) {
+         int extra_derefs = lv->deref_depth;
          emit_load_ptr_from_fpvar(0, lv->base_offset);
-         if (lv->base_is_deref && lv->is_ref) {
+         if (!lv->is_ref && extra_derefs > 0) {
+            extra_derefs--;
+         }
+         for (int i = 0; i < extra_derefs; i++) {
             emit_deref_ptr(0);
          }
       }
@@ -4370,9 +4379,88 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
    return true;
 }
 
+static ContextEntry *lookup_lvalue_entry(Context *ctx, const char *name, ContextEntry *scratch) {
+   ContextEntry *entry;
+   const ASTNode *g;
+
+   if (!name) {
+      return NULL;
+   }
+
+   entry = ctx_lookup(ctx, name);
+   if (entry) {
+      return entry;
+   }
+
+   g = global_decl_lookup(name);
+   if (g && g->count >= 3 && scratch && init_context_entry_from_global_decl(scratch, name, g)) {
+      return scratch;
+   }
+
+   return NULL;
+}
+
+static void init_lvalue_from_entry(LValueRef *out, const ContextEntry *entry, const char *fallback_name) {
+   out->name = entry->name ? entry->name : fallback_name;
+   out->type = entry->type;
+   out->declarator = entry->declarator;
+   out->base_type = entry->type;
+   out->base_declarator = entry->declarator;
+   out->is_static = entry->is_static;
+   out->is_zeropage = entry->is_zeropage;
+   out->is_global = entry->is_global;
+   out->is_ref = entry->is_ref;
+   out->is_absolute_ref = entry->is_absolute_ref;
+   out->read_expr = entry->read_expr;
+   out->write_expr = entry->write_expr;
+   out->base_offset = entry->offset;
+   out->offset = entry->offset;
+   out->size = entry->size;
+   out->deref_depth = 0;
+   out->indirect = entry->is_ref;
+}
+
+static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
+   ContextEntry scratch;
+   ContextEntry *entry;
+
+   if (!base || !out) {
+      return false;
+   }
+
+   if (!strcmp(base->name, "lvalue_base")) {
+      if (base->count == 0 || base->children[0]->kind != AST_IDENTIFIER) {
+         return false;
+      }
+      entry = lookup_lvalue_entry(ctx, base->children[0]->strval, &scratch);
+      if (!entry) {
+         return false;
+      }
+      init_lvalue_from_entry(out, entry, base->children[0]->strval);
+      return true;
+   }
+
+   if (!strcmp(base->name, "*") && base->count > 0) {
+      if (!resolve_lvalue_base(ctx, base->children[0], out)) {
+         return false;
+      }
+      if (declarator_pointer_depth(out->declarator) <= 0) {
+         error_user("[%s:%d.%d] cannot dereference non-pointer '%s'",
+               base->file, base->line, base->column,
+               out->name ? out->name : "<unnamed>");
+      }
+      out->declarator = declarator_after_deref(out->declarator);
+      out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
+      out->indirect = true;
+      out->deref_depth++;
+      return true;
+   }
+
+   return false;
+}
+
 static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
    ASTNode *base;
-   ContextEntry *entry;
 
    if (!node || strcmp(node->name, "lvalue") || node->count == 0 || !out) {
       return false;
@@ -4385,86 +4473,7 @@ static bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
       return false;
    }
 
-   if (!strcmp(base->name, "lvalue_base")) {
-      if (base->count == 0 || base->children[0]->kind != AST_IDENTIFIER) {
-         return false;
-      }
-      entry = ctx_lookup(ctx, base->children[0]->strval);
-      if (!entry) {
-         const ASTNode *g = global_decl_lookup(base->children[0]->strval);
-         if (g && g->count >= 3) {
-            static ContextEntry gtmp;
-            if (init_context_entry_from_global_decl(&gtmp, base->children[0]->strval, g)) {
-               entry = &gtmp;
-            }
-         }
-      }
-      if (!entry) {
-         return false;
-      }
-      out->name = entry->name ? entry->name : base->children[0]->strval;
-      out->type = entry->type;
-      out->declarator = entry->declarator;
-      out->base_type = entry->type;
-      out->base_declarator = entry->declarator;
-      out->is_static = entry->is_static;
-      out->is_zeropage = entry->is_zeropage;
-      out->is_global = entry->is_global;
-      out->is_ref = entry->is_ref;
-      out->is_absolute_ref = entry->is_absolute_ref;
-      out->read_expr = entry->read_expr;
-      out->write_expr = entry->write_expr;
-      out->base_offset = entry->offset;
-      out->offset = entry->offset;
-      out->size = entry->size;
-      if (entry->is_ref) {
-         out->indirect = true;
-      }
-   }
-   else if (!strcmp(base->name, "*") && base->count > 0) {
-      ASTNode *inner = base->children[0];
-      if (inner && !strcmp(inner->name, "lvalue_base") && inner->count > 0 && inner->children[0]->kind == AST_IDENTIFIER) {
-         entry = ctx_lookup(ctx, inner->children[0]->strval);
-         if (!entry) {
-            const ASTNode *g = global_decl_lookup(inner->children[0]->strval);
-            if (g && g->count >= 3) {
-               static ContextEntry gtmp;
-               if (init_context_entry_from_global_decl(&gtmp, inner->children[0]->strval, g)) {
-                  entry = &gtmp;
-               }
-            }
-         }
-      }
-      else {
-         entry = NULL;
-      }
-      if (!entry) {
-         return false;
-      }
-      if (declarator_pointer_depth(entry->declarator) <= 0) {
-         error_user("[%s:%d.%d] cannot dereference non-pointer '%s'",
-               base->file, base->line, base->column,
-               entry->name ? entry->name : inner->children[0]->strval);
-      }
-      out->name = entry->name ? entry->name : inner->children[0]->strval;
-      out->type = entry->type;
-      out->declarator = declarator_after_deref(entry->declarator);
-      out->base_type = entry->type;
-      out->base_declarator = out->declarator;
-      out->is_static = entry->is_static;
-      out->is_zeropage = entry->is_zeropage;
-      out->is_global = entry->is_global;
-      out->is_ref = entry->is_ref;
-      out->is_absolute_ref = entry->is_absolute_ref;
-      out->read_expr = entry->read_expr;
-      out->write_expr = entry->write_expr;
-      out->indirect = true;
-      out->base_is_deref = true;
-      out->base_offset = entry->offset;
-      out->offset = entry->offset;
-      out->size = out->declarator ? declarator_storage_size(entry->type, out->declarator) : get_size(type_name_from_node(entry->type));
-   }
-   else {
+   if (!resolve_lvalue_base(ctx, base, out)) {
       return false;
    }
 
@@ -4982,6 +4991,10 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       const char *callee_name = expr_bare_identifier_name(callee);
       if (callee_name) {
          fn = resolve_function_call_target(callee_name, args, ctx);
+         if (!fn && is_identifier_spelling(callee_name) && !ctx_lookup(ctx, callee_name) && !global_decl_lookup(callee_name)) {
+            error_user("[%s:%d.%d] call target '%s' has no visible signature; declare it in this translation unit or with extern",
+                  expr->file, expr->line, expr->column, callee_name);
+         }
       }
    }
 
@@ -5157,6 +5170,23 @@ fail:
       emit(&es_code, "    jsr _popN\n");
    }
    return false;
+}
+
+static bool is_identifier_spelling(const char *s) {
+   int i;
+
+   if (!s || !*s) {
+      return false;
+   }
+   if (!((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z') || s[0] == '_')) {
+      return false;
+   }
+   for (i = 1; s[i]; i++) {
+      if (!((s[i] >= 'A' && s[i] <= 'Z') || (s[i] >= 'a' && s[i] <= 'z') || (s[i] >= '0' && s[i] <= '9') || s[i] == '_')) {
+         return false;
+      }
+   }
+   return true;
 }
 
 static const char *expr_bare_identifier_name(ASTNode *expr) {
@@ -6971,7 +7001,7 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
    ASTNode *else_block = (node->count > 2) ? node->children[2] : NULL;
 
    if (!compile_condition_branch_false(cond, ctx, false_label)) {
-      error_unimplemented("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
       free((void *) false_label);
       free((void *) end_label);
       return;
@@ -7012,7 +7042,7 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    }
    emit(&es_code, "%s:\n", start_label);
    if (!compile_condition_branch_false(cond, ctx, end_label)) {
-      error_unimplemented("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
       pop_loop_labels();
       if (named_loop) {
          pop_named_loop_labels();
@@ -7071,7 +7101,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "%s:\n", start_label);
    if (cond && !is_empty(cond)) {
       if (!compile_condition_branch_false(cond, ctx, end_label)) {
-         error_unimplemented("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
+         error_unreachable("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
          pop_loop_labels();
          if (named_loop) {
             pop_named_loop_labels();
@@ -8290,7 +8320,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          return;
       }
       {
@@ -8328,7 +8358,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             }
          }
          else if (!compile_expr_to_slot(expression, ctx, entry)) {
-            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
          }
       }
       return;
@@ -8415,7 +8445,7 @@ static void compile_do_stmt(ASTNode *node, Context *ctx) {
    compile_statement_list(node->children[0], ctx);
    emit(&es_code, "%s:\n", cond_label);
    if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
-      error_unimplemented("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
@@ -8568,7 +8598,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       if (ctx) {
          ctx->locals = saved_locals;
       }
-      error_unimplemented("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
       emit(&es_code, "    sta arg0\n");
@@ -8794,7 +8824,7 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    }
 
    if (!compile_expr_to_return_slot(expr, ctx, ret)) {
-      error_unimplemented("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp @fini\n");
 }
@@ -8808,7 +8838,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
 
    if (!strcmp(node->name, "()")) {
       if (!compile_call_expr_to_slot(node, ctx, NULL)) {
-         error_unimplemented("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
+         error_unreachable("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
       }
       return;
    }
@@ -8828,7 +8858,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       emit(&es_code, "    lda #$%02x\n", size & 0xff);
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _popN\n");
-         error_unimplemented("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+         error_unreachable("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
          return;
       }
       remember_runtime_import("popN");
@@ -8844,7 +8874,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    const char *op = node->children[0] ? node->children[0]->strval : NULL;
    ASTNode *rhs = node->children[2];
    if (!resolve_lvalue(ctx, node->children[1], &lv)) {
-      error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+      error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
       return;
    }
    dst_store = (ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .is_absolute_ref = lv.is_absolute_ref, .read_expr = lv.read_expr, .write_expr = lv.write_expr, .offset = lv.offset, .size = lv.size };
@@ -8901,7 +8931,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          remember_runtime_import("popN");
@@ -9010,7 +9040,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_unreachable("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
             return;
          }
 
@@ -9208,7 +9238,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+            error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_fp_convert(lhs_tmp_offset, work_size, work_type, lhs_tmp_offset, lhs_src_size, dst->type);
@@ -9222,7 +9252,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
          return;
       }
 

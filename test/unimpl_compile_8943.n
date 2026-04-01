@@ -1,10 +1,9 @@
 // n65cc -I .
 // expectfail
-// expecterr: if condition not compiled yet
+// expecterr: assignment value not compiled yet
 include "machine_6502.n"
 int main(void) {
-   int **pp;
-   if (**pp) {
-   }
+   int x;
+   x := { 1 };
    return 0;
 }
