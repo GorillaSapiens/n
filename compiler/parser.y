@@ -29,6 +29,13 @@ ASTNode *append_decl_items(ASTNode *parent, ASTNode *fieldlist) {
    return parent;
 }
 
+static ASTNode *append_decl_bitfield(ASTNode *declarator, ASTNode *bitfield) {
+   if (!bitfield || is_empty(bitfield)) {
+      return declarator;
+   }
+   return append_child(declarator, bitfield);
+}
+
 static ASTNode *make_decl_addr_term(char *tok) {
    if (!strcmp(tok, "none")) {
       return make_empty_leaf();
@@ -178,6 +185,7 @@ static ASTNode *make_decl_addr_term(char *tok) {
 %type <node> named_expr
 %type <node> nonnum_primary_expr
 %type <node> num_primary_expr
+%type <node> opt_bitfield_width
 %type <node> opt_expr
 %type <node> opt_flags
 %type <node> opt_identifier
@@ -356,12 +364,19 @@ decl_item:
   | decl_subitem ASSIGN initializer                  { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
+opt_bitfield_width:
+    %empty                                   { COVER; $$ = make_empty_leaf(); }
+  | ':' INTEGER                              { COVER; $$ = MAKE_NAMED_NODE("bitfield_width", make_integer_leaf($2)); }
+  ;
+
 decl_subitem:
-    declarator                               { COVER; $$ = $1; }
-  | declarator '@' INTEGER                   { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", make_integer_leaf($3), make_integer_leaf($3))); }
-  | declarator '@' IDENTIFIER                { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", make_identifier_leaf($3), make_identifier_leaf($3))); }
-  | declarator '@' '[' decl_addr_term '/' decl_addr_term ']'
-                                             { COVER; $$ = MAKE_NODE($1, MAKE_NAMED_NODE("rw_addr_spec", $4, $6)); }
+    declarator opt_bitfield_width            { COVER; $$ = append_decl_bitfield($1, $2); }
+  | declarator opt_bitfield_width '@' INTEGER
+                                             { COVER; $$ = MAKE_NODE(append_decl_bitfield($1, $2), MAKE_NAMED_NODE("rw_addr_spec", make_integer_leaf($4), make_integer_leaf($4))); }
+  | declarator opt_bitfield_width '@' IDENTIFIER
+                                             { COVER; $$ = MAKE_NODE(append_decl_bitfield($1, $2), MAKE_NAMED_NODE("rw_addr_spec", make_identifier_leaf($4), make_identifier_leaf($4))); }
+  | declarator opt_bitfield_width '@' '[' decl_addr_term '/' decl_addr_term ']'
+                                             { COVER; $$ = MAKE_NODE(append_decl_bitfield($1, $2), MAKE_NAMED_NODE("rw_addr_spec", $5, $7)); }
   ;
 
 

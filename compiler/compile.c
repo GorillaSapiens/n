@@ -99,7 +99,21 @@ typedef struct LValueRef {
    int offset;
    int size;
    int ptr_adjust;
+   bool is_bitfield;
+   int bit_offset;
+   int bit_width;
+   int bit_storage_size;
 } LValueRef;
+
+typedef struct AggregateMemberInfo {
+   const ASTNode *type;
+   const ASTNode *declarator;
+   int byte_offset;
+   int bit_offset;
+   int bit_width;
+   int storage_size;
+   bool is_bitfield;
+} AggregateMemberInfo;
 
 typedef struct Context {
    const char *name;
@@ -310,6 +324,11 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
 static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
 static int constant_shift_width_bits(ASTNode *expr);
+static const ASTNode *declarator_bitfield_node(const ASTNode *declarator);
+static int declarator_bitfield_width(const ASTNode *declarator);
+static bool find_aggregate_member_info(const ASTNode *type, const char *member, AggregateMemberInfo *out);
+static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
+static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
 static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits);
 static long long arithmetic_right_shift_ll(long long value, unsigned int count);
 static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type);
@@ -3467,6 +3486,35 @@ static const char *declarator_name(const ASTNode *declarator) {
    return name->strval;
 }
 
+static const ASTNode *declarator_bitfield_node(const ASTNode *declarator) {
+   const ASTNode *value_decl = declarator_value_declarator(declarator);
+   int start;
+
+   if (!value_decl) {
+      return NULL;
+   }
+
+   start = declarator_suffix_start_index(value_decl);
+   for (int i = start; i < value_decl->count; i++) {
+      const ASTNode *child = value_decl->children[i];
+      if (child && !strcmp(child->name, "bitfield_width")) {
+         return child;
+      }
+   }
+
+   return NULL;
+}
+
+static int declarator_bitfield_width(const ASTNode *declarator) {
+   const ASTNode *node = declarator_bitfield_node(declarator);
+
+   if (!node || node->count <= 0 || !node->children[0] || !node->children[0]->strval) {
+      return 0;
+   }
+
+   return atoi(node->children[0]->strval);
+}
+
 static int declarator_suffix_start_index(const ASTNode *declarator) {
    const ASTNode *nested = declarator_nested(declarator);
    const ASTNode *name = declarator_name_node(declarator);
@@ -3720,11 +3768,12 @@ static const ASTNode *declarator_after_deref(const ASTNode *declarator) {
    return clone_declarator_variant(value_decl, ptr_depth - 1, declarator_suffix_start_index(value_decl));
 }
 
-static bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
+static bool find_aggregate_member_info(const ASTNode *type, const char *member, AggregateMemberInfo *out) {
    const ASTNode *agg;
-   int offset = 0;
+   int bit_cursor = 0;
    bool is_union = false;
-   if (!type || !type_name_from_node(type)) {
+
+   if (!type || !type_name_from_node(type) || !member) {
       return false;
    }
    agg = get_typename_node(type_name_from_node(type));
@@ -3738,6 +3787,10 @@ static bool find_aggregate_member(const ASTNode *type, const char *member, const
       const ASTNode *fdecl;
       const char *fname;
       int fsize;
+      int bit_width;
+      int byte_offset;
+      int bit_offset;
+      int storage_size;
       if (!field || field->count < 3) {
          continue;
       }
@@ -3748,17 +3801,56 @@ static bool find_aggregate_member(const ASTNode *type, const char *member, const
          continue;
       }
       fsize = declarator_storage_size(ftype, fdecl);
+      bit_width = declarator_bitfield_width(fdecl);
+      if (is_union) {
+         byte_offset = 0;
+         bit_offset = 0;
+      }
+      else if (bit_width > 0) {
+         byte_offset = bit_cursor / 8;
+         bit_offset = bit_cursor % 8;
+      }
+      else {
+         if (bit_cursor % 8) {
+            bit_cursor = ((bit_cursor + 7) / 8) * 8;
+         }
+         byte_offset = bit_cursor / 8;
+         bit_offset = 0;
+      }
+      storage_size = bit_width > 0 ? ((bit_offset + bit_width + 7) / 8) : fsize;
       if (!strcmp(fname, member)) {
-         if (member_type) *member_type = ftype;
-         if (member_declarator) *member_declarator = fdecl;
-         if (member_offset) *member_offset = is_union ? 0 : offset;
+         if (out) {
+            out->type = ftype;
+            out->declarator = fdecl;
+            out->byte_offset = byte_offset;
+            out->bit_offset = bit_offset;
+            out->bit_width = bit_width;
+            out->storage_size = storage_size;
+            out->is_bitfield = bit_width > 0;
+         }
          return true;
       }
       if (!is_union) {
-         offset += fsize;
+         if (bit_width > 0) {
+            bit_cursor += bit_width;
+         }
+         else {
+            bit_cursor += fsize * 8;
+         }
       }
    }
    return false;
+}
+
+static bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
+   AggregateMemberInfo info = {0};
+   if (!find_aggregate_member_info(type, member, &info)) {
+      return false;
+   }
+   if (member_type) *member_type = info.type;
+   if (member_declarator) *member_declarator = info.declarator;
+   if (member_offset) *member_offset = info.byte_offset;
+   return true;
 }
 
 static void emit_load_ptr_from_fpvar(int ptrno, int src_offset) {
@@ -4052,9 +4144,7 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
       return true;
    }
    if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
-      const ASTNode *member_type = NULL;
-      const ASTNode *member_decl = NULL;
-      int member_offset = 0;
+      AggregateMemberInfo info = {0};
 
       if (!strcmp(suffixes->name, "->")) {
          if (declarator_pointer_depth(*decl_io) <= 0) {
@@ -4062,12 +4152,12 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
          }
          emit_deref_ptr(0);
       }
-      if (!find_aggregate_member(*type_io, suffixes->children[1]->strval, &member_type, &member_decl, &member_offset)) {
+      if (!find_aggregate_member_info(*type_io, suffixes->children[1]->strval, &info)) {
          return false;
       }
-      emit_add_immediate_to_ptr(0, member_offset);
-      *type_io = member_type;
-      *decl_io = member_decl;
+      emit_add_immediate_to_ptr(0, info.byte_offset);
+      *type_io = info.type;
+      *decl_io = info.declarator;
       return true;
    }
    return true;
@@ -4081,6 +4171,9 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
    const char *abs_expr = NULL;
 
    if (!lv) {
+      return false;
+   }
+   if (mode == LVALUE_ACCESS_ADDRESS && lv->is_bitfield) {
       return false;
    }
 
@@ -4186,6 +4279,174 @@ static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAcc
    return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
 }
 
+static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
+   int copy_size = size < src->size ? size : src->size;
+   bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
+   int saved_locals = ctx ? ctx->locals : 0;
+   int protected_locals = saved_locals;
+   int ptr_save_offset;
+   bool is_signed;
+
+   if (copy_size <= 0) {
+      return true;
+   }
+   if (dst_offset + copy_size > protected_locals) {
+      protected_locals = dst_offset + copy_size;
+   }
+   ptr_save_offset = protected_locals;
+   if (ctx) {
+      ctx->locals = protected_locals;
+   }
+   if (!emit_prepare_lvalue_ptr(ctx, src, LVALUE_ACCESS_READ)) {
+      if (ctx) {
+         ctx->locals = saved_locals;
+      }
+      return false;
+   }
+   if (!dst_direct) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$02\n");
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
+      if (ctx) {
+         ctx->locals = protected_locals + get_size("*");
+      }
+      emit_prepare_fp_ptr(1, dst_offset);
+      emit_load_ptr_from_fpvar(0, ptr_save_offset);
+      if (ctx) {
+         ctx->locals = protected_locals;
+      }
+   }
+   for (int i = 0; i < copy_size; i++) {
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
+      emit(&es_code, "    lda #$00\n");
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+   }
+   for (int bit = 0; bit < src->bit_width; bit++) {
+      int src_byte = (src->bit_offset + bit) / 8;
+      int src_mask = 1 << ((src->bit_offset + bit) % 8);
+      int dst_byte = bit / 8;
+      int dst_mask = 1 << (bit % 8);
+      const char *skip_label = next_label("bitfield_load_skip");
+      emit(&es_code, "    ldy #%d\n", src_byte);
+      emit(&es_code, "    lda (ptr0),y\n");
+      emit(&es_code, "    and #$%02x\n", src_mask & 0xff);
+      emit(&es_code, "    beq %s\n", skip_label);
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + dst_byte) : dst_byte);
+      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    ora #$%02x\n", dst_mask & 0xff);
+      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "%s:\n", skip_label);
+   }
+   is_signed = src->type && has_flag(type_name_from_node(src->type), "$signed");
+   if (is_signed && src->bit_width > 0 && src->bit_width < copy_size * 8) {
+      int sign_byte = (src->bit_width - 1) / 8;
+      int sign_mask = 1 << ((src->bit_width - 1) % 8);
+      int rem = src->bit_width % 8;
+      const char *skip_label = next_label("bitfield_signext_skip");
+      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + sign_byte) : sign_byte);
+      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    and #$%02x\n", sign_mask & 0xff);
+      emit(&es_code, "    beq %s\n", skip_label);
+      if (rem != 0) {
+         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + sign_byte) : sign_byte);
+         emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+         emit(&es_code, "    ora #$%02x\n", ((0xff << rem) & 0xff));
+         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      }
+      for (int i = sign_byte + 1; i < copy_size; i++) {
+         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
+         emit(&es_code, "    lda #$ff\n");
+         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      }
+      emit(&es_code, "%s:\n", skip_label);
+   }
+   if (!dst_direct) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$02\n");
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   if (ctx) {
+      ctx->locals = saved_locals;
+   }
+   return true;
+}
+
+static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
+   int copy_size = size < dst->size ? size : dst->size;
+   bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
+   int saved_locals = ctx ? ctx->locals : 0;
+   int protected_locals = saved_locals;
+   int ptr_save_offset;
+
+   if (copy_size <= 0) {
+      return true;
+   }
+   if (src_offset + copy_size > protected_locals) {
+      protected_locals = src_offset + copy_size;
+   }
+   ptr_save_offset = protected_locals;
+   if (ctx) {
+      ctx->locals = protected_locals;
+   }
+   if (!emit_prepare_lvalue_ptr(ctx, dst, LVALUE_ACCESS_WRITE)) {
+      if (ctx) {
+         ctx->locals = saved_locals;
+      }
+      return false;
+   }
+   if (!src_direct) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$02\n");
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
+      if (ctx) {
+         ctx->locals = protected_locals + get_size("*");
+      }
+      emit_prepare_fp_ptr(1, src_offset);
+      emit_load_ptr_from_fpvar(0, ptr_save_offset);
+      if (ctx) {
+         ctx->locals = protected_locals;
+      }
+   }
+   for (int bit = 0; bit < dst->bit_width; bit++) {
+      int dst_byte = (dst->bit_offset + bit) / 8;
+      int dst_mask = 1 << ((dst->bit_offset + bit) % 8);
+      int src_byte = bit / 8;
+      int src_mask = 1 << (bit % 8);
+      const char *clear_label = next_label("bitfield_store_clear");
+      const char *done_label = next_label("bitfield_store_done");
+      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + src_byte) : src_byte);
+      emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    and #$%02x\n", src_mask & 0xff);
+      emit(&es_code, "    beq %s\n", clear_label);
+      emit(&es_code, "    ldy #%d\n", dst_byte);
+      emit(&es_code, "    lda (ptr0),y\n");
+      emit(&es_code, "    ora #$%02x\n", dst_mask & 0xff);
+      emit(&es_code, "    sta (ptr0),y\n");
+      emit(&es_code, "    jmp %s\n", done_label);
+      emit(&es_code, "%s:\n", clear_label);
+      emit(&es_code, "    ldy #%d\n", dst_byte);
+      emit(&es_code, "    lda (ptr0),y\n");
+      emit(&es_code, "    and #$%02x\n", (0xff ^ dst_mask) & 0xff);
+      emit(&es_code, "    sta (ptr0),y\n");
+      emit(&es_code, "%s:\n", done_label);
+   }
+   if (!src_direct) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$02\n");
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   if (ctx) {
+      ctx->locals = saved_locals;
+   }
+   return true;
+}
+
 static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
    int copy_size = size < src->size ? size : src->size;
    bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
@@ -4193,6 +4454,9 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
    int protected_locals = saved_locals;
    int ptr_save_offset;
 
+   if (src && src->is_bitfield) {
+      return emit_copy_bitfield_lvalue_to_fp(ctx, dst_offset, src, size);
+   }
    if (copy_size <= 0) {
       return true;
    }
@@ -4249,6 +4513,9 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
    int protected_locals = saved_locals;
    int ptr_save_offset;
 
+   if (dst && dst->is_bitfield) {
+      return emit_copy_fp_to_bitfield_lvalue(ctx, dst, src_offset, size);
+   }
    if (copy_size <= 0) {
       return true;
    }
@@ -4347,13 +4614,15 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
       }
       out->declarator = next_decl;
       out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
+      out->is_bitfield = false;
+      out->bit_offset = 0;
+      out->bit_width = 0;
+      out->bit_storage_size = 0;
       return true;
    }
    if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
-      const ASTNode *member_type = NULL;
-      const ASTNode *member_decl = NULL;
-      int member_offset = 0;
-      if (!find_aggregate_member(out->type, suffixes->children[1]->strval, &member_type, &member_decl, &member_offset)) {
+      AggregateMemberInfo info = {0};
+      if (!find_aggregate_member_info(out->type, suffixes->children[1]->strval, &info)) {
          return false;
       }
       if (!strcmp(suffixes->name, "->")) {
@@ -4363,32 +4632,29 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
                   out->name ? out->name : "<unnamed>");
          }
          out->indirect = true;
-         if (out->needs_runtime_address) {
-            ;
-         }
-         else {
-            out->ptr_adjust += member_offset;
+         if (!out->needs_runtime_address) {
+            out->ptr_adjust += info.byte_offset;
          }
       }
       else if (out->indirect) {
-         if (out->needs_runtime_address) {
-            ;
-         }
-         else {
-            out->ptr_adjust += member_offset;
+         if (!out->needs_runtime_address) {
+            out->ptr_adjust += info.byte_offset;
          }
       }
       else {
-         out->offset += member_offset;
+         out->offset += info.byte_offset;
       }
-      out->type = member_type;
-      out->declarator = member_decl;
-      out->size = declarator_storage_size(member_type, member_decl);
+      out->type = info.type;
+      out->declarator = info.declarator;
+      out->size = declarator_storage_size(info.type, info.declarator);
+      out->is_bitfield = info.is_bitfield;
+      out->bit_offset = info.bit_offset;
+      out->bit_width = info.bit_width;
+      out->bit_storage_size = info.storage_size;
       return true;
    }
    return true;
 }
-
 static ContextEntry *lookup_lvalue_entry(Context *ctx, const char *name, ContextEntry *scratch) {
    ContextEntry *entry;
    const ASTNode *g;
@@ -8978,7 +9244,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    }
 
    if (!op || !strcmp(op, ":=")) {
-      if (!lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
+      if (!lv.is_bitfield && !lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
             error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
@@ -8991,7 +9257,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_copy_fp_to_symbol_offset(sym, lv.offset, ctx->locals, dst->size);
          return;
       }
-      if (lv.indirect || lv.needs_runtime_address || lv.is_absolute_ref) {
+      if (lv.is_bitfield || lv.indirect || lv.needs_runtime_address || lv.is_absolute_ref) {
          int tmp_size = dst->size > 0 ? dst->size : expr_value_size(rhs, ctx);
          if (tmp_size <= 0) {
             tmp_size = 1;
@@ -9127,7 +9393,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             return;
          }
 
-         if (!lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
+         if (!lv.is_bitfield && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
             char sym[256];
             if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
                remember_runtime_import("popN");
@@ -9154,7 +9420,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit_copy_fp_to_symbol_offset(sym, lv.offset, tmp.offset, dst_size);
             }
          }
-         else if (lv.indirect || lv.needs_runtime_address) {
+         else if (lv.is_bitfield || lv.indirect || lv.needs_runtime_address) {
             if (dst_size != rsize || dst->type != rtype) {
                int store_offset = ctx->locals + rsize;
                remember_runtime_import("pushN");
@@ -9202,7 +9468,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
        !strcmp(op, "^=") || !strcmp(op, "*=") || !strcmp(op, "/=") || !strcmp(op, "%=") ||
        !strcmp(op, "<<=") || !strcmp(op, ">>=")) {
       char dst_sym[256];
-      bool dst_symbol = !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
+      bool dst_symbol = !lv.is_bitfield && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global) && entry_symbol_name(ctx, dst, dst_sym, sizeof(dst_sym));
       bool scaled_pointer_assign = dst->declarator && declarator_pointer_depth(dst->declarator) > 0 && (!strcmp(op, "+=") || !strcmp(op, "-="));
       const ASTNode *rhs_type = expr_value_type(rhs, ctx);
       const ASTNode *work_type = NULL;
@@ -9298,7 +9564,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          tmp_total += work_size * 2;
       }
 
-      need_store_tmp = dst_symbol || lv.indirect || lv.needs_runtime_address;
+      need_store_tmp = dst_symbol || lv.is_bitfield || lv.indirect || lv.needs_runtime_address;
       if (need_store_tmp) {
          store_offset = ctx->locals + tmp_total;
          tmp_total += dst->size;
@@ -9314,7 +9580,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       if (dst_symbol) {
          emit_copy_symbol_to_fp_convert_offset(lhs_tmp_offset, work_size, work_type, dst_sym, lv.offset, dst->size, dst->type);
       }
-      else if (lv.indirect || lv.needs_runtime_address) {
+      else if (lv.is_bitfield || lv.indirect || lv.needs_runtime_address) {
          int lhs_src_size = dst->size < work_size ? dst->size : work_size;
          if (!emit_copy_lvalue_to_fp(ctx, lhs_tmp_offset, &lv, lhs_src_size)) {
             remember_runtime_import("popN");
@@ -10336,17 +10602,18 @@ static void calculate_struct_union_sizes(ASTNode *program) {
             ASTNode *node = program->children[i];
             const char *name = node->children[0]->strval;
             int size = 0;
+            int bit_cursor = 0;
 
             if (!pair_exists(typesizes, name)) {
-               // we need it
-               int othersize;
-
-               for (int i = 1; i < node->count; i++) {
-                  ASTNode *item = node->children[i];
-                  const char *tname = item->children[1]->strval;
+               for (int j = 1; j < node->count; j++) {
+                  ASTNode *item = node->children[j];
+                  const ASTNode *type = item->children[1];
+                  const char *tname = type->strval;
                   const ASTNode *decl = item->children[2];
                   int mult = declarator_array_multiplier(decl);
                   bool isptr = declarator_pointer_depth(decl) > 0 || declarator_function_pointer_depth(decl) > 0;
+                  int bit_width = declarator_bitfield_width(decl);
+                  int othersize;
 
                   if (isptr) {
                      othersize = sizeof_ptr;
@@ -10362,8 +10629,53 @@ static void calculate_struct_union_sizes(ASTNode *program) {
                      size = -1;
                      break;
                   }
+
+                  if (bit_width > 0) {
+                     if (declarator_pointer_depth(decl) > 0 || declarator_function_pointer_depth(decl) > 0 || declarator_array_count(decl) > 0) {
+                        error_user("[%s:%d.%d] bitfield '%s' must be a plain scalar field",
+                              decl->file, decl->line, decl->column,
+                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>");
+                     }
+                     if (has_flag(tname, "$float") || has_flag_prefix(tname, "$float:")) {
+                        error_user("[%s:%d.%d] bitfield '%s' cannot use floating type '%s'",
+                              decl->file, decl->line, decl->column,
+                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
+                              tname);
+                     }
+                     if (has_flag(tname, "$endian:big")) {
+                        error_user("[%s:%d.%d] bitfield '%s' does not support big-endian type '%s'",
+                              decl->file, decl->line, decl->column,
+                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
+                              tname);
+                     }
+                     if (bit_width <= 0 || bit_width > othersize * 8) {
+                        error_user("[%s:%d.%d] bitfield '%s' width %d exceeds storage of '%s' (%d bits)",
+                              decl->file, decl->line, decl->column,
+                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
+                              bit_width, tname, othersize * 8);
+                     }
+                     if (mult != 1) {
+                        error_user("[%s:%d.%d] bitfield '%s' cannot be an array",
+                              decl->file, decl->line, decl->column,
+                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>");
+                     }
+                     if (is_struct) {
+                        bit_cursor += bit_width;
+                        size = (bit_cursor + 7) / 8;
+                     }
+                     else {
+                        int field_size = (bit_width + 7) / 8;
+                        if (field_size > size) {
+                           size = field_size;
+                        }
+                     }
+                  }
                   else if (is_struct) {
-                     size += othersize * mult;
+                     if (bit_cursor % 8) {
+                        bit_cursor = ((bit_cursor + 7) / 8) * 8;
+                     }
+                     bit_cursor += othersize * mult * 8;
+                     size = bit_cursor / 8;
                   }
                   else if (is_union) {
                      if (othersize * mult > size) {

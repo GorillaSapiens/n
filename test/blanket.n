@@ -6,6 +6,8 @@ include "machine_6502.n"
 include "map_ascii.n"
 include "map_cp437.n"
 
+struct coverbits { long mantissa:23; long exponent:8; long sign:1; };
+
 mem nulspace { };
 
 struct node {

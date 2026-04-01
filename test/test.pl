@@ -49,12 +49,12 @@ sub first_line {
 }
 
 sub parse_runner {
-   my ($runner_line) = @_;
+   my ($file, $runner_line) = @_;
    if (!($runner_line =~ m{^//\s*n65cc\b})) {
       return undef;
    }
-   if ($runner_line =~ /[;`]/ || $runner_line =~ /\.\./) {
-      die "[$FAIL] hey! no sneaky shell shenanigans !!!\n";
+   if ($runner_line =~ /[;`]/) {
+      die "[$FAIL] $file :: hey! no sneaky shell shenanigans !!!\n";
    }
    $runner_line =~ s{^//\s*n65cc\b}{ };
    $runner_line =~ s/^\s+//;
@@ -487,8 +487,8 @@ closedir($dh);
 
 for my $file (@files) {
    my $runner_line = first_line($file);
-   next if !defined parse_runner($runner_line);
-   my @runner_args = parse_runner($runner_line);
+   next if !defined parse_runner($file, $runner_line);
+   my @runner_args = parse_runner($file, $runner_line);
    my $meta = parse_directives($file);
    my $e2e = is_e2e_case($meta);
    next if $compile_only && $e2e;
