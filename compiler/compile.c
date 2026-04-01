@@ -5311,7 +5311,19 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
    if (expr->kind == AST_FLOAT) {
       unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-      if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+      int expbits = type_is_float_like(dst->type) ? type_float_expbits(dst->type) : -1;
+      if (!bytes) {
+         error_unreachable("out of memory");
+      }
+      if (expbits >= 0) {
+         if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+            make_be_float_layout(expr->strval, bytes, dst->size, expbits);
+         }
+         else {
+            make_le_float_layout(expr->strval, bytes, dst->size, expbits);
+         }
+      }
+      else if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
          make_be_float(expr->strval, bytes, dst->size);
       }
       else {
