@@ -248,4 +248,7 @@ class mos6502
       uint8_t GetResetA();
       uint8_t GetResetX();
       uint8_t GetResetY();
+
+      static const char *GetAddr(uint8_t op) { return InstrTable[op].saddr; }
+      static const char *GetCode(uint8_t op) { return InstrTable[op].scode; }
 };

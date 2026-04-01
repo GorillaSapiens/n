@@ -2,9 +2,15 @@ LEX = flex
 YACC = bison
 CC = g++
 CFLAGS = -Wall -Wextra -pedantic -MMD -MP
-CFLAGS += -g # for debugging
-#CFLAGS += -DYYDEBUG # for yacc debugging
-#CFLAGS += -O2 # for obtimization
+
+# for debugging
+CFLAGS += -g
+
+# enable illegal opcodes
+CFLAGS += -DILLEGAL_OPCODES
+
+# for optimization
+#CFLAGS += -O2
 
 TARGET = n65sim
 

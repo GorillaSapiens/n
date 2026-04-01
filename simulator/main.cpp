@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <inttypes.h>
+
 #include <cstdint>
 #include <fstream>
 #include <sstream>
@@ -8,6 +10,13 @@
 #include <string>
 
 #include "mos6502/mos6502.h"
+
+uint16_t trace_ops = 0;
+#define TRACE_OP_READS  (1 << 0)
+#define TRACE_OP_WRITES (1 << 1)
+#define TRACE_OP_REGS   (1 << 2)
+#define TRACE_OP_DISASM (1 << 3)
+#define TRACE_OP_CYCLES (1 << 4)
 
 uint64_t counter = 0;
 uint8_t mem[65536];
@@ -123,15 +132,24 @@ void load_intel_hex(const char *filename) {
 }
 
 void write_cb(uint16_t addr, uint8_t val) {
+   if (trace_ops & TRACE_OP_WRITES) {
+      printf("write $%02x -> $%04x\n", val, addr);
+   }
    mem[addr] = val;
 }
 
 uint8_t read_cb(uint16_t addr) {
+   if (trace_ops & TRACE_OP_READS) {
+      printf("read $%04x -> $%02x\n", addr, mem[addr]);
+   }
    return mem[addr];
 }
 
 void clock_cb(mos6502* cpu) {
    (void) cpu; // unused parameter
+   if (trace_ops & TRACE_OP_CYCLES) {
+      printf("cycle %" PRId64 "\n", counter);
+   }
 }
 
 void dispatch(uint8_t op, uint16_t arg) {
@@ -139,6 +157,9 @@ void dispatch(uint8_t op, uint16_t arg) {
    switch(op) {
       case 0:
          printf("%s", mem+arg);
+         break;
+      case 0xfd:
+         trace_ops = arg;
          break;
       case 0xfe:
          dump_mem_as_intel_hex();
@@ -152,10 +173,106 @@ void dispatch(uint8_t op, uint16_t arg) {
    }
 }
 
+void trace_regs(mos6502 *cpu) {
+   uint8_t p = cpu->GetP();
+   printf("A:$%02x X:$%02x Y:$%02x P:$%02x(%c%c%c%c%c%c%c%c) SP:$%02x PC:$%04x\n",
+      cpu->GetA(),
+      cpu->GetX(),
+      cpu->GetY(),
+      p,
+      (p & 0x80) ? 'N' : 'n',
+      (p & 0x40) ? 'V' : 'v',
+      (p & 0x20) ? '-' : '?',
+      (p & 0x10) ? 'B' : 'b',
+      (p & 0x08) ? 'D' : 'd',
+      (p & 0x04) ? 'I' : 'i',
+      (p & 0x02) ? 'Z' : 'z',
+      (p & 0x01) ? 'C' : 'c',
+      cpu->GetS(),
+      cpu->GetPC());
+}
+
+void trace_disasm(mos6502 *cpu) {
+   uint16_t pc = cpu->GetPC();
+   const char *code = cpu->GetCode(mem[pc]);
+   const char *addr = cpu->GetAddr(mem[pc]);
+
+   switch (addr[0]) {
+      case 'A':
+         switch(addr[2]) {
+            case 'I':
+               // ABI
+               printf("ASM: $%04x: %s.i ($%04x)    ; %02x %02x %02x\n", pc, code, mem[pc+1] | (mem[pc+2] << 8), mem[pc], mem[pc+1], mem[pc+2]);
+               break;
+            case 'S':
+               // ABS
+               printf("ASM: $%04x: %s.a $%04x      ; %02x %02x %02x\n", pc, code, mem[pc+1] | (mem[pc+2] << 8), mem[pc], mem[pc+1], mem[pc+2]);
+               break;
+            case 'X':
+               // ABX
+               printf("ASM: $%04x: %s.ax $%04x,X   ; %02x %02x %02x\n", pc, code, mem[pc+1] | (mem[pc+2] << 8), mem[pc], mem[pc+1], mem[pc+2]);
+               break;
+            case 'Y':
+               // ABY
+               printf("ASM: $%04x: %s.ay $%04x,Y   ; %02x %02x %02x\n", pc, code, mem[pc+1] | (mem[pc+2] << 8), mem[pc], mem[pc+1], mem[pc+2]);
+               break;
+            case 'C':
+               // ACC
+               printf("ASM: $%04x: %s A            ; %02x\n", pc, code, mem[pc]);
+               break;
+         } 
+         break;
+      case  'I':
+         switch(addr[2]) {
+            case 'M':
+               // IMM
+               printf("ASM: $%04x: %s #$%02x       ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+            case 'P':
+               // IMP
+               printf("ASM: $%04x: %s              ; %02x\n", pc, code, mem[pc]);
+               break;
+            case 'X':
+               // INX
+               printf("ASM: $%04x: %s.ix ($%02x,X) ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+            case 'Y':
+               // INY
+               printf("ASM: $%04x: %s.iy ($%02x),Y ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+         }
+         break;
+      case 'R':
+         // REL
+               printf("ASM: $%04x: %s $%02x        ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+         break;
+      case 'Z':
+         switch(addr[2]) {
+            case 'R':
+               // ZER
+               printf("ASM: $%04x: %s.z $%02x      ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+            case 'X':
+               // ZEX
+               printf("ASM: $%04x: %s.zx $%02x,X   ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+            case 'Y':
+               // ZEY
+               printf("ASM: $%04x: %s.zy $%02x,Y   ; %02x %02x\n", pc, code, mem[pc+1], mem[pc], mem[pc+1]);
+               break;
+         }
+         break;
+   }
+}
+
 int main (int argc, char **argv) {
-   if (argc != 2) {
-      fprintf(stderr, "Usage: %s <hex>\n", argv[0]);
+   if (argc != 2 && argc != 3) {
+      fprintf(stderr, "Usage: %s <hex> [<trace>]\n", argv[0]);
       exit(-1);
+   }
+
+   if (argc == 3) {
+      trace_ops = strtoul(argv[2], NULL, 0);
    }
 
    memset(mem, 0xFF, 65536);
@@ -167,6 +284,12 @@ int main (int argc, char **argv) {
    cpu->Reset();
 
    while (1) {
+      if (trace_ops & TRACE_OP_REGS) {
+         trace_regs(cpu);
+      }
+      if (trace_ops & TRACE_OP_DISASM) {
+         trace_disasm(cpu);
+      }
       cpu->Run(1, counter, mos6502::INST_COUNT);
       if (cpu->GetPC() == 0xFFFF) {
 
