@@ -8000,7 +8000,7 @@ static void emit_runtime_global_init_function(void) {
          emit_fill_fp_bytes(0, 0, entry->size, 0x00);
       }
       if (!compile_initializer_to_fp(entry->expression, &ctx, entry->type, entry->declarator, 0, entry->size)) {
-         error_unimplemented("[%s:%d.%d] could not compile runtime global initializer for '%s'",
+         error_unreachable("[%s:%d.%d] could not compile runtime global initializer for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
       if (entry->is_absolute_ref) {
@@ -8028,6 +8028,11 @@ static void emit_runtime_global_init_function(void) {
    }
    emit(&es_code, "    rts\n");
    emit(&es_code, ".endproc\n");
+}
+
+static const char *aggregate_initializer_target_name(const ASTNode *type) {
+   const char *name = type ? type_name_from_node(type) : NULL;
+   return name ? name : "aggregate";
 }
 
 static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size) {
@@ -8090,6 +8095,11 @@ static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const A
       bool ok = true;
 
       initializer_collect_items(uinit, items, &index);
+      if (is_union && index > 1) {
+         free(items);
+         error_user("[%s:%d.%d] too many initializers for '%s'", uinit->file, uinit->line, uinit->column,
+               aggregate_initializer_target_name(type));
+      }
       for (int i = 0; i < index; i++) {
          const ASTNode *item = items[i];
          const ASTNode *ftype = NULL;
@@ -8117,8 +8127,9 @@ static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const A
                break;
             }
             if (!ftype || !fdecl) {
-               ok = false;
-               break;
+               free(items);
+               error_user("[%s:%d.%d] too many initializers for '%s'", item->file, item->line, item->column,
+                     aggregate_initializer_target_name(type));
             }
          }
          ok = compile_initializer_to_fp(item->children[1], ctx, ftype, fdecl, base_offset + offset, declarator_storage_size(ftype, fdecl));
@@ -8213,6 +8224,11 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
       bool ok = true;
 
       initializer_collect_items(uinit, items, &index);
+      if (is_union && index > 1) {
+         free(items);
+         error_user("[%s:%d.%d] too many initializers for '%s'", uinit->file, uinit->line, uinit->column,
+               aggregate_initializer_target_name(type));
+      }
       for (int i = 0; i < index; i++) {
          const ASTNode *item = items[i];
          const ASTNode *ftype = NULL;
@@ -8240,8 +8256,9 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
                break;
             }
             if (!ftype || !fdecl) {
-               ok = false;
-               break;
+               free(items);
+               error_user("[%s:%d.%d] too many initializers for '%s'", item->file, item->line, item->column,
+                     aggregate_initializer_target_name(type));
             }
          }
          ok = build_initializer_bytes(buf, buf_size, base_offset + offset, item->children[1], ftype, fdecl, declarator_storage_size(ftype, fdecl));
@@ -8351,7 +8368,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -8394,7 +8411,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
                free(zeroes);
             }
             if (!compile_initializer_to_fp(expression, ctx, type, declarator, entry->offset, size)) {
-               error_unimplemented("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+               error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
             }
          }
          else if (!compile_expr_to_slot(expression, ctx, entry)) {

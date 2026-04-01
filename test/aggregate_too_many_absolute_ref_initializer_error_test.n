@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectfail
-// expecterr: local initializer for 'p' not compiled yet
+// expecterr: too many initializers for 'Pair'
 include "machine_6502.n"
 struct Pair {
    int a;
