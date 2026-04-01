@@ -1617,6 +1617,34 @@ static void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size)
    emit_copy_fp_to_symbol_offset(symbol, 0, src_offset, size);
 }
 
+static void emit_load_a_from_expr_address(const char *expr, int addend) {
+   char expr_buf[256];
+   const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
+
+   if (addend == 0) {
+      emit(&es_code, "    lda  %s\n", asm_expr);
+   }
+   else {
+      emit(&es_code, "    lda  %s + %d\n", asm_expr, addend);
+   }
+}
+
+static void emit_store_a_to_expr_address(const char *expr, int addend) {
+   char expr_buf[256];
+   const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
+
+   if (addend == 0) {
+      emit(&es_code, "    sta  %s\n", asm_expr);
+   }
+   else {
+      emit(&es_code, "    sta  %s + %d\n", asm_expr, addend);
+   }
+}
+
+static bool absolute_ref_supports_direct_access(const LValueRef *lv) {
+   return lv && lv->is_absolute_ref && !lv->is_bitfield && !lv->indirect && !lv->needs_runtime_address;
+}
+
 static const char *remember_string_literal(const char *text) {
    const char *existing;
    char *label;
@@ -4457,6 +4485,22 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
    if (src && src->is_bitfield) {
       return emit_copy_bitfield_lvalue_to_fp(ctx, dst_offset, src, size);
    }
+   if (absolute_ref_supports_direct_access(src)) {
+      const char *read_expr = src->read_expr;
+
+      if (!read_expr || !*read_expr) {
+         return false;
+      }
+      if (!dst_direct) {
+         emit_prepare_fp_ptr(1, dst_offset);
+      }
+      for (int i = 0; i < copy_size; i++) {
+         emit_load_a_from_expr_address(read_expr, src->offset + i);
+         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
+         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      }
+      return true;
+   }
    if (copy_size <= 0) {
       return true;
    }
@@ -4515,6 +4559,22 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
 
    if (dst && dst->is_bitfield) {
       return emit_copy_fp_to_bitfield_lvalue(ctx, dst, src_offset, size);
+   }
+   if (absolute_ref_supports_direct_access(dst)) {
+      const char *write_expr = dst->write_expr;
+
+      if (!write_expr || !*write_expr) {
+         return false;
+      }
+      if (!src_direct) {
+         emit_prepare_fp_ptr(1, src_offset);
+      }
+      for (int i = 0; i < copy_size; i++) {
+         emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
+         emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
+         emit_store_a_to_expr_address(write_expr, dst->offset + i);
+      }
+      return true;
    }
    if (copy_size <= 0) {
       return true;

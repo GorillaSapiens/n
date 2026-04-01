@@ -3,18 +3,12 @@
 // expectasm: .proc __init_
 // expectasm: jsr _twice
 // expectasmordered: jsr _twice
-// expectasmordered: lda #<($0600 + 0)
-// expectasmordered: sta ptr0
-// expectasmordered: lda #>($0600 + 0)
-// expectasmordered: sta ptr0+1
-// expectasmordered: sta (ptr0),y
+// expectasmordered: sta  $0600
+// expectasmordered: sta  $0600 + 1
 // expectasmordered: lda #$34
 // expectasmordered: lda #$12
-// expectasmordered: lda #<($0608 + 0)
-// expectasmordered: sta ptr0
-// expectasmordered: lda #>($0608 + 0)
-// expectasmordered: sta ptr0+1
-// expectasmordered: sta (ptr0),y
+// expectasmordered: sta  $0608
+// expectasmordered: sta  $0608 + 1
 
 include "machine_6502.n"
 

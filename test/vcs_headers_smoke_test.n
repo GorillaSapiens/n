@@ -1,7 +1,7 @@
 // n65cc -I ../libraries/vcs
-// expectasm: lda  INPT4
-// expectasm: sta  VBLANK
-// expectasm: sta  TIM64T
+// expectasm: lda  $3C
+// expectasm: sta  $01
+// expectasm: sta  $0296
 include "vcs.n"
 
 int main(void) {

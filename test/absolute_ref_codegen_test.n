@@ -1,8 +1,8 @@
 // n65cc -I .
-// expectasm: #<($00 + 0)
-// expectasm: #<($80 + 0)
-// expectasm: #<($100 + 0)
-// expectasm: #<($180 + 0)
+// expectasm: lda  $00
+// expectasm: sta  $80
+// expectasm: lda  $100
+// expectasm: sta  $180
 
 include "machine_6502.n"
 
