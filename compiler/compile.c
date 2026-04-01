@@ -10057,7 +10057,7 @@ static void remember_function(const ASTNode *node, const char *name) {
    bool name_present = false;
 
    if (!name) {
-      error_unimplemented("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);
    }
 
    if (is_operator_function_name(name)) {
