@@ -10,7 +10,7 @@
 
 The simulator expects an Intel HEX input file.
 The optional `trace` argument is a bitmask parsed with `strtoul(..., 0)`, so decimal, hex, and octal forms all work.
-For example, `0x0c` enables register and disassembly tracing.
+For example, `0x0c` enables register and disassembly tracing, while `0x20` enables dispatch logging.
 
 ## Trace flags
 
@@ -22,12 +22,13 @@ The current trace bit assignments in `simulator/main.cpp` are:
 - `0x0004` ... register dump before each instruction
 - `0x0008` ... disassembly before each instruction
 - `0x0010` ... cycle counter callback
+- `0x0020` ... dispatch logging
 
 Examples:
 
 ```sh
 ./n65sim program.hex 0x0c
-./n65sim program.hex 0x1f
+./n65sim program.hex 0x2f
 ```
 
 With tracing enabled, the simulator currently prints lines like:
@@ -45,7 +46,7 @@ Notes:
 - register tracing happens before each instruction
 - disassembly tracing happens before each instruction
 - cycle tracing prints the current instruction counter value passed to the clock callback
-- dispatch logging is always printed and is not controlled by a trace bit
+- dispatch logging is printed only when the dispatch trace bit (`0x20`) is enabled
 
 ## Dispatch hook
 
@@ -68,7 +69,7 @@ ldy #>message
 jsr $ffff
 ```
 
-The simulator currently logs each dispatch first as:
+When dispatch tracing is enabled (`trace_ops & 0x20`), the simulator logs each dispatch first as:
 
 ```text
 dispatch <op> <arg>
@@ -95,17 +96,17 @@ jsr $ffff
 ### `A = $FD` ... set trace bitmask
 
 - argument: new trace bitmask in `Y:X`
-- output: none beyond the usual `dispatch fd xxxx` log line
+- output: none beyond the optional `dispatch fd xxxx` log line when dispatch tracing is enabled
 - effect: replaces the current `trace_ops` mask
 
 This can be used to turn tracing on, off, or switch modes at runtime.
-For example, `arg = $000c` enables register and disassembly tracing, while `arg = $0000` disables all optional trace output.
+For example, `arg = $002c` enables register tracing, disassembly tracing, and dispatch logging, while `arg = $0000` disables all optional trace output.
 
 Example:
 
 ```asm
 lda #$fd
-ldx #$0c
+ldx #$2c
 ldy #$00
 jsr $ffff
 ```
@@ -135,7 +136,7 @@ jsr $ffff
 ### `A = $FF` ... exit the simulator
 
 - argument: process exit status in `Y:X`
-- output: none beyond the usual `dispatch ff xxxx` log line
+- output: none beyond the optional `dispatch ff xxxx` log line when dispatch tracing is enabled
 - effect: calls `exit(arg)` on the host process
 
 Example:
