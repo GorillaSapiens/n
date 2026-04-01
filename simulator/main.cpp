@@ -12,6 +12,48 @@
 uint64_t counter = 0;
 uint8_t mem[65536];
 
+static uint8_t ihex_checksum(const uint8_t *bytes, size_t n) {
+   uint32_t sum = 0;
+
+   for (size_t i = 0; i < n; i++) {
+      sum += bytes[i];
+   }
+
+   return static_cast<uint8_t>((-static_cast<int32_t>(sum)) & 0xFF);
+}
+
+static void emit_ihex_record(uint8_t count,
+                             uint16_t addr,
+                             uint8_t rectype,
+                             const uint8_t *data) {
+   uint8_t hdr[4] = {
+      count,
+      static_cast<uint8_t>((addr >> 8) & 0xFF),
+      static_cast<uint8_t>(addr & 0xFF),
+      rectype,
+   };
+   uint8_t csum = ihex_checksum(hdr, sizeof(hdr));
+
+   printf(":%02X%04X%02X", count, addr, rectype);
+   for (uint8_t i = 0; i < count; i++) {
+      printf("%02X", data[i]);
+      csum = static_cast<uint8_t>(csum - data[i]);
+   }
+   printf("%02X\n", csum);
+}
+
+void dump_mem_as_intel_hex(void) {
+   printf("---8<--- BEGIN MEMORY DUMP ---8<---\n");
+
+   for (uint32_t addr = 0; addr < 65536; addr += 16) {
+      emit_ihex_record(16, static_cast<uint16_t>(addr), 0x00, mem + addr);
+   }
+
+   emit_ihex_record(0, 0, 0x01, nullptr);
+
+   printf("---8<---  END MEMORY DUMP  ---8<---\n");
+}
+
 static uint8_t hex_byte(const std::string &s, size_t pos) {
    return static_cast<uint8_t>(std::stoul(s.substr(pos, 2), nullptr, 16));
 }
@@ -97,6 +139,9 @@ void dispatch(uint8_t op, uint16_t arg) {
    switch(op) {
       case 0:
          printf("%s", mem+arg);
+         break;
+      case 0xfe:
+         dump_mem_as_intel_hex();
          break;
       case 0xff:
          exit(arg);
