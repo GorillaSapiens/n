@@ -28,7 +28,7 @@ SRCSRC = \
    opcode.c \
    source_loader.c \
    symtab.c \
-   util.o \
+   util.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)
