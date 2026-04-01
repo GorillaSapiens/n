@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectfail
-// expecterr: assignment value not compiled yet
+// expecterr: braced initializer not valid in assignment
 include "machine_6502.n"
 int main(void) {
    int x;

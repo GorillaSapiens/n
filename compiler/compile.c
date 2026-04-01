@@ -8930,6 +8930,10 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    ContextEntry *dst;
    const char *op = node->children[0] ? node->children[0]->strval : NULL;
    ASTNode *rhs = node->children[2];
+   ASTNode *urhs = (ASTNode *) unwrap_expr_node(rhs);
+   if (initializer_is_list(urhs)) {
+      error_user("[%s:%d.%d] braced initializer not valid in assignment", urhs->file, urhs->line, urhs->column);
+   }
    if (!resolve_lvalue(ctx, node->children[1], &lv)) {
       error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
       return;
@@ -8959,7 +8963,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             return;
          }
          if (!compile_expr_to_slot(rhs, ctx, &(ContextEntry){ .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = dst->size })) {
-            error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_symbol_offset(sym, lv.offset, ctx->locals, dst->size);
@@ -8980,7 +8984,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
          }
          if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, tmp.size)) {
@@ -8997,7 +9001,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    jsr _popN\n");
       }
       else if (!compile_expr_to_slot(rhs, ctx, dst)) {
-         error_unimplemented("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
       }
       return;
    }
