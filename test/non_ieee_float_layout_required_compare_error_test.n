@@ -1,0 +1,10 @@
+// n65cc -I .
+// expectfail
+// expecterr: layout must be specified for non IEEE 754 floats
+include "machine_6502.n"
+type f3be { $size:3 $float $endian:big };
+int main(void) {
+   f3be a := 1.0;
+   f3be b := 2.0;
+   return a < b;
+}

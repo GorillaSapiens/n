@@ -312,7 +312,7 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
 int make_le_float(const char *p, unsigned char *target, int size) {
    int expbits = default_float_expbits_for_size(size);
    if (expbits < 0) {
-      error_unimplemented("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+      error_user("[%s:%d] layout must be specified for non IEEE 754 floats", __FILE__, __LINE__);
    }
    return make_le_float_layout(p, target, size, expbits);
 }
@@ -330,7 +330,7 @@ int make_be_float_layout(const char *p, unsigned char *target, int size, int exp
 int make_be_float(const char *p, unsigned char *target, int size) {
    int expbits = default_float_expbits_for_size(size);
    if (expbits < 0) {
-      error_unimplemented("[%s:%d] size %d floats not supported (yet)", __FILE__, __LINE__, size);
+      error_user("[%s:%d] layout must be specified for non IEEE 754 floats", __FILE__, __LINE__);
    }
    return make_be_float_layout(p, target, size, expbits);
 }

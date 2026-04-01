@@ -2456,6 +2456,16 @@ static bool type_is_float_like(const ASTNode *type) {
    return name && (has_flag(name, "$float") || has_flag_prefix(name, "$float:"));
 }
 
+static void error_non_ieee_float_layout_required(const char *file, int line, int column, const ASTNode *type) {
+   const char *name = type_name_from_node(type);
+   if (name) {
+      error_user("[%s:%d.%d] layout must be specified for non IEEE 754 floats (type '%s')", file, line, column, name);
+   }
+   else {
+      error_user("[%s:%d.%d] layout must be specified for non IEEE 754 floats", file, line, column);
+   }
+}
+
 static int type_float_expbits(const ASTNode *type) {
    const ASTNode *node;
    const ASTNode *flags;
@@ -6091,7 +6101,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(work_type));
+               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, work_type);
                return false;
             }
             emit_runtime_float_binary_fp_fp(!strcmp(expr->name, "+") ? "faddN" : "fsubN", lhs_offset, lhs_offset, value_offset, work_size, expbits);
@@ -6269,7 +6279,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, op_type);
                return false;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -6290,7 +6300,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(op_type));
+               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, op_type);
                return false;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -6900,7 +6910,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       if (is_float_compare) {
          expbits = type_float_expbits(type);
          if (expbits <= 0) {
-            error_unreachable("[%s:%d.%d] float comparison type '%s' has unknown exponent layout", expr->file, expr->line, expr->column, type_name_from_node(type));
+            error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, type);
          }
       }
 
@@ -9359,7 +9369,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+            error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
             return;
          }
          emit_runtime_float_binary_fp_fp(!strcmp(op, "+=") ? "faddN" : "fsubN", lhs_tmp_offset, lhs_tmp_offset, rhs_value_offset, work_size, expbits);
@@ -9387,7 +9397,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
                return;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
@@ -9405,7 +9415,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] float arithmetic type '%s' has unknown exponent layout", node->file, node->line, node->column, type_name_from_node(work_type));
+               error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
                return;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);

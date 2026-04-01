@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectfail
-// expecterr: [float.c:333] size 3 floats not supported (yet)
+// expecterr: layout must be specified for non IEEE 754 floats
 include "machine_6502.n"
 type f3be { $size:3 $float $endian:big };
 int main(void) {
