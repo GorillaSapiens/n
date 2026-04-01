@@ -1,2 +1,0 @@
-assembler originally came from https://www.kingswood-consulting.co.uk/assemblers/
-author does NOT distribute source code.
