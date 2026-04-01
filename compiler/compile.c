@@ -7279,6 +7279,32 @@ static void initializer_collect_items(const ASTNode *node, const ASTNode **items
    items[(*index)++] = node;
 }
 
+static const ASTNode *scalar_braced_initializer_value(const ASTNode *uinit, const ASTNode *type, const ASTNode *declarator) {
+   const ASTNode *item = NULL;
+   const ASTNode *items[1] = { NULL };
+   int index = 0;
+
+   if (!initializer_is_list(uinit)) {
+      return NULL;
+   }
+
+   if ((declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) || type_is_aggregate(type)) {
+      return NULL;
+   }
+
+   initializer_collect_items(uinit, items, &index);
+   if (initializer_item_count(uinit) != 1 || index != 1 || !items[0] || items[0]->count < 2) {
+      error_user("[%s:%d.%d] too many initializers for scalar", uinit->file, uinit->line, uinit->column);
+   }
+
+   item = items[0];
+   if (!is_empty(item->children[0])) {
+      error_user("[%s:%d.%d] designated initializer not valid for scalar", item->file, item->line, item->column);
+   }
+
+   return item->children[1];
+}
+
 static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, int total_size) {
    if (total_size > 0) {
       return total_size;
@@ -8021,6 +8047,13 @@ static bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const A
       return compile_expr_to_slot((ASTNode *) uinit, ctx, &dst);
    }
 
+   {
+      const ASTNode *scalar_init = scalar_braced_initializer_value(uinit, type, declarator);
+      if (scalar_init) {
+         return compile_initializer_to_fp(scalar_init, ctx, type, declarator, base_offset, total_size);
+      }
+   }
+
    if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {
       int item_count = initializer_item_count(uinit);
       const ASTNode **items = (const ASTNode **) calloc(item_count ? item_count : 1, sizeof(*items));
@@ -8135,6 +8168,13 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
          return false;
       }
       return encode_integer_initializer_value(value.i, buf + base_offset, size, type);
+   }
+
+   {
+      const ASTNode *scalar_init = scalar_braced_initializer_value(uinit, type, declarator);
+      if (scalar_init) {
+         return build_initializer_bytes(buf, buf_size, base_offset, scalar_init, type, declarator, total_size);
+      }
    }
 
    if (declarator && declarator_array_count(declarator) > 0 && declarator_pointer_depth(declarator) == 0) {

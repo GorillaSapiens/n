@@ -1,8 +1,0 @@
-// n65cc -I .
-// expectfail
-// expecterr: local initializer for 'x' not compiled yet
-include "machine_6502.n"
-int main(void) {
-   int x := { 1 };
-   return x;
-}
