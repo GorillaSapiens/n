@@ -5,10 +5,47 @@
 ## Command line
 
 ```sh
-./n65sim program.hex
+./n65sim program.hex [trace]
 ```
 
-The simulator expects exactly one Intel HEX input file.
+The simulator expects an Intel HEX input file.
+The optional `trace` argument is a bitmask parsed with `strtoul(..., 0)`, so decimal, hex, and octal forms all work.
+For example, `0x0c` enables register and disassembly tracing.
+
+## Trace flags
+
+Tracing can be enabled either from the command line or at runtime through the dispatch hook.
+The current trace bit assignments in `simulator/main.cpp` are:
+
+- `0x0001` ... memory reads
+- `0x0002` ... memory writes
+- `0x0004` ... register dump before each instruction
+- `0x0008` ... disassembly before each instruction
+- `0x0010` ... cycle counter callback
+
+Examples:
+
+```sh
+./n65sim program.hex 0x0c
+./n65sim program.hex 0x1f
+```
+
+With tracing enabled, the simulator currently prints lines like:
+
+```text
+read $1234 -> $56
+write $78 -> $1234
+A:$01 X:$02 Y:$03 P:$24(nv-BdIzc) SP:$ff PC:$8000
+ASM: $8000: lda #$01       ; a9 01
+cycle 42
+```
+
+Notes:
+
+- register tracing happens before each instruction
+- disassembly tracing happens before each instruction
+- cycle tracing prints the current instruction counter value passed to the clock callback
+- dispatch logging is always printed and is not controlled by a trace bit
 
 ## Dispatch hook
 
@@ -52,6 +89,24 @@ Example:
 lda #$00
 ldx #<message
 ldy #>message
+jsr $ffff
+```
+
+### `A = $FD` ... set trace bitmask
+
+- argument: new trace bitmask in `Y:X`
+- output: none beyond the usual `dispatch fd xxxx` log line
+- effect: replaces the current `trace_ops` mask
+
+This can be used to turn tracing on, off, or switch modes at runtime.
+For example, `arg = $000c` enables register and disassembly tracing, while `arg = $0000` disables all optional trace output.
+
+Example:
+
+```asm
+lda #$fd
+ldx #$0c
+ldy #$00
 jsr $ffff
 ```
 
