@@ -12,11 +12,12 @@
 #include "mos6502/mos6502.h"
 
 uint16_t trace_ops = 0;
-#define TRACE_OP_READS  (1 << 0)
-#define TRACE_OP_WRITES (1 << 1)
-#define TRACE_OP_REGS   (1 << 2)
-#define TRACE_OP_DISASM (1 << 3)
-#define TRACE_OP_CYCLES (1 << 4)
+#define TRACE_OP_READS    (1 << 0)
+#define TRACE_OP_WRITES   (1 << 1)
+#define TRACE_OP_REGS     (1 << 2)
+#define TRACE_OP_DISASM   (1 << 3)
+#define TRACE_OP_CYCLES   (1 << 4)
+#define TRACE_OP_DISPATCH (1 << 5)
 
 uint64_t counter = 0;
 uint8_t mem[65536];
@@ -153,10 +154,13 @@ void clock_cb(mos6502* cpu) {
 }
 
 void dispatch(uint8_t op, uint16_t arg) {
-   printf("dispatch %02x %04X\n", op, arg);
+   if (trace_ops & TRACE_OP_DISPATCH) {
+      printf("dispatch %02x %04X\n", op, arg);
+   }
    switch(op) {
       case 0:
          printf("%s", mem+arg);
+         fflush(stdout);
          break;
       case 0xfd:
          trace_ops = arg;

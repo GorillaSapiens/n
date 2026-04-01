@@ -1,5 +1,4 @@
 // n65cc -I .
-// expectsim: dispatch fe 0000
 // expectsim: ---8<--- BEGIN MEMORY DUMP ---8<---
 // expectsim: :100300000102030405060708090A0B0C0D0E0F1065
 // expectsim: :00000001FF
