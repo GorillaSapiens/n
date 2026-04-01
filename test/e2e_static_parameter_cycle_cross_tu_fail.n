@@ -1,5 +1,6 @@
-// object: a.n
-// object: b.n
+// n65cc -I .
+// object: e2e_static_parameter_cycle_cross_tu_fail__a.n
+// object: e2e_static_parameter_cycle_cross_tu_fail__b.n
 // expectlinkfail
 // expectlinkerr: call graph cycle reaches function 'a' with symbol-backed parameters
 include "machine_6502.n"

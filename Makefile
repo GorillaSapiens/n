@@ -17,13 +17,13 @@ tarball:
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 unit:
-	( cd ./test ; ./test.pl )
+	( cd ./test ; ./test.pl --compile-only )
 
 sieve:
 	./driver/n65driver -I test test/sieve.n -o sieve.hex
 	simulator/n65sim sieve.hex | head
 
 e2e:
-	( cd ./test ; ./e2e.pl )
+	( cd ./test ; ./test.pl --e2e-only )
 
 test: unit e2e

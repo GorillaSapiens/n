@@ -1,4 +1,5 @@
-// linkcfg: named.cfg
+// n65cc -I .
+// linkcfg: e2e_named_memory_regions__named.cfg
 // expectmap: size=$000D
 // expectmap: DATA.banana
 // expectmap: BSS.banana       run=$0400 size=$0003

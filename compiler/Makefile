@@ -51,7 +51,7 @@ part:
 	@make --no-print-directory $(TARGET)
 
 test:
-	(cd ../test; ./test.pl)
+	(cd ../test; ./test.pl --compile-only)
 
 $(TARGET): $(GENHDR) $(GENSRC) $(OBJ)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl

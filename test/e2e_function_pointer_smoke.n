@@ -1,3 +1,4 @@
+// n65cc -I .
 // expectsim: FP OK
 include "machine_6502.n"
 
