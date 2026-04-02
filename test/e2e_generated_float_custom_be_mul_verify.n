@@ -3,7 +3,7 @@
 include "machine_6502.n"
 
 type gf3be { $size:3 $endian:big $float:simple };
-include "generated_gf3be_addcmp_ops.n"
+include "generated_gf3be_mul_ops.n"
 
 union gf3be_bits {
    gf3be f;
@@ -37,27 +37,24 @@ void main(void) {
    gf3be_bits one;
    gf3be_bits halfv;
    gf3be_bits onep5;
+   gf3be_bits two;
+   gf3be_bits threeq;
    gf3be_bits mhalf;
+   gf3be_bits mone;
    gf3be_bits got;
 
    one.f := 1.0;
    halfv.f := 0.5;
    onep5.f := 1.5;
+   two.f := 2.0;
+   threeq.f := 0.75;
    mhalf.f := -0.5;
+   mone.f := -1.0;
 
-   got.f := one.f + halfv.f;
-   expect3(got, onep5, 1);
-   got.f := one.f - halfv.f;
-   expect3(got, halfv, 4);
-   got.f := halfv.f - one.f;
-   expect3(got, mhalf, 7);
-
-   if (!(one.f > halfv.f))   { fail(10); }
-   if (!(halfv.f < one.f))   { fail(11); }
-   if (!(one.f >= one.f))    { fail(12); }
-   if (!(one.f <= one.f))    { fail(13); }
-   if (!(one.f == one.f))    { fail(14); }
-   if (!(one.f != halfv.f))  { fail(15); }
+   got.f := onep5.f * halfv.f;
+   expect3(got, threeq, 1);
+   got.f := mhalf.f * two.f;
+   expect3(got, mone, 4);
 
    pass();
 }

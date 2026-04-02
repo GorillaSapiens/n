@@ -3,10 +3,18 @@
 // expectasm: .import nlf_gf32_cmp_impl
 // expectasm: .import nlf_gf64_add_impl
 // expectasm: .import nlf_gf64_cmp_impl
+// expectasm: .import nlf_gf32_mul_impl
+// expectasm: .import nlf_gf64_mul_impl
+// expectasm: .import nlf_gf3le_mul_impl
+// expectasm: .import nlf_gf3be_mul_impl
 // expectasm: .import nlf_gf3le_add_impl
 // expectasm: .import nlf_gf3be_add_impl
 // expectasm: jsr nlf_gf32_add_impl
 // expectasm: jsr nlf_gf64_add_impl
+// expectasm: jsr nlf_gf32_mul_impl
+// expectasm: jsr nlf_gf64_mul_impl
+// expectasm: jsr nlf_gf3le_mul_impl
+// expectasm: jsr nlf_gf3be_mul_impl
 // expectasm: jsr nlf_gf3le_add_impl
 // expectasm: jsr nlf_gf3be_add_impl
 // expectasm: jsr nlf_gf32_cmp_impl
@@ -43,24 +51,28 @@ void main(void) {
    b32 := 0.5;
    c32 := a32 + b32;
    c32 := a32 - b32;
+   c32 := a32 * b32;
    q := a32 > b32;
 
    a64 := 2.0;
    b64 := 0.5;
    c64 := a64 + b64;
    c64 := a64 - b64;
+   c64 := a64 * b64;
    q := a64 <= b64;
 
    a3le := 1.0;
    b3le := 0.5;
    c3le := a3le + b3le;
    c3le := a3le - b3le;
+   c3le := a3le * b3le;
    q := a3le != b3le;
 
    a3be := 1.0;
    b3be := 0.5;
    c3be := a3be + b3be;
    c3be := a3be - b3be;
+   c3be := a3be * b3be;
    q := a3be >= b3be;
 
    if (q) {

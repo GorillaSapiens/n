@@ -7,6 +7,13 @@ sub usage { die "usage: $0 <typename> <little|big> <size-bytes> <exp-bits>\n"; }
 sub pow2s { my ($b)=@_; my $x=Math::BigInt->new(1); $x->blsft($b); return $x->bstr(); }
 sub all1s { my ($b)=@_; my $x=Math::BigInt->new(1); $x->blsft($b); $x->bdec(); return $x->bstr(); }
 sub typed { my ($v,$t)=@_; return "$v`$t"; }
+sub biass {
+   my ($b)=@_;
+   my $x = Math::BigInt->new(1);
+   $x->blsft($b - 1);
+   $x->bdec();
+   return $x->bstr();
+}
 
 my ($typename,$endian,$size,$expbits)=@ARGV;
 usage() if @ARGV != 4;
@@ -18,8 +25,10 @@ die "$0: invalid layout\n" if 1 + $expbits >= $total;
 die "$0: generated arithmetic currently supports sizes up to 8 bytes\n" if $size > 8;
 my $mbits = $total - 1 - $expbits;
 my $last = $size - 1;
+my $wide_bytes = $size * 2;
 my $san = $typename; $san =~ s/[^A-Za-z0-9_]/_/g; $san = "t_$san" if $san !~ /^[A-Za-z]/;
 my $u = "nlf_${san}_u";
+my $wu = "nlf_${san}_wide_u";
 my $bits = "nlf_${san}_bits";
 my $ov = "nlf_${san}_overlay";
 my $vov = "nlf_${san}_value_overlay";
@@ -29,6 +38,7 @@ if ($size <= 2) { $matht = 'int'; $math_bytes = 2; }
 elsif ($size <= 4) { $matht = 'long'; $math_bytes = 4; }
 else { $matht = 'longlong'; $math_bytes = 8; }
 my $mov = "nlf_${san}_math_overlay";
+my $wov = "nlf_${san}_wide_overlay";
 
 my $ga = "nlf_${san}_a";
 my $gb = "nlf_${san}_b";
@@ -42,6 +52,10 @@ my $gsig_ll = "nlf_${san}_sig_ll";
 my $gtmp_ll = "nlf_${san}_tmp_ll";
 my $gamag = "nlf_${san}_amag";
 my $gbmag = "nlf_${san}_bmag";
+my $gwide_a = "nlf_${san}_wide_a";
+my $gwide_b = "nlf_${san}_wide_b";
+my $gwide_p = "nlf_${san}_wide_p";
+my $gwide_t = "nlf_${san}_wide_t";
 my $gexp_a = "nlf_${san}_exp_a";
 my $gexp_b = "nlf_${san}_exp_b";
 my $gsign_out = "nlf_${san}_sign_out";
@@ -52,9 +66,12 @@ my $gcmp = "nlf_${san}_cmp";
 my $gunordered = "nlf_${san}_unordered";
 my $add_impl = "nlf_${san}_add_impl";
 my $cmp_impl = "nlf_${san}_cmp_impl";
+my $mul_impl = "nlf_${san}_mul_impl";
 
 my $ZERO = typed(0,$u);
 my $ONE = typed(1,$u);
+my $W_ZERO = typed(0,$wu);
+my $W_ONE = typed(1,$wu);
 my $EXP_MAX = typed(all1s($expbits),$u);
 my $NAN_PAYLOAD = typed($mbits > 1 ? pow2s($mbits-1) : 1, $u);
 my $M_ZERO = typed(0,$matht);
@@ -62,11 +79,11 @@ my $M_ONE = typed(1,$matht);
 my $M_TWO = typed(2,$matht);
 my $M_EIGHT = typed(8,$matht);
 my $M_EXP_MAX = typed(all1s($expbits),$matht);
+my $M_BIAS = typed(biass($expbits),$matht);
 my $FRACMASK = typed(all1s($mbits),$u);
 my $M_HIDDEN = typed(pow2s($mbits),$matht);
 my $M_HIDDEN_EXT = typed(pow2s($mbits+3),$matht);
 my $M_CARRY = typed(pow2s($mbits+1),$matht);
-my $M_NAN_PAYLOAD = typed($mbits > 1 ? pow2s($mbits-1) : 1,$matht);
 
 my $CMP_EQ = 0;
 my $CMP_LT = 1;
@@ -107,29 +124,22 @@ sub from_ll_snippet {
    return $s;
 }
 
-sub raw_to_math_snippet {
-   my ($dst,$src,$indent)=@_;
+sub ll_to_wide_snippet {
+   my ($dstw,$srcll,$indent)=@_;
    $indent //= '      ';
-   my $s = "${indent}$dst.v := $M_ZERO;
-";
-   for my $i (0 .. $last-1) {
-      $s .= "${indent}$dst.bytes[$i] := $src.bytes[$i];
-";
-   }
-   $s .= "${indent}$dst.bytes[$last] := ($src.bytes[$last] & 255) & 127;
-";
-   for my $i ($size .. $math_bytes - 1) {
-      $s .= "${indent}$dst.bytes[$i] := 0;
-";
-   }
-   return $s;
+   return "${indent}$dstw.v := $srcll.v;\n";
+}
+
+sub wide_to_ll_snippet {
+   my ($dstll,$srcw,$indent)=@_;
+   $indent //= '      ';
+   return "${indent}$dstll.v := $srcw.v;\n";
 }
 
 sub mag_cmp_snippet {
    my ($dst,$lhs,$rhs,$indent)=@_;
    $indent //= '   ';
-   my $s = "${indent}$dst := $CMP_EQ;
-";
+   my $s = "${indent}$dst := $CMP_EQ;\n";
    for (my $i = $last; $i >= 0; --$i) {
       my $l = "($lhs.bytes[$i] & 255)";
       my $r = "($rhs.bytes[$i] & 255)";
@@ -137,14 +147,10 @@ sub mag_cmp_snippet {
          $l = "($l & 127)";
          $r = "($r & 127)";
       }
-      $s .= "${indent}if ($dst == $CMP_EQ) {
-";
-      $s .= "${indent}   if ($l < $r) { $dst := $CMP_LT; }
-";
-      $s .= "${indent}   else { if ($l > $r) { $dst := $CMP_GT; } }
-";
-      $s .= "${indent}}
-";
+      $s .= "${indent}if ($dst == $CMP_EQ) {\n";
+      $s .= "${indent}   if ($l < $r) { $dst := $CMP_LT; }\n";
+      $s .= "${indent}   else { if ($l > $r) { $dst := $CMP_GT; } }\n";
+      $s .= "${indent}}\n";
    }
    return $s;
 }
@@ -200,6 +206,7 @@ print <<"EOF";
 // implementation: manual SExMy arithmetic using bitfields and unions
 
 type $u { \$size:$size \$unsigned \$endian:little };
+type $wu { \$size:$wide_bytes \$unsigned \$endian:little };
 
 struct $bits {
    $u mantissa:$mbits;
@@ -243,6 +250,11 @@ union $mov {
    char bytes[$math_bytes];
 };
 
+union $wov {
+   $wu v;
+   char bytes[$wide_bytes];
+};
+
 $ov $ga;
 $ov $gb;
 $ov $gr;
@@ -255,6 +267,10 @@ $mov $gsig_ll;
 $mov $gtmp_ll;
 $mov $gamag;
 $mov $gbmag;
+$wov $gwide_a;
+$wov $gwide_b;
+$wov $gwide_p;
+$wov $gwide_t;
 $matht $gexp_a;
 $matht $gexp_b;
 int $gsign_out;
@@ -294,6 +310,41 @@ print "void $cmp_impl(void) {\n   $gunordered := 0;\n   if ($ga.bits.exponent ==
 print mag_cmp_snippet($gcmp,$ga,$gb,'   ');
 print "   if ($ga.bits.sign != $ZERO) { if ($gcmp == $CMP_LT) { $gcmp := $CMP_GT; } else { if ($gcmp == $CMP_GT) { $gcmp := $CMP_LT; } } }\n}\n\n";
 
+print "void $mul_impl(void) {\n";
+print "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
+print "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
+print "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;\n";
+print "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) || ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO && $ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $ZERO;\n      $gr.bits.exponent := $EXP_MAX;\n      $gr.bits.mantissa := $NAN_PAYLOAD;\n      return;\n   }\n";
+print "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
+print "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
+print "   if (($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) || ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
+print "   $gsig_u.v := $ga.bits.mantissa;\n";
+print to_ll_snippet($gsig_ll,$gsig_u,'   ');
+print "   $gsig_a := $gsig_ll.v;\n   $gsig_u.v := $gb.bits.mantissa;\n";
+print to_ll_snippet($gsig_ll,$gsig_u,'   ');
+print "   $gsig_b := $gsig_ll.v;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a + $gexp_b - $M_BIAS;\n   $gtmp_ll.v := $gsig_a;\n";
+print ll_to_wide_snippet($gwide_a,$gtmp_ll,'   ');
+print "   $gtmp_ll.v := $gsig_b;\n";
+print ll_to_wide_snippet($gwide_b,$gtmp_ll,'   ');
+print "   $gwide_p.v := $gwide_a.v * $gwide_b.v;\n";
+if ($mbits > 3) {
+   my $shift = $mbits - 3;
+   print "   $gwide_t.v := $gwide_p.v >> $shift;\n";
+   print "   $gwide_a.v := $gwide_t.v << $shift;\n";
+   print "   if ($gwide_a.v != $gwide_p.v) { $gwide_t.v |= $W_ONE; }\n";
+   print "   $gwide_p.v := $gwide_t.v;\n";
+}
+elsif ($mbits < 3) {
+   my $shift = 3 - $mbits;
+   print "   $gwide_p.v := $gwide_p.v << $shift;\n";
+}
+print wide_to_ll_snippet($gtmp_ll,$gwide_p,'   ');
+print "   $gsig_out := $gtmp_ll.v;\n";
+print "   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }\n";
+print "   while ($gsig_out != $M_ZERO && $gexp_a < $M_ONE) { $matht lost; lost := $gsig_out & $M_ONE; $gsig_out /= $M_TWO; if (lost != $M_ZERO) { $gsig_out |= $M_ONE; } $gexp_a++; }\n";
+print pack_snippet($gsig_out,$gexp_a,$gsign_out,$gr,"$gmant_ll.v",$gtmp_u,$gtmp_ll);
+print "}\n\n";
+
 print "$typename operator+($typename lhs, $typename rhs) {\n";
 print load_code($ga,'lhs','av');
 print load_code($gb,'rhs','bv');
@@ -305,6 +356,13 @@ print "$typename operator-($typename lhs, $typename rhs) {\n";
 print load_code($ga,'lhs','av');
 print load_code($gb,'rhs','bv');
 print "   $gb.bits.sign ^= $ONE;\n   $add_impl();\n";
+print store_code($gr,'rv');
+print "}\n\n";
+
+print "$typename operator*($typename lhs, $typename rhs) {\n";
+print load_code($ga,'lhs','av');
+print load_code($gb,'rhs','bv');
+print "   $mul_impl();\n";
 print store_code($gr,'rv');
 print "}\n\n";
 
