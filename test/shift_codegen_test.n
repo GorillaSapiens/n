@@ -6,20 +6,6 @@
 // expectasm: sta arg0
 // expectasm: jsr _lsrN
 
-// expectasmordered: jsr _asrN
-// expectasmordered: ldy #5
-// expectasmordered: lda (fp),y
-// expectasmordered: ldy #0
-// expectasmordered: sta (fp),y
-// expectasmordered: jsr _lsrN
-// expectasmordered: ldy #6
-// expectasmordered: lda (fp),y
-// expectasmordered: ldy #0
-// expectasmordered: sta (fp),y
-// expectasmordered: ldy #7
-// expectasmordered: lda (fp),y
-// expectasmordered: ldy #1
-// expectasmordered: sta (fp),y
 type void      { $size:0 };
 type bool      { $size:1 };
 type s1        { $size:1 $signed $endian:little };

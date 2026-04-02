@@ -15,7 +15,7 @@
 ; - asrN: arithmetic arg1 right by N (signed)
 ;
 ; Inputs:
-;   ptr0  - source, modified in place for *1 and *8
+;   ptr0  - source, modified in place for *1 and *8, read-only for *N
 ;   ptr1  - destination for *N
 ;   arg0  - byte count
 ;   arg1 - bits to arg1 for N
@@ -26,7 +26,6 @@
 .def n_byte  _nl_tmp0
 .def n_bit   _nl_tmp1
 .def tmp     _nl_tmp2
-.def swaptmp _nl_tmp3
 
 .proc _lsl1
     ldx arg0
@@ -150,6 +149,11 @@
 @trampoline8:
     jmp (ptr3)
 @start:
+    lda ptr0
+    pha
+    lda ptr0+1
+    pha
+
     ldy arg0
     dey
 @copy:
@@ -157,6 +161,11 @@
     sta (ptr1), y
     dey
     bpl @copy
+
+    lda ptr1
+    sta ptr0
+    lda ptr1+1
+    sta ptr0+1
 
     lda arg1
     and #7
@@ -180,17 +189,10 @@
     dec n_byte
     bne @loop2
 @fini2:
-    ldy arg0
-    dey
-@swap:
-    lda (ptr0), y
-    sta swaptmp
-    lda (ptr1), y
-    sta (ptr0), y
-    lda swaptmp
-    sta (ptr1), y
-    dey
-    bpl @swap
+    pla
+    sta ptr0+1
+    pla
+    sta ptr0
     rts
 .endproc
 
