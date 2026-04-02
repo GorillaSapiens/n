@@ -1,16 +1,16 @@
 // n65cc -I .
-// expectasm: .import __nlf_gf32_add_impl
-// expectasm: .import __nlf_gf32_cmp_impl
-// expectasm: .import __nlf_gf64_add_impl
-// expectasm: .import __nlf_gf64_cmp_impl
-// expectasm: .import __nlf_gf3le_add_impl
-// expectasm: .import __nlf_gf3be_add_impl
-// expectasm: jsr ___nlf_gf32_add_impl
-// expectasm: jsr ___nlf_gf64_add_impl
-// expectasm: jsr ___nlf_gf3le_add_impl
-// expectasm: jsr ___nlf_gf3be_add_impl
-// expectasm: jsr ___nlf_gf32_cmp_impl
-// expectasm: jsr ___nlf_gf64_cmp_impl
+// expectasm: .import nlf_gf32_add_impl
+// expectasm: .import nlf_gf32_cmp_impl
+// expectasm: .import nlf_gf64_add_impl
+// expectasm: .import nlf_gf64_cmp_impl
+// expectasm: .import nlf_gf3le_add_impl
+// expectasm: .import nlf_gf3be_add_impl
+// expectasm: jsr nlf_gf32_add_impl
+// expectasm: jsr nlf_gf64_add_impl
+// expectasm: jsr nlf_gf3le_add_impl
+// expectasm: jsr nlf_gf3be_add_impl
+// expectasm: jsr nlf_gf32_cmp_impl
+// expectasm: jsr nlf_gf64_cmp_impl
 
 include "machine_6502.n"
 

@@ -1,9 +1,9 @@
 // n65cc -I .
-// expectasm: .zpexport _a
-// expectasm: .export _b
-// expectasm: _a:
+// expectasm: .zpexport a?
+// expectasm: .export b
+// expectasm: a?:
 // expectasm: .byte $05, $00
-// expectasm: _b:
+// expectasm: b:
 mem banana   { $start:0x0000 $size:0x0100 $rw };
 mem zeropage { $start:0x0100 $size:0x0100 $rw };
 

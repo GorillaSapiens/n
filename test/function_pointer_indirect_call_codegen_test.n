@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectasm: jsr _callptr0
-// expectasm: _fp:
+// expectasm: fp?:
 include "machine_6502.n"
 
 int inc(int x) {

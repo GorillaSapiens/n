@@ -1,8 +1,8 @@
 // n65cc
 // expectasm: .export __init_
 // expectasm: .proc __init_
-// expectasm: jsr _twice
-// expectasmordered: jsr _twice
+// expectasm: jsr twice
+// expectasmordered: jsr twice
 // expectasmordered: sta  $0600
 // expectasmordered: sta  $0600 + 1
 // expectasmordered: lda #$34

@@ -1,5 +1,5 @@
 // n65cc -I .
-// expectasm: _fp:
+// expectasm: fp?:
 include "machine_6502.n"
 
 int (*fp)(int);

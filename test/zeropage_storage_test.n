@@ -1,10 +1,10 @@
 // n65cc -I .
-// expectasm: .zpexport _z
-// expectasm: .zpexport _q
+// expectasm: .zpexport z
+// expectasm: .zpexport q
 // expectasm: .segment "ZEROPAGE"
-// expectasm: _z:
+// expectasm: z:
 // expectasm: .byte $05, $00
-// expectasm: _q:
+// expectasm: q:
 // expectasm: .res 1
 include "machine_6502.n"
 

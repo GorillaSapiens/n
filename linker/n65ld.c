@@ -1344,6 +1344,26 @@ static void call_graph_tarjan_visit(int v,
    }
 }
 
+static const char *display_function_symbol(const char *name)
+{
+   static char buf[512];
+   size_t len;
+
+   if (!name)
+      return "?";
+
+   len = strlen(name);
+   if (len > 0 && name[len - 1] == '?') {
+      if (len >= sizeof(buf))
+         len = sizeof(buf) - 1;
+      memcpy(buf, name, len - 1);
+      buf[len - 1] = 0;
+      return buf;
+   }
+
+   return name;
+}
+
 static void enforce_symbol_backed_call_graph(const input_set_t *in)
 {
    call_graph_node_t *nodes = NULL;
@@ -1412,7 +1432,7 @@ static void enforce_symbol_backed_call_graph(const input_set_t *in)
 
       for (j = 0; j < node_count; ++j) {
          if (component[j] == (int)i && nodes[j].has_symbol_backed_params) {
-            fprintf(stderr, "n65ld: call graph cycle reaches function '%s' with symbol-backed parameters\n", nodes[j].name);
+            fprintf(stderr, "n65ld: call graph cycle reaches function '%s' with symbol-backed parameters\n", display_function_symbol(nodes[j].name));
             exit(1);
          }
       }

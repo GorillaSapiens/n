@@ -1,5 +1,5 @@
 // n65cc
-// expectasm: jsr _bump
+// expectasm: jsr bump
 
 type void { $size:0 };
 type bool { $size:1 };

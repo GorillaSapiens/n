@@ -1,7 +1,7 @@
 // n65cc
-// expectasm: _bump$x:
+// expectasm: bump$x:
 // expectasm: 	.res 2
-// expectasm: sta _bump$x,y
+// expectasm: sta bump$x,y
 
 type void { $size:0 };
 type bool { $size:1 };

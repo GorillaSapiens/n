@@ -22,8 +22,8 @@ void printi(int arg) {
    }
    buffer[i] := 0;
    asm lda #0;
-   asm ldx #<_buffer;
-   asm ldy #>_buffer;
+   asm ldx #<buffer;
+   asm ldy #>buffer;
    asm jsr $ffff;
 }
 

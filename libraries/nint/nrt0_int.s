@@ -6,8 +6,8 @@
 .export __nmi
 .export __irqbrk
 
-.import _handle_irq
-.import _handle_nmi
+.import handle_irq
+.import handle_nmi
 
 .segment "CODE"
 
@@ -19,7 +19,7 @@ __nmi:
    tya
    pha
 
-   jsr _handle_nmi
+   jsr handle_nmi
 
    jmp __nmi_irqbrk_common
 
@@ -31,7 +31,7 @@ __irqbrk:
    tya
    pha
 
-   jsr _handle_irq
+   jsr handle_irq
 
 __nmi_irqbrk_common:
    pla

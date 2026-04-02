@@ -1,15 +1,15 @@
 // n65cc
-// expectasm: _g_direct:
+// expectasm: g_direct:
 // expectasm: 	.byte $05, $00
-// expectasm: _g_nested:
+// expectasm: g_nested:
 // expectasm: 	.byte $07, $00
 // expectasm: .export __init_
 // expectasm: .proc __init_
-// expectasm: jsr _twice
-// expectasm: sta _g_runtime,y
-// expectasm: _demo$s:
+// expectasm: jsr twice
+// expectasm: sta g_runtime,y
+// expectasm: demo$s:
 // expectasm: .res 2
-// expectasm: sta _demo$s,y
+// expectasm: sta demo$s,y
 
 type void { $size:0 };
 type bool { $size:1 };

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <limits.h>
 
 #include "ast.h"
@@ -949,6 +950,75 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
    }
 }
 
+
+static bool assembler_user_symbol_needs_escape(const char *name) {
+   static const char *const reserved[] = {
+      "a", "x", "y",
+      "adc", "and", "asl", "bcc", "bcs", "beq", "bit", "bmi", "bne", "bpl", "brk", "bvc", "bvs",
+      "clc", "cld", "cli", "clv", "cmp", "cpx", "cpy", "dec", "dex", "dey", "eor", "inc", "inx", "iny",
+      "jmp", "jsr", "lda", "ldx", "ldy", "lsr", "nop", "ora", "pha", "php", "pla", "plp", "rol", "ror",
+      "rti", "rts", "sbc", "sec", "sed", "sei", "sta", "stx", "sty", "tax", "tay", "tsx", "txa", "txs", "tya",
+      "sp", "fp", "arg0", "arg1", "ptr0", "ptr1", "ptr2", "ptr3", "sbrk", "tmp0", "tmp1", "tmp2", "tmp3", "tmp4", "tmp5"
+   };
+   char lower[256];
+   size_t n;
+   if (!name || !*name) return false;
+   if (strchr(name, '$') || strchr(name, '?')) return false;
+   n = strlen(name);
+   if (n >= sizeof(lower)) return false;
+   for (size_t i = 0; i < n; i++) lower[i] = (char)tolower((unsigned char)name[i]);
+   lower[n] = 0;
+   for (size_t i = 0; i < sizeof(reserved) / sizeof(reserved[0]); i++) {
+      if (!strcmp(lower, reserved[i])) return true;
+   }
+   return false;
+}
+
+static bool format_user_asm_symbol(const char *name, char *buf, size_t bufsize) {
+   if (!name || !buf || bufsize == 0) return false;
+   if (assembler_user_symbol_needs_escape(name)) {
+      snprintf(buf, bufsize, "%s?", name);
+   }
+   else {
+      snprintf(buf, bufsize, "%s", name);
+   }
+   return true;
+}
+
+static bool modifier_list_node_like(const ASTNode *node) {
+   if (!node || is_empty(node)) {
+      return false;
+   }
+   for (int i = 0; i < node->count; i++) {
+      if (!node->children[i] || !node->children[i]->strval) {
+         return false;
+      }
+   }
+   return true;
+}
+
+static ASTNode *function_modifier_node(const ASTNode *fn) {
+   ASTNode *mods;
+
+   if (!fn || fn->count <= 0 || !fn->children[0]) {
+      return NULL;
+   }
+
+   mods = fn->children[0];
+   if (modifier_list_node_like(mods)) {
+      return mods;
+   }
+   if (mods->count > 0 && mods->children[0] && modifier_list_node_like(mods->children[0])) {
+      return mods->children[0];
+   }
+   return NULL;
+}
+
+static bool function_has_extern_nonstatic_storage(const ASTNode *fn) {
+   ASTNode *mods = function_modifier_node(fn);
+   return mods && has_modifier(mods, "extern") && !has_modifier(mods, "static");
+}
+
 static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize) {
    const ASTNode *declarator = function_declarator_node(fn);
    const char *name = fallback_name;
@@ -965,9 +1035,13 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
       return false;
    }
 
-   if (!is_operator_function_name(name) && !ordinary_function_name_is_overloaded(name)) {
-      snprintf(buf, bufsize, "%s", name);
+   if (fn && function_has_extern_nonstatic_storage(fn) && !strcmp(name, "sbrk")) {
+      snprintf(buf, bufsize, "_sbrk");
       return true;
+   }
+
+   if (!is_operator_function_name(name) && !ordinary_function_name_is_overloaded(name)) {
+      return format_user_asm_symbol(name, buf, bufsize);
    }
 
    append_mangled_text(buf, bufsize, name);
@@ -976,7 +1050,11 @@ static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, c
    }
 
    append_callable_signature_mangle(buf, bufsize, declarator);
-   return true;
+   {
+      char raw[256];
+      snprintf(raw, sizeof(raw), "%s", buf);
+      return format_user_asm_symbol(raw, buf, bufsize);
+   }
 }
 
 static bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
@@ -1591,12 +1669,12 @@ static bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf
       return false;
    }
    if (entry->is_global) {
-      snprintf(buf, bufsize, "_%s", entry->name);
-      return true;
+      return format_user_asm_symbol(entry->name, buf, bufsize);
    }
    if (entry->is_static || entry->is_zeropage) {
-      snprintf(buf, bufsize, "_%s$%s", ctx && ctx->name ? ctx->name : "", entry->name);
-      return true;
+      char raw[256];
+      snprintf(raw, sizeof(raw), "%s$%s", ctx && ctx->name ? ctx->name : "", entry->name);
+      return format_user_asm_symbol(raw, buf, bufsize);
    }
    return false;
 }
@@ -2079,7 +2157,7 @@ static void remember_symbol_import(const char *name) {
    }
    if (!set_get(imported_symbols, name)) {
       set_add(imported_symbols, strdup(name), (void *)1);
-      emit(&es_import, (name && name[0] == '_') ? ".import %s\n" : ".import _%s\n", name);
+      emit(&es_import, ".import %s\n", name);
    }
 }
 
@@ -2097,8 +2175,7 @@ static void remember_symbol_import_mode(const char *name, bool is_zeropage) {
    if (!set_get(imported_symbols, key)) {
       set_add(imported_symbols, strdup(key), (void *)1);
       emit(&es_import,
-           is_zeropage ? ((name && name[0] == '_') ? ".zpimport %s\n" : ".zpimport _%s\n")
-                       : ((name && name[0] == '_') ? ".import %s\n" : ".import _%s\n"),
+           is_zeropage ? ".zpimport %s\n" : ".import %s\n",
            name);
    }
 }
@@ -5009,7 +5086,7 @@ static void analyze_static_parameter_call_graph(void) {
          if (component[j] != i || !call_graph_nodes[j].has_static_params) {
             continue;
          }
-         error_user("call graph cycle reaches function '%s' with symbol-backed parameters", call_graph_nodes[j].sym);
+         error_user("call graph cycle reaches function '%s' with symbol-backed parameters", declarator_name(function_declarator_node((ASTNode *) call_graph_nodes[j].fn)));
       }
    }
 
@@ -5118,8 +5195,7 @@ static void emit_function_parameter_exports(const ASTNode *node) {
          continue;
       }
       emit(&es_export,
-           is_zeropage ? ((sym[0] == '_') ? ".zpexport %s\n" : ".zpexport _%s\n")
-                       : ((sym[0] == '_') ? ".export %s\n" : ".export _%s\n"),
+           is_zeropage ? ".zpexport %s\n" : ".export %s\n",
            sym);
    }
 }
@@ -5442,7 +5518,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
       emit(&es_code, "    pha\n");
       emit(&es_code, "    lda fp\n");
       emit(&es_code, "    pha\n");
-      emit(&es_code, "    jsr _%s\n", callee_sym);
+      emit(&es_code, "    jsr %s\n", callee_sym);
       emit(&es_code, "    pla\n");
       emit(&es_code, "    sta fp\n");
       emit(&es_code, "    pla\n");
@@ -5737,7 +5813,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
                else {
                   char sym[256];
                   int gsize = declarator_storage_size(g->children[1], decl_node_declarator(g));
-                  snprintf(sym, sizeof(sym), "_%s", ident);
+                  format_user_asm_symbol(ident, sym, sizeof(sym));
                   emit_copy_symbol_to_fp_convert(dst->offset, dst->size, dst->type, sym, gsize, g->children[1]);
                   return true;
                }
@@ -5762,7 +5838,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
                }
                {
                   char label[sizeof(sym) + 2];
-                  snprintf(label, sizeof(label), "_%s", sym);
+                  snprintf(label, sizeof(label), "%s", sym);
                   emit_store_label_address_to_fp(dst->offset, dst->size, label);
                }
                return true;
@@ -7835,7 +7911,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
             }
             if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                char label[sizeof(sym) + 2];
-               snprintf(label, sizeof(label), "_%s", sym);
+               snprintf(label, sizeof(label), "%s", sym);
                out->kind = INIT_CONST_ADDRESS;
                out->symbol = strdup(label);
                out->addend = 0;
@@ -7922,7 +7998,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
                }
                if (function_symbol_name(fn, ident, sym, sizeof(sym))) {
                   char label[sizeof(sym) + 2];
-                  snprintf(label, sizeof(label), "_%s", sym);
+                  snprintf(label, sizeof(label), "%s", sym);
                   out->kind = INIT_CONST_ADDRESS;
                   out->symbol = strdup(label);
                   out->addend = 0;
@@ -9861,7 +9937,7 @@ static void compile_function_decl(ASTNode *node) {
    }
 
    if (!has_modifier(modifiers, "static")) {
-      emit(&es_export, ".export _%s\n", sym);
+      emit(&es_export, ".export %s\n", sym);
       emit_function_parameter_exports(node);
    }
 
@@ -9881,7 +9957,7 @@ static void compile_function_decl(ASTNode *node) {
    }
 
    emit_function_parameter_storage(node, &ctx);
-   emit(&es_code, ".proc _%s\n", sym);
+   emit(&es_code, ".proc %s\n", sym);
    emit(&es_code, "    lda sp+1\n");
    emit(&es_code, "    sta fp+1\n");
    emit(&es_code, "    lda sp\n");
@@ -10245,6 +10321,8 @@ static void compile_global_decl_item(ASTNode *node) {
    bool is_ref = has_modifier(modifiers, "ref");
    bool is_absolute_ref = is_ref && addrspec != NULL;
    int size = declarator_storage_size(type, declarator);
+   char symname[256];
+   format_user_asm_symbol(name, symname, sizeof(symname));
 
    if (addrspec != NULL && !is_ref) {
       warn_address_spec_without_ref(node, name);
@@ -10291,20 +10369,20 @@ static void compile_global_decl_item(ASTNode *node) {
       }
 
       if (is_zeropage) {
-         emit(&es_import, ".zpimport _%s\n", name);
+         emit(&es_import, ".zpimport %s\n", symname);
       }
       else {
-         emit(&es_import, ".import _%s\n", name);
+         emit(&es_import, ".import %s\n", symname);
       }
       return;
    }
 
    if (!is_static) {
       if (is_zeropage) {
-         emit(&es_export, ".zpexport _%s\n", name);
+         emit(&es_export, ".zpexport %s\n", symname);
       }
       else {
-         emit(&es_export, ".export _%s\n", name);
+         emit(&es_export, ".export %s\n", symname);
       }
    }
 
@@ -10314,14 +10392,14 @@ static void compile_global_decl_item(ASTNode *node) {
                node->file, node->line, node->column);
       }
       if (is_zeropage) {
-         emit(&es_zp, "_%s:\n", name);
+         emit(&es_zp, "%s:\n", symname);
          emit(&es_zp, "\t.res %d\n", size);
       }
       else {
          char segbuf[256];
          build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
          emit(&es_bss, ".segment \"%s\"\n", segbuf);
-         emit(&es_bss, "_%s:\n", name);
+         emit(&es_bss, "%s:\n", symname);
          emit(&es_bss, "\t.res %d\n", size);
       }
       return;
@@ -10331,33 +10409,33 @@ static void compile_global_decl_item(ASTNode *node) {
 
    {
       char symbuf[256];
-      snprintf(symbuf, sizeof(symbuf), "_%s", name);
+      snprintf(symbuf, sizeof(symbuf), "%s", symname);
 
       if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
          if (modifiers_imply_named_nonzeropage(modifiers)) {
             char segbuf[256];
             build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
             emit(&es_data, ".segment \"%s\"\n", segbuf);
-            emit(&es_data, "_%s:\n", name);
+            emit(&es_data, "%s:\n", symname);
             emit_sink_append(&es_data, &init_es);
          }
          else {
             EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
-            emit(es, "_%s:\n", name);
+            emit(es, "%s:\n", symname);
             emit_sink_append(es, &init_es);
          }
          return;
       }
 
       if (is_zeropage) {
-         emit(&es_zp, "_%s:\n", name);
+         emit(&es_zp, "%s:\n", symname);
          emit(&es_zp, "\t.res %d\n", size);
       }
       else {
          char segbuf[256];
          build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
          emit(&es_bss, ".segment \"%s\"\n", segbuf);
-         emit(&es_bss, "_%s:\n", name);
+         emit(&es_bss, "%s:\n", symname);
          emit(&es_bss, "\t.res %d\n", size);
       }
       remember_pending_global_init(name, symbuf, type, declarator, uexpr ? uexpr : expression, size, is_zeropage, false, NULL, NULL);

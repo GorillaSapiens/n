@@ -1,8 +1,8 @@
 // n65cc
 // expectasm: .export __init_
 // expectasm: .proc __init_
-// expectasm: jsr _twice
-// expectasm: sta _g,y
+// expectasm: jsr twice
+// expectasm: sta g,y
 
 type void { $size:0 };
 type bool { $size:1 };

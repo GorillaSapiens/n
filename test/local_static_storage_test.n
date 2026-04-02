@@ -1,9 +1,9 @@
 // n65cc -I .
-// expectasm: _demo$s:
-// expectasm: .byte <(_base+1), >(_base+1)
-// expectasm: _demo$q:
+// expectasm: demo$s:
+// expectasm: .byte <(base+1), >(base+1)
+// expectasm: demo$q:
 // expectasm: .byte $01, $02, $03
-// expectasm: _demo$u:
+// expectasm: demo$u:
 // expectasm: .res 6
 include "machine_6502.n"
 

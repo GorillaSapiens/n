@@ -19,6 +19,8 @@ The generated file expects a matching `type typename { ... };` declaration to al
 
 The implementation is pure `.n` code. It uses a union overlay plus a bitfield struct to expose sign, exponent, and mantissa, then performs manual `SExMy` arithmetic/comparison in generated helpers. It does not call `_faddN`, `_fsubN`, or `_fcmp` from `nlib`.
 
+The generated helpers and scratch globals are ordinary user-defined `.n` symbols with an `nlf_` prefix. They intentionally do not start with `_`, and the compiler now preserves that at the assembly/object-symbol layer too; raw `nlib` helper names remain separate assembly symbols like `_pushN` and `_callptr0`.
+
 Current limits:
 
 - supports sizes up to 8 bytes

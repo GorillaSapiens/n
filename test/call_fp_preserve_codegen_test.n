@@ -3,7 +3,7 @@
 // expectasm:     pha
 // expectasm:     lda fp
 // expectasm:     pha
-// expectasm:     jsr _id
+// expectasm:     jsr id
 // expectasm:     pla
 // expectasm:     sta fp
 // expectasm:     pla

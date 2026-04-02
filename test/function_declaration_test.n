@@ -1,5 +1,5 @@
 // n65cc
-// expectasm:     jsr _twice
+// expectasm:     jsr twice
 
 include "machine_6502.n"
 

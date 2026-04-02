@@ -4,7 +4,7 @@
 
 .export __reset
 
-.import _main
+.import main
 
 .import __copy_table
 .import __zero_table
@@ -180,7 +180,7 @@ _call_init_trampoline:
    jmp (ptr1)
 
 _start_main:
-   jsr _main
+   jsr main
 
 _forever:
    jmp _forever

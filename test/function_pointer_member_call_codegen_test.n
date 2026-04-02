@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectasm: jsr _callptr0
-// expectasm: .proc _inc
+// expectasm: .proc inc?
 
 include "machine_6502.n"
 

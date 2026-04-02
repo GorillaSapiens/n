@@ -1,6 +1,6 @@
 // n65cc -I .
-// expectasmordered: sta _a,y
-// expectasmordered: lda #<(_a + 0)
+// expectasmordered: sta a?,y
+// expectasmordered: lda #<(a? + 0)
 // expectasmordered: ora (fp),y
 // expectasmordered: beq @if_false_
 

@@ -1,14 +1,14 @@
 // n65cc
-// expectasm: _sum:
+// expectasm: sum:
 // expectasm: 	.byte $14, $00, $00
-// expectasm: _less:
+// expectasm: less:
 // expectasm: 	.byte $01
-// expectasm: _four:
+// expectasm: four:
 // expectasm: 	.byte $00, $00, $80, $40
-// expectasm: _pair:
+// expectasm: pair:
 // expectasm: 	.byte $03, $00, $00, $04, $00, $00
-// expectasm: _ptr:
-// expectasm: 	.byte <(_base+1), >(_base+1)
+// expectasm: ptr:
+// expectasm: 	.byte <(base+1), >(base+1)
 
 type bool     { $size:1 };
 type void     { $size:0 };

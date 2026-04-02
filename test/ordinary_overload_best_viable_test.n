@@ -1,5 +1,5 @@
 // n65cc
-// expectasm: jsr _widen__s4_p0_a0
+// expectasm: jsr widen__s4_p0_a0
 
 type void { $size:0 };
 type bool { $size:1 };

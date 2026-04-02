@@ -15,7 +15,7 @@ If you are not replacing the runtime yourself, this is the library you use.
   - zeros `BSS` using `__zero_table`
   - initializes the N argument stack from `__stack_start`
   - walks the linker-generated `__init_table`
-  - calls `_main`
+  - calls `main`
 - `nrt0_noint.s`
   - exports weak `__nmi` and `__irqbrk` stubs that just `rti`
   - these are fallback interrupt entries when nothing stronger is linked

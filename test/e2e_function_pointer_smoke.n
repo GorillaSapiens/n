@@ -7,15 +7,15 @@ static char bad[8] := { 'F', 'P', ' ', 'B', 'A', 'D', '\n', 0 };
 
 void print_ok(void) {
    asm lda #0;
-   asm ldx #<_ok;
-   asm ldy #>_ok;
+   asm ldx #<ok;
+   asm ldy #>ok;
    asm jsr $ffff;
 }
 
 void print_bad(void) {
    asm lda #0;
-   asm ldx #<_bad;
-   asm ldy #>_bad;
+   asm ldx #<bad;
+   asm ldy #>bad;
    asm jsr $ffff;
 }
 

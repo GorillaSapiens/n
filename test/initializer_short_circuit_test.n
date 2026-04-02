@@ -1,9 +1,9 @@
 // n65cc
-// expectasm: _and_short:
+// expectasm: and_short:
 // expectasm: 	.byte $00
-// expectasm: _or_short:
+// expectasm: or_short:
 // expectasm: 	.byte $01
-// expectasm: _ternary:
+// expectasm: ternary:
 // expectasm: 	.byte $07, $00, $00
 
 type bool     { $size:1 };

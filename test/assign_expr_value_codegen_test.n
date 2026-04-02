@@ -1,7 +1,7 @@
 // n65cc -I .
-// expectasmordered: sta _b,y
-// expectasmordered: lda #<(_b + 0)
-// expectasmordered: sta _a,y
+// expectasmordered: sta b,y
+// expectasmordered: lda #<(b + 0)
+// expectasmordered: sta a?,y
 
 include "machine_6502.n"
 

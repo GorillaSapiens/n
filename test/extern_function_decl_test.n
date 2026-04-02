@@ -1,6 +1,6 @@
 // n65cc
-// expectasm: .import _foreign_add
-// expectasm:     jsr _foreign_add
+// expectasm: .import foreign_add
+// expectasm:     jsr foreign_add
 
 include "machine_6502.n"
 
