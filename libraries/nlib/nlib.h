@@ -67,11 +67,8 @@ void lslN(void);
 void lsrN(void);
 
 void asr1(void);
-void asr8(void);
 void lsl1(void);
-void lsl8(void);
 void lsr1(void);
-void lsr8(void);
 void shiftN(void);
 
 void pushN(void);

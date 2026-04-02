@@ -1,4 +1,3 @@
-
 ; arg1.asm - Bit arg1ing routines
 ;
 ; Implements:
@@ -6,19 +5,15 @@
 ; - lsr1: logical arg1 right by 1
 ; - asr1: arithmetic arg1 right by 1 (signed)
 ;
-; - lsl8: logical arg1 left by 8
-; - lsr8: logical arg1 right by 8
-; - asr8: arithmetic arg1 right by 8 (signed)
-;
 ; - lslN: logical arg1 left by N
 ; - lsrN: logical arg1 right by N
 ; - asrN: arithmetic arg1 right by N (signed)
 ;
 ; Inputs:
-;   ptr0  - source, modified in place for *1 and *8, read-only for *N
+;   ptr0  - source, modified in place for *1, read-only for *N
 ;   ptr1  - destination for *N
 ;   arg0  - byte count
-;   arg1 - bits to arg1 for N
+;   arg1  - bits to shift for N
 ; Clobbers: A, X, Y
 
 .include "nlib.inc"
@@ -68,99 +63,16 @@
     rts
 .endproc
 
-; Logical arg1 left by 8 bits (1 byte)
-.proc _lsl8
-    ldy arg0
-    dey
-    dey
-    bmi @fini
-@loop:
-    lda (ptr0), y
-    iny
-    sta (ptr0), y
-    dey
-    dey
-    bpl @loop
-@fini:
-    iny
-    lda #0
-    sta (ptr0), y
-    rts
-.endproc
-
-; Logical arg1 right by 8 bits (1 byte)
-.proc _lsr8
-    ldy #0
-    ldx arg0
-    dex
-    dex
-    bmi @fini
-@loop:
-    iny
-    lda (ptr0), y
-    dey
-    sta (ptr0), y
-    iny
-    dex
-    bpl @loop
-@fini:
-    lda #0
-    sta (ptr0), y
-    rts
-.endproc
-
-; Arithmetic arg1 right by 8 bits (1 byte)
-
-.proc _asr8
-    lda #0
-    sta tmp
-    ldy arg0
-    dey
-    lda (ptr0), y
-    bpl @skip
-    lda #$FF
-    sta tmp
-@skip:
-    ldy #0
-    ldx arg0
-    dex
-    dex
-    bmi @fini
-@loop:
-    iny
-    lda (ptr0), y
-    dey
-    sta (ptr0), y
-    iny
-    dex
-    bpl @loop
-@fini:
-    lda tmp
-    sta (ptr0), y
-    rts
-.endproc
-
-; Logical arg1 left by N bits (N in arg1)
-; Uses lsl8 and lsl1
+; Apply the remaining 1-bit shifts to ptr1 in place.
 .proc _arg1N
     jmp @start
 @trampoline1:
-    jmp (ptr2)
-@trampoline8:
     jmp (ptr3)
 @start:
     lda ptr0
     pha
     lda ptr0+1
     pha
-
-    ldy arg0
-    dey
-@copy:
-    lda (ptr0), y
-    sta (ptr1), y
-    dey
-    bpl @copy
 
     lda ptr1
     sta ptr0
@@ -170,25 +82,12 @@
     lda arg1
     and #7
     sta n_bit
-    lda arg1
-    lsr
-    lsr
-    lsr
-    sta n_byte
-    lda n_bit
-    beq @fini1
-@loop1:
+    beq @done
+@loop:
     jsr @trampoline1
     dec n_bit
-    bne @loop1
-@fini1:
-    lda n_byte
-    beq @fini2
-@loop2:
-    jsr @trampoline8
-    dec n_byte
-    bne @loop2
-@fini2:
+    bne @loop
+@done:
     pla
     sta ptr0+1
     pla
@@ -198,42 +97,177 @@
 
 .proc _lslN
     lda #<_lsl1
-    sta ptr2
-    lda #>_lsl1
-    sta ptr2+1
-
-    lda #<_lsl8
     sta ptr3
-    lda #>_lsl8
+    lda #>_lsl1
     sta ptr3+1
 
-    jmp _arg1N
+    lda arg1
+    lsr
+    lsr
+    lsr
+    sta n_byte
+    cmp arg0
+    bcc @copy_bytes
+
+    ldy arg0
+    dey
+    lda #0
+@fill_all:
+    sta (ptr1), y
+    dey
+    bpl @fill_all
+    rts
+
+@copy_bytes:
+    lda ptr0
+    sec
+    sbc n_byte
+    sta ptr2
+    lda ptr0+1
+    sbc #0
+    sta ptr2+1
+
+    ldy arg0
+    dey
+@copy:
+    cpy n_byte
+    bcc @fill_low
+    lda (ptr2), y
+    sta (ptr1), y
+    dey
+    bpl @copy
+    jsr _arg1N
+    rts
+
+@fill_low:
+    lda #0
+@fill_low_loop:
+    sta (ptr1), y
+    dey
+    bpl @fill_low_loop
+    jsr _arg1N
+    rts
 .endproc
 
 .proc _lsrN
     lda #<_lsr1
-    sta ptr2
-    lda #>_lsr1
-    sta ptr2+1
-
-    lda #<_lsr8
     sta ptr3
-    lda #>_lsr8
+    lda #>_lsr1
     sta ptr3+1
 
-    jmp _arg1N
+    lda arg1
+    lsr
+    lsr
+    lsr
+    sta n_byte
+    cmp arg0
+    bcc @copy_bytes
+
+    ldy #0
+    lda #0
+@fill_all:
+    sta (ptr1), y
+    iny
+    cpy arg0
+    bcc @fill_all
+    rts
+
+@copy_bytes:
+    lda ptr0
+    clc
+    adc n_byte
+    sta ptr2
+    lda ptr0+1
+    adc #0
+    sta ptr2+1
+
+    lda arg0
+    sec
+    sbc n_byte
+    tax
+    ldy #0
+@copy:
+    lda (ptr2), y
+    sta (ptr1), y
+    iny
+    dex
+    bne @copy
+
+    lda #0
+@fill_high:
+    cpy arg0
+    bcs @post_bits
+    sta (ptr1), y
+    iny
+    bne @fill_high
+@post_bits:
+    jsr _arg1N
+    rts
 .endproc
 
 .proc _asrN
     lda #<_asr1
-    sta ptr2
-    lda #>_asr1
-    sta ptr2+1
-
-    lda #<_asr8
     sta ptr3
-    lda #>_asr8
+    lda #>_asr1
     sta ptr3+1
 
-    jmp _arg1N
+    ldy arg0
+    dey
+    lda (ptr0), y
+    bmi @negative
+    lda #0
+    jmp @got_fill
+@negative:
+    lda #$ff
+@got_fill:
+    sta tmp
+
+    lda arg1
+    lsr
+    lsr
+    lsr
+    sta n_byte
+    cmp arg0
+    bcc @copy_bytes
+
+    ldy #0
+    lda tmp
+@fill_all:
+    sta (ptr1), y
+    iny
+    cpy arg0
+    bcc @fill_all
+    rts
+
+@copy_bytes:
+    lda ptr0
+    clc
+    adc n_byte
+    sta ptr2
+    lda ptr0+1
+    adc #0
+    sta ptr2+1
+
+    lda arg0
+    sec
+    sbc n_byte
+    tax
+    ldy #0
+@copy:
+    lda (ptr2), y
+    sta (ptr1), y
+    iny
+    dex
+    bne @copy
+
+    lda tmp
+@fill_high:
+    cpy arg0
+    bcs @post_bits
+    sta (ptr1), y
+    iny
+    bne @fill_high
+@post_bits:
+    jsr _arg1N
+    rts
 .endproc
