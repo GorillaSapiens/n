@@ -6560,7 +6560,7 @@ unary_not_done:
       helper = !strcmp(op, "<<") ? "lslN" : (op_type && has_flag(type_name_from_node(op_type), "$signed") ? "asrN" : "lsrN");
       emit_runtime_shift_fp(helper, lhs_offset, aux_offset, rhs_offset, lhs_size);
 
-      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, lhs_offset, lhs_size, op_type);
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, aux_offset, lhs_size, op_type);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
       emit(&es_code, "    sta arg0\n");
@@ -9806,6 +9806,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       else if (!strcmp(op, "<<=") || !strcmp(op, ">>=")) {
          helper = !strcmp(op, "<<=") ? "lslN" : (work_type && has_flag(type_name_from_node(work_type), "$signed") ? "asrN" : "lsrN");
          emit_runtime_shift_fp(helper, lhs_tmp_offset, aux_offset, rhs_tmp_offset, work_size);
+         emit_copy_fp_to_fp(lhs_tmp_offset, aux_offset, work_size);
       }
       else {
          remember_runtime_import("popN");
