@@ -10,8 +10,8 @@
 ; - asrN: arithmetic arg1 right by N (signed)
 ;
 ; Inputs:
-;   ptr0  - source, modified in place for *1, read-only for *N
-;   ptr1  - destination for *N
+;   ptr0  - source for *N, read-only
+;   ptr1  - destination for *N, modified in place for *1
 ;   arg0  - byte count
 ;   arg1  - bits to shift for N
 ; Clobbers: A, X, Y
@@ -27,9 +27,9 @@
     ldy #0
     clc
 @loop:
-    lda (ptr0), y
+    lda (ptr1), y
     rol
-    sta (ptr0), y
+    sta (ptr1), y
     iny
     dex
     bne @loop
@@ -41,9 +41,9 @@
     dey
     clc
 @loop:
-    lda (ptr0), y
+    lda (ptr1), y
     ror
-    sta (ptr0), y
+    sta (ptr1), y
     dey
     bpl @loop
     rts
@@ -52,12 +52,12 @@
 .proc _asr1
     ldy arg0
     dey
-    lda (ptr0), y
+    lda (ptr1), y
     asl           ; places the high bit in Carry
 @loop:
-    lda (ptr0), y
+    lda (ptr1), y
     ror
-    sta (ptr0), y
+    sta (ptr1), y
     dey
     bpl @loop
     rts
@@ -69,16 +69,6 @@
 @trampoline1:
     jmp (ptr3)
 @start:
-    lda ptr0
-    pha
-    lda ptr0+1
-    pha
-
-    lda ptr1
-    sta ptr0
-    lda ptr1+1
-    sta ptr0+1
-
     lda arg1
     and #7
     sta n_bit
@@ -88,10 +78,6 @@
     dec n_bit
     bne @loop
 @done:
-    pla
-    sta ptr0+1
-    pla
-    sta ptr0
     rts
 .endproc
 

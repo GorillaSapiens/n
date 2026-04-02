@@ -34,6 +34,27 @@ ref char lsl17_d1@0x0335;
 ref char lsl17_d2@0x0336;
 ref char lsl17_d3@0x0337;
 
+ref char lsl1_s0@0x0340;
+ref char lsl1_s1@0x0341;
+ref char lsl1_s2@0x0342;
+ref char lsl1_d0@0x0343;
+ref char lsl1_d1@0x0344;
+ref char lsl1_d2@0x0345;
+
+ref char lsr1_s0@0x0350;
+ref char lsr1_s1@0x0351;
+ref char lsr1_s2@0x0352;
+ref char lsr1_d0@0x0353;
+ref char lsr1_d1@0x0354;
+ref char lsr1_d2@0x0355;
+
+ref char asr1_s0@0x0360;
+ref char asr1_s1@0x0361;
+ref char asr1_s2@0x0362;
+ref char asr1_d0@0x0363;
+ref char asr1_d1@0x0364;
+ref char asr1_d2@0x0365;
+
 void pass(void) {
    asm lda #$ff;
    asm ldx #0;
@@ -45,6 +66,9 @@ void main(void) {
    asm .import _lslN;
    asm .import _lsrN;
    asm .import _asrN;
+   asm .import _lsl1;
+   asm .import _lsr1;
+   asm .import _asr1;
    asm .importzp _nl_ptr0;
    asm .importzp _nl_ptr1;
    asm .importzp _nl_arg0;
@@ -148,6 +172,74 @@ void main(void) {
    if (lsl17_d1 != 0x00) { asm lda #$ff; asm ldx #24; asm ldy #0; asm jsr $ffff; }
    if (lsl17_d2 != 0x02) { asm lda #$ff; asm ldx #25; asm ldy #0; asm jsr $ffff; }
    if (lsl17_d3 != 0x04) { asm lda #$ff; asm ldx #26; asm ldy #0; asm jsr $ffff; }
+
+
+   lsl1_s0 := 0x11; lsl1_s1 := 0x22; lsl1_s2 := 0x33;
+   lsl1_d0 := 0x80; lsl1_d1 := 0x00; lsl1_d2 := 0x01;
+
+   asm lda #<$0340;
+   asm sta _nl_ptr0;
+   asm lda #>$0340;
+   asm sta _nl_ptr0+1;
+   asm lda #<$0343;
+   asm sta _nl_ptr1;
+   asm lda #>$0343;
+   asm sta _nl_ptr1+1;
+   asm lda #3;
+   asm sta _nl_arg0;
+   asm jsr _lsl1;
+
+   if (lsl1_s0 != 0x11) { asm lda #$ff; asm ldx #27; asm ldy #0; asm jsr $ffff; }
+   if (lsl1_s1 != 0x22) { asm lda #$ff; asm ldx #28; asm ldy #0; asm jsr $ffff; }
+   if (lsl1_s2 != 0x33) { asm lda #$ff; asm ldx #29; asm ldy #0; asm jsr $ffff; }
+   if (lsl1_d0 != 0x00) { asm lda #$ff; asm ldx #30; asm ldy #0; asm jsr $ffff; }
+   if (lsl1_d1 != 0x01) { asm lda #$ff; asm ldx #31; asm ldy #0; asm jsr $ffff; }
+   if (lsl1_d2 != 0x02) { asm lda #$ff; asm ldx #32; asm ldy #0; asm jsr $ffff; }
+
+   lsr1_s0 := 0x44; lsr1_s1 := 0x55; lsr1_s2 := 0x66;
+   lsr1_d0 := 0x01; lsr1_d1 := 0x00; lsr1_d2 := 0x80;
+
+   asm lda #<$0350;
+   asm sta _nl_ptr0;
+   asm lda #>$0350;
+   asm sta _nl_ptr0+1;
+   asm lda #<$0353;
+   asm sta _nl_ptr1;
+   asm lda #>$0353;
+   asm sta _nl_ptr1+1;
+   asm lda #3;
+   asm sta _nl_arg0;
+   asm jsr _lsr1;
+
+   if (lsr1_s0 != 0x44) { asm lda #$ff; asm ldx #33; asm ldy #0; asm jsr $ffff; }
+   if (lsr1_s1 != 0x55) { asm lda #$ff; asm ldx #34; asm ldy #0; asm jsr $ffff; }
+   if (lsr1_s2 != 0x66) { asm lda #$ff; asm ldx #35; asm ldy #0; asm jsr $ffff; }
+   if (lsr1_d0 != 0x00) { asm lda #$ff; asm ldx #36; asm ldy #0; asm jsr $ffff; }
+   if (lsr1_d1 != 0x00) { asm lda #$ff; asm ldx #37; asm ldy #0; asm jsr $ffff; }
+   if (lsr1_d2 != 0x40) { asm lda #$ff; asm ldx #38; asm ldy #0; asm jsr $ffff; }
+
+   asr1_s0 := 0x77; asr1_s1 := 0x88; asr1_s2 := 0x99;
+   asr1_d0 := 0x02; asr1_d1 := 0x00; asr1_d2 := 0x80;
+
+   asm lda #<$0360;
+   asm sta _nl_ptr0;
+   asm lda #>$0360;
+   asm sta _nl_ptr0+1;
+   asm lda #<$0363;
+   asm sta _nl_ptr1;
+   asm lda #>$0363;
+   asm sta _nl_ptr1+1;
+   asm lda #3;
+   asm sta _nl_arg0;
+   asm jsr _asr1;
+
+   if (asr1_s0 != 0x77) { asm lda #$ff; asm ldx #39; asm ldy #0; asm jsr $ffff; }
+   if (asr1_s1 != 0x88) { asm lda #$ff; asm ldx #40; asm ldy #0; asm jsr $ffff; }
+   if (asr1_s2 != 0x99) { asm lda #$ff; asm ldx #41; asm ldy #0; asm jsr $ffff; }
+   if (asr1_d0 != 0x01) { asm lda #$ff; asm ldx #42; asm ldy #0; asm jsr $ffff; }
+   if (asr1_d1 != 0x00) { asm lda #$ff; asm ldx #43; asm ldy #0; asm jsr $ffff; }
+   if (asr1_d2 != 0xc0) { asm lda #$ff; asm ldx #44; asm ldy #0; asm jsr $ffff; }
+
 
    pass();
 }
