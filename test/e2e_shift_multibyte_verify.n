@@ -1,0 +1,77 @@
+// n65cc -I .
+// expectexit: 0
+include "machine_6502.n"
+
+type u1 { $size:1 $unsigned };
+type u2 { $size:2 $unsigned $endian:little };
+type u4 { $size:4 $unsigned $endian:little };
+type s2 { $size:2 $signed $endian:little };
+
+union U16 {
+   u2 v;
+   u1 b[2];
+};
+
+union U32 {
+   u4 v;
+   u1 b[4];
+};
+
+union S16 {
+   s2 v;
+   u1 b[2];
+};
+
+void pass(void) {
+   asm lda #$ff;
+   asm ldx #0;
+   asm ldy #0;
+   asm jsr $ffff;
+}
+
+void main(void) {
+   U16 a;
+   U32 b;
+   S16 s;
+
+   a.v := 1`u2 << 8;
+   if (a.b[0] != 0x00) { asm lda #$ff; asm ldx #1;  asm ldy #0; asm jsr $ffff; }
+   if (a.b[1] != 0x01) { asm lda #$ff; asm ldx #2;  asm ldy #0; asm jsr $ffff; }
+
+   a.b[0] := 0x34;
+   a.b[1] := 0x12;
+   a.v := a.v >> 4;
+   if (a.b[0] != 0x23) { asm lda #$ff; asm ldx #3;  asm ldy #0; asm jsr $ffff; }
+   if (a.b[1] != 0x01) { asm lda #$ff; asm ldx #4;  asm ldy #0; asm jsr $ffff; }
+
+   b.v := 1`u4;
+   b.v <<= 20;
+   if (b.b[0] != 0x00) { asm lda #$ff; asm ldx #5;  asm ldy #0; asm jsr $ffff; }
+   if (b.b[1] != 0x00) { asm lda #$ff; asm ldx #6;  asm ldy #0; asm jsr $ffff; }
+   if (b.b[2] != 0x10) { asm lda #$ff; asm ldx #7;  asm ldy #0; asm jsr $ffff; }
+   if (b.b[3] != 0x00) { asm lda #$ff; asm ldx #8;  asm ldy #0; asm jsr $ffff; }
+
+   b.b[0] := 0x78;
+   b.b[1] := 0x56;
+   b.b[2] := 0x34;
+   b.b[3] := 0x12;
+   b.v >>= 12;
+   if (b.b[0] != 0x45) { asm lda #$ff; asm ldx #9;  asm ldy #0; asm jsr $ffff; }
+   if (b.b[1] != 0x23) { asm lda #$ff; asm ldx #10; asm ldy #0; asm jsr $ffff; }
+   if (b.b[2] != 0x01) { asm lda #$ff; asm ldx #11; asm ldy #0; asm jsr $ffff; }
+   if (b.b[3] != 0x00) { asm lda #$ff; asm ldx #12; asm ldy #0; asm jsr $ffff; }
+
+   s.b[0] := 0x00;
+   s.b[1] := 0x80;
+   s.v >>= 4;
+   if (s.b[0] != 0x00) { asm lda #$ff; asm ldx #13; asm ldy #0; asm jsr $ffff; }
+   if (s.b[1] != 0xF8) { asm lda #$ff; asm ldx #14; asm ldy #0; asm jsr $ffff; }
+
+   s.b[0] := 0xFE;
+   s.b[1] := 0xFF;
+   s.v := s.v >> 1;
+   if (s.b[0] != 0xFF) { asm lda #$ff; asm ldx #15; asm ldy #0; asm jsr $ffff; }
+   if (s.b[1] != 0xFF) { asm lda #$ff; asm ldx #16; asm ldy #0; asm jsr $ffff; }
+
+   pass();
+}
