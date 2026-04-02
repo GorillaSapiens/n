@@ -27,7 +27,7 @@ type bool   { $size:1 };
 type *      { $size:2 $unsigned $endian:little };
 type s2     { $size:2 $signed   $endian:little };
 type u4     { $size:4 $unsigned $endian:little };
-type f4     { $size:4 $float:SE8M23 $endian:little }; // IEEE 754 binary32
+type f4     { $size:4 $float:ieee754 $endian:little }; // IEEE 754 binary32
 ```
 
 ### Required type declarations
@@ -47,8 +47,8 @@ Recognized flags include:
 - `$size:N`
 - `$signed`
 - `$unsigned`
-- `$float`
-- `$float:SExMy` ... explicit SEM float layout, for example `$float:SE8M23` for IEEE 754 binary32
+- `$float:ieee754` ... IEEE 754 packing for `$size:2`, `$size:4`, and `$size:8`
+- `$float:simple` ... generic `SExMy` packing where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits
 - `$endian:little`
 - `$endian:big`
 

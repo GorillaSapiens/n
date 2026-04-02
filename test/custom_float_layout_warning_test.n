@@ -1,17 +1,20 @@
 // n65cc -I .
-// expecterr: exceeds host double precision; using best-effort packing
-// expectasmordered: ldy #6
-// expectasmordered: lda #$f0
+// expecterr: exceeds host double size; inaccuracies may appear
+// expectasmordered: ldy #13
+// expectasmordered: lda #$00
 // expectasmordered: sta (fp),y
-// expectasmordered: ldy #7
+// expectasmordered: ldy #14
+// expectasmordered: lda #$ff
+// expectasmordered: sta (fp),y
+// expectasmordered: ldy #15
 // expectasmordered: lda #$3f
 // expectasmordered: sta (fp),y
 
 include "machine_6502.n"
 
-type f8x { $size:8 $float:SE10M53 $endian:little };
+type f16x { $size:16 $float:simple $endian:little };
 
 int main(void) {
-   f8x x := 1.5;
+   f16x x := 1.5;
    return 0;
 }

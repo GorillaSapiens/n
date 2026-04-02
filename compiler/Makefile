@@ -54,7 +54,7 @@ test:
 	(cd ../test; ./test.pl --compile-only)
 
 $(TARGET): $(GENHDR) $(GENSRC) $(OBJ)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl
+	$(CC) $(CFLAGS) -o $(TARGET) $(OBJ) -lfl -lm
 
 %.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@

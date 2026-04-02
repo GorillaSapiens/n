@@ -210,8 +210,9 @@ static int integer_literal_min_size(const ASTNode *expr);
 static bool has_flag(const char *type, const char *flag);
 static bool has_flag_prefix(const char *type, const char *prefix);
 static const char *enum_backing_type_name(const char *type);
-static bool parse_float_layout_flag_text(const char *text, int *expbits_out, int *mbits_out);
+static const char *parse_float_style_flag_text(const char *text);
 static bool type_is_float_like(const ASTNode *type);
+static const char *type_float_style(const ASTNode *type);
 static int type_float_expbits(const ASTNode *type);
 static bool has_modifier(ASTNode *node, const char *modifier);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
@@ -2459,91 +2460,61 @@ static bool has_flag_prefix(const char *type, const char *prefix) {
    return false;
 }
 
-static bool parse_float_layout_flag_text(const char *text, int *expbits_out, int *mbits_out) {
-   const char *p;
-   char *end;
-   long expbits;
-   long mbits;
-
-   if (!text || strncmp(text, "$float:", 7)) {
-      return false;
+static const char *parse_float_style_flag_text(const char *text) {
+   if (!text || strncmp(text, "$float:", 7) || !text[7]) {
+      return NULL;
    }
-
-   p = text + 7;
-   if (*p != 'S') {
-      return false;
-   }
-   p++;
-   if (*p != 'E') {
-      return false;
-   }
-   p++;
-
-   expbits = strtol(p, &end, 10);
-   if (end == p || expbits <= 0 || *end != 'M') {
-      return false;
-   }
-   p = end + 1;
-   mbits = strtol(p, &end, 10);
-   if (end == p || mbits < 0 || *end != '\0') {
-      return false;
-   }
-
-   if (expbits_out) {
-      *expbits_out = (int) expbits;
-   }
-   if (mbits_out) {
-      *mbits_out = (int) mbits;
-   }
-   return true;
+   return text + 7;
 }
 
 static bool type_is_float_like(const ASTNode *type) {
    const char *name = type_name_from_node(type);
-   return name && (has_flag(name, "$float") || has_flag_prefix(name, "$float:"));
+   return name && has_flag_prefix(name, "$float:");
 }
 
-static void error_non_ieee_float_layout_required(const char *file, int line, int column, const ASTNode *type) {
-   const char *name = type_name_from_node(type);
-   if (name) {
-      error_user("[%s:%d.%d] layout must be specified for non IEEE 754 floats (type '%s')", file, line, column, name);
+static const char *type_float_style(const ASTNode *type) {
+   const ASTNode *node;
+   const ASTNode *flags;
+
+   if (!type) {
+      return NULL;
    }
-   else {
-      error_user("[%s:%d.%d] layout must be specified for non IEEE 754 floats", file, line, column);
+
+   node = get_typename_node(type_name_from_node(type));
+   if (!node || node->count < 2 || is_empty(node->children[1])) {
+      return NULL;
    }
+
+   flags = node->children[1];
+   for (int i = 0; i < flags->count; i++) {
+      const char *style;
+      if (!flags->children[i] || !flags->children[i]->strval) {
+         continue;
+      }
+      style = parse_float_style_flag_text(flags->children[i]->strval);
+      if (style) {
+         return style;
+      }
+   }
+
+   return NULL;
 }
 
 static int type_float_expbits(const ASTNode *type) {
-   const ASTNode *node;
-   const ASTNode *flags;
+   const char *style;
    int size;
 
    if (!type) {
       return -1;
    }
 
-   node = get_typename_node(type_name_from_node(type));
-   if (!node || node->count < 2 || is_empty(node->children[1])) {
-      return -1;
-   }
-
-   flags = node->children[1];
-   for (int i = 0; i < flags->count; i++) {
-      int expbits;
-      if (!flags->children[i] || !flags->children[i]->strval) {
-         continue;
-      }
-      if (parse_float_layout_flag_text(flags->children[i]->strval, &expbits, NULL)) {
-         return expbits;
-      }
-   }
-
-   if (!type_is_float_like(type)) {
+   style = type_float_style(type);
+   if (!style) {
       return -1;
    }
 
    size = type_size_from_node(type);
-   return default_float_expbits_for_size(size);
+   return float_style_expbits_for_size(style, size);
 }
 
 static bool has_modifier(ASTNode *node, const char *modifier) {
@@ -5647,23 +5618,18 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
    if (expr->kind == AST_FLOAT) {
       unsigned char *bytes = (unsigned char *) calloc(dst->size ? dst->size : 1, sizeof(unsigned char));
-      int expbits = type_is_float_like(dst->type) ? type_float_expbits(dst->type) : -1;
+      const char *style = type_float_style(dst->type);
       if (!bytes) {
          error_unreachable("out of memory");
       }
-      if (expbits >= 0) {
-         if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
-            make_be_float_layout(expr->strval, bytes, dst->size, expbits);
-         }
-         else {
-            make_le_float_layout(expr->strval, bytes, dst->size, expbits);
-         }
+      if (!style) {
+         error_unreachable("[%s:%d] floating literal assigned to non-float type", __FILE__, __LINE__);
       }
-      else if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
-         make_be_float(expr->strval, bytes, dst->size);
+      if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
+         make_be_float_style(expr->strval, bytes, dst->size, style);
       }
       else {
-         make_le_float(expr->strval, bytes, dst->size);
+         make_le_float_style(expr->strval, bytes, dst->size, style);
       }
       emit_store_immediate_to_fp(dst->offset, bytes, dst->size);
       free(bytes);
@@ -6427,7 +6393,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, work_type);
+               error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", expr->file, expr->line, expr->column);
                return false;
             }
             emit_runtime_float_binary_fp_fp(!strcmp(expr->name, "+") ? "faddN" : "fsubN", lhs_offset, lhs_offset, value_offset, work_size, expbits);
@@ -6605,7 +6571,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, op_type);
+               error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", expr->file, expr->line, expr->column);
                return false;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -6626,7 +6592,7 @@ unary_not_done:
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, op_type);
+               error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", expr->file, expr->line, expr->column);
                return false;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
@@ -7236,7 +7202,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       if (is_float_compare) {
          expbits = type_float_expbits(type);
          if (expbits <= 0) {
-            error_non_ieee_float_layout_required(expr->file, expr->line, expr->column, type);
+            error_user("[%s:%d.%d] unsupported float style/size for runtime comparison", expr->file, expr->line, expr->column);
          }
       }
 
@@ -8170,20 +8136,20 @@ static bool encode_integer_initializer_value(long long value, unsigned char *buf
 
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type) {
    char tmp[256];
-   int expbits;
+   const char *style;
    if (!buf || size < 0 || !type) {
       return false;
    }
-   expbits = type_float_expbits(type);
-   if (expbits < 0) {
+   style = type_float_style(type);
+   if (!style) {
       return false;
    }
    snprintf(tmp, sizeof(tmp), "%la", value);
    if (has_flag(type_name_from_node(type), "$endian:big")) {
-      make_be_float_layout(tmp, buf, size, expbits);
+      make_be_float_style(tmp, buf, size, style);
    }
    else {
-      make_le_float_layout(tmp, buf, size, expbits);
+      make_le_float_style(tmp, buf, size, style);
    }
    return true;
 }
@@ -9695,7 +9661,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
+            error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", node->file, node->line, node->column);
             return;
          }
          emit_runtime_float_binary_fp_fp(!strcmp(op, "+=") ? "faddN" : "fsubN", lhs_tmp_offset, lhs_tmp_offset, rhs_value_offset, work_size, expbits);
@@ -9723,7 +9689,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
+               error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", node->file, node->line, node->column);
                return;
             }
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
@@ -9741,7 +9707,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_non_ieee_float_layout_required(node->file, node->line, node->column, work_type);
+               error_user("[%s:%d.%d] unsupported float style/size for runtime arithmetic", node->file, node->line, node->column);
                return;
             }
             emit_runtime_float_binary_fp_fp("fdivN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
@@ -9963,10 +9929,7 @@ static void compile_type_decl_stmt(ASTNode *node) {
    bool haveEndian = false;
    const char *endian = NULL;
    bool haveFloat = false;
-   bool haveFloatLayout = false;
-   int float_expbits = -1;
-   int float_mbits = -1;
-   const char *float_flag_text = NULL;
+   const char *float_style = NULL;
 
    // we need to guarantee a "size" and "endian"
    if (strcmp(node->children[1]->name, "empty")) {
@@ -10011,27 +9974,24 @@ static void compile_type_decl_stmt(ASTNode *node) {
          }
 
          if (!strcmp(item->strval, "$float")) {
-            if (haveFloat) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval);
-            }
-            haveFloat = true;
+            error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$float:ieee754' or '$float:simple'",
+                  node->file, node->line, node->column,
+                  node->children[0]->strval);
          }
          else if (!strncmp(item->strval, "$float:", 7)) {
+            const char *style = parse_float_style_flag_text(item->strval);
             if (haveFloat) {
                error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
                      node->file, node->line, node->column,
                      node->children[0]->strval);
             }
-            if (!parse_float_layout_flag_text(item->strval, &float_expbits, &float_mbits)) {
+            if (!style || !float_style_is_known(style)) {
                error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
                      node->file, node->line, node->column,
                      node->children[0]->strval, item->strval);
             }
             haveFloat = true;
-            haveFloatLayout = true;
-            float_flag_text = item->strval;
+            float_style = style;
          }
       }
    }
@@ -10046,13 +10006,13 @@ static void compile_type_decl_stmt(ASTNode *node) {
             node->file, node->line, node->column, node->children[0]->strval);
    }
 
-   if (haveFloatLayout) {
-      int total_bits = size * 8;
-      if (1 + float_expbits + float_mbits != total_bits) {
-         error_user("[%s:%d.%d] type_decl_stmt '%s' float layout '%s' does not match $size:%d",
+   if (haveFloat) {
+      int expbits = float_style_expbits_for_size(float_style, size);
+      if (expbits < 0) {
+         error_user("[%s:%d.%d] type_decl_stmt '%s' float style '%s' does not support $size:%d",
                node->file, node->line, node->column,
                node->children[0]->strval,
-               float_flag_text ? float_flag_text : "$float",
+               float_style ? float_style : "(null)",
                size);
       }
    }
@@ -10074,7 +10034,7 @@ static bool enum_candidate_is_integer_type(const ASTNode *node) {
       return false;
    }
 
-   if (has_flag(name, "$float") || has_flag_prefix(name, "$float:")) {
+   if (has_flag_prefix(name, "$float:")) {
       return false;
    }
 
@@ -10696,7 +10656,7 @@ static void calculate_struct_union_sizes(ASTNode *program) {
                               decl->file, decl->line, decl->column,
                               declarator_name(decl) ? declarator_name(decl) : "<unnamed>");
                      }
-                     if (has_flag(tname, "$float") || has_flag_prefix(tname, "$float:")) {
+                     if (has_flag_prefix(tname, "$float:")) {
                         error_user("[%s:%d.%d] bitfield '%s' cannot use floating type '%s'",
                               decl->file, decl->line, decl->column,
                               declarator_name(decl) ? declarator_name(decl) : "<unnamed>",

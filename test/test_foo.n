@@ -13,10 +13,10 @@ type  int24_t { $size:3 $signed $endian:little };
 type uint32_t { $size:4 $unsigned $endian:little };
 type  int32_t { $size:4 $signed $endian:little };
 
-type quarter_t { $size:1 $float:SE4M3 $endian:little };  // FP8-style custom format
-type half_t    { $size:2 $float:SE5M10 $endian:little };  // IEEE 754 binary16
-type float_t   { $size:4 $float:SE8M23 $endian:little };  // IEEE 754 binary32
-type double_t  { $size:8 $float:SE11M52 $endian:little }; // IEEE 754 binary64
+type quarter_t { $size:1 $float:simple $endian:little };  // FP8-style custom format
+type half_t    { $size:2 $float:ieee754 $endian:little };  // IEEE 754 binary16
+type float_t   { $size:4 $float:ieee754 $endian:little };  // IEEE 754 binary32
+type double_t  { $size:8 $float:ieee754 $endian:little }; // IEEE 754 binary64
 
 quarter_t quarter := 3.141592653587;
 half_t half := 3.141592653587;

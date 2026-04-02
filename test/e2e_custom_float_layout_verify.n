@@ -3,8 +3,8 @@
 
 include "machine_6502.n"
 
-type f3le { $size:3 $float:SE8M15 $endian:little };
-type f3be { $size:3 $float:SE8M15 $endian:big };
+type f3le { $size:3 $float:simple $endian:little };
+type f3be { $size:3 $float:simple $endian:big };
 
 union f3le_bits {
    f3le f;
@@ -38,11 +38,11 @@ void main(void) {
    be.f := 1.5;
 
    if (le.b[0] != 0) { fail1(); }
-   if (le.b[1] != 192) { fail2(); }
+   if (le.b[1] != 128) { fail2(); }
    if (le.b[2] != 63) { fail3(); }
 
    if (be.b[0] != 63) { fail4(); }
-   if (be.b[1] != 192) { fail5(); }
+   if (be.b[1] != 128) { fail5(); }
    if (be.b[2] != 0) { fail6(); }
 
    pass();

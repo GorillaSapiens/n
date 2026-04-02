@@ -46,16 +46,18 @@ Unless a subdirectory says otherwise, the toolchain sources and top-level build/
 The runtime libraries in `libraries/nlib/` and `libraries/nint/` are licensed under BSD-2-Clause so code linked into user binaries stays permissive.
 The exact license texts live in the repository root `LICENSE`/`COPYING` files and in the per-library `LICENSE` files.
 
-## Floating-point layout flags
+## Floating-point style flags
 
-The compiler now accepts explicit float layout flags in type declarations with the form `$float:SExMy`, where the bit layout is always sign/exponent/mantissa from most-significant bit to least-significant bit.
+Float types now use a style-based flag: `$float:ieee754` or `$float:simple`.
 
 Examples:
 
 ```n
-type half   { $size:2 $endian:little $float:SE5M10  }; // IEEE 754 binary16
-type float  { $size:4 $endian:little $float:SE8M23  }; // IEEE 754 binary32
-type double { $size:8 $endian:little $float:SE11M52 }; // IEEE 754 binary64
+type half   { $size:2 $endian:little $float:ieee754 }; // IEEE 754 binary16
+type float  { $size:4 $endian:little $float:ieee754 }; // IEEE 754 binary32
+type double { $size:8 $endian:little $float:ieee754 }; // IEEE 754 binary64
+type f3     { $size:3 $endian:little $float:simple  }; // generic simple SExMy format
 ```
 
-Bare `$float` still uses the compiler's default IEEE-style layout for the supported sizes.
+`$float:ieee754` supports only `$size:2`, `$size:4`, and `$size:8`.
+`$float:simple` supports any positive size and always uses an `SExMy` layout where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits. For `$size:2`, `$size:4`, and `$size:8`, that yields the same exponent widths as IEEE 754 binary16/binary32/binary64.

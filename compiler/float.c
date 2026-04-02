@@ -3,9 +3,12 @@
 #include <string.h>
 #include <assert.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <math.h>
 
 #include "messages.h"
 #include "xray.h"
+#include "float.h"
 
 // TODO FIX we'll need to revisit this later, for now just ensure
 // our doubles are big enough.
@@ -15,17 +18,6 @@ static_assert(sizeof(unsigned long long) == 8);
 #define HOST_DOUBLE_EXPBITS 11
 #define HOST_DOUBLE_MBITS   52
 #define HOST_DOUBLE_BIAS    1023
-
-int default_float_expbits_for_size(int size) {
-   switch (size) {
-      case 1: return 4;  // FP8-style default (custom, not IEEE 754 interchange)
-      case 2: return 5;  // IEEE 754 binary16
-      case 4: return 8;  // IEEE 754 binary32
-      case 8: return 11; // IEEE 754 binary64
-      default:
-         return -1;
-   }
-}
 
 double parse_float(const char *p) {
    double ret;
@@ -119,7 +111,6 @@ static void set_le_field_from_shifted_u64(unsigned char *target, int start_bit, 
    }
 }
 
-
 static int le_field_has_any_bits(const unsigned char *target, int start_bit, int bit_count) {
    int i;
 
@@ -138,6 +129,7 @@ static int le_field_has_any_bits(const unsigned char *target, int start_bit, int
 
    return 0;
 }
+
 static void increment_le_field(unsigned char *target, int start_bit, int bit_count) {
    int i;
    for (i = 0; i < bit_count; i++) {
@@ -206,10 +198,9 @@ static void reverse_bytes(unsigned char *target, int size) {
    }
 }
 
-int make_le_float_layout(const char *p, unsigned char *target, int size, int expbits) {
+static int make_le_float_layout(const char *p, unsigned char *target, int size, int expbits) {
    int total_bits;
    int mbits;
-   int warned_best_effort = 0;
    double value;
    uint64_t host;
    uint64_t host_mantissa;
@@ -226,12 +217,6 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
    }
 
    mbits = total_bits - 1 - expbits;
-   if (size > (int) sizeof(double) || mbits > HOST_DOUBLE_MBITS) {
-      warning("[%s:%d] float layout SE%dM%d in %d bytes exceeds host double precision; using best-effort packing",
-            __FILE__, __LINE__, expbits, mbits, size);
-      warned_best_effort = 1;
-   }
-
    memset(target, 0, size);
 
    value = parse_float(p);
@@ -252,10 +237,6 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
       set_le_bits_all_ones(target, mbits, expbits);
       if (host_mantissa != 0 && mbits > 0) {
          set_le_field_from_shifted_u64(target, 0, mbits, host_mantissa, HOST_DOUBLE_MBITS, mbits - HOST_DOUBLE_MBITS);
-         if (!warned_best_effort && mbits > HOST_DOUBLE_MBITS) {
-            warning("[%s:%d] float layout SE%dM%d in %d bytes exceeds host double mantissa precision; using best-effort packing",
-                  __FILE__, __LINE__, expbits, mbits, size);
-         }
          if (!le_field_has_any_bits(target, 0, mbits)) {
             set_le_bit(target, 0, 1);
          }
@@ -309,30 +290,119 @@ int make_le_float_layout(const char *p, unsigned char *target, int size, int exp
    }
 }
 
-int make_le_float(const char *p, unsigned char *target, int size) {
-   int expbits = default_float_expbits_for_size(size);
-   if (expbits < 0) {
-      error_user("[%s:%d] layout must be specified for non IEEE 754 floats", __FILE__, __LINE__);
+static int ieee754_float_expbits_for_size(int size) {
+   switch (size) {
+      case 2: return 5;   // IEEE 754 binary16
+      case 4: return 8;   // IEEE 754 binary32
+      case 8: return 11;  // IEEE 754 binary64
+      default:
+         return -1;
    }
+}
+
+static int simple_float_expbits_for_size(int size) {
+   int total_bits;
+   int expbits;
+   double raw;
+
+   if (size <= 0) {
+      return -1;
+   }
+
+   total_bits = size * 8;
+   raw = 3.0 * (log((double) size) / log(2.0)) + 2.0;
+   expbits = (int) floor(raw + 0.5);
+   if (expbits < 1) {
+      expbits = 1;
+   }
+   if (1 + expbits >= total_bits) {
+      expbits = total_bits - 2;
+   }
+   return expbits > 0 ? expbits : -1;
+}
+
+static int pack_le_ieee754_float(const char *p, unsigned char *target, int size) {
+   int expbits = ieee754_float_expbits_for_size(size);
+
+   if (expbits < 0) {
+      error_user("[%s:%d] $float:ieee754 only supports $size:2, $size:4, and $size:8", __FILE__, __LINE__);
+   }
+
    return make_le_float_layout(p, target, size, expbits);
+}
+
+static int pack_le_simple_float(const char *p, unsigned char *target, int size) {
+   int expbits = simple_float_expbits_for_size(size);
+
+   if (expbits < 0) {
+      error_user("[%s:%d] $float:simple requires a positive $size", __FILE__, __LINE__);
+   }
+
+   if (size > (int) sizeof(double)) {
+      warning("[%s:%d] $float:simple with $size:%d exceeds host double size; inaccuracies may appear",
+            __FILE__, __LINE__, size);
+   }
+
+   return make_le_float_layout(p, target, size, expbits);
+}
+
+typedef struct FloatStyleDef {
+   const char *name;
+   int (*expbits_for_size)(int size);
+   int (*pack_le)(const char *p, unsigned char *target, int size);
+} FloatStyleDef;
+
+static const FloatStyleDef FLOAT_STYLE_TABLE[] = {
+   { "ieee754", ieee754_float_expbits_for_size, pack_le_ieee754_float },
+   { "simple",  simple_float_expbits_for_size,  pack_le_simple_float  },
+};
+
+static const FloatStyleDef *find_float_style(const char *style) {
+   int i;
+
+   if (!style) {
+      return NULL;
+   }
+
+   for (i = 0; i < (int) (sizeof(FLOAT_STYLE_TABLE) / sizeof(FLOAT_STYLE_TABLE[0])); i++) {
+      if (!strcmp(FLOAT_STYLE_TABLE[i].name, style)) {
+         return &FLOAT_STYLE_TABLE[i];
+      }
+   }
+
+   return NULL;
+}
+
+bool float_style_is_known(const char *style) {
+   return find_float_style(style) != NULL;
+}
+
+int float_style_expbits_for_size(const char *style, int size) {
+   const FloatStyleDef *def = find_float_style(style);
+   if (!def) {
+      return -1;
+   }
+   return def->expbits_for_size(size);
+}
+
+int make_le_float_style(const char *p, unsigned char *target, int size, const char *style) {
+   const FloatStyleDef *def = find_float_style(style);
+
+   if (!def) {
+      error_unreachable("[%s:%d] unknown float style '%s'", __FILE__, __LINE__, style ? style : "(null)");
+   }
+
+   return def->pack_le(p, target, size);
 }
 
 void negate_le_float(unsigned char *target, int size) {
    target[size-1] |= 0x80;
 }
 
-int make_be_float_layout(const char *p, unsigned char *target, int size, int expbits) {
-   int ret = make_le_float_layout(p, target, size, expbits);
+int make_be_float_style(const char *p, unsigned char *target, int size, const char *style) {
+   int ret = make_le_float_style(p, target, size, style);
    reverse_bytes(target, size);
    return ret;
-}
-
-int make_be_float(const char *p, unsigned char *target, int size) {
-   int expbits = default_float_expbits_for_size(size);
-   if (expbits < 0) {
-      error_user("[%s:%d] layout must be specified for non IEEE 754 floats", __FILE__, __LINE__);
-   }
-   return make_be_float_layout(p, target, size, expbits);
 }
 
 void negate_be_float(unsigned char *target, int size) {
