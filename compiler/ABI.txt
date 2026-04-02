@@ -8,6 +8,9 @@ lda #size
 sta arg0
 jsr _pushN
 ; populate return/arg area relative to caller fp
+; stack-backed args occupy the frame in declaration order as seen by the callee,
+; which means the caller writes the leftmost argument into the highest-addressed
+; argument slot and the rightmost argument into the lowest-addressed slot.
 ; save caller frame pointer on HARDWARE stack
 lda fp+1
 pha

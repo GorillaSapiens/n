@@ -5179,7 +5179,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (params && !is_empty(params)) {
-      int arg_offset = ptr_size + ret_size;
+      int arg_offset = ptr_size + ret_size + arg_total;
       int actual_index = 0;
       for (int i = 0; i < params->count && actual_index < arg_count; i++) {
          const ASTNode *parameter = params->children[i];
@@ -5202,6 +5202,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
          tmp.is_absolute_ref = false;
          tmp.read_expr = NULL;
          tmp.write_expr = NULL;
+         arg_offset -= psz;
          tmp.offset = base_locals + arg_offset;
          tmp.size = psz;
 
@@ -5214,7 +5215,6 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
             goto fail;
          }
 
-         arg_offset += psz;
          actual_index++;
       }
    }
@@ -5367,7 +5367,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
 
    if (fn && declarator) {
       const ASTNode *params = declarator_parameter_list(declarator);
-      int arg_offset = ret_size;
+      int arg_offset = ret_size + arg_total;
       int actual_index = 0;
       char callee_sym[256];
       if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
@@ -5421,6 +5421,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                emit_copy_fp_to_symbol(sym, tmp.offset, tmp.size);
             }
             else {
+               arg_offset -= psz;
                tmp.offset = base_locals + arg_offset;
                if (parameter_is_ref(parameter)) {
                   if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
@@ -5430,7 +5431,6 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
                else if (!compile_expr_to_slot(args->children[actual_index], ctx, &tmp)) {
                   goto fail;
                }
-               arg_offset += psz;
             }
             actual_index++;
          }
