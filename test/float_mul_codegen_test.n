@@ -1,7 +1,7 @@
 // n65cc -I .
-// expectasm: jsr _fmulN
-// expectasm: sta arg1
-// expectasm: .import _fmulN
+// expectasm: jsr operatorx2A__float_p0_a0__float_p0_a0
+// expectasm: .import operatorx2A__float_p0_a0__float_p0_a0
+
 
 include "machine_6502.n"
 

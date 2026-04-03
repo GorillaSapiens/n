@@ -1,0 +1,32 @@
+// n65cc -I .
+// expectasm: jsr operatorx2B__s4_p0_a0__s4_p0_a0
+// expectasm: jsr operatorx2A__s4_p0_a0__s4_p0_a0
+// expectasm: jsr operatorx3Cx3D__s4_p0_a0__s4_p0_a0
+// expectasm: jsr operatorx3Cx3C__u4_p0_a0__u4_p0_a0
+// expectasm: jsr operatorx3Dx3D__float_p0_a0__float_p0_a0
+// expectasm: jsr operatorx2B__float_p0_a0__float_p0_a0
+// expectasm: jsr operatorx2A__float_p0_a0__float_p0_a0
+
+include "machine_6502.n"
+
+type s4 { $size:4 $signed $endian:little };
+type u4 { $size:4 $unsigned $endian:little };
+
+s4 addmulcmp(s4 a, s4 b) {
+   if (a <= b) {
+      return a + b;
+   }
+   return a * b;
+}
+
+u4 shl(u4 a, u4 b) {
+   return a << b;
+}
+
+bool feq(float a, float b) {
+   return a == b;
+}
+
+float fmath(float a, float b) {
+   return (a + b) * b;
+}

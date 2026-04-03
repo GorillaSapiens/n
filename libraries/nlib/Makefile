@@ -4,6 +4,7 @@ AR=../../archiver/n65ar
 all:
 	rm -rf wrk nlib.a
 	mkdir wrk
+	./gen_weakops.pl
 	./unbundle.pl
 	cp *.s wrk
 	for each in `ls wrk/*.s`; do stem=`basename $$each .s`; echo ===== $$each ; $(ASM) -o wrk/$$stem.o65 $$each; done

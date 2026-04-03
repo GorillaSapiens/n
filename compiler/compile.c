@@ -232,6 +232,9 @@ static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
 static bool ordinary_function_name_is_overloaded(const char *name);
 static bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize);
+static bool format_user_asm_symbol(const char *name, char *buf, size_t bufsize);
+static void remember_runtime_import(const char *name);
+static void remember_symbol_import(const char *name);
 static bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
                                            char *buf, size_t bufsize, bool *is_zeropage_out);
 static const ASTNode *resolve_function_designator_target(const char *name, const ASTNode *expected_type, const ASTNode *expected_decl);
@@ -950,6 +953,300 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
    }
 }
 
+
+
+static bool is_named_weak_builtin_operator_type(const ASTNode *type) {
+   const char *name;
+   int size;
+   if (!type) {
+      return false;
+   }
+   name = type_name_from_node(type);
+   if (!name || !*name) {
+      return false;
+   }
+   size = type_size_from_node(type);
+   if (size <= 0) {
+      return false;
+   }
+   if (!strcmp(name, "char") || !strcmp(name, "bool") || !strcmp(name, "int") ||
+       !strcmp(name, "long") || !strcmp(name, "longlong") ||
+       !strcmp(name, "half") || !strcmp(name, "float") || !strcmp(name, "double")) {
+      return !has_flag(name, "$endian:big");
+   }
+   if ((name[0] == 's' || name[0] == 'u') && name[1] >= '1' && name[1] <= '9') {
+      char *end = NULL;
+      long n = strtol(name + 1, &end, 10);
+      if (end && !*end && n >= 1 && n <= 16 && size == (int) n && !has_flag(name, "$endian:big")) {
+         return true;
+      }
+   }
+   return false;
+}
+
+static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
+                                                    const char **opname_out,
+                                                    const ASTNode **ret_type_out,
+                                                    const ASTNode **ret_decl_out,
+                                                    int *ret_size_out,
+                                                    int *arg_count_out,
+                                                    ASTNode **arg_exprs_out,
+                                                    const ASTNode **arg_types_out,
+                                                    const ASTNode **arg_decls_out) {
+   const ASTNode *lhs_type;
+   const ASTNode *rhs_type;
+   const ASTNode *work_type;
+   const ASTNode *bool_type;
+   int ret_size;
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return false;
+   }
+
+   if (expr->count == 1 && !strcmp(expr->name, "-")) {
+      work_type = expr_value_type(expr->children[0], ctx);
+      if (!work_type || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr->children[0], ctx)) {
+         return false;
+      }
+      if (opname_out) *opname_out = "operator-";
+      if (ret_type_out) *ret_type_out = work_type;
+      if (ret_decl_out) *ret_decl_out = NULL;
+      ret_size = type_size_from_node(work_type);
+      if (ret_size_out) *ret_size_out = ret_size;
+      if (arg_count_out) *arg_count_out = 1;
+      if (arg_exprs_out) arg_exprs_out[0] = expr->children[0];
+      if (arg_types_out) arg_types_out[0] = work_type;
+      if (arg_decls_out) arg_decls_out[0] = NULL;
+      return ret_size > 0;
+   }
+   if (expr->count == 1 && !strcmp(expr->name, "~")) {
+      work_type = expr_value_type(expr->children[0], ctx);
+      if (!work_type || type_is_float_like(work_type) || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr->children[0], ctx)) {
+         return false;
+      }
+      if (opname_out) *opname_out = "operator~";
+      if (ret_type_out) *ret_type_out = work_type;
+      if (ret_decl_out) *ret_decl_out = NULL;
+      ret_size = type_size_from_node(work_type);
+      if (ret_size_out) *ret_size_out = ret_size;
+      if (arg_count_out) *arg_count_out = 1;
+      if (arg_exprs_out) arg_exprs_out[0] = expr->children[0];
+      if (arg_types_out) arg_types_out[0] = work_type;
+      if (arg_decls_out) arg_decls_out[0] = NULL;
+      return ret_size > 0;
+   }
+
+   if (expr->count != 2) {
+      return false;
+   }
+
+   lhs_type = expr_value_type(expr->children[0], ctx);
+   rhs_type = expr_value_type(expr->children[1], ctx);
+
+   if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") ||
+       !strcmp(expr->name, "*") || !strcmp(expr->name, "/") ||
+       !strcmp(expr->name, "%") || !strcmp(expr->name, "&") ||
+       !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
+       !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>") ||
+       !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+       !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
+       !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
+      if ((lhs_type && type_is_float_like(lhs_type)) || (rhs_type && type_is_float_like(rhs_type))) {
+         int lhs_size = lhs_type ? type_size_from_node(lhs_type) : 0;
+         int rhs_size = rhs_type ? type_size_from_node(rhs_type) : 0;
+         if (!strcmp(expr->name, "%") || !strcmp(expr->name, "&") || !strcmp(expr->name, "|") ||
+             !strcmp(expr->name, "^") || !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>")) {
+            return false;
+         }
+         work_type = (lhs_type && type_is_float_like(lhs_type) && (!rhs_type || !type_is_float_like(rhs_type) || lhs_size >= rhs_size)) ? lhs_type : rhs_type;
+      }
+      else {
+         if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-")) {
+            const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
+            const ASTNode *rhs_decl = expr_value_declarator(expr->children[1], ctx);
+            if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) || (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+               return false;
+            }
+         }
+         if (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+             !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
+             !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
+            work_type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
+         }
+         else {
+            work_type = expr_value_type(expr, ctx);
+         }
+         if (!work_type) {
+            work_type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
+         }
+      }
+      if (!work_type || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr, ctx)) {
+         return false;
+      }
+      if (opname_out) {
+         static char opname_buf[32];
+         snprintf(opname_buf, sizeof(opname_buf), "operator%s", expr->name);
+         *opname_out = opname_buf;
+      }
+      if (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+          !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
+          !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
+         bool_type = required_typename_node("bool");
+         if (!bool_type) {
+            return false;
+         }
+         if (ret_type_out) *ret_type_out = bool_type;
+         if (ret_decl_out) *ret_decl_out = NULL;
+         if (ret_size_out) *ret_size_out = type_size_from_node(bool_type);
+      }
+      else {
+         ret_size = type_size_from_node(work_type);
+         if (ret_type_out) *ret_type_out = work_type;
+         if (ret_decl_out) *ret_decl_out = NULL;
+         if (ret_size_out) *ret_size_out = ret_size;
+      }
+      if (arg_count_out) *arg_count_out = 2;
+      if (arg_exprs_out) {
+         arg_exprs_out[0] = expr->children[0];
+         arg_exprs_out[1] = expr->children[1];
+      }
+      if (arg_types_out) {
+         arg_types_out[0] = work_type;
+         arg_types_out[1] = work_type;
+      }
+      if (arg_decls_out) {
+         arg_decls_out[0] = NULL;
+         arg_decls_out[1] = NULL;
+      }
+      return true;
+   }
+
+   return false;
+}
+
+static bool weak_builtin_operator_symbol_name(const char *opname, int arg_count,
+                                              const ASTNode **arg_types,
+                                              const ASTNode **arg_decls,
+                                              char *buf, size_t bufsize) {
+   if (!opname || !buf || bufsize == 0) {
+      return false;
+   }
+   buf[0] = 0;
+   append_mangled_text(buf, bufsize, opname);
+   for (int i = 0; i < arg_count; i++) {
+      char tmp[64];
+      strncat(buf, "__", bufsize - strlen(buf) - 1);
+      append_mangled_text(buf, bufsize, type_name_from_node(arg_types[i]));
+      snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(arg_decls ? arg_decls[i] : NULL), declarator_array_count(arg_decls ? arg_decls[i] : NULL));
+      strncat(buf, tmp, bufsize - strlen(buf) - 1);
+   }
+   if (arg_count == 0) {
+      strncat(buf, "__void", bufsize - strlen(buf) - 1);
+   }
+   {
+      char raw[256];
+      snprintf(raw, sizeof(raw), "%s", buf);
+      return format_user_asm_symbol(raw, buf, bufsize);
+   }
+}
+
+static bool compile_weak_builtin_operator_call_to_slot(const char *symbol,
+                                                       const ASTNode *ret_type,
+                                                       const ASTNode *ret_decl,
+                                                       int ret_size,
+                                                       int arg_count,
+                                                       ASTNode **arg_exprs,
+                                                       const ASTNode **arg_types,
+                                                       const ASTNode **arg_decls,
+                                                       Context *ctx,
+                                                       ContextEntry *dst) {
+   int arg_total = 0;
+   int base_locals = ctx ? ctx->locals : 0;
+   int arg_offset;
+   int call_size;
+   if (!symbol || !ret_type || !dst) {
+      return false;
+   }
+   if (ret_size <= 0) {
+      ret_size = declarator_value_size(ret_type, ret_decl);
+   }
+   if (ret_size <= 0) {
+      ret_size = type_size_from_node(ret_type);
+   }
+   if (ret_size < 0) {
+      ret_size = 0;
+   }
+   for (int i = 0; i < arg_count; i++) {
+      int psz = declarator_value_size(arg_types[i], arg_decls ? arg_decls[i] : NULL);
+      if (psz <= 0) {
+         psz = type_size_from_node(arg_types[i]);
+      }
+      if (psz < 0) {
+         return false;
+      }
+      arg_total += psz;
+   }
+   call_size = ret_size + arg_total;
+   if (call_size > 0) {
+      remember_runtime_import("pushN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _pushN\n");
+   }
+   if (ctx) {
+      ctx->locals = base_locals + call_size;
+   }
+
+   arg_offset = ret_size + arg_total;
+   for (int i = 0; i < arg_count; i++) {
+      ContextEntry tmp;
+      int psz = declarator_value_size(arg_types[i], arg_decls ? arg_decls[i] : NULL);
+      if (psz <= 0) {
+         psz = type_size_from_node(arg_types[i]);
+      }
+      arg_offset -= psz;
+      tmp = (ContextEntry){ .name = "$arg", .type = arg_types[i], .declarator = arg_decls ? arg_decls[i] : NULL,
+                            .is_static = false, .is_zeropage = false, .is_global = false,
+                            .offset = base_locals + arg_offset, .size = psz };
+      if (!compile_expr_to_slot(arg_exprs[i], ctx, &tmp)) {
+         if (ctx) {
+            ctx->locals = base_locals;
+         }
+         if (call_size > 0) {
+            remember_runtime_import("popN");
+            emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+            emit(&es_code, "    sta arg0\n");
+            emit(&es_code, "    jsr _popN\n");
+         }
+         return false;
+      }
+   }
+
+   remember_symbol_import(symbol);
+   emit(&es_code, "    lda fp+1\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "    lda fp\n");
+   emit(&es_code, "    pha\n");
+   emit(&es_code, "    jsr %s\n", symbol);
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp\n");
+   emit(&es_code, "    pla\n");
+   emit(&es_code, "    sta fp+1\n");
+
+   if (ctx) {
+      ctx->locals = base_locals;
+   }
+   if (ret_size > 0) {
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals, ret_size, ret_type);
+   }
+   if (call_size > 0) {
+      remember_runtime_import("popN");
+      emit(&es_code, "    lda #$%02x\n", call_size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      emit(&es_code, "    jsr _popN\n");
+   }
+   return true;
+}
 
 static bool assembler_user_symbol_needs_escape(const char *name) {
    static const char *const reserved[] = {
@@ -6123,6 +6420,22 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
    }
 
+   {
+      const char *opname = NULL;
+      const ASTNode *ret_type = NULL;
+      const ASTNode *ret_decl = NULL;
+      int ret_size = 0;
+      int arg_count = 0;
+      ASTNode *arg_exprs[2] = { NULL, NULL };
+      const ASTNode *arg_types[2] = { NULL, NULL };
+      const ASTNode *arg_decls[2] = { NULL, NULL };
+      char sym[256];
+      if (expr_eligible_for_weak_builtin_operator(expr, ctx, &opname, &ret_type, &ret_decl, &ret_size, &arg_count, arg_exprs, arg_types, arg_decls) &&
+          weak_builtin_operator_symbol_name(opname, arg_count, arg_types, arg_decls, sym, sizeof(sym))) {
+         return compile_weak_builtin_operator_call_to_slot(sym, ret_type, ret_decl, ret_size, arg_count, arg_exprs, arg_types, arg_decls, ctx, dst);
+      }
+   }
+
    if (expr->count == 1 && !strcmp(expr->name, "+")) {
       return compile_expr_to_slot(expr->children[0], ctx, dst);
    }
@@ -7223,6 +7536,20 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
             error_user("[%s:%d.%d] operator{} must return bool", expr->file, expr->line, expr->column);
          }
          return compile_truthy_expr_branch_false(call, ctx, rtype, rdecl, rsize, false_label);
+      }
+   }
+
+   {
+      const char *opname = NULL;
+      const ASTNode *ret_type = NULL;
+      const ASTNode *ret_decl = NULL;
+      int ret_size = 0;
+      int arg_count = 0;
+      ASTNode *arg_exprs[2] = { NULL, NULL };
+      const ASTNode *arg_types[2] = { NULL, NULL };
+      const ASTNode *arg_decls[2] = { NULL, NULL };
+      if (expr_eligible_for_weak_builtin_operator(expr, ctx, &opname, &ret_type, &ret_decl, &ret_size, &arg_count, arg_exprs, arg_types, arg_decls)) {
+         return compile_truthy_expr_branch_false(expr, ctx, ret_type, ret_decl, ret_size, false_label);
       }
    }
 

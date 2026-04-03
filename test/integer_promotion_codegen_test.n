@@ -4,7 +4,7 @@
 // expectasm: sta (fp),y
 // expectasm: ldy #9
 // expectasm: lda #$00
-// expectasm: jsr _ltNs
+// expectasm: jsr operatorx3C__s5_p0_a0__s5_p0_a0
 
 type void      { $size:0 };
 type bool      { $size:1 };
