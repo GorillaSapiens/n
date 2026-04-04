@@ -1,5 +1,6 @@
 // n65cc -I .
 // expectasm: @user_done:
+// expectasm: jmp @user_done
 
 include "machine_6502.n"
 

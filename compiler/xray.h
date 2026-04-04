@@ -11,7 +11,6 @@
 #define XRAY_TYPEINFO    5 // dump type size information
 #define XRAY_EXPROPT     6 // dump expropt statistics
 #define XRAY_EXPROPTONLY 7 // exit after expropt
-#define XRAY_PEEPHOLE    8 // dump peephole optimizer statistics
 
 // return the xray number for a human readable string
 int lookup_xray(const char *);
