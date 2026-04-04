@@ -210,6 +210,22 @@ sub run_cmd_with_timeout {
    return ($timed_out, $exit_code, $signal);
 }
 
+
+sub ensure_generated_float_archive_fixtures {
+   my ($outfh, $outfile) = tempfile('fixture_make_out_XXXX', UNLINK => 1);
+   my ($errfh, $errfile) = tempfile('fixture_make_err_XXXX', UNLINK => 1);
+   close($outfh);
+   close($errfh);
+   my @cmd = ('make', '-C', $repo_root, 'generated_float_archive_fixtures');
+   my ($exit_code) = run_cmd(\@cmd, $outfile, $errfile);
+   if ($exit_code != 0) {
+      print "[$FAIL] could not generate float archive test fixtures\n";
+      print join(' ', @cmd), "\n";
+      print slurp_file($errfile);
+      exit(-1);
+   }
+}
+
 sub run_compile_case {
    my ($file, $runner_args, $meta) = @_;
 
@@ -518,6 +534,8 @@ EOF_BAD
 
 opendir(my $dh, $test_root) or die "[$FAIL] could not open $test_root: $!\n";
 my @files = sort grep { /\.n$/ && -f File::Spec->catfile($test_root, $_) } readdir($dh);
+
+ensure_generated_float_archive_fixtures();
 closedir($dh);
 
 for my $file (@files) {
