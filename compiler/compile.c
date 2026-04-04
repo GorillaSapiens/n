@@ -11266,6 +11266,7 @@ void do_compile(FILE *out) {
    analyze_static_parameter_call_graph();
    emit_symbol_backed_call_graph_metadata();
    emit_runtime_global_init_function();
+   emit_peephole_optimize(&es_code);
 
    emit_print(&es_header, out);
    fprintf(out, "\n");

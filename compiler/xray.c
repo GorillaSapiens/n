@@ -23,6 +23,7 @@ static struct {
    { XRAY_TYPEINFO,    "typeinfo",    "type information" },
    { XRAY_EXPROPT,     "dumpexpr",    "dump expropt stats" },
    { XRAY_EXPROPTONLY, "exproptonly", "exit after expropt" },
+   { XRAY_PEEPHOLE,    "peephole",    "dump peephole optimizer stats" },
 };
 
 void xray_exit(int n, const char *file, int line) {
