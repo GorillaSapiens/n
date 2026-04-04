@@ -68,6 +68,7 @@ sub parse_directives {
       expectasm => [],
       expectasmordered => [],
       expecterr => [],
+      forbiderr => [],
       expectsim => [],
       expectsimerr => [],
       expectlinkerr => [],
@@ -94,6 +95,9 @@ sub parse_directives {
       }
       elsif ($line =~ /^\/\/ expecterr:\s*(.*?)\s*$/) {
          push @{$meta{expecterr}}, $1;
+      }
+      elsif ($line =~ /^\/\/ forbiderr:\s*(.*?)\s*$/) {
+         push @{$meta{forbiderr}}, $1;
       }
       elsif ($line =~ /^\/\/ expectsim:\s*(.*?)\s*$/) {
          push @{$meta{expectsim}}, $1;
@@ -284,9 +288,18 @@ sub run_compile_case {
       }
    }
 
+   my $stderr = slurp_file($errfile);
+
    if (@{$meta->{expecterr}}) {
-      my $stderr = slurp_file($errfile);
       require_substrings($stderr, $meta->{expecterr}, 'stderr', $file, $errfile);
+   }
+
+   for my $needle (@{$meta->{forbiderr}}) {
+      if (index($stderr, $needle) >= 0) {
+         print "[$FAIL] $file unexpected stderr fragment: $needle\n";
+         print "$errfile\n";
+         exit(-1);
+      }
    }
 
    print "[$PASS] $file\n";

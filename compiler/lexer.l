@@ -236,6 +236,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 
 {IDENT} {
    yylval.str = strdup(yytext);
+   if (!strcmp(yytext, "true") || !strcmp(yytext, "false")) return INTEGER;
    if (xform_exists(yytext)) return XFORMNAME;
    if (memname_exists(yytext)) return MEMNAME;
    if (typename_exists(yytext)) return TYPENAME;

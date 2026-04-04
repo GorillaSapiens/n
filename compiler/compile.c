@@ -138,6 +138,7 @@ typedef struct InitConstValue {
    double f;
    const char *symbol;
    long long addend;
+   const char *int_text;
 } InitConstValue;
 
 typedef struct PendingGlobalInit {
@@ -337,6 +338,7 @@ static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, 
 static void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits);
 static long long arithmetic_right_shift_ll(long long value, unsigned int count);
 static bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type);
+static bool encode_init_const_int_value(const InitConstValue *value, unsigned char *buf, int size, const ASTNode *type);
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type);
 static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend);
 static void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size);
@@ -2204,7 +2206,7 @@ static const char *emit_pointer_initializer_backing_object(const ASTNode *type, 
       if (!bytes) {
          error_unreachable("out of memory");
       }
-      if (!encode_integer_initializer_value(value.i, bytes, obj_size, obj_type)) {
+      if (!encode_init_const_int_value(&value, bytes, obj_size, obj_type)) {
          free(bytes);
          return NULL;
       }
@@ -3516,7 +3518,7 @@ static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEn
    if (!bytes) {
       error_unreachable("out of memory");
    }
-   if (!encode_integer_initializer_value(value.i, bytes, dst->size, dst->type)) {
+   if (!encode_init_const_int_value(&value, bytes, dst->size, dst->type)) {
       free(bytes);
       return false;
    }
@@ -8212,6 +8214,7 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    if (expr->kind == AST_INTEGER) {
       out->kind = INIT_CONST_INT;
       out->i = parse_int(expr->strval);
+      out->int_text = expr->strval;
       return true;
    }
 
@@ -8544,6 +8547,24 @@ static bool encode_integer_initializer_value(long long value, unsigned char *buf
       }
    }
    return true;
+}
+
+static bool encode_init_const_int_value(const InitConstValue *value, unsigned char *buf, int size, const ASTNode *type) {
+   if (!value) {
+      return false;
+   }
+
+   if (value->int_text && value->i >= 0) {
+      if (has_flag(type_name_from_node(type), "$endian:big")) {
+         make_be_int(value->int_text, buf, size);
+      }
+      else {
+         make_le_int(value->int_text, buf, size);
+      }
+      return true;
+   }
+
+   return encode_integer_initializer_value(value->i, buf, size, type);
 }
 
 static bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type) {
@@ -8904,7 +8925,7 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
       if (value.kind != INIT_CONST_INT) {
          return false;
       }
-      return encode_integer_initializer_value(value.i, buf + base_offset, size, type);
+      return encode_init_const_int_value(&value, buf + base_offset, size, type);
    }
 
    {

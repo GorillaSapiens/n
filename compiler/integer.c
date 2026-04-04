@@ -26,7 +26,13 @@ long long parse_int(const char *p) {
       p++;
    }
 
-   if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
+   if (!strcmp(p, "true")) {
+      ret = 1;
+   }
+   else if (!strcmp(p, "false")) {
+      ret = 0;
+   }
+   else if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
       ret = parse_binary(p);
    }
    else {
@@ -53,52 +59,76 @@ static int c2n(char c) {
    return -1;
 }
 
-static int make_le_helper(const char *p, int bpc,
+static int make_le_helper(const char *digits, const char *op, int bpc,
                           unsigned char *target, int size) {
-   const char *op = p;
-   int len = strlen(p);
+   int len = strlen(digits);
    int n = 0;
+   int used = 0;
    int o = 0;
    int a = 0;
    int i;
+   bool overflow = false;
+   const char *p = digits + len - 1;
 
-   p += len - 1;
    for (i = 0; i < len; i++) {
+      unsigned char byte;
+
       a |= c2n(*p) << o;
       o += bpc;
       if (o >= 8) {
-         target[n++] = a;
-         if (n >= size) {
-            warning("integer '%s' is too big for %d bytes!", op, size);
-            // TODO FIX should this be an error?
-            return size;
+         byte = a;
+         if (n < size) {
+            target[n] = byte;
          }
+         else if (byte) {
+            overflow = true;
+         }
+         if (byte) {
+            used = n + 1;
+         }
+         n++;
          o -= 8;
          a >>= 8;
       }
       p--;
    }
-   if (a) {
-      target[n++] = a;
-      if (n > size) {
-         warning("integer '%s' is too big for %d bytes!", op, size);
-            // TODO FIX should this be an error?
-         return size;
+
+   if (o > 0 || n == 0) {
+      unsigned char byte = a;
+      if (n < size) {
+         target[n] = byte;
       }
+      else if (byte) {
+         overflow = true;
+      }
+      if (byte) {
+         used = n + 1;
+      }
+      n++;
    }
-   return n;
+
+   if (overflow) {
+      warning("integer '%s' is too big for %d bytes!", op, size);
+      // TODO FIX should this be an error?
+      return size;
+   }
+
+   return used ? used : 1;
 }
 
-static int make_le_binary(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 1, target, size);
+static int make_le_binary(const char *p, const char *op,
+                          unsigned char *target, int size) {
+   return make_le_helper(p, op, 1, target, size);
 }
 
-static int make_le_hex(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 4, target, size);
+static int make_le_hex(const char *p, const char *op,
+                       unsigned char *target, int size) {
+   return make_le_helper(p, op, 4, target, size);
 }
 
-static int make_le_octal(const char *p, unsigned char *target, int size) {
-   return make_le_helper(p, 3, target, size);
+static int make_le_octal(const char *p, const char *op,
+                         unsigned char *target, int size) {
+   return make_le_helper(p, op, 3, target, size);
 }
 
 static int make_le_decimal(const char *p, unsigned char *target, int size) {
@@ -160,13 +190,13 @@ int make_le_int(const char *p, unsigned char *target, int size) {
       ret = 1;
    }
    else if (!strncasecmp(p, "0b", 2)) {
-      ret = make_le_binary(p + 2, target, size);
+      ret = make_le_binary(p + 2, p, target, size);
    }
    else if (!strncasecmp(p, "0x", 2)) {
-      ret = make_le_hex(p + 2, target, size);
+      ret = make_le_hex(p + 2, p, target, size);
    }
    else if (p[0] == '0') {
-      ret = make_le_octal(p + 1, target, size);
+      ret = make_le_octal(p + 1, p, target, size);
    }
    else {
       ret = make_le_decimal(p, target, size);
