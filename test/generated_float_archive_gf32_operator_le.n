@@ -57,12 +57,12 @@ static void nlf_gf32_cmp_impl(void) {
    if (nlf_gf32_a.bits.sign != 0`nlf_gf32_u) { if (nlf_gf32_cmp == 1) { nlf_gf32_cmp := 2; } else { if (nlf_gf32_cmp == 2) { nlf_gf32_cmp := 1; } } }
 }
 
-bool operator!=(gf32 lhs, gf32 rhs) {
+bool operator<=(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return true; }
-   if (nlf_gf32_cmp != 0) { return true; }
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp != 2) { return true; }
    return false;
 }
 

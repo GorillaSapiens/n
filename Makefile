@@ -6,6 +6,8 @@ GENERATED_FLOAT_ARCHIVE_FIXTURES = \
 	test/generated_float_archive_gf32_operator_div.n \
 	test/generated_float_archive_gf32_operator_eq.n \
 	test/generated_float_archive_gf32_operator_ge.n \
+	test/generated_float_archive_gf32_operator_gt.n \
+	test/generated_float_archive_gf32_operator_le.n \
 	test/generated_float_archive_gf32_operator_lt.n \
 	test/generated_float_archive_gf32_operator_ne.n \
 	test/generated_float_archive_gf3be_decls.n \
@@ -20,6 +22,8 @@ generated_float_archive_fixtures:
 	cp "$$tmpdir/gf32/gf32_operator_div.n" test/generated_float_archive_gf32_operator_div.n; \
 	cp "$$tmpdir/gf32/gf32_operator_eq.n" test/generated_float_archive_gf32_operator_eq.n; \
 	cp "$$tmpdir/gf32/gf32_operator_ge.n" test/generated_float_archive_gf32_operator_ge.n; \
+	cp "$$tmpdir/gf32/gf32_operator_gt.n" test/generated_float_archive_gf32_operator_gt.n; \
+	cp "$$tmpdir/gf32/gf32_operator_le.n" test/generated_float_archive_gf32_operator_le.n; \
 	cp "$$tmpdir/gf32/gf32_operator_lt.n" test/generated_float_archive_gf32_operator_lt.n; \
 	cp "$$tmpdir/gf32/gf32_operator_ne.n" test/generated_float_archive_gf32_operator_ne.n; \
 	perl libraries/float/gen.pl --build "$$tmpdir/gf3be" gf3be big 3 7; \

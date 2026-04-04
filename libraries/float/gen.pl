@@ -369,7 +369,7 @@ sub base_runtime_block {
    push @decls, "$matht $gsig_b" if $vars->{gsig_b};
    push @decls, "$matht $gsig_out" if $vars->{gsig_out};
    push @decls, "int $gcmp" if $vars->{gcmp};
-   push @decls, "int $gunordered" if $vars->{gunordered};
+   push @decls, "bool $gunordered" if $vars->{gunordered};
 
    for my $decl (@decls) {
       $s .= "$static_prefix$decl;
@@ -403,7 +403,7 @@ sub add_impl_text {
 
 sub cmp_impl_text {
    my ($static_prefix) = @_;
-   return "${static_prefix}void $cmp_impl(void) {\n   $gunordered := 0;\n   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) { $gunordered := 1; $gcmp := 0; return; }\n   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) { $gunordered := 1; $gcmp := 0; return; }\n   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) { $gcmp := 0; return; }\n   if ($ga.bits.sign != $gb.bits.sign) { if ($ga.bits.sign != $ZERO) { $gcmp := $CMP_LT; } else { $gcmp := $CMP_GT; } return; }\n"
+   return "${static_prefix}void $cmp_impl(void) {\n   $gunordered := false;\n   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) { $gunordered := true; $gcmp := 0; return; }\n   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) { $gunordered := true; $gcmp := 0; return; }\n   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) { $gcmp := 0; return; }\n   if ($ga.bits.sign != $gb.bits.sign) { if ($ga.bits.sign != $ZERO) { $gcmp := $CMP_LT; } else { $gcmp := $CMP_GT; } return; }\n"
       . mag_cmp_snippet($gcmp, $ga, $gb, '   ')
       . "   if ($ga.bits.sign != $ZERO) { if ($gcmp == $CMP_LT) { $gcmp := $CMP_GT; } else { if ($gcmp == $CMP_GT) { $gcmp := $CMP_LT; } } }\n}\n\n";
 }
@@ -502,7 +502,7 @@ sub operator_eq_text {
    my $s = "bool operator==($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 0`bool; }\n   if ($gcmp == $CMP_EQ) { return 1`bool; }\n   return 0`bool;\n}\n\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_EQ) { return true; }\n   return false;\n}\n\n";
    return $s;
 }
 
@@ -510,7 +510,7 @@ sub operator_ne_text {
    my $s = "bool operator!=($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 1`bool; }\n   if ($gcmp != $CMP_EQ) { return 1`bool; }\n   return 0`bool;\n}\n\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return true; }\n   if ($gcmp != $CMP_EQ) { return true; }\n   return false;\n}\n\n";
    return $s;
 }
 
@@ -518,7 +518,7 @@ sub operator_lt_text {
    my $s = "bool operator<($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 0`bool; }\n   if ($gcmp == $CMP_LT) { return 1`bool; }\n   return 0`bool;\n}\n\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_LT) { return true; }\n   return false;\n}\n\n";
    return $s;
 }
 
@@ -526,7 +526,7 @@ sub operator_gt_text {
    my $s = "bool operator>($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 0`bool; }\n   if ($gcmp == $CMP_GT) { return 1`bool; }\n   return 0`bool;\n}\n\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_GT) { return true; }\n   return false;\n}\n\n";
    return $s;
 }
 
@@ -534,7 +534,7 @@ sub operator_le_text {
    my $s = "bool operator<=($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 0`bool; }\n   if ($gcmp != $CMP_GT) { return 1`bool; }\n   return 0`bool;\n}\n\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp != $CMP_GT) { return true; }\n   return false;\n}\n\n";
    return $s;
 }
 
@@ -542,7 +542,7 @@ sub operator_ge_text {
    my $s = "bool operator>=($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered != 0) { return 0`bool; }\n   if ($gcmp != $CMP_LT) { return 1`bool; }\n   return 0`bool;\n}\n";
+   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp != $CMP_LT) { return true; }\n   return false;\n}\n";
    return $s;
 }
 

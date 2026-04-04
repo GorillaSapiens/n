@@ -39,7 +39,7 @@ long nlf_gf3le_sig_a;
 long nlf_gf3le_sig_b;
 long nlf_gf3le_sig_out;
 int nlf_gf3le_cmp;
-int nlf_gf3le_unordered;
+bool nlf_gf3le_unordered;
 
 void nlf_gf3le_add_impl(void) {
    if (nlf_gf3le_a.bits.exponent == 127`nlf_gf3le_u && nlf_gf3le_a.bits.mantissa != 0`nlf_gf3le_u) {
@@ -196,9 +196,9 @@ void nlf_gf3le_add_impl(void) {
 }
 
 void nlf_gf3le_cmp_impl(void) {
-   nlf_gf3le_unordered := 0;
-   if (nlf_gf3le_a.bits.exponent == 127`nlf_gf3le_u && nlf_gf3le_a.bits.mantissa != 0`nlf_gf3le_u) { nlf_gf3le_unordered := 1; nlf_gf3le_cmp := 0; return; }
-   if (nlf_gf3le_b.bits.exponent == 127`nlf_gf3le_u && nlf_gf3le_b.bits.mantissa != 0`nlf_gf3le_u) { nlf_gf3le_unordered := 1; nlf_gf3le_cmp := 0; return; }
+   nlf_gf3le_unordered := false;
+   if (nlf_gf3le_a.bits.exponent == 127`nlf_gf3le_u && nlf_gf3le_a.bits.mantissa != 0`nlf_gf3le_u) { nlf_gf3le_unordered := true; nlf_gf3le_cmp := 0; return; }
+   if (nlf_gf3le_b.bits.exponent == 127`nlf_gf3le_u && nlf_gf3le_b.bits.mantissa != 0`nlf_gf3le_u) { nlf_gf3le_unordered := true; nlf_gf3le_cmp := 0; return; }
    if (nlf_gf3le_a.bits.exponent == 0`nlf_gf3le_u && nlf_gf3le_a.bits.mantissa == 0`nlf_gf3le_u && nlf_gf3le_b.bits.exponent == 0`nlf_gf3le_u && nlf_gf3le_b.bits.mantissa == 0`nlf_gf3le_u) { nlf_gf3le_cmp := 0; return; }
    if (nlf_gf3le_a.bits.sign != nlf_gf3le_b.bits.sign) { if (nlf_gf3le_a.bits.sign != 0`nlf_gf3le_u) { nlf_gf3le_cmp := 1; } else { nlf_gf3le_cmp := 2; } return; }
    nlf_gf3le_cmp := 0;
@@ -428,52 +428,52 @@ bool operator==(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 0`bool; }
-   if (nlf_gf3le_cmp == 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return false; }
+   if (nlf_gf3le_cmp == 0) { return true; }
+   return false;
 }
 
 bool operator!=(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 1`bool; }
-   if (nlf_gf3le_cmp != 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return true; }
+   if (nlf_gf3le_cmp != 0) { return true; }
+   return false;
 }
 
 bool operator<(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 0`bool; }
-   if (nlf_gf3le_cmp == 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return false; }
+   if (nlf_gf3le_cmp == 1) { return true; }
+   return false;
 }
 
 bool operator>(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 0`bool; }
-   if (nlf_gf3le_cmp == 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return false; }
+   if (nlf_gf3le_cmp == 2) { return true; }
+   return false;
 }
 
 bool operator<=(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 0`bool; }
-   if (nlf_gf3le_cmp != 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return false; }
+   if (nlf_gf3le_cmp != 2) { return true; }
+   return false;
 }
 
 bool operator>=(gf3le lhs, gf3le rhs) {
    nlf_gf3le_a.value := lhs;
    nlf_gf3le_b.value := rhs;
    nlf_gf3le_cmp_impl();
-   if (nlf_gf3le_unordered != 0) { return 0`bool; }
-   if (nlf_gf3le_cmp != 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf3le_unordered) { return false; }
+   if (nlf_gf3le_cmp != 1) { return true; }
+   return false;
 }

@@ -29,12 +29,12 @@ union nlf_gf32_overlay {
 static nlf_gf32_overlay nlf_gf32_a;
 static nlf_gf32_overlay nlf_gf32_b;
 static int nlf_gf32_cmp;
-static int nlf_gf32_unordered;
+static bool nlf_gf32_unordered;
 
 static void nlf_gf32_cmp_impl(void) {
-   nlf_gf32_unordered := 0;
-   if (nlf_gf32_a.bits.exponent == 255`nlf_gf32_u && nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := 1; nlf_gf32_cmp := 0; return; }
-   if (nlf_gf32_b.bits.exponent == 255`nlf_gf32_u && nlf_gf32_b.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := 1; nlf_gf32_cmp := 0; return; }
+   nlf_gf32_unordered := false;
+   if (nlf_gf32_a.bits.exponent == 255`nlf_gf32_u && nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := true; nlf_gf32_cmp := 0; return; }
+   if (nlf_gf32_b.bits.exponent == 255`nlf_gf32_u && nlf_gf32_b.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := true; nlf_gf32_cmp := 0; return; }
    if (nlf_gf32_a.bits.exponent == 0`nlf_gf32_u && nlf_gf32_a.bits.mantissa == 0`nlf_gf32_u && nlf_gf32_b.bits.exponent == 0`nlf_gf32_u && nlf_gf32_b.bits.mantissa == 0`nlf_gf32_u) { nlf_gf32_cmp := 0; return; }
    if (nlf_gf32_a.bits.sign != nlf_gf32_b.bits.sign) { if (nlf_gf32_a.bits.sign != 0`nlf_gf32_u) { nlf_gf32_cmp := 1; } else { nlf_gf32_cmp := 2; } return; }
    nlf_gf32_cmp := 0;
@@ -61,8 +61,8 @@ bool operator<(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp == 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp == 1) { return true; }
+   return false;
 }
 

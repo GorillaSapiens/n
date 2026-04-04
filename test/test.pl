@@ -73,6 +73,8 @@ sub parse_directives {
       expectsimerr => [],
       expectlinkerr => [],
       expectmap => [],
+      expectfile => [],
+      forbidfile => [],
       archive => [],
       archivegroup => [],
       object => [],
@@ -110,6 +112,12 @@ sub parse_directives {
       }
       elsif ($line =~ /^\/\/ expectmap:\s*(.*?)\s*$/) {
          push @{$meta{expectmap}}, $1;
+      }
+      elsif ($line =~ /^\/\/ expectfile:\s*(\S+)\s+(.*?)\s*$/) {
+         push @{$meta{expectfile}}, [$1, $2];
+      }
+      elsif ($line =~ /^\/\/ forbidfile:\s*(\S+)\s+(.*?)\s*$/) {
+         push @{$meta{forbidfile}}, [$1, $2];
       }
       elsif ($line =~ /^\/\/ archive:\s*(.*?)\s*$/) {
          push @{$meta{archive}}, $1;
@@ -172,6 +180,28 @@ sub require_substrings {
       if (index($haystack, $needle) < 0) {
          print "[$FAIL] $case_name missing $label fragment: $needle\n";
          print "$log_path\n";
+         exit(-1);
+      }
+   }
+}
+
+sub require_file_expectations {
+   my ($meta, $case_name) = @_;
+   for my $entry (@{$meta->{expectfile}}) {
+      my ($relpath, $needle) = @$entry;
+      my $path = File::Spec->catfile($test_root, $relpath);
+      my $text = slurp_file($path);
+      if (index($text, $needle) < 0) {
+         print "[$FAIL] $case_name missing file fragment in $relpath: $needle\n";
+         exit(-1);
+      }
+   }
+   for my $entry (@{$meta->{forbidfile}}) {
+      my ($relpath, $needle) = @$entry;
+      my $path = File::Spec->catfile($test_root, $relpath);
+      my $text = slurp_file($path);
+      if (index($text, $needle) >= 0) {
+         print "[$FAIL] $case_name unexpected file fragment in $relpath: $needle\n";
          exit(-1);
       }
    }
@@ -302,6 +332,7 @@ sub run_compile_case {
       }
    }
 
+   require_file_expectations($meta, $file);
    print "[$PASS] $file\n";
 }
 
@@ -496,6 +527,7 @@ sub run_e2e_case {
 
    require_substrings($sim_stdout, $meta->{expectsim}, 'simulator output', $file, $sim_out);
    require_substrings($sim_stderr, $meta->{expectsimerr}, 'simulator stderr', $file, $sim_err);
+   require_file_expectations($meta, $file);
    print "[$PASS] $file\n";
 }
 

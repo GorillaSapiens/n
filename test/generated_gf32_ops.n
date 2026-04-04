@@ -39,7 +39,7 @@ long nlf_gf32_sig_a;
 long nlf_gf32_sig_b;
 long nlf_gf32_sig_out;
 int nlf_gf32_cmp;
-int nlf_gf32_unordered;
+bool nlf_gf32_unordered;
 
 void nlf_gf32_add_impl(void) {
    if (nlf_gf32_a.bits.exponent == 255`nlf_gf32_u && nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) {
@@ -200,9 +200,9 @@ void nlf_gf32_add_impl(void) {
 }
 
 void nlf_gf32_cmp_impl(void) {
-   nlf_gf32_unordered := 0;
-   if (nlf_gf32_a.bits.exponent == 255`nlf_gf32_u && nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := 1; nlf_gf32_cmp := 0; return; }
-   if (nlf_gf32_b.bits.exponent == 255`nlf_gf32_u && nlf_gf32_b.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := 1; nlf_gf32_cmp := 0; return; }
+   nlf_gf32_unordered := false;
+   if (nlf_gf32_a.bits.exponent == 255`nlf_gf32_u && nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := true; nlf_gf32_cmp := 0; return; }
+   if (nlf_gf32_b.bits.exponent == 255`nlf_gf32_u && nlf_gf32_b.bits.mantissa != 0`nlf_gf32_u) { nlf_gf32_unordered := true; nlf_gf32_cmp := 0; return; }
    if (nlf_gf32_a.bits.exponent == 0`nlf_gf32_u && nlf_gf32_a.bits.mantissa == 0`nlf_gf32_u && nlf_gf32_b.bits.exponent == 0`nlf_gf32_u && nlf_gf32_b.bits.mantissa == 0`nlf_gf32_u) { nlf_gf32_cmp := 0; return; }
    if (nlf_gf32_a.bits.sign != nlf_gf32_b.bits.sign) { if (nlf_gf32_a.bits.sign != 0`nlf_gf32_u) { nlf_gf32_cmp := 1; } else { nlf_gf32_cmp := 2; } return; }
    nlf_gf32_cmp := 0;
@@ -436,52 +436,52 @@ bool operator==(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp == 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp == 0) { return true; }
+   return false;
 }
 
 bool operator!=(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 1`bool; }
-   if (nlf_gf32_cmp != 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return true; }
+   if (nlf_gf32_cmp != 0) { return true; }
+   return false;
 }
 
 bool operator<(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp == 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp == 1) { return true; }
+   return false;
 }
 
 bool operator>(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp == 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp == 2) { return true; }
+   return false;
 }
 
 bool operator<=(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp != 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp != 2) { return true; }
+   return false;
 }
 
 bool operator>=(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
    nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered != 0) { return 0`bool; }
-   if (nlf_gf32_cmp != 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf32_unordered) { return false; }
+   if (nlf_gf32_cmp != 1) { return true; }
+   return false;
 }

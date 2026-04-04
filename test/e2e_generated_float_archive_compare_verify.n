@@ -3,6 +3,8 @@
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_eq.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_ne.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_lt.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_le.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_gt.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_ge.n
 include "machine_6502.n"
 include "generated_float_archive_gf32_decls.n"
@@ -57,6 +59,13 @@ void main(void) {
    if (!(nanv.f != one.f))    { fail(13); }
    if (nanv.f < one.f)        { fail(14); }
    if (nanv.f >= one.f)       { fail(15); }
+   if (!(one.f > halfv.f))     { fail(16); }
+   if (halfv.f > one.f)        { fail(17); }
+   if (!(halfv.f <= one.f))    { fail(18); }
+   if (!(one.f <= one.f))      { fail(19); }
+   if (one.f <= halfv.f)       { fail(20); }
+   if (nanv.f > one.f)         { fail(21); }
+   if (nanv.f <= one.f)        { fail(22); }
 
    pass();
 }

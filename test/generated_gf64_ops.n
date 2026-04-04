@@ -39,7 +39,7 @@ longlong nlf_gf64_sig_a;
 longlong nlf_gf64_sig_b;
 longlong nlf_gf64_sig_out;
 int nlf_gf64_cmp;
-int nlf_gf64_unordered;
+bool nlf_gf64_unordered;
 
 void nlf_gf64_add_impl(void) {
    if (nlf_gf64_a.bits.exponent == 2047`nlf_gf64_u && nlf_gf64_a.bits.mantissa != 0`nlf_gf64_u) {
@@ -216,9 +216,9 @@ void nlf_gf64_add_impl(void) {
 }
 
 void nlf_gf64_cmp_impl(void) {
-   nlf_gf64_unordered := 0;
-   if (nlf_gf64_a.bits.exponent == 2047`nlf_gf64_u && nlf_gf64_a.bits.mantissa != 0`nlf_gf64_u) { nlf_gf64_unordered := 1; nlf_gf64_cmp := 0; return; }
-   if (nlf_gf64_b.bits.exponent == 2047`nlf_gf64_u && nlf_gf64_b.bits.mantissa != 0`nlf_gf64_u) { nlf_gf64_unordered := 1; nlf_gf64_cmp := 0; return; }
+   nlf_gf64_unordered := false;
+   if (nlf_gf64_a.bits.exponent == 2047`nlf_gf64_u && nlf_gf64_a.bits.mantissa != 0`nlf_gf64_u) { nlf_gf64_unordered := true; nlf_gf64_cmp := 0; return; }
+   if (nlf_gf64_b.bits.exponent == 2047`nlf_gf64_u && nlf_gf64_b.bits.mantissa != 0`nlf_gf64_u) { nlf_gf64_unordered := true; nlf_gf64_cmp := 0; return; }
    if (nlf_gf64_a.bits.exponent == 0`nlf_gf64_u && nlf_gf64_a.bits.mantissa == 0`nlf_gf64_u && nlf_gf64_b.bits.exponent == 0`nlf_gf64_u && nlf_gf64_b.bits.mantissa == 0`nlf_gf64_u) { nlf_gf64_cmp := 0; return; }
    if (nlf_gf64_a.bits.sign != nlf_gf64_b.bits.sign) { if (nlf_gf64_a.bits.sign != 0`nlf_gf64_u) { nlf_gf64_cmp := 1; } else { nlf_gf64_cmp := 2; } return; }
    nlf_gf64_cmp := 0;
@@ -468,52 +468,52 @@ bool operator==(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 0`bool; }
-   if (nlf_gf64_cmp == 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return false; }
+   if (nlf_gf64_cmp == 0) { return true; }
+   return false;
 }
 
 bool operator!=(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 1`bool; }
-   if (nlf_gf64_cmp != 0) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return true; }
+   if (nlf_gf64_cmp != 0) { return true; }
+   return false;
 }
 
 bool operator<(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 0`bool; }
-   if (nlf_gf64_cmp == 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return false; }
+   if (nlf_gf64_cmp == 1) { return true; }
+   return false;
 }
 
 bool operator>(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 0`bool; }
-   if (nlf_gf64_cmp == 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return false; }
+   if (nlf_gf64_cmp == 2) { return true; }
+   return false;
 }
 
 bool operator<=(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 0`bool; }
-   if (nlf_gf64_cmp != 2) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return false; }
+   if (nlf_gf64_cmp != 2) { return true; }
+   return false;
 }
 
 bool operator>=(gf64 lhs, gf64 rhs) {
    nlf_gf64_a.value := lhs;
    nlf_gf64_b.value := rhs;
    nlf_gf64_cmp_impl();
-   if (nlf_gf64_unordered != 0) { return 0`bool; }
-   if (nlf_gf64_cmp != 1) { return 1`bool; }
-   return 0`bool;
+   if (nlf_gf64_unordered) { return false; }
+   if (nlf_gf64_cmp != 1) { return true; }
+   return false;
 }
