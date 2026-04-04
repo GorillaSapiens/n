@@ -3,6 +3,7 @@ all: tools unit e2e
 GENERATED_FLOAT_ARCHIVE_FIXTURES = \
 	test/generated_float_archive_gf32_decls.n \
 	test/generated_float_archive_gf32_operator_add.n \
+	test/generated_float_archive_gf32_operator_div.n \
 	test/generated_float_archive_gf32_operator_eq.n \
 	test/generated_float_archive_gf32_operator_ge.n \
 	test/generated_float_archive_gf32_operator_lt.n \
@@ -16,6 +17,7 @@ generated_float_archive_fixtures:
 	perl libraries/float/gen.pl --build "$$tmpdir/gf32" gf32 little 4 8; \
 	cp "$$tmpdir/gf32/gf32_decls.n" test/generated_float_archive_gf32_decls.n; \
 	cp "$$tmpdir/gf32/gf32_operator_add.n" test/generated_float_archive_gf32_operator_add.n; \
+	cp "$$tmpdir/gf32/gf32_operator_div.n" test/generated_float_archive_gf32_operator_div.n; \
 	cp "$$tmpdir/gf32/gf32_operator_eq.n" test/generated_float_archive_gf32_operator_eq.n; \
 	cp "$$tmpdir/gf32/gf32_operator_ge.n" test/generated_float_archive_gf32_operator_ge.n; \
 	cp "$$tmpdir/gf32/gf32_operator_lt.n" test/generated_float_archive_gf32_operator_lt.n; \

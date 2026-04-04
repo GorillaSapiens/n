@@ -10,6 +10,7 @@ type gf3be { $size:3 $endian:big $float:simple };
 extern gf3be operator+(gf3be lhs, gf3be rhs);
 extern gf3be operator-(gf3be lhs, gf3be rhs);
 extern gf3be operator*(gf3be lhs, gf3be rhs);
+extern gf3be operator/(gf3be lhs, gf3be rhs);
 extern bool operator==(gf3be lhs, gf3be rhs);
 extern bool operator!=(gf3be lhs, gf3be rhs);
 extern bool operator<(gf3be lhs, gf3be rhs);

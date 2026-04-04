@@ -1,7 +1,9 @@
 // n65cc -I .
 // expectasm: .import operatorx2B__gf32_p0_a0__gf32_p0_a0
+// expectasm: .import operatorx2F__gf32_p0_a0__gf32_p0_a0
 // expectasm: .import operatorx3Ex3D__gf32_p0_a0__gf32_p0_a0
 // expectasm: jsr operatorx2B__gf32_p0_a0__gf32_p0_a0
+// expectasm: jsr operatorx2F__gf32_p0_a0__gf32_p0_a0
 // expectasm: jsr operatorx3Ex3D__gf32_p0_a0__gf32_p0_a0
 include "machine_6502.n"
 include "generated_float_archive_gf32_decls.n"
@@ -13,6 +15,7 @@ void main(void) {
    bool q;
 
    c := a + b;
+   c := a / b;
    q := a >= b;
    if (q) {
       asm nop;

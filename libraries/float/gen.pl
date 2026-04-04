@@ -111,11 +111,14 @@ my $gunordered = "nlf_${san}_unordered";
 my $add_impl = "nlf_${san}_add_impl";
 my $cmp_impl = "nlf_${san}_cmp_impl";
 my $mul_impl = "nlf_${san}_mul_impl";
+my $div_impl = "nlf_${san}_div_impl";
 
 my $ZERO = typed(0, $u);
 my $ONE = typed(1, $u);
 my $W_ZERO = typed(0, $wu);
 my $W_ONE = typed(1, $wu);
+my $W_TWO = typed(2, $wu);
+my $W_HIDDEN_EXT = typed(pow2s($mbits + 3), $wu);
 my $EXP_MAX = typed(all1s($expbits), $u);
 my $NAN_PAYLOAD = typed($mbits > 1 ? pow2s($mbits - 1) : 1, $u);
 my $M_ZERO = typed(0, $matht);
@@ -383,6 +386,38 @@ sub mul_impl_text {
    return $s;
 }
 
+sub div_impl_text {
+   my ($static_prefix) = @_;
+   my $s = "${static_prefix}void $div_impl(void) {\n";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
+   $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;\n";
+   $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) || ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $ZERO;\n      $gr.bits.exponent := $EXP_MAX;\n      $gr.bits.mantissa := $NAN_PAYLOAD;\n      return;\n   }\n";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
+   $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
+   $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
+   $s .= "   $gsig_u.v := $ga.bits.mantissa;\n";
+   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
+   $s .= "   $gsig_a := $gsig_ll.v;\n   $gsig_u.v := $gb.bits.mantissa;\n";
+   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
+   $s .= "   $gsig_b := $gsig_ll.v;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a - $gexp_b + $M_BIAS;\n   $gtmp_ll.v := $gsig_a;\n";
+   $s .= ll_to_wide_snippet($gwide_a, $gtmp_ll, '   ');
+   $s .= "   $gwide_a.v := $gwide_a.v << @{[$mbits + 3]};\n";
+   $s .= "   $gtmp_ll.v := $gsig_b;\n";
+   $s .= ll_to_wide_snippet($gwide_b, $gtmp_ll, '   ');
+   $s .= "   $gwide_p.v := $gwide_a.v / $gwide_b.v;\n";
+   $s .= "   $gwide_t.v := $gwide_p.v * $gwide_b.v;\n";
+   $s .= "   if ($gwide_t.v != $gwide_a.v) { $gwide_p.v |= $W_ONE; }\n";
+   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a > $M_ONE && $gwide_p.v < $W_HIDDEN_EXT) { $gwide_p.v := $gwide_p.v << 1; $gexp_a--; }\n";
+   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a < $M_ONE) { $gwide_t.v := $gwide_p.v & $W_ONE; $gwide_p.v := $gwide_p.v >> 1; if ($gwide_t.v != $W_ZERO) { $gwide_p.v |= $W_ONE; } $gexp_a++; }\n";
+   $s .= wide_to_ll_snippet($gtmp_ll, $gwide_p, '   ');
+   $s .= "   $gsig_out := $gtmp_ll.v;\n";
+   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, "$gmant_ll.v", $gtmp_u, $gtmp_ll);
+   $s .= "}\n\n";
+   return $s;
+}
+
 sub operator_add_text {
    my $s = "$typename operator+($typename lhs, $typename rhs) {\n";
    $s .= load_code($ga, 'lhs', 'av');
@@ -408,6 +443,16 @@ sub operator_mul_text {
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
    $s .= "   $mul_impl();\n";
+   $s .= store_code($gr, 'rv');
+   $s .= "}\n\n";
+   return $s;
+}
+
+sub operator_div_text {
+   my $s = "$typename operator/($typename lhs, $typename rhs) {\n";
+   $s .= load_code($ga, 'lhs', 'av');
+   $s .= load_code($gb, 'rhs', 'bv');
+   $s .= "   $div_impl();\n";
    $s .= store_code($gr, 'rv');
    $s .= "}\n\n";
    return $s;
@@ -467,9 +512,11 @@ sub monolith_text {
       . add_impl_text('')
       . cmp_impl_text('')
       . mul_impl_text('')
+      . div_impl_text('')
       . operator_add_text()
       . operator_sub_text()
       . operator_mul_text()
+      . operator_div_text()
       . operator_eq_text()
       . operator_ne_text()
       . operator_lt_text()
@@ -516,6 +563,7 @@ sub decls_text {
    $s .= "extern $typename operator+($typename lhs, $typename rhs);\n";
    $s .= "extern $typename operator-($typename lhs, $typename rhs);\n";
    $s .= "extern $typename operator*($typename lhs, $typename rhs);\n";
+   $s .= "extern $typename operator/($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator==($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator!=($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator<($typename lhs, $typename rhs);\n";
@@ -561,6 +609,10 @@ my %build_ops = (
    mul => {
       source_name => "${typename}_operator_mul.n",
       source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . mul_impl_text('static ') . operator_mul_text(); },
+   },
+   div => {
+      source_name => "${typename}_operator_div.n",
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . div_impl_text('static ') . operator_div_text(); },
    },
    eq => {
       source_name => "${typename}_operator_eq.n",
@@ -619,7 +671,7 @@ sub build_mode {
    close($dfh);
 
    my @member_objects;
-   for my $key (qw(add sub mul eq ne lt gt le ge)) {
+   for my $key (qw(add sub mul div eq ne lt gt le ge)) {
       my $src_name = $build_ops{$key}->{source_name};
       my $src_path = File::Spec->catfile($out_dir, $src_name);
       my ($stem) = $src_name =~ /^(.*)\.n$/;

@@ -13,6 +13,7 @@ That output expects a matching `type typename { ... };` declaration to already e
 - `typename operator+(typename, typename)`
 - `typename operator-(typename, typename)`
 - `typename operator*(typename, typename)`
+- `typename operator/(typename, typename)`
 - `bool operator==(typename, typename)`
 - `bool operator!=(typename, typename)`
 - `bool operator<(typename, typename)`
