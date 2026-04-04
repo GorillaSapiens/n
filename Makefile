@@ -37,7 +37,7 @@ tools:
 	( cd ./driver ; make clean ; make )
 
 tarball:
-	git clean -fdx
+	-git clean -fdx
 	make
 	rm -f n_*.gz
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
