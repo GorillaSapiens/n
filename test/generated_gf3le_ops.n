@@ -19,16 +19,6 @@ union nlf_gf3le_overlay {
    char bytes[3];
    nlf_gf3le_bits bits;
 };
-union nlf_gf3le_u_overlay {
-   nlf_gf3le_u v;
-   char bytes[3];
-};
-
-union nlf_gf3le_math_overlay {
-   long v;
-   char bytes[4];
-};
-
 union nlf_gf3le_wide_overlay {
    nlf_gf3le_wide_u v;
    char bytes[6];
@@ -37,19 +27,11 @@ union nlf_gf3le_wide_overlay {
 nlf_gf3le_overlay nlf_gf3le_a;
 nlf_gf3le_overlay nlf_gf3le_b;
 nlf_gf3le_overlay nlf_gf3le_r;
-nlf_gf3le_overlay nlf_gf3le_t;
-nlf_gf3le_u_overlay nlf_gf3le_mant_u;
-nlf_gf3le_u_overlay nlf_gf3le_sig_u;
-nlf_gf3le_u_overlay nlf_gf3le_tmp_u;
-nlf_gf3le_math_overlay nlf_gf3le_mant_ll;
-nlf_gf3le_math_overlay nlf_gf3le_sig_ll;
-nlf_gf3le_math_overlay nlf_gf3le_tmp_ll;
-nlf_gf3le_math_overlay nlf_gf3le_amag;
-nlf_gf3le_math_overlay nlf_gf3le_bmag;
 nlf_gf3le_wide_overlay nlf_gf3le_wide_a;
 nlf_gf3le_wide_overlay nlf_gf3le_wide_b;
 nlf_gf3le_wide_overlay nlf_gf3le_wide_p;
 nlf_gf3le_wide_overlay nlf_gf3le_wide_t;
+long nlf_gf3le_mant_ll;
 long nlf_gf3le_exp_a;
 long nlf_gf3le_exp_b;
 int nlf_gf3le_sign_out;
@@ -96,20 +78,8 @@ void nlf_gf3le_add_impl(void) {
       nlf_gf3le_r.raw := nlf_gf3le_a.raw;
       return;
    }
-   nlf_gf3le_sig_u.v := nlf_gf3le_a.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_a := nlf_gf3le_sig_ll.v;
-   nlf_gf3le_sig_u.v := nlf_gf3le_b.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_b := nlf_gf3le_sig_ll.v;
+   nlf_gf3le_sig_a := nlf_gf3le_a.bits.mantissa;
+   nlf_gf3le_sig_b := nlf_gf3le_b.bits.mantissa;
    nlf_gf3le_exp_a := nlf_gf3le_a.bits.exponent;
    nlf_gf3le_exp_b := nlf_gf3le_b.bits.exponent;
    if (nlf_gf3le_exp_a == 0`long) { nlf_gf3le_exp_a := 1`long; }
@@ -130,12 +100,12 @@ void nlf_gf3le_add_impl(void) {
       else {
          long low;
          low := nlf_gf3le_sig_out & 7`long;
-         nlf_gf3le_mant_ll.v := nlf_gf3le_sig_out / 8`long;
-         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll.v & 1`long) != 0`long))) {
-            nlf_gf3le_mant_ll.v++;
+         nlf_gf3le_mant_ll := nlf_gf3le_sig_out / 8`long;
+         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll & 1`long) != 0`long))) {
+            nlf_gf3le_mant_ll++;
          }
-         if (nlf_gf3le_mant_ll.v >= 131072`long) {
-            nlf_gf3le_mant_ll.v /= 2`long;
+         if (nlf_gf3le_mant_ll >= 131072`long) {
+            nlf_gf3le_mant_ll /= 2`long;
             nlf_gf3le_exp_a++;
          }
          if (nlf_gf3le_exp_a >= 127`long) {
@@ -145,25 +115,13 @@ void nlf_gf3le_add_impl(void) {
          }
          else {
             nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
-            if (nlf_gf3le_mant_ll.v >= 65536`long) {
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_exp_a;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.exponent := nlf_gf3le_tmp_u.v;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v & 65535`nlf_gf3le_u;
+            if (nlf_gf3le_mant_ll >= 65536`long) {
+               nlf_gf3le_r.bits.exponent := nlf_gf3le_exp_a;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll & 65535`nlf_gf3le_u;
             }
             else {
                nlf_gf3le_r.bits.exponent := 0`nlf_gf3le_u;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll;
             }
          }
       }
@@ -184,23 +142,11 @@ void nlf_gf3le_add_impl(void) {
    }
    if (nlf_gf3le_cmp == 0) { nlf_gf3le_r.raw := 0`nlf_gf3le_u; return; }
    if (nlf_gf3le_cmp == 1) {
-      nlf_gf3le_t.raw := nlf_gf3le_a.raw;
+      nlf_gf3le_r.raw := nlf_gf3le_a.raw;
       nlf_gf3le_a.raw := nlf_gf3le_b.raw;
-      nlf_gf3le_b.raw := nlf_gf3le_t.raw;
-      nlf_gf3le_sig_u.v := nlf_gf3le_a.bits.mantissa;
-      nlf_gf3le_sig_ll.v := 0`long;
-      nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-      nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-      nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-      nlf_gf3le_sig_ll.bytes[3] := 0;
-      nlf_gf3le_sig_a := nlf_gf3le_sig_ll.v;
-      nlf_gf3le_sig_u.v := nlf_gf3le_b.bits.mantissa;
-      nlf_gf3le_sig_ll.v := 0`long;
-      nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-      nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-      nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-      nlf_gf3le_sig_ll.bytes[3] := 0;
-      nlf_gf3le_sig_b := nlf_gf3le_sig_ll.v;
+      nlf_gf3le_b.raw := nlf_gf3le_r.raw;
+      nlf_gf3le_sig_a := nlf_gf3le_a.bits.mantissa;
+      nlf_gf3le_sig_b := nlf_gf3le_b.bits.mantissa;
       nlf_gf3le_exp_a := nlf_gf3le_a.bits.exponent;
       nlf_gf3le_exp_b := nlf_gf3le_b.bits.exponent;
       if (nlf_gf3le_exp_a == 0`long) { nlf_gf3le_exp_a := 1`long; }
@@ -222,12 +168,12 @@ void nlf_gf3le_add_impl(void) {
       else {
          long low;
          low := nlf_gf3le_sig_out & 7`long;
-         nlf_gf3le_mant_ll.v := nlf_gf3le_sig_out / 8`long;
-         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll.v & 1`long) != 0`long))) {
-            nlf_gf3le_mant_ll.v++;
+         nlf_gf3le_mant_ll := nlf_gf3le_sig_out / 8`long;
+         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll & 1`long) != 0`long))) {
+            nlf_gf3le_mant_ll++;
          }
-         if (nlf_gf3le_mant_ll.v >= 131072`long) {
-            nlf_gf3le_mant_ll.v /= 2`long;
+         if (nlf_gf3le_mant_ll >= 131072`long) {
+            nlf_gf3le_mant_ll /= 2`long;
             nlf_gf3le_exp_a++;
          }
          if (nlf_gf3le_exp_a >= 127`long) {
@@ -237,25 +183,13 @@ void nlf_gf3le_add_impl(void) {
          }
          else {
             nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
-            if (nlf_gf3le_mant_ll.v >= 65536`long) {
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_exp_a;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.exponent := nlf_gf3le_tmp_u.v;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v & 65535`nlf_gf3le_u;
+            if (nlf_gf3le_mant_ll >= 65536`long) {
+               nlf_gf3le_r.bits.exponent := nlf_gf3le_exp_a;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll & 65535`nlf_gf3le_u;
             }
             else {
                nlf_gf3le_r.bits.exponent := 0`nlf_gf3le_u;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll;
             }
          }
       }
@@ -317,20 +251,8 @@ void nlf_gf3le_mul_impl(void) {
       nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
       return;
    }
-   nlf_gf3le_sig_u.v := nlf_gf3le_a.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_a := nlf_gf3le_sig_ll.v;
-   nlf_gf3le_sig_u.v := nlf_gf3le_b.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_b := nlf_gf3le_sig_ll.v;
+   nlf_gf3le_sig_a := nlf_gf3le_a.bits.mantissa;
+   nlf_gf3le_sig_b := nlf_gf3le_b.bits.mantissa;
    nlf_gf3le_exp_a := nlf_gf3le_a.bits.exponent;
    nlf_gf3le_exp_b := nlf_gf3le_b.bits.exponent;
    if (nlf_gf3le_exp_a == 0`long) { nlf_gf3le_exp_a := 1`long; }
@@ -338,17 +260,14 @@ void nlf_gf3le_mul_impl(void) {
    if (nlf_gf3le_a.bits.exponent != 0`nlf_gf3le_u) { nlf_gf3le_sig_a |= 65536`long; }
    if (nlf_gf3le_b.bits.exponent != 0`nlf_gf3le_u) { nlf_gf3le_sig_b |= 65536`long; }
    nlf_gf3le_exp_a := nlf_gf3le_exp_a + nlf_gf3le_exp_b - 63`long;
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_sig_a;
-   nlf_gf3le_wide_a.v := nlf_gf3le_tmp_ll.v;
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_sig_b;
-   nlf_gf3le_wide_b.v := nlf_gf3le_tmp_ll.v;
+   nlf_gf3le_wide_a.v := nlf_gf3le_sig_a;
+   nlf_gf3le_wide_b.v := nlf_gf3le_sig_b;
    nlf_gf3le_wide_p.v := nlf_gf3le_wide_a.v * nlf_gf3le_wide_b.v;
    nlf_gf3le_wide_t.v := nlf_gf3le_wide_p.v >> 13;
    nlf_gf3le_wide_a.v := nlf_gf3le_wide_t.v << 13;
    if (nlf_gf3le_wide_a.v != nlf_gf3le_wide_p.v) { nlf_gf3le_wide_t.v |= 1`nlf_gf3le_wide_u; }
    nlf_gf3le_wide_p.v := nlf_gf3le_wide_t.v;
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_wide_p.v;
-   nlf_gf3le_sig_out := nlf_gf3le_tmp_ll.v;
+   nlf_gf3le_sig_out := nlf_gf3le_wide_p.v;
    while (nlf_gf3le_sig_out != 0`long && nlf_gf3le_exp_a > 1`long && nlf_gf3le_sig_out < 524288`long) { nlf_gf3le_sig_out *= 2`long; nlf_gf3le_exp_a--; }
    while (nlf_gf3le_sig_out != 0`long && nlf_gf3le_exp_a < 1`long) { long lost; lost := nlf_gf3le_sig_out & 1`long; nlf_gf3le_sig_out /= 2`long; if (lost != 0`long) { nlf_gf3le_sig_out |= 1`long; } nlf_gf3le_exp_a++; }
       nlf_gf3le_r.raw := 0`nlf_gf3le_u;
@@ -358,12 +277,12 @@ void nlf_gf3le_mul_impl(void) {
       else {
          long low;
          low := nlf_gf3le_sig_out & 7`long;
-         nlf_gf3le_mant_ll.v := nlf_gf3le_sig_out / 8`long;
-         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll.v & 1`long) != 0`long))) {
-            nlf_gf3le_mant_ll.v++;
+         nlf_gf3le_mant_ll := nlf_gf3le_sig_out / 8`long;
+         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll & 1`long) != 0`long))) {
+            nlf_gf3le_mant_ll++;
          }
-         if (nlf_gf3le_mant_ll.v >= 131072`long) {
-            nlf_gf3le_mant_ll.v /= 2`long;
+         if (nlf_gf3le_mant_ll >= 131072`long) {
+            nlf_gf3le_mant_ll /= 2`long;
             nlf_gf3le_exp_a++;
          }
          if (nlf_gf3le_exp_a >= 127`long) {
@@ -373,25 +292,13 @@ void nlf_gf3le_mul_impl(void) {
          }
          else {
             nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
-            if (nlf_gf3le_mant_ll.v >= 65536`long) {
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_exp_a;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.exponent := nlf_gf3le_tmp_u.v;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v & 65535`nlf_gf3le_u;
+            if (nlf_gf3le_mant_ll >= 65536`long) {
+               nlf_gf3le_r.bits.exponent := nlf_gf3le_exp_a;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll & 65535`nlf_gf3le_u;
             }
             else {
                nlf_gf3le_r.bits.exponent := 0`nlf_gf3le_u;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll;
             }
          }
       }
@@ -436,20 +343,8 @@ void nlf_gf3le_div_impl(void) {
       nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
       return;
    }
-   nlf_gf3le_sig_u.v := nlf_gf3le_a.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_a := nlf_gf3le_sig_ll.v;
-   nlf_gf3le_sig_u.v := nlf_gf3le_b.bits.mantissa;
-   nlf_gf3le_sig_ll.v := 0`long;
-   nlf_gf3le_sig_ll.bytes[0] := nlf_gf3le_sig_u.bytes[0];
-   nlf_gf3le_sig_ll.bytes[1] := nlf_gf3le_sig_u.bytes[1];
-   nlf_gf3le_sig_ll.bytes[2] := nlf_gf3le_sig_u.bytes[2];
-   nlf_gf3le_sig_ll.bytes[3] := 0;
-   nlf_gf3le_sig_b := nlf_gf3le_sig_ll.v;
+   nlf_gf3le_sig_a := nlf_gf3le_a.bits.mantissa;
+   nlf_gf3le_sig_b := nlf_gf3le_b.bits.mantissa;
    nlf_gf3le_exp_a := nlf_gf3le_a.bits.exponent;
    nlf_gf3le_exp_b := nlf_gf3le_b.bits.exponent;
    if (nlf_gf3le_exp_a == 0`long) { nlf_gf3le_exp_a := 1`long; }
@@ -457,18 +352,15 @@ void nlf_gf3le_div_impl(void) {
    if (nlf_gf3le_a.bits.exponent != 0`nlf_gf3le_u) { nlf_gf3le_sig_a |= 65536`long; }
    if (nlf_gf3le_b.bits.exponent != 0`nlf_gf3le_u) { nlf_gf3le_sig_b |= 65536`long; }
    nlf_gf3le_exp_a := nlf_gf3le_exp_a - nlf_gf3le_exp_b + 63`long;
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_sig_a;
-   nlf_gf3le_wide_a.v := nlf_gf3le_tmp_ll.v;
+   nlf_gf3le_wide_a.v := nlf_gf3le_sig_a;
    nlf_gf3le_wide_a.v := nlf_gf3le_wide_a.v << 19;
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_sig_b;
-   nlf_gf3le_wide_b.v := nlf_gf3le_tmp_ll.v;
+   nlf_gf3le_wide_b.v := nlf_gf3le_sig_b;
    nlf_gf3le_wide_p.v := nlf_gf3le_wide_a.v / nlf_gf3le_wide_b.v;
    nlf_gf3le_wide_t.v := nlf_gf3le_wide_p.v * nlf_gf3le_wide_b.v;
    if (nlf_gf3le_wide_t.v != nlf_gf3le_wide_a.v) { nlf_gf3le_wide_p.v |= 1`nlf_gf3le_wide_u; }
    while (nlf_gf3le_wide_p.v != 0`nlf_gf3le_wide_u && nlf_gf3le_exp_a > 1`long && nlf_gf3le_wide_p.v < 524288`nlf_gf3le_wide_u) { nlf_gf3le_wide_p.v := nlf_gf3le_wide_p.v << 1; nlf_gf3le_exp_a--; }
    while (nlf_gf3le_wide_p.v != 0`nlf_gf3le_wide_u && nlf_gf3le_exp_a < 1`long) { nlf_gf3le_wide_t.v := nlf_gf3le_wide_p.v & 1`nlf_gf3le_wide_u; nlf_gf3le_wide_p.v := nlf_gf3le_wide_p.v >> 1; if (nlf_gf3le_wide_t.v != 0`nlf_gf3le_wide_u) { nlf_gf3le_wide_p.v |= 1`nlf_gf3le_wide_u; } nlf_gf3le_exp_a++; }
-   nlf_gf3le_tmp_ll.v := nlf_gf3le_wide_p.v;
-   nlf_gf3le_sig_out := nlf_gf3le_tmp_ll.v;
+   nlf_gf3le_sig_out := nlf_gf3le_wide_p.v;
       nlf_gf3le_r.raw := 0`nlf_gf3le_u;
       if (nlf_gf3le_sig_out == 0`long) {
          nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
@@ -476,12 +368,12 @@ void nlf_gf3le_div_impl(void) {
       else {
          long low;
          low := nlf_gf3le_sig_out & 7`long;
-         nlf_gf3le_mant_ll.v := nlf_gf3le_sig_out / 8`long;
-         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll.v & 1`long) != 0`long))) {
-            nlf_gf3le_mant_ll.v++;
+         nlf_gf3le_mant_ll := nlf_gf3le_sig_out / 8`long;
+         if ((low & 4`long) != 0`long && (((low & 3`long) != 0`long) || ((nlf_gf3le_mant_ll & 1`long) != 0`long))) {
+            nlf_gf3le_mant_ll++;
          }
-         if (nlf_gf3le_mant_ll.v >= 131072`long) {
-            nlf_gf3le_mant_ll.v /= 2`long;
+         if (nlf_gf3le_mant_ll >= 131072`long) {
+            nlf_gf3le_mant_ll /= 2`long;
             nlf_gf3le_exp_a++;
          }
          if (nlf_gf3le_exp_a >= 127`long) {
@@ -491,25 +383,13 @@ void nlf_gf3le_div_impl(void) {
          }
          else {
             nlf_gf3le_r.bits.sign := nlf_gf3le_sign_out;
-            if (nlf_gf3le_mant_ll.v >= 65536`long) {
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_exp_a;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.exponent := nlf_gf3le_tmp_u.v;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v & 65535`nlf_gf3le_u;
+            if (nlf_gf3le_mant_ll >= 65536`long) {
+               nlf_gf3le_r.bits.exponent := nlf_gf3le_exp_a;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll & 65535`nlf_gf3le_u;
             }
             else {
                nlf_gf3le_r.bits.exponent := 0`nlf_gf3le_u;
-               nlf_gf3le_tmp_ll.v := nlf_gf3le_mant_ll.v;
-               nlf_gf3le_tmp_u.bytes[0] := nlf_gf3le_tmp_ll.bytes[0];
-               nlf_gf3le_tmp_u.bytes[1] := nlf_gf3le_tmp_ll.bytes[1];
-               nlf_gf3le_tmp_u.bytes[2] := nlf_gf3le_tmp_ll.bytes[2];
-               nlf_gf3le_r.bits.mantissa := nlf_gf3le_tmp_u.v;
+               nlf_gf3le_r.bits.mantissa := nlf_gf3le_mant_ll;
             }
          }
       }

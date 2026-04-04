@@ -36,11 +36,11 @@ That produces:
 
 The per-operator build-mode units are self-contained and mark their scratch globals and helper routines `static`, so multiple generated members can coexist inside one archive without symbol collisions.
 
+The generator now also tries to keep emitted code and member-local state tight: it uses direct typed assignments where the compiler already handles widening/narrowing correctly, and build-mode members only declare the scratch globals they actually use. In practice that trims both generated source size and linked archive-member size, especially for compare-only members and single-op archives on 64K targets.
+
 The implementation is pure `.n` code. It uses a union overlay plus a bitfield struct to expose sign, exponent, and mantissa, then performs manual `SExMy` arithmetic/comparison in generated helpers. It does not call `_faddN`, `_fsubN`, `_fmulN`, or `_fcmp` from `nlib`.
 
 The generated helpers and scratch globals are ordinary user-defined `.n` symbols with an `nlf_` prefix. They intentionally do not start with `_`, and the compiler preserves that at the assembly/object-symbol layer too; raw `nlib` helper names remain separate assembly symbols like `_pushN` and `_callptr0`.
-
-The repository root `Makefile` uses this build mode to regenerate the flat archive-fixture files under `test/` via the `generated_float_archive_fixtures` target. Those files exist only to feed the test harness; `libraries/float/gen.pl` remains the source of truth.
 
 Current limits:
 

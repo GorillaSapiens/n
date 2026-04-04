@@ -161,38 +161,31 @@ sub store_code {
 }
 
 sub to_ll_snippet {
-   my ($dst, $srcu, $indent) = @_;
+   my ($dst, $src, $indent) = @_;
    $indent //= '      ';
-   my $s = "${indent}$dst.v := $M_ZERO;\n";
-   for my $i (0 .. $last) {
-      $s .= "${indent}$dst.bytes[$i] := $srcu.bytes[$i];\n";
-   }
-   for my $i ($size .. $math_bytes - 1) {
-      $s .= "${indent}$dst.bytes[$i] := 0;\n";
-   }
-   return $s;
+   return "${indent}$dst := $src;
+";
 }
 
 sub from_ll_snippet {
-   my ($dstu, $srcll, $indent) = @_;
+   my ($dst, $src, $indent) = @_;
    $indent //= '      ';
-   my $s = '';
-   for my $i (0 .. $last) {
-      $s .= "${indent}$dstu.bytes[$i] := $srcll.bytes[$i];\n";
-   }
-   return $s;
+   return "${indent}$dst := $src;
+";
 }
 
 sub ll_to_wide_snippet {
-   my ($dstw, $srcll, $indent) = @_;
+   my ($dstw, $src, $indent) = @_;
    $indent //= '      ';
-   return "${indent}$dstw.v := $srcll.v;\n";
+   return "${indent}$dstw.v := $src;
+";
 }
 
 sub wide_to_ll_snippet {
-   my ($dstll, $srcw, $indent) = @_;
+   my ($dst, $srcw, $indent) = @_;
    $indent //= '      ';
-   return "${indent}$dstll.v := $srcw.v;\n";
+   return "${indent}$dst := $srcw.v;
+";
 }
 
 sub mag_cmp_snippet {
@@ -215,99 +208,175 @@ sub mag_cmp_snippet {
 }
 
 sub pack_snippet {
-   my ($sig, $exp, $sign, $out, $mant, $tmpu, $tmpll) = @_;
-   return "      $out.raw := $ZERO;\n"
-      . "      if ($sig == $M_ZERO) {\n"
-      . "         $out.bits.sign := $sign;\n"
-      . "      }\n"
-      . "      else {\n"
-      . "         ${matht} low;\n"
-      . "         low := $sig & 7`$matht;\n"
-      . "         $mant := $sig / $M_EIGHT;\n"
-      . "         if ((low & 4`$matht) != $M_ZERO && (((low & 3`$matht) != $M_ZERO) || (($mant & $M_ONE) != $M_ZERO))) {\n"
-      . "            $mant++;\n"
-      . "         }\n"
-      . "         if ($mant >= $M_CARRY) {\n"
-      . "            $mant /= $M_TWO;\n"
-      . "            $exp++;\n"
-      . "         }\n"
-      . "         if ($exp >= $M_EXP_MAX) {\n"
-      . "            $out.bits.sign := $sign;\n"
-      . "            $out.bits.exponent := $EXP_MAX;\n"
-      . "            $out.bits.mantissa := $ZERO;\n"
-      . "         }\n"
-      . "         else {\n"
-      . "            $out.bits.sign := $sign;\n"
-      . "            if ($mant >= $M_HIDDEN) {\n"
-      . "               $tmpll.v := $exp;\n"
-      . from_ll_snippet($tmpu, $tmpll, '               ')
-      . "               $out.bits.exponent := $tmpu.v;\n"
-      . "               $tmpll.v := $mant;\n"
-      . from_ll_snippet($tmpu, $tmpll, '               ')
-      . "               $out.bits.mantissa := $tmpu.v & $FRACMASK;\n"
-      . "            }\n"
-      . "            else {\n"
-      . "               $out.bits.exponent := $ZERO;\n"
-      . "               $tmpll.v := $mant;\n"
-      . from_ll_snippet($tmpu, $tmpll, '               ')
-      . "               $out.bits.mantissa := $tmpu.v;\n"
-      . "            }\n"
-      . "         }\n"
-      . "      }\n";
+   my ($sig, $exp, $sign, $out, $mant) = @_;
+   return "      $out.raw := $ZERO;
+"
+      . "      if ($sig == $M_ZERO) {
+"
+      . "         $out.bits.sign := $sign;
+"
+      . "      }
+"
+      . "      else {
+"
+      . "         ${matht} low;
+"
+      . "         low := $sig & 7`$matht;
+"
+      . "         $mant := $sig / $M_EIGHT;
+"
+      . "         if ((low & 4`$matht) != $M_ZERO && (((low & 3`$matht) != $M_ZERO) || (($mant & $M_ONE) != $M_ZERO))) {
+"
+      . "            $mant++;
+"
+      . "         }
+"
+      . "         if ($mant >= $M_CARRY) {
+"
+      . "            $mant /= $M_TWO;
+"
+      . "            $exp++;
+"
+      . "         }
+"
+      . "         if ($exp >= $M_EXP_MAX) {
+"
+      . "            $out.bits.sign := $sign;
+"
+      . "            $out.bits.exponent := $EXP_MAX;
+"
+      . "            $out.bits.mantissa := $ZERO;
+"
+      . "         }
+"
+      . "         else {
+"
+      . "            $out.bits.sign := $sign;
+"
+      . "            if ($mant >= $M_HIDDEN) {
+"
+      . "               $out.bits.exponent := $exp;
+"
+      . "               $out.bits.mantissa := $mant & $FRACMASK;
+"
+      . "            }
+"
+      . "            else {
+"
+      . "               $out.bits.exponent := $ZERO;
+"
+      . "               $out.bits.mantissa := $mant;
+"
+      . "            }
+"
+      . "         }
+"
+      . "      }
+";
 }
 
 sub base_runtime_block {
-   my ($static_prefix) = @_;
-   my $s = '';
-   $s .= "type $u { \$size:$size \$unsigned \$endian:little };\n";
-   $s .= "type $wu { \$size:$wide_bytes \$unsigned \$endian:little };\n\n";
-   $s .= "struct $bits {\n";
-   $s .= "   $u mantissa:$mbits;\n";
-   $s .= "   $u exponent:$expbits;\n";
-   $s .= "   $u sign:1;\n";
-   $s .= "};\n";
-   if ($endian eq 'little') {
-      $s .= "union $ov {\n";
-      $s .= "   $typename value;\n";
-      $s .= "   $u raw;\n";
-      $s .= "   char bytes[$size];\n";
-      $s .= "   $bits bits;\n";
-      $s .= "};\n";
-   }
-   else {
-      $s .= "union $vov {\n";
-      $s .= "   $typename value;\n";
-      $s .= "   char bytes[$size];\n";
-      $s .= "};\n\n";
-      $s .= "union $ov {\n";
-      $s .= "   $u raw;\n";
-      $s .= "   char bytes[$size];\n";
-      $s .= "   $bits bits;\n";
-      $s .= "};\n";
-   }
-   $s .= "union $uov {\n";
-   $s .= "   $u v;\n";
-   $s .= "   char bytes[$size];\n";
-   $s .= "};\n\n";
-   $s .= "union $mov {\n";
-   $s .= "   $matht v;\n";
-   $s .= "   char bytes[$math_bytes];\n";
-   $s .= "};\n\n";
-   $s .= "union $wov {\n";
-   $s .= "   $wu v;\n";
-   $s .= "   char bytes[$wide_bytes];\n";
-   $s .= "};\n\n";
+   my ($static_prefix, $vars) = @_;
+   $vars //= {};
 
-   for my $decl (
-      "$ov $ga", "$ov $gb", "$ov $gr", "$ov $gt",
-      "$uov $gmant_u", "$uov $gsig_u", "$uov $gtmp_u",
-      "$mov $gmant_ll", "$mov $gsig_ll", "$mov $gtmp_ll", "$mov $gamag", "$mov $gbmag",
-      "$wov $gwide_a", "$wov $gwide_b", "$wov $gwide_p", "$wov $gwide_t",
-      "$matht $gexp_a", "$matht $gexp_b", "int $gsign_out", "$matht $gsig_a",
-      "$matht $gsig_b", "$matht $gsig_out", "int $gcmp", "int $gunordered") {
-      $s .= "$static_prefix$decl;\n";
+   my $need_ov = 0;
+   for my $k (qw(ga gb gr)) {
+      if ($vars->{$k}) { $need_ov = 1; last; }
    }
-   $s .= "\n";
+   my $need_wide = 0;
+   for my $k (qw(gwide_a gwide_b gwide_p gwide_t)) {
+      if ($vars->{$k}) { $need_wide = 1; last; }
+   }
+
+   my $s = '';
+   $s .= "type $u { \$size:$size \$unsigned \$endian:little };
+";
+   $s .= "type $wu { \$size:$wide_bytes \$unsigned \$endian:little };
+
+" if $need_wide;
+   if ($need_ov) {
+      $s .= "struct $bits {
+";
+      $s .= "   $u mantissa:$mbits;
+";
+      $s .= "   $u exponent:$expbits;
+";
+      $s .= "   $u sign:1;
+";
+      $s .= "};
+";
+      if ($endian eq 'little') {
+         $s .= "union $ov {
+";
+         $s .= "   $typename value;
+";
+         $s .= "   $u raw;
+";
+         $s .= "   char bytes[$size];
+";
+         $s .= "   $bits bits;
+";
+         $s .= "};
+";
+      }
+      else {
+         $s .= "union $vov {
+";
+         $s .= "   $typename value;
+";
+         $s .= "   char bytes[$size];
+";
+         $s .= "};
+
+";
+         $s .= "union $ov {
+";
+         $s .= "   $u raw;
+";
+         $s .= "   char bytes[$size];
+";
+         $s .= "   $bits bits;
+";
+         $s .= "};
+";
+      }
+   }
+   if ($need_wide) {
+      $s .= "union $wov {
+";
+      $s .= "   $wu v;
+";
+      $s .= "   char bytes[$wide_bytes];
+";
+      $s .= "};
+
+";
+   }
+
+   my @decls;
+   push @decls, "$ov $ga" if $vars->{ga};
+   push @decls, "$ov $gb" if $vars->{gb};
+   push @decls, "$ov $gr" if $vars->{gr};
+   push @decls, "$wov $gwide_a" if $vars->{gwide_a};
+   push @decls, "$wov $gwide_b" if $vars->{gwide_b};
+   push @decls, "$wov $gwide_p" if $vars->{gwide_p};
+   push @decls, "$wov $gwide_t" if $vars->{gwide_t};
+   push @decls, "$matht $gmant_ll" if $vars->{gmant_ll};
+   push @decls, "$matht $gexp_a" if $vars->{gexp_a};
+   push @decls, "$matht $gexp_b" if $vars->{gexp_b};
+   push @decls, "int $gsign_out" if $vars->{gsign_out};
+   push @decls, "$matht $gsig_a" if $vars->{gsig_a};
+   push @decls, "$matht $gsig_b" if $vars->{gsig_b};
+   push @decls, "$matht $gsig_out" if $vars->{gsig_out};
+   push @decls, "int $gcmp" if $vars->{gcmp};
+   push @decls, "int $gunordered" if $vars->{gunordered};
+
+   for my $decl (@decls) {
+      $s .= "$static_prefix$decl;
+";
+   }
+   $s .= "
+";
    return $s;
 }
 
@@ -322,20 +391,12 @@ sub add_impl_text {
    $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      if ($ga.bits.sign == $gb.bits.sign) { $gr.bits.sign := $ga.bits.sign; } else { $gr.bits.sign := $ZERO; }\n      return;\n   }\n";
    $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
    $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
-   $s .= "   $gsig_u.v := $ga.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_a := $gsig_ll.v;\n   $gsig_u.v := $gb.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_b := $gsig_ll.v;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gsig_a *= $M_EIGHT;\n   $gsig_b *= $M_EIGHT;\n   if ($ga.bits.sign == $gb.bits.sign) {\n      while ($gexp_a < $gexp_b) { $matht lost; lost := $gsig_a & $M_ONE; $gsig_a /= $M_TWO; if (lost != $M_ZERO) { $gsig_a |= $M_ONE; } $gexp_a++; }\n      while ($gexp_b < $gexp_a) { $matht lost; lost := $gsig_b & $M_ONE; $gsig_b /= $M_TWO; if (lost != $M_ZERO) { $gsig_b |= $M_ONE; } $gexp_b++; }\n      $gsig_out := $gsig_a + $gsig_b;\n      $gsign_out := $ga.bits.sign;\n";
-   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, "$gmant_ll.v", $gtmp_u, $gtmp_ll);
+   $s .= "   $gsig_a := $ga.bits.mantissa;\n   $gsig_b := $gb.bits.mantissa;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gsig_a *= $M_EIGHT;\n   $gsig_b *= $M_EIGHT;\n   if ($ga.bits.sign == $gb.bits.sign) {\n      while ($gexp_a < $gexp_b) { $matht lost; lost := $gsig_a & $M_ONE; $gsig_a /= $M_TWO; if (lost != $M_ZERO) { $gsig_a |= $M_ONE; } $gexp_a++; }\n      while ($gexp_b < $gexp_a) { $matht lost; lost := $gsig_b & $M_ONE; $gsig_b /= $M_TWO; if (lost != $M_ZERO) { $gsig_b |= $M_ONE; } $gexp_b++; }\n      $gsig_out := $gsig_a + $gsig_b;\n      $gsign_out := $ga.bits.sign;\n";
+   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
    $s .= "      return;\n   }\n";
    $s .= mag_cmp_snippet($gcmp, $ga, $gb, '   ');
-   $s .= "   if ($gcmp == $CMP_EQ) { $gr.raw := $ZERO; return; }\n   if ($gcmp == $CMP_LT) {\n      $gt.raw := $ga.raw;\n      $ga.raw := $gb.raw;\n      $gb.raw := $gt.raw;\n      $gsig_u.v := $ga.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '      ');
-   $s .= "      $gsig_a := $gsig_ll.v;\n      $gsig_u.v := $gb.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '      ');
-   $s .= "      $gsig_b := $gsig_ll.v;\n      $gexp_a := $ga.bits.exponent;\n      $gexp_b := $gb.bits.exponent;\n      if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n      if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n      if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n      if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n      $gsig_a *= $M_EIGHT;\n      $gsig_b *= $M_EIGHT;\n   }\n   while ($gexp_a < $gexp_b) { $matht lost; lost := $gsig_a & $M_ONE; $gsig_a /= $M_TWO; if (lost != $M_ZERO) { $gsig_a |= $M_ONE; } $gexp_a++; }\n   while ($gexp_b < $gexp_a) { $matht lost; lost := $gsig_b & $M_ONE; $gsig_b /= $M_TWO; if (lost != $M_ZERO) { $gsig_b |= $M_ONE; } $gexp_b++; }\n   $gsig_out := $gsig_a - $gsig_b;\n   $gsign_out := $ga.bits.sign;\n   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }\n";
-   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, "$gmant_ll.v", $gtmp_u, $gtmp_ll);
+   $s .= "   if ($gcmp == $CMP_EQ) { $gr.raw := $ZERO; return; }\n   if ($gcmp == $CMP_LT) {\n      $gr.raw := $ga.raw;\n      $ga.raw := $gb.raw;\n      $gb.raw := $gr.raw;\n      $gsig_a := $ga.bits.mantissa;\n      $gsig_b := $gb.bits.mantissa;\n      $gexp_a := $ga.bits.exponent;\n      $gexp_b := $gb.bits.exponent;\n      if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n      if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n      if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n      if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n      $gsig_a *= $M_EIGHT;\n      $gsig_b *= $M_EIGHT;\n   }\n   while ($gexp_a < $gexp_b) { $matht lost; lost := $gsig_a & $M_ONE; $gsig_a /= $M_TWO; if (lost != $M_ZERO) { $gsig_a |= $M_ONE; } $gexp_a++; }\n   while ($gexp_b < $gexp_a) { $matht lost; lost := $gsig_b & $M_ONE; $gsig_b /= $M_TWO; if (lost != $M_ZERO) { $gsig_b |= $M_ONE; } $gexp_b++; }\n   $gsig_out := $gsig_a - $gsig_b;\n   $gsign_out := $ga.bits.sign;\n   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }\n";
+   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
    $s .= "}\n\n";
    return $s;
 }
@@ -357,15 +418,7 @@ sub mul_impl_text {
    $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
    $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
    $s .= "   if (($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) || ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
-   $s .= "   $gsig_u.v := $ga.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_a := $gsig_ll.v;\n   $gsig_u.v := $gb.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_b := $gsig_ll.v;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a + $gexp_b - $M_BIAS;\n   $gtmp_ll.v := $gsig_a;\n";
-   $s .= ll_to_wide_snippet($gwide_a, $gtmp_ll, '   ');
-   $s .= "   $gtmp_ll.v := $gsig_b;\n";
-   $s .= ll_to_wide_snippet($gwide_b, $gtmp_ll, '   ');
-   $s .= "   $gwide_p.v := $gwide_a.v * $gwide_b.v;\n";
+   $s .= "   $gsig_a := $ga.bits.mantissa;\n   $gsig_b := $gb.bits.mantissa;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a + $gexp_b - $M_BIAS;\n   $gwide_a.v := $gsig_a;\n   $gwide_b.v := $gsig_b;\n   $gwide_p.v := $gwide_a.v * $gwide_b.v;\n";
    if ($mbits > 3) {
       my $shift = $mbits - 3;
       $s .= "   $gwide_t.v := $gwide_p.v >> $shift;\n";
@@ -377,11 +430,10 @@ sub mul_impl_text {
       my $shift = 3 - $mbits;
       $s .= "   $gwide_p.v := $gwide_p.v << $shift;\n";
    }
-   $s .= wide_to_ll_snippet($gtmp_ll, $gwide_p, '   ');
-   $s .= "   $gsig_out := $gtmp_ll.v;\n";
+   $s .= "   $gsig_out := $gwide_p.v;\n";
    $s .= "   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }\n";
    $s .= "   while ($gsig_out != $M_ZERO && $gexp_a < $M_ONE) { $matht lost; lost := $gsig_out & $M_ONE; $gsig_out /= $M_TWO; if (lost != $M_ZERO) { $gsig_out |= $M_ONE; } $gexp_a++; }\n";
-   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, "$gmant_ll.v", $gtmp_u, $gtmp_ll);
+   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
    $s .= "}\n\n";
    return $s;
 }
@@ -397,23 +449,11 @@ sub div_impl_text {
    $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
    $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
    $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
-   $s .= "   $gsig_u.v := $ga.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_a := $gsig_ll.v;\n   $gsig_u.v := $gb.bits.mantissa;\n";
-   $s .= to_ll_snippet($gsig_ll, $gsig_u, '   ');
-   $s .= "   $gsig_b := $gsig_ll.v;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a - $gexp_b + $M_BIAS;\n   $gtmp_ll.v := $gsig_a;\n";
-   $s .= ll_to_wide_snippet($gwide_a, $gtmp_ll, '   ');
-   $s .= "   $gwide_a.v := $gwide_a.v << @{[$mbits + 3]};\n";
-   $s .= "   $gtmp_ll.v := $gsig_b;\n";
-   $s .= ll_to_wide_snippet($gwide_b, $gtmp_ll, '   ');
-   $s .= "   $gwide_p.v := $gwide_a.v / $gwide_b.v;\n";
-   $s .= "   $gwide_t.v := $gwide_p.v * $gwide_b.v;\n";
-   $s .= "   if ($gwide_t.v != $gwide_a.v) { $gwide_p.v |= $W_ONE; }\n";
+   $s .= "   $gsig_a := $ga.bits.mantissa;\n   $gsig_b := $gb.bits.mantissa;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a - $gexp_b + $M_BIAS;\n   $gwide_a.v := $gsig_a;\n   $gwide_a.v := $gwide_a.v << @{[$mbits + 3]};\n   $gwide_b.v := $gsig_b;\n   $gwide_p.v := $gwide_a.v / $gwide_b.v;\n   $gwide_t.v := $gwide_p.v * $gwide_b.v;\n   if ($gwide_t.v != $gwide_a.v) { $gwide_p.v |= $W_ONE; }\n";
    $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a > $M_ONE && $gwide_p.v < $W_HIDDEN_EXT) { $gwide_p.v := $gwide_p.v << 1; $gexp_a--; }\n";
    $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a < $M_ONE) { $gwide_t.v := $gwide_p.v & $W_ONE; $gwide_p.v := $gwide_p.v >> 1; if ($gwide_t.v != $W_ZERO) { $gwide_p.v |= $W_ONE; } $gexp_a++; }\n";
-   $s .= wide_to_ll_snippet($gtmp_ll, $gwide_p, '   ');
-   $s .= "   $gsig_out := $gtmp_ll.v;\n";
-   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, "$gmant_ll.v", $gtmp_u, $gtmp_ll);
+   $s .= "   $gsig_out := $gwide_p.v;\n";
+   $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
    $s .= "}\n\n";
    return $s;
 }
@@ -508,7 +548,12 @@ sub operator_ge_text {
 
 sub monolith_text {
    return comment_header()
-      . base_runtime_block('')
+      . base_runtime_block('', {
+         ga => 1, gb => 1, gr => 1,
+         gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1,
+         gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1, gunordered => 1,
+      })
       . add_impl_text('')
       . cmp_impl_text('')
       . mul_impl_text('')
@@ -600,43 +645,43 @@ PRELUDE
 my %build_ops = (
    add => {
       source_name => "${typename}_operator_add.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . add_impl_text('static ') . operator_add_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1 }) . add_impl_text('static ') . operator_add_text(); },
    },
    sub => {
       source_name => "${typename}_operator_sub.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . add_impl_text('static ') . operator_sub_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1 }) . add_impl_text('static ') . operator_sub_text(); },
    },
    mul => {
       source_name => "${typename}_operator_mul.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . mul_impl_text('static ') . operator_mul_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 }) . mul_impl_text('static ') . operator_mul_text(); },
    },
    div => {
       source_name => "${typename}_operator_div.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . div_impl_text('static ') . operator_div_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 }) . div_impl_text('static ') . operator_div_text(); },
    },
    eq => {
       source_name => "${typename}_operator_eq.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_eq_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_eq_text(); },
    },
    ne => {
       source_name => "${typename}_operator_ne.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_ne_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_ne_text(); },
    },
    lt => {
       source_name => "${typename}_operator_lt.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_lt_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_lt_text(); },
    },
    gt => {
       source_name => "${typename}_operator_gt.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_gt_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_gt_text(); },
    },
    le => {
       source_name => "${typename}_operator_le.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_le_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_le_text(); },
    },
    ge => {
       source_name => "${typename}_operator_ge.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ') . cmp_impl_text('static ') . operator_ge_text(); },
+      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_ge_text(); },
    },
 );
 

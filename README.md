@@ -36,8 +36,6 @@ n65sim sieve.hex
 
 Run `make test` at the repository root to execute the unified `test/test.pl` harness across both compiler-side source tests and end-to-end `n65cc -> n65asm -> n65ld -> n65sim` regression tests. Use `make unit` for compile-only cases, `make e2e` for end-to-end cases, and `make sieve` for a quick `n65driver` smoke build.
 
-The archive-based generated-float tests use flat fixture files under `test/` such as `generated_float_archive_gf32_decls.n`. Those files are generated from `libraries/float/gen.pl` by the `generated_float_archive_fixtures` target and are not source-of-truth files. `make unit`, `make e2e`, and `make test` regenerate them automatically before running the harness.
-
 # Additional Details
 
 For additional details, see the README.md files in the various subdirectories.
@@ -64,20 +62,4 @@ type f3     { $size:3 $endian:little $float:simple  }; // generic simple SExMy f
 `$float:ieee754` supports only `$size:2`, `$size:4`, and `$size:8`.
 `$float:simple` supports any positive size and always uses an `SExMy` layout where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits. For `$size:2`, `$size:4`, and `$size:8`, that yields the same exponent widths as IEEE 754 binary16/binary32/binary64.
 
-`libraries/float/gen.pl` can generate real `operator+`, `operator-`, `operator*`, `operator/`, and comparison overloads for a float-like type using union/bitfield SExMy arithmetic instead of the old nlib float helpers.
-
-Classic monolithic mode writes one `.n` file to stdout:
-
-```sh
-perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n
-```
-
-Then `include "mytype_ops.n"` next to the matching `type` declaration.
-
-Archive build mode writes one generated source per operator plus a final `.a65` archive:
-
-```sh
-perl libraries/float/gen.pl --build outdir typename little-or-big size-bytes exp-bits
-```
-
-That mode emits `<typename>_decls.n` with the type declaration and `extern operator...` prototypes, one `<typename>_operator_<name>.n` source per operator member, matching `.s` and `.o65` files, and a final `<typename>.a65` archive.
+`libraries/float/gen.pl` can generate real `operator+`, `operator-`, and comparison overloads for a float-like type using union/bitfield SExMy arithmetic instead of the old nlib float helpers. Run `perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n`, then `include "mytype_ops.n"` next to the matching `type` declaration.
