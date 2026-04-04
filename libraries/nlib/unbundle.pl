@@ -3,8 +3,6 @@
 `mkdir -p wrk`;
 `cp nlib.inc wrk`;
 foreach $file (`ls asm/*.asm`) {
-   next if $file =~ m{asm/f(add|sub|mul|div)N\.asm$};
-   next if $file =~ m{asm/fcmp\.asm$};
    $file =~ s/[\x0a\x0d]//g;
 
    print "== $file\n";

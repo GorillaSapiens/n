@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Spec;
 use File::Temp qw(tempdir tempfile);
+use File::Path qw(make_path);
 use Cwd qw(abs_path);
 use Getopt::Long qw(GetOptions);
 
@@ -72,6 +73,7 @@ sub parse_directives {
       expectlinkerr => [],
       expectmap => [],
       archive => [],
+      archivegroup => [],
       object => [],
       linkcfg => undef,
       expectfail => 0,
@@ -103,6 +105,11 @@ sub parse_directives {
       elsif ($line =~ /^\/\/ archive:\s*(.*?)\s*$/) {
          push @{$meta{archive}}, $1;
       }
+      elsif ($line =~ /^\/\/ archivegroup:\s*(\S+)\s+(.*?)\s*$/) {
+         my ($group, $rest) = ($1, $2);
+         my @members = grep { length($_) } split(/\s+/, $rest);
+         push @{$meta{archivegroup}}, [$group, @members];
+      }
       elsif ($line =~ /^\/\/ object:\s*(.*?)\s*$/) {
          push @{$meta{object}}, $1;
       }
@@ -130,6 +137,7 @@ sub is_e2e_case {
       || scalar(@{$meta->{expectlinkerr}})
       || scalar(@{$meta->{expectmap}})
       || scalar(@{$meta->{archive}})
+      || scalar(@{$meta->{archivegroup}})
       || scalar(@{$meta->{object}})
       || defined($meta->{linkcfg})
       || $meta->{expectlinkfail}
@@ -258,6 +266,10 @@ sub compile_n_to_object {
    my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
    my $out_path = File::Spec->catfile($tmp, "$stem.compile.out");
    my $err_path = File::Spec->catfile($tmp, "$stem.compile.err");
+   for my $path ($s_path, $o_path, $out_path, $err_path) {
+      my ($vol, $dir, undef) = File::Spec->splitpath($path);
+      make_path(File::Spec->catpath($vol, $dir, '')) if length($dir);
+   }
    my @cmd = ($n65cc, '-quiet', @$runner_args, $src_path, '-o', $s_path, '-dumpbase', $src_name, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
    my ($exit_code) = run_cmd(\@cmd, $out_path, $err_path);
    if ($exit_code != 0) {
@@ -347,6 +359,34 @@ sub run_e2e_case {
          exit(-1);
       }
       push @archives, $a_path;
+   }
+
+   if (@{$meta->{archivegroup}}) {
+      my %groups;
+      for my $entry (@{$meta->{archivegroup}}) {
+         my ($group, @members) = @$entry;
+         push @{$groups{$group}}, @members;
+      }
+      for my $group (sort keys %groups) {
+         my @group_objects;
+         for my $src_name (@{$groups{$group}}) {
+            push @group_objects, compile_n_to_object($src_name, $runner_args, $tmp, $file);
+         }
+         my $archive_name = $group;
+         $archive_name .= '.a65' if $archive_name !~ /\.a65$/;
+         my $a_path = File::Spec->catfile($tmp, $archive_name);
+         my @ncmd = ($n65ar, 'rcs', $a_path, @group_objects);
+         my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$group.n65ar.out"), File::Spec->catfile($tmp, "$group.n65ar.err"));
+         if ($nexit != 0) {
+            print "[$FAIL] $file archivegroup creation exit code $nexit
+";
+            print join(' ', @ncmd), "
+";
+            print slurp_file(File::Spec->catfile($tmp, "$group.n65ar.err"));
+            exit(-1);
+         }
+         push @archives, $a_path;
+      }
    }
 
    my @link_cmd = ($n65ld, '-o', $hex_path, '-Map', $map_path);

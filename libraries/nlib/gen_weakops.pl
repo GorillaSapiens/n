@@ -93,7 +93,7 @@ for my $t (@types) {
       emit_ptr(0, sprintf('%02x', $arg1));
       emit_ptr(1, sprintf('%02x', $arg2));
       emit_ptr(2, sprintf('%02x', $ret));
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _$helper\n";
       emit_rts();
@@ -110,12 +110,12 @@ for my $t (@types) {
       emit_ptr(0, sprintf('%02x', $arg1));
       emit_ptr(1, sprintf('%02x', $arg2));
       emit_ptrp(2, sprintf('%02x', 0));
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _mulN\n";
       emit_ptrp(0, sprintf('%02x', 0));
       emit_ptr(1, sprintf('%02x', $ret));
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _cpyN\n";
       print "    lda #\$" . sprintf('%02x', $scratch) . "\n";
@@ -139,12 +139,12 @@ for my $t (@types) {
       emit_ptr(1, sprintf('%02x', $arg2));
       emit_ptrp(2, sprintf('%02x', $quo));
       emit_ptrp(3, sprintf('%02x', $rem));
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _divN\n";
       emit_ptrp(0, sprintf('%02x', $want_rem ? $rem : $quo));
       emit_ptr(1, sprintf('%02x', $ret));
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _cpyN\n";
       print "    lda #\$" . sprintf('%02x', $scratch) . "\n";
@@ -164,7 +164,7 @@ for my $t (@types) {
       print "    ldy #0\n";
       print "    lda (ptr2),y\n";
       print "    sta arg1\n";
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _$helper\n";
       emit_rts();
@@ -189,7 +189,7 @@ for my $t (@types) {
          emit_ptr(0, sprintf('%02x', $cmp_lhs));
          emit_ptr(1, sprintf('%02x', $cmp_rhs));
       }
-      print "    lda #\$$size\n";
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _$helper\n";
       if ($mode && $mode == 1) {
@@ -209,7 +209,7 @@ for my $t (@types) {
    emit_prologue();
    emit_ptr(0, sprintf('%02x', $uarg));
    emit_ptr(1, sprintf('%02x', $uret));
-   print "    lda #\$$size\n";
+   print "    lda #\$" . sprintf('%02x', $size) . "\n";
    print "    sta arg0\n";
    print "    jsr _comp2N\n";
    emit_rts();
@@ -220,7 +220,7 @@ for my $t (@types) {
    emit_prologue();
    emit_ptr(0, sprintf('%02x', $uarg));
    emit_ptr(2, sprintf('%02x', $uret));
-   print "    lda #\$$size\n";
+   print "    lda #\$" . sprintf('%02x', $size) . "\n";
    print "    sta arg0\n";
    print "    jsr _bit_notN\n";
    emit_rts();
@@ -229,35 +229,98 @@ for my $t (@types) {
 
 for my $t (@floats) {
    my ($name, $size) = @$t;
+   my $expbits = $name eq 'half' ? 5 : ($name eq 'double' ? 11 : 8);
    my $arg1 = $size;
    my $arg2 = $size * 2;
    my $ret  = $size * 3;
    my $uarg = $size;
    my $uret = $size * 2;
    my $cmp_ret = 1 + $size * 2;
-   for my $op ('+', '-', '*', '/') {
+
+   for my $pair (['+', '_faddN'], ['-', '_fsubN'], ['*', '_fmulN'], ['/', '_fdivN']) {
+      my ($op, $helper) = @$pair;
       my $sym = sym($op, $name, $name);
       print ".weak $sym\n.proc $sym\n";
       emit_prologue();
-      emit_zero_ret($ret, sprintf('%02x', $size), 2);
+      emit_ptr(0, sprintf('%02x', $arg1));
+      emit_ptr(1, sprintf('%02x', $arg2));
+      emit_ptr(2, sprintf('%02x', $ret));
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
+      print "    sta arg0\n";
+      print "    lda #\$" . sprintf('%02x', $expbits) . "\n";
+      print "    sta arg1\n";
+      print "    jsr $helper\n";
       emit_rts();
       print ".endproc\n\n";
    }
+
    for my $op ('==', '!=', '<', '<=', '>', '>=') {
       my $sym = sym($op, $name, $name);
       print ".weak $sym\n.proc $sym\n";
       emit_prologue();
+      emit_ptr(0, sprintf('%02x', $arg1));
+      emit_ptr(1, sprintf('%02x', $arg2));
+      print "    lda #\$" . sprintf('%02x', $size) . "\n";
+      print "    sta arg0\n";
+      print "    lda #\$" . sprintf('%02x', $expbits) . "\n";
+      print "    sta arg1\n";
+      print "    jsr _fcmp\n";
       emit_ptr(2, sprintf('%02x', $cmp_ret));
       print "    ldy #0\n";
+      if ($op eq '==') {
+         print "    lda arg1\n";
+         print "    beq \@true\n";
+      }
+      elsif ($op eq '!=') {
+         print "    lda arg1\n";
+         print "    bne \@true\n";
+      }
+      elsif ($op eq '<') {
+         print "    lda arg1\n";
+         print "    cmp #\$ff\n";
+         print "    beq \@true\n";
+      }
+      elsif ($op eq '<=') {
+         print "    lda arg1\n";
+         print "    cmp #\$01\n";
+         print "    bne \@true\n";
+      }
+      elsif ($op eq '>') {
+         print "    lda arg1\n";
+         print "    cmp #\$01\n";
+         print "    beq \@true\n";
+      }
+      else {
+         print "    lda arg1\n";
+         print "    cmp #\$ff\n";
+         print "    bne \@true\n";
+      }
       print "    lda #0\n";
+      print "    beq \@store\n";
+      print "\@true:\n";
+      print "    lda #1\n";
+      print "\@store:\n";
       print "    sta (ptr2),y\n";
       emit_rts();
       print ".endproc\n\n";
    }
+
    my $usym = sym('-', $name);
    print ".weak $usym\n.proc $usym\n";
    emit_prologue();
-   emit_zero_ret($uret, sprintf('%02x', $size), 1);
+   emit_ptr(0, sprintf('%02x', $uarg));
+   emit_ptr(1, sprintf('%02x', $uret));
+   print "    ldy #0\n";
+   print "\@copy_loop:\n";
+   print "    lda (ptr0),y\n";
+   print "    sta (ptr1),y\n";
+   print "    iny\n";
+   print "    cpy #\$" . sprintf('%02x', $size) . "\n";
+   print "    bne \@copy_loop\n";
+   print "    ldy #\$" . sprintf('%02x', $size - 1) . "\n";
+   print "    lda (ptr1),y\n";
+   print "    eor #\$80\n";
+   print "    sta (ptr1),y\n";
    emit_rts();
    print ".endproc\n\n";
 }

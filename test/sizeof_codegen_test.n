@@ -17,6 +17,6 @@ struct S {
 int main(void) {
    S s;
    int a := sizeof(s.u.b);
-   int b := sizeof(int *);
+   int b := sizeof(long);
    return a + b;
 }

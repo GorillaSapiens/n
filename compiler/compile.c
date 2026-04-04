@@ -878,16 +878,25 @@ static void remember_operator_overload(const ASTNode *node, const char *name) {
       if (strcmp(operator_overloads[i].name, name)) {
          continue;
       }
+      if (value == node) {
+         return;
+      }
       if (!function_same_signature(value, node)) {
          continue;
       }
-      if (value->count >= 4 && node->count >= 4) {
+      if (!function_same_declaration(value, node)) {
+         error_user("[%s:%d.%d] vs [%s:%d.%d] conflicting declarations for overloaded '%s'",
+               node->file, node->line, node->column,
+               value->file, value->line, value->column,
+               name);
+      }
+      if (function_has_body(value) && function_has_body(node)) {
          error_user("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for '%s'",
                node->file, node->line, node->column,
                value->file, value->line, value->column,
                name);
       }
-      if (value->count < 4 && node->count >= 4) {
+      if (!function_has_body(value) && function_has_body(node)) {
          operator_overloads[i].node = node;
       }
       return;
@@ -4711,7 +4720,7 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
       emit(&es_code, "    ora #$%02x\n", dst_mask & 0xff);
       emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
       emit(&es_code, "%s:\n", skip_label);
-   }
+}
    is_signed = src->type && has_flag(type_name_from_node(src->type), "$signed");
    if (is_signed && src->bit_width > 0 && src->bit_width < copy_size * 8) {
       int sign_byte = (src->bit_width - 1) / 8;
@@ -9561,7 +9570,13 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       }
       emit(&es_code, "%s:\n", case_labels[i]);
       if (body && !is_empty(body)) {
+         if (ctx) {
+            ctx->locals = saved_locals + compare_size;
+         }
          compile_statement_list(body, ctx);
+         if (ctx) {
+            ctx->locals = saved_locals;
+         }
       }
    }
    pop_loop_labels();
@@ -9692,17 +9707,27 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             tmp_size = 1;
          }
          ContextEntry tmp = { .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = tmp_size };
+         int saved_locals = ctx ? ctx->locals : 0;
          remember_runtime_import("pushN");
          emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _pushN\n");
+         if (ctx) {
+            ctx->locals = saved_locals + tmp_size;
+         }
          if (!compile_expr_to_slot(rhs, ctx, &tmp)) {
+            if (ctx) {
+               ctx->locals = saved_locals;
+            }
             remember_runtime_import("popN");
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
             error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
             return;
+         }
+         if (ctx) {
+            ctx->locals = saved_locals;
          }
          if (!emit_copy_fp_to_lvalue(ctx, &lv, tmp.offset, tmp.size)) {
             remember_runtime_import("popN");

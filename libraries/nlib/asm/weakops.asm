@@ -16,7 +16,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _addN
     rts
@@ -37,7 +37,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _subN
     rts
@@ -58,7 +58,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_andN
     rts
@@ -79,7 +79,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_orN
     rts
@@ -100,7 +100,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_xorN
     rts
@@ -124,7 +124,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _mulN
     lda #$00
@@ -133,7 +133,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -163,7 +163,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$00
@@ -172,7 +172,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -202,7 +202,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$02
@@ -211,7 +211,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -238,7 +238,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _lslN
     rts
@@ -262,7 +262,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _lsrN
     rts
@@ -280,7 +280,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda #$05
@@ -304,7 +304,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda arg1
@@ -331,7 +331,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
@@ -355,7 +355,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNu
     lda #$05
@@ -379,7 +379,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
@@ -403,7 +403,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNu
     lda #$05
@@ -427,7 +427,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _comp2N
     rts
@@ -445,7 +445,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_notN
     rts
@@ -466,7 +466,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _addN
     rts
@@ -487,7 +487,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _subN
     rts
@@ -508,7 +508,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_andN
     rts
@@ -529,7 +529,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_orN
     rts
@@ -550,7 +550,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_xorN
     rts
@@ -574,7 +574,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _mulN
     lda #$00
@@ -583,7 +583,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -613,7 +613,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$00
@@ -622,7 +622,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -652,7 +652,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$04
@@ -661,7 +661,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -688,7 +688,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _lslN
     rts
@@ -712,7 +712,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _lsrN
     rts
@@ -730,7 +730,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda #$09
@@ -754,7 +754,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda arg1
@@ -781,7 +781,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
@@ -805,7 +805,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNu
     lda #$09
@@ -829,7 +829,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
@@ -853,7 +853,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNu
     lda #$09
@@ -877,7 +877,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _comp2N
     rts
@@ -895,7 +895,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_notN
     rts
@@ -916,7 +916,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _addN
     rts
@@ -937,7 +937,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _subN
     rts
@@ -958,7 +958,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_andN
     rts
@@ -979,7 +979,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_orN
     rts
@@ -1000,7 +1000,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_xorN
     rts
@@ -1024,7 +1024,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _mulN
     lda #$00
@@ -1033,7 +1033,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -1063,7 +1063,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$00
@@ -1072,7 +1072,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -1102,7 +1102,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$08
@@ -1111,7 +1111,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -1138,7 +1138,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _lslN
     rts
@@ -1162,7 +1162,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _lsrN
     rts
@@ -1180,7 +1180,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda #$11
@@ -1204,7 +1204,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda arg1
@@ -1231,7 +1231,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
@@ -1255,7 +1255,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNu
     lda #$11
@@ -1279,7 +1279,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
@@ -1303,7 +1303,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNu
     lda #$11
@@ -1327,7 +1327,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _comp2N
     rts
@@ -1345,7 +1345,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_notN
     rts
@@ -1366,7 +1366,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _addN
     rts
@@ -1387,7 +1387,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _subN
     rts
@@ -1408,7 +1408,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_andN
     rts
@@ -1429,7 +1429,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_orN
     rts
@@ -1450,7 +1450,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_xorN
     rts
@@ -1474,7 +1474,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _mulN
     lda #$00
@@ -1483,7 +1483,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -1513,7 +1513,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$00
@@ -1522,7 +1522,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -1552,7 +1552,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$01
@@ -1561,7 +1561,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -1588,7 +1588,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lslN
     rts
@@ -1612,7 +1612,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lsrN
     rts
@@ -1630,7 +1630,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda #$03
@@ -1654,7 +1654,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda arg1
@@ -1681,7 +1681,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -1705,7 +1705,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -1729,7 +1729,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -1753,7 +1753,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -1777,7 +1777,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _comp2N
     rts
@@ -1795,7 +1795,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_notN
     rts
@@ -1816,7 +1816,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _addN
     rts
@@ -1837,7 +1837,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _subN
     rts
@@ -1858,7 +1858,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_andN
     rts
@@ -1879,7 +1879,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_orN
     rts
@@ -1900,7 +1900,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_xorN
     rts
@@ -1924,7 +1924,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _mulN
     lda #$00
@@ -1933,7 +1933,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -1963,7 +1963,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$00
@@ -1972,7 +1972,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2002,7 +2002,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$01
@@ -2011,7 +2011,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2038,7 +2038,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lslN
     rts
@@ -2062,7 +2062,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lsrN
     rts
@@ -2080,7 +2080,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda #$03
@@ -2104,7 +2104,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda arg1
@@ -2131,7 +2131,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -2155,7 +2155,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -2179,7 +2179,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -2203,7 +2203,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -2227,7 +2227,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _comp2N
     rts
@@ -2245,7 +2245,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_notN
     rts
@@ -2266,7 +2266,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _addN
     rts
@@ -2287,7 +2287,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _subN
     rts
@@ -2308,7 +2308,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_andN
     rts
@@ -2329,7 +2329,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_orN
     rts
@@ -2350,7 +2350,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_xorN
     rts
@@ -2374,7 +2374,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _mulN
     lda #$00
@@ -2383,7 +2383,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2413,7 +2413,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$00
@@ -2422,7 +2422,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2452,7 +2452,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$01
@@ -2461,7 +2461,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2488,7 +2488,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lslN
     rts
@@ -2512,7 +2512,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _asrN
     rts
@@ -2530,7 +2530,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda #$03
@@ -2554,7 +2554,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda arg1
@@ -2581,7 +2581,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNs
     lda #$03
@@ -2605,7 +2605,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNs
     lda #$03
@@ -2629,7 +2629,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNs
     lda #$03
@@ -2653,7 +2653,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNs
     lda #$03
@@ -2677,7 +2677,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _comp2N
     rts
@@ -2695,7 +2695,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_notN
     rts
@@ -2716,7 +2716,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _addN
     rts
@@ -2737,7 +2737,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _subN
     rts
@@ -2758,7 +2758,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_andN
     rts
@@ -2779,7 +2779,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_orN
     rts
@@ -2800,7 +2800,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_xorN
     rts
@@ -2824,7 +2824,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _mulN
     lda #$00
@@ -2833,7 +2833,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2863,7 +2863,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$00
@@ -2872,7 +2872,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2902,7 +2902,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr3p
-    lda #$1
+    lda #$01
     sta arg0
     jsr _divN
     lda #$01
@@ -2911,7 +2911,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _cpyN
     lda #$02
@@ -2938,7 +2938,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lslN
     rts
@@ -2962,7 +2962,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$1
+    lda #$01
     sta arg0
     jsr _lsrN
     rts
@@ -2980,7 +2980,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda #$03
@@ -3004,7 +3004,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _eqN
     lda arg1
@@ -3031,7 +3031,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -3055,7 +3055,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -3079,7 +3079,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
@@ -3103,7 +3103,7 @@
     lda #$01
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _leNu
     lda #$03
@@ -3127,7 +3127,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _comp2N
     rts
@@ -3145,7 +3145,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr2m
-    lda #$1
+    lda #$01
     sta arg0
     jsr _bit_notN
     rts
@@ -3166,7 +3166,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _addN
     rts
@@ -3187,7 +3187,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _subN
     rts
@@ -3208,7 +3208,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_andN
     rts
@@ -3229,7 +3229,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_orN
     rts
@@ -3250,7 +3250,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_xorN
     rts
@@ -3274,7 +3274,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _mulN
     lda #$00
@@ -3283,7 +3283,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3313,7 +3313,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$00
@@ -3322,7 +3322,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3352,7 +3352,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$02
@@ -3361,7 +3361,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3388,7 +3388,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _lslN
     rts
@@ -3412,7 +3412,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _asrN
     rts
@@ -3430,7 +3430,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda #$05
@@ -3454,7 +3454,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda arg1
@@ -3481,7 +3481,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNs
     lda #$05
@@ -3505,7 +3505,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNs
     lda #$05
@@ -3529,7 +3529,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNs
     lda #$05
@@ -3553,7 +3553,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNs
     lda #$05
@@ -3577,7 +3577,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _comp2N
     rts
@@ -3595,7 +3595,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_notN
     rts
@@ -3616,7 +3616,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _addN
     rts
@@ -3637,7 +3637,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _subN
     rts
@@ -3658,7 +3658,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_andN
     rts
@@ -3679,7 +3679,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_orN
     rts
@@ -3700,7 +3700,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_xorN
     rts
@@ -3724,7 +3724,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _mulN
     lda #$00
@@ -3733,7 +3733,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3763,7 +3763,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$00
@@ -3772,7 +3772,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3802,7 +3802,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr3p
-    lda #$2
+    lda #$02
     sta arg0
     jsr _divN
     lda #$02
@@ -3811,7 +3811,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _cpyN
     lda #$04
@@ -3838,7 +3838,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _lslN
     rts
@@ -3862,7 +3862,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$2
+    lda #$02
     sta arg0
     jsr _lsrN
     rts
@@ -3880,7 +3880,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda #$05
@@ -3904,7 +3904,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _eqN
     lda arg1
@@ -3931,7 +3931,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
@@ -3955,7 +3955,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNu
     lda #$05
@@ -3979,7 +3979,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
@@ -4003,7 +4003,7 @@
     lda #$02
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _leNu
     lda #$05
@@ -4027,7 +4027,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _comp2N
     rts
@@ -4045,7 +4045,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr2m
-    lda #$2
+    lda #$02
     sta arg0
     jsr _bit_notN
     rts
@@ -4066,7 +4066,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _addN
     rts
@@ -4087,7 +4087,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _subN
     rts
@@ -4108,7 +4108,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_andN
     rts
@@ -4129,7 +4129,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_orN
     rts
@@ -4150,7 +4150,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_xorN
     rts
@@ -4174,7 +4174,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _mulN
     lda #$00
@@ -4183,7 +4183,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4213,7 +4213,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr3p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _divN
     lda #$00
@@ -4222,7 +4222,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4252,7 +4252,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr3p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _divN
     lda #$03
@@ -4261,7 +4261,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4288,7 +4288,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$3
+    lda #$03
     sta arg0
     jsr _lslN
     rts
@@ -4312,7 +4312,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$3
+    lda #$03
     sta arg0
     jsr _asrN
     rts
@@ -4330,7 +4330,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _eqN
     lda #$07
@@ -4354,7 +4354,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _eqN
     lda arg1
@@ -4381,7 +4381,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _ltNs
     lda #$07
@@ -4405,7 +4405,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _leNs
     lda #$07
@@ -4429,7 +4429,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _ltNs
     lda #$07
@@ -4453,7 +4453,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _leNs
     lda #$07
@@ -4477,7 +4477,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _comp2N
     rts
@@ -4495,7 +4495,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_notN
     rts
@@ -4516,7 +4516,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _addN
     rts
@@ -4537,7 +4537,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _subN
     rts
@@ -4558,7 +4558,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_andN
     rts
@@ -4579,7 +4579,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_orN
     rts
@@ -4600,7 +4600,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_xorN
     rts
@@ -4624,7 +4624,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _mulN
     lda #$00
@@ -4633,7 +4633,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4663,7 +4663,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr3p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _divN
     lda #$00
@@ -4672,7 +4672,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4702,7 +4702,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr3p
-    lda #$3
+    lda #$03
     sta arg0
     jsr _divN
     lda #$03
@@ -4711,7 +4711,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _cpyN
     lda #$06
@@ -4738,7 +4738,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$3
+    lda #$03
     sta arg0
     jsr _lslN
     rts
@@ -4762,7 +4762,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$3
+    lda #$03
     sta arg0
     jsr _lsrN
     rts
@@ -4780,7 +4780,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _eqN
     lda #$07
@@ -4804,7 +4804,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _eqN
     lda arg1
@@ -4831,7 +4831,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _ltNu
     lda #$07
@@ -4855,7 +4855,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _leNu
     lda #$07
@@ -4879,7 +4879,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _ltNu
     lda #$07
@@ -4903,7 +4903,7 @@
     lda #$03
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _leNu
     lda #$07
@@ -4927,7 +4927,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _comp2N
     rts
@@ -4945,7 +4945,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    lda #$3
+    lda #$03
     sta arg0
     jsr _bit_notN
     rts
@@ -4966,7 +4966,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _addN
     rts
@@ -4987,7 +4987,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _subN
     rts
@@ -5008,7 +5008,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_andN
     rts
@@ -5029,7 +5029,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_orN
     rts
@@ -5050,7 +5050,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_xorN
     rts
@@ -5074,7 +5074,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _mulN
     lda #$00
@@ -5083,7 +5083,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5113,7 +5113,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$00
@@ -5122,7 +5122,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5152,7 +5152,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$04
@@ -5161,7 +5161,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5188,7 +5188,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _lslN
     rts
@@ -5212,7 +5212,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _asrN
     rts
@@ -5230,7 +5230,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda #$09
@@ -5254,7 +5254,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda arg1
@@ -5281,7 +5281,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNs
     lda #$09
@@ -5305,7 +5305,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNs
     lda #$09
@@ -5329,7 +5329,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNs
     lda #$09
@@ -5353,7 +5353,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNs
     lda #$09
@@ -5377,7 +5377,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _comp2N
     rts
@@ -5395,7 +5395,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_notN
     rts
@@ -5416,7 +5416,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _addN
     rts
@@ -5437,7 +5437,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _subN
     rts
@@ -5458,7 +5458,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_andN
     rts
@@ -5479,7 +5479,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_orN
     rts
@@ -5500,7 +5500,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_xorN
     rts
@@ -5524,7 +5524,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _mulN
     lda #$00
@@ -5533,7 +5533,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5563,7 +5563,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$00
@@ -5572,7 +5572,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5602,7 +5602,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr3p
-    lda #$4
+    lda #$04
     sta arg0
     jsr _divN
     lda #$04
@@ -5611,7 +5611,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _cpyN
     lda #$08
@@ -5638,7 +5638,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _lslN
     rts
@@ -5662,7 +5662,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$4
+    lda #$04
     sta arg0
     jsr _lsrN
     rts
@@ -5680,7 +5680,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda #$09
@@ -5704,7 +5704,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _eqN
     lda arg1
@@ -5731,7 +5731,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
@@ -5755,7 +5755,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNu
     lda #$09
@@ -5779,7 +5779,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
@@ -5803,7 +5803,7 @@
     lda #$04
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _leNu
     lda #$09
@@ -5827,7 +5827,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _comp2N
     rts
@@ -5845,7 +5845,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr2m
-    lda #$4
+    lda #$04
     sta arg0
     jsr _bit_notN
     rts
@@ -5866,7 +5866,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _addN
     rts
@@ -5887,7 +5887,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _subN
     rts
@@ -5908,7 +5908,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_andN
     rts
@@ -5929,7 +5929,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_orN
     rts
@@ -5950,7 +5950,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_xorN
     rts
@@ -5974,7 +5974,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _mulN
     lda #$00
@@ -5983,7 +5983,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6013,7 +6013,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr3p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _divN
     lda #$00
@@ -6022,7 +6022,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6052,7 +6052,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr3p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _divN
     lda #$05
@@ -6061,7 +6061,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6088,7 +6088,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$5
+    lda #$05
     sta arg0
     jsr _lslN
     rts
@@ -6112,7 +6112,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$5
+    lda #$05
     sta arg0
     jsr _asrN
     rts
@@ -6130,7 +6130,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _eqN
     lda #$0b
@@ -6154,7 +6154,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _eqN
     lda arg1
@@ -6181,7 +6181,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _ltNs
     lda #$0b
@@ -6205,7 +6205,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _leNs
     lda #$0b
@@ -6229,7 +6229,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _ltNs
     lda #$0b
@@ -6253,7 +6253,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _leNs
     lda #$0b
@@ -6277,7 +6277,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _comp2N
     rts
@@ -6295,7 +6295,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_notN
     rts
@@ -6316,7 +6316,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _addN
     rts
@@ -6337,7 +6337,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _subN
     rts
@@ -6358,7 +6358,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_andN
     rts
@@ -6379,7 +6379,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_orN
     rts
@@ -6400,7 +6400,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_xorN
     rts
@@ -6424,7 +6424,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _mulN
     lda #$00
@@ -6433,7 +6433,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6463,7 +6463,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr3p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _divN
     lda #$00
@@ -6472,7 +6472,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6502,7 +6502,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr3p
-    lda #$5
+    lda #$05
     sta arg0
     jsr _divN
     lda #$05
@@ -6511,7 +6511,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _cpyN
     lda #$0a
@@ -6538,7 +6538,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$5
+    lda #$05
     sta arg0
     jsr _lslN
     rts
@@ -6562,7 +6562,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$5
+    lda #$05
     sta arg0
     jsr _lsrN
     rts
@@ -6580,7 +6580,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _eqN
     lda #$0b
@@ -6604,7 +6604,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _eqN
     lda arg1
@@ -6631,7 +6631,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _ltNu
     lda #$0b
@@ -6655,7 +6655,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _leNu
     lda #$0b
@@ -6679,7 +6679,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _ltNu
     lda #$0b
@@ -6703,7 +6703,7 @@
     lda #$05
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _leNu
     lda #$0b
@@ -6727,7 +6727,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _comp2N
     rts
@@ -6745,7 +6745,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr2m
-    lda #$5
+    lda #$05
     sta arg0
     jsr _bit_notN
     rts
@@ -6766,7 +6766,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _addN
     rts
@@ -6787,7 +6787,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _subN
     rts
@@ -6808,7 +6808,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_andN
     rts
@@ -6829,7 +6829,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_orN
     rts
@@ -6850,7 +6850,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_xorN
     rts
@@ -6874,7 +6874,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _mulN
     lda #$00
@@ -6883,7 +6883,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -6913,7 +6913,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr3p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _divN
     lda #$00
@@ -6922,7 +6922,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -6952,7 +6952,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr3p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _divN
     lda #$06
@@ -6961,7 +6961,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -6988,7 +6988,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$6
+    lda #$06
     sta arg0
     jsr _lslN
     rts
@@ -7012,7 +7012,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$6
+    lda #$06
     sta arg0
     jsr _asrN
     rts
@@ -7030,7 +7030,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _eqN
     lda #$0d
@@ -7054,7 +7054,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _eqN
     lda arg1
@@ -7081,7 +7081,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _ltNs
     lda #$0d
@@ -7105,7 +7105,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _leNs
     lda #$0d
@@ -7129,7 +7129,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _ltNs
     lda #$0d
@@ -7153,7 +7153,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _leNs
     lda #$0d
@@ -7177,7 +7177,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _comp2N
     rts
@@ -7195,7 +7195,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_notN
     rts
@@ -7216,7 +7216,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _addN
     rts
@@ -7237,7 +7237,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _subN
     rts
@@ -7258,7 +7258,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_andN
     rts
@@ -7279,7 +7279,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_orN
     rts
@@ -7300,7 +7300,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_xorN
     rts
@@ -7324,7 +7324,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _mulN
     lda #$00
@@ -7333,7 +7333,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -7363,7 +7363,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr3p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _divN
     lda #$00
@@ -7372,7 +7372,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -7402,7 +7402,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr3p
-    lda #$6
+    lda #$06
     sta arg0
     jsr _divN
     lda #$06
@@ -7411,7 +7411,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _cpyN
     lda #$0c
@@ -7438,7 +7438,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$6
+    lda #$06
     sta arg0
     jsr _lslN
     rts
@@ -7462,7 +7462,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$6
+    lda #$06
     sta arg0
     jsr _lsrN
     rts
@@ -7480,7 +7480,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _eqN
     lda #$0d
@@ -7504,7 +7504,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _eqN
     lda arg1
@@ -7531,7 +7531,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _ltNu
     lda #$0d
@@ -7555,7 +7555,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _leNu
     lda #$0d
@@ -7579,7 +7579,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _ltNu
     lda #$0d
@@ -7603,7 +7603,7 @@
     lda #$06
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _leNu
     lda #$0d
@@ -7627,7 +7627,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _comp2N
     rts
@@ -7645,7 +7645,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    lda #$6
+    lda #$06
     sta arg0
     jsr _bit_notN
     rts
@@ -7666,7 +7666,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _addN
     rts
@@ -7687,7 +7687,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _subN
     rts
@@ -7708,7 +7708,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_andN
     rts
@@ -7729,7 +7729,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_orN
     rts
@@ -7750,7 +7750,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_xorN
     rts
@@ -7774,7 +7774,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _mulN
     lda #$00
@@ -7783,7 +7783,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -7813,7 +7813,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr3p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _divN
     lda #$00
@@ -7822,7 +7822,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -7852,7 +7852,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr3p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _divN
     lda #$07
@@ -7861,7 +7861,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -7888,7 +7888,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$7
+    lda #$07
     sta arg0
     jsr _lslN
     rts
@@ -7912,7 +7912,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$7
+    lda #$07
     sta arg0
     jsr _asrN
     rts
@@ -7930,7 +7930,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _eqN
     lda #$0f
@@ -7954,7 +7954,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _eqN
     lda arg1
@@ -7981,7 +7981,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _ltNs
     lda #$0f
@@ -8005,7 +8005,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _leNs
     lda #$0f
@@ -8029,7 +8029,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _ltNs
     lda #$0f
@@ -8053,7 +8053,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _leNs
     lda #$0f
@@ -8077,7 +8077,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _comp2N
     rts
@@ -8095,7 +8095,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_notN
     rts
@@ -8116,7 +8116,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _addN
     rts
@@ -8137,7 +8137,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _subN
     rts
@@ -8158,7 +8158,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_andN
     rts
@@ -8179,7 +8179,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_orN
     rts
@@ -8200,7 +8200,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_xorN
     rts
@@ -8224,7 +8224,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _mulN
     lda #$00
@@ -8233,7 +8233,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -8263,7 +8263,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr3p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _divN
     lda #$00
@@ -8272,7 +8272,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -8302,7 +8302,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr3p
-    lda #$7
+    lda #$07
     sta arg0
     jsr _divN
     lda #$07
@@ -8311,7 +8311,7 @@
     lda #$15
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _cpyN
     lda #$0e
@@ -8338,7 +8338,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$7
+    lda #$07
     sta arg0
     jsr _lslN
     rts
@@ -8362,7 +8362,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$7
+    lda #$07
     sta arg0
     jsr _lsrN
     rts
@@ -8380,7 +8380,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _eqN
     lda #$0f
@@ -8404,7 +8404,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _eqN
     lda arg1
@@ -8431,7 +8431,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _ltNu
     lda #$0f
@@ -8455,7 +8455,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _leNu
     lda #$0f
@@ -8479,7 +8479,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _ltNu
     lda #$0f
@@ -8503,7 +8503,7 @@
     lda #$07
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _leNu
     lda #$0f
@@ -8527,7 +8527,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _comp2N
     rts
@@ -8545,7 +8545,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr2m
-    lda #$7
+    lda #$07
     sta arg0
     jsr _bit_notN
     rts
@@ -8566,7 +8566,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _addN
     rts
@@ -8587,7 +8587,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _subN
     rts
@@ -8608,7 +8608,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_andN
     rts
@@ -8629,7 +8629,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_orN
     rts
@@ -8650,7 +8650,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_xorN
     rts
@@ -8674,7 +8674,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _mulN
     lda #$00
@@ -8683,7 +8683,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -8713,7 +8713,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$00
@@ -8722,7 +8722,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -8752,7 +8752,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$08
@@ -8761,7 +8761,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -8788,7 +8788,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _lslN
     rts
@@ -8812,7 +8812,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _asrN
     rts
@@ -8830,7 +8830,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda #$11
@@ -8854,7 +8854,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda arg1
@@ -8881,7 +8881,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNs
     lda #$11
@@ -8905,7 +8905,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNs
     lda #$11
@@ -8929,7 +8929,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNs
     lda #$11
@@ -8953,7 +8953,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNs
     lda #$11
@@ -8977,7 +8977,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _comp2N
     rts
@@ -8995,7 +8995,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_notN
     rts
@@ -9016,7 +9016,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _addN
     rts
@@ -9037,7 +9037,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _subN
     rts
@@ -9058,7 +9058,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_andN
     rts
@@ -9079,7 +9079,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_orN
     rts
@@ -9100,7 +9100,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_xorN
     rts
@@ -9124,7 +9124,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _mulN
     lda #$00
@@ -9133,7 +9133,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -9163,7 +9163,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$00
@@ -9172,7 +9172,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -9202,7 +9202,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr3p
-    lda #$8
+    lda #$08
     sta arg0
     jsr _divN
     lda #$08
@@ -9211,7 +9211,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _cpyN
     lda #$10
@@ -9238,7 +9238,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _lslN
     rts
@@ -9262,7 +9262,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$8
+    lda #$08
     sta arg0
     jsr _lsrN
     rts
@@ -9280,7 +9280,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda #$11
@@ -9304,7 +9304,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _eqN
     lda arg1
@@ -9331,7 +9331,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
@@ -9355,7 +9355,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNu
     lda #$11
@@ -9379,7 +9379,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
@@ -9403,7 +9403,7 @@
     lda #$08
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _leNu
     lda #$11
@@ -9427,7 +9427,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _comp2N
     rts
@@ -9445,7 +9445,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr2m
-    lda #$8
+    lda #$08
     sta arg0
     jsr _bit_notN
     rts
@@ -9466,7 +9466,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _addN
     rts
@@ -9487,7 +9487,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _subN
     rts
@@ -9508,7 +9508,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_andN
     rts
@@ -9529,7 +9529,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_orN
     rts
@@ -9550,7 +9550,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_xorN
     rts
@@ -9574,7 +9574,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _mulN
     lda #$00
@@ -9583,7 +9583,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -9613,7 +9613,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr3p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _divN
     lda #$00
@@ -9622,7 +9622,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -9652,7 +9652,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr3p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _divN
     lda #$09
@@ -9661,7 +9661,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -9688,7 +9688,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$9
+    lda #$09
     sta arg0
     jsr _lslN
     rts
@@ -9712,7 +9712,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$9
+    lda #$09
     sta arg0
     jsr _asrN
     rts
@@ -9730,7 +9730,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _eqN
     lda #$13
@@ -9754,7 +9754,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _eqN
     lda arg1
@@ -9781,7 +9781,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _ltNs
     lda #$13
@@ -9805,7 +9805,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _leNs
     lda #$13
@@ -9829,7 +9829,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _ltNs
     lda #$13
@@ -9853,7 +9853,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _leNs
     lda #$13
@@ -9877,7 +9877,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _comp2N
     rts
@@ -9895,7 +9895,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_notN
     rts
@@ -9916,7 +9916,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _addN
     rts
@@ -9937,7 +9937,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _subN
     rts
@@ -9958,7 +9958,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_andN
     rts
@@ -9979,7 +9979,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_orN
     rts
@@ -10000,7 +10000,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_xorN
     rts
@@ -10024,7 +10024,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _mulN
     lda #$00
@@ -10033,7 +10033,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -10063,7 +10063,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr3p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _divN
     lda #$00
@@ -10072,7 +10072,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -10102,7 +10102,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr3p
-    lda #$9
+    lda #$09
     sta arg0
     jsr _divN
     lda #$09
@@ -10111,7 +10111,7 @@
     lda #$1b
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _cpyN
     lda #$12
@@ -10138,7 +10138,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$9
+    lda #$09
     sta arg0
     jsr _lslN
     rts
@@ -10162,7 +10162,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$9
+    lda #$09
     sta arg0
     jsr _lsrN
     rts
@@ -10180,7 +10180,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _eqN
     lda #$13
@@ -10204,7 +10204,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _eqN
     lda arg1
@@ -10231,7 +10231,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _ltNu
     lda #$13
@@ -10255,7 +10255,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _leNu
     lda #$13
@@ -10279,7 +10279,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _ltNu
     lda #$13
@@ -10303,7 +10303,7 @@
     lda #$09
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _leNu
     lda #$13
@@ -10327,7 +10327,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr1m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _comp2N
     rts
@@ -10345,7 +10345,7 @@
     lda #$12
     sta arg0
     jsr _fp2ptr2m
-    lda #$9
+    lda #$09
     sta arg0
     jsr _bit_notN
     rts
@@ -10366,7 +10366,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _addN
     rts
@@ -10387,7 +10387,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _subN
     rts
@@ -10408,7 +10408,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_andN
     rts
@@ -10429,7 +10429,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_orN
     rts
@@ -10450,7 +10450,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_xorN
     rts
@@ -10474,7 +10474,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _mulN
     lda #$00
@@ -10483,7 +10483,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -10513,7 +10513,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr3p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _divN
     lda #$00
@@ -10522,7 +10522,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -10552,7 +10552,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr3p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _divN
     lda #$0a
@@ -10561,7 +10561,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -10588,7 +10588,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _lslN
     rts
@@ -10612,7 +10612,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _asrN
     rts
@@ -10630,7 +10630,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _eqN
     lda #$15
@@ -10654,7 +10654,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _eqN
     lda arg1
@@ -10681,7 +10681,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _ltNs
     lda #$15
@@ -10705,7 +10705,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _leNs
     lda #$15
@@ -10729,7 +10729,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _ltNs
     lda #$15
@@ -10753,7 +10753,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _leNs
     lda #$15
@@ -10777,7 +10777,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _comp2N
     rts
@@ -10795,7 +10795,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_notN
     rts
@@ -10816,7 +10816,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _addN
     rts
@@ -10837,7 +10837,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _subN
     rts
@@ -10858,7 +10858,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_andN
     rts
@@ -10879,7 +10879,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_orN
     rts
@@ -10900,7 +10900,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_xorN
     rts
@@ -10924,7 +10924,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _mulN
     lda #$00
@@ -10933,7 +10933,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -10963,7 +10963,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr3p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _divN
     lda #$00
@@ -10972,7 +10972,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -11002,7 +11002,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr3p
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _divN
     lda #$0a
@@ -11011,7 +11011,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _cpyN
     lda #$14
@@ -11038,7 +11038,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _lslN
     rts
@@ -11062,7 +11062,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _lsrN
     rts
@@ -11080,7 +11080,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _eqN
     lda #$15
@@ -11104,7 +11104,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _eqN
     lda arg1
@@ -11131,7 +11131,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _ltNu
     lda #$15
@@ -11155,7 +11155,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _leNu
     lda #$15
@@ -11179,7 +11179,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _ltNu
     lda #$15
@@ -11203,7 +11203,7 @@
     lda #$0a
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _leNu
     lda #$15
@@ -11227,7 +11227,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr1m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _comp2N
     rts
@@ -11245,7 +11245,7 @@
     lda #$14
     sta arg0
     jsr _fp2ptr2m
-    lda #$10
+    lda #$0a
     sta arg0
     jsr _bit_notN
     rts
@@ -11266,7 +11266,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _addN
     rts
@@ -11287,7 +11287,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _subN
     rts
@@ -11308,7 +11308,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_andN
     rts
@@ -11329,7 +11329,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_orN
     rts
@@ -11350,7 +11350,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_xorN
     rts
@@ -11374,7 +11374,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _mulN
     lda #$00
@@ -11383,7 +11383,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11413,7 +11413,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr3p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _divN
     lda #$00
@@ -11422,7 +11422,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11452,7 +11452,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr3p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _divN
     lda #$0b
@@ -11461,7 +11461,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11488,7 +11488,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _lslN
     rts
@@ -11512,7 +11512,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _asrN
     rts
@@ -11530,7 +11530,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _eqN
     lda #$17
@@ -11554,7 +11554,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _eqN
     lda arg1
@@ -11581,7 +11581,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _ltNs
     lda #$17
@@ -11605,7 +11605,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _leNs
     lda #$17
@@ -11629,7 +11629,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _ltNs
     lda #$17
@@ -11653,7 +11653,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _leNs
     lda #$17
@@ -11677,7 +11677,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _comp2N
     rts
@@ -11695,7 +11695,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_notN
     rts
@@ -11716,7 +11716,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _addN
     rts
@@ -11737,7 +11737,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _subN
     rts
@@ -11758,7 +11758,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_andN
     rts
@@ -11779,7 +11779,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_orN
     rts
@@ -11800,7 +11800,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_xorN
     rts
@@ -11824,7 +11824,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _mulN
     lda #$00
@@ -11833,7 +11833,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11863,7 +11863,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr3p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _divN
     lda #$00
@@ -11872,7 +11872,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11902,7 +11902,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr3p
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _divN
     lda #$0b
@@ -11911,7 +11911,7 @@
     lda #$21
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _cpyN
     lda #$16
@@ -11938,7 +11938,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _lslN
     rts
@@ -11962,7 +11962,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _lsrN
     rts
@@ -11980,7 +11980,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _eqN
     lda #$17
@@ -12004,7 +12004,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _eqN
     lda arg1
@@ -12031,7 +12031,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _ltNu
     lda #$17
@@ -12055,7 +12055,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _leNu
     lda #$17
@@ -12079,7 +12079,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _ltNu
     lda #$17
@@ -12103,7 +12103,7 @@
     lda #$0b
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _leNu
     lda #$17
@@ -12127,7 +12127,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr1m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _comp2N
     rts
@@ -12145,7 +12145,7 @@
     lda #$16
     sta arg0
     jsr _fp2ptr2m
-    lda #$11
+    lda #$0b
     sta arg0
     jsr _bit_notN
     rts
@@ -12166,7 +12166,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _addN
     rts
@@ -12187,7 +12187,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _subN
     rts
@@ -12208,7 +12208,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_andN
     rts
@@ -12229,7 +12229,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_orN
     rts
@@ -12250,7 +12250,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_xorN
     rts
@@ -12274,7 +12274,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _mulN
     lda #$00
@@ -12283,7 +12283,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12313,7 +12313,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr3p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _divN
     lda #$00
@@ -12322,7 +12322,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12352,7 +12352,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr3p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _divN
     lda #$0c
@@ -12361,7 +12361,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12388,7 +12388,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _lslN
     rts
@@ -12412,7 +12412,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _asrN
     rts
@@ -12430,7 +12430,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _eqN
     lda #$19
@@ -12454,7 +12454,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _eqN
     lda arg1
@@ -12481,7 +12481,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _ltNs
     lda #$19
@@ -12505,7 +12505,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _leNs
     lda #$19
@@ -12529,7 +12529,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _ltNs
     lda #$19
@@ -12553,7 +12553,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _leNs
     lda #$19
@@ -12577,7 +12577,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _comp2N
     rts
@@ -12595,7 +12595,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_notN
     rts
@@ -12616,7 +12616,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _addN
     rts
@@ -12637,7 +12637,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _subN
     rts
@@ -12658,7 +12658,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_andN
     rts
@@ -12679,7 +12679,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_orN
     rts
@@ -12700,7 +12700,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_xorN
     rts
@@ -12724,7 +12724,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _mulN
     lda #$00
@@ -12733,7 +12733,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12763,7 +12763,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr3p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _divN
     lda #$00
@@ -12772,7 +12772,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12802,7 +12802,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr3p
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _divN
     lda #$0c
@@ -12811,7 +12811,7 @@
     lda #$24
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _cpyN
     lda #$18
@@ -12838,7 +12838,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _lslN
     rts
@@ -12862,7 +12862,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _lsrN
     rts
@@ -12880,7 +12880,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _eqN
     lda #$19
@@ -12904,7 +12904,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _eqN
     lda arg1
@@ -12931,7 +12931,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _ltNu
     lda #$19
@@ -12955,7 +12955,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _leNu
     lda #$19
@@ -12979,7 +12979,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _ltNu
     lda #$19
@@ -13003,7 +13003,7 @@
     lda #$0c
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _leNu
     lda #$19
@@ -13027,7 +13027,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr1m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _comp2N
     rts
@@ -13045,7 +13045,7 @@
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    lda #$12
+    lda #$0c
     sta arg0
     jsr _bit_notN
     rts
@@ -13066,7 +13066,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _addN
     rts
@@ -13087,7 +13087,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _subN
     rts
@@ -13108,7 +13108,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_andN
     rts
@@ -13129,7 +13129,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_orN
     rts
@@ -13150,7 +13150,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_xorN
     rts
@@ -13174,7 +13174,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _mulN
     lda #$00
@@ -13183,7 +13183,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13213,7 +13213,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr3p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _divN
     lda #$00
@@ -13222,7 +13222,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13252,7 +13252,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr3p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _divN
     lda #$0d
@@ -13261,7 +13261,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13288,7 +13288,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _lslN
     rts
@@ -13312,7 +13312,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _asrN
     rts
@@ -13330,7 +13330,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _eqN
     lda #$1b
@@ -13354,7 +13354,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _eqN
     lda arg1
@@ -13381,7 +13381,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _ltNs
     lda #$1b
@@ -13405,7 +13405,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _leNs
     lda #$1b
@@ -13429,7 +13429,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _ltNs
     lda #$1b
@@ -13453,7 +13453,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _leNs
     lda #$1b
@@ -13477,7 +13477,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _comp2N
     rts
@@ -13495,7 +13495,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_notN
     rts
@@ -13516,7 +13516,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _addN
     rts
@@ -13537,7 +13537,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _subN
     rts
@@ -13558,7 +13558,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_andN
     rts
@@ -13579,7 +13579,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_orN
     rts
@@ -13600,7 +13600,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_xorN
     rts
@@ -13624,7 +13624,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _mulN
     lda #$00
@@ -13633,7 +13633,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13663,7 +13663,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr3p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _divN
     lda #$00
@@ -13672,7 +13672,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13702,7 +13702,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr3p
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _divN
     lda #$0d
@@ -13711,7 +13711,7 @@
     lda #$27
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _cpyN
     lda #$1a
@@ -13738,7 +13738,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _lslN
     rts
@@ -13762,7 +13762,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _lsrN
     rts
@@ -13780,7 +13780,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _eqN
     lda #$1b
@@ -13804,7 +13804,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _eqN
     lda arg1
@@ -13831,7 +13831,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _ltNu
     lda #$1b
@@ -13855,7 +13855,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _leNu
     lda #$1b
@@ -13879,7 +13879,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _ltNu
     lda #$1b
@@ -13903,7 +13903,7 @@
     lda #$0d
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _leNu
     lda #$1b
@@ -13927,7 +13927,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr1m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _comp2N
     rts
@@ -13945,7 +13945,7 @@
     lda #$1a
     sta arg0
     jsr _fp2ptr2m
-    lda #$13
+    lda #$0d
     sta arg0
     jsr _bit_notN
     rts
@@ -13966,7 +13966,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _addN
     rts
@@ -13987,7 +13987,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _subN
     rts
@@ -14008,7 +14008,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_andN
     rts
@@ -14029,7 +14029,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_orN
     rts
@@ -14050,7 +14050,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_xorN
     rts
@@ -14074,7 +14074,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _mulN
     lda #$00
@@ -14083,7 +14083,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14113,7 +14113,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr3p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _divN
     lda #$00
@@ -14122,7 +14122,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14152,7 +14152,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr3p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _divN
     lda #$0e
@@ -14161,7 +14161,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14188,7 +14188,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _lslN
     rts
@@ -14212,7 +14212,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _asrN
     rts
@@ -14230,7 +14230,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _eqN
     lda #$1d
@@ -14254,7 +14254,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _eqN
     lda arg1
@@ -14281,7 +14281,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _ltNs
     lda #$1d
@@ -14305,7 +14305,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _leNs
     lda #$1d
@@ -14329,7 +14329,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _ltNs
     lda #$1d
@@ -14353,7 +14353,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _leNs
     lda #$1d
@@ -14377,7 +14377,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _comp2N
     rts
@@ -14395,7 +14395,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_notN
     rts
@@ -14416,7 +14416,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _addN
     rts
@@ -14437,7 +14437,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _subN
     rts
@@ -14458,7 +14458,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_andN
     rts
@@ -14479,7 +14479,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_orN
     rts
@@ -14500,7 +14500,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_xorN
     rts
@@ -14524,7 +14524,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _mulN
     lda #$00
@@ -14533,7 +14533,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14563,7 +14563,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr3p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _divN
     lda #$00
@@ -14572,7 +14572,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14602,7 +14602,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr3p
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _divN
     lda #$0e
@@ -14611,7 +14611,7 @@
     lda #$2a
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _cpyN
     lda #$1c
@@ -14638,7 +14638,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _lslN
     rts
@@ -14662,7 +14662,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _lsrN
     rts
@@ -14680,7 +14680,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _eqN
     lda #$1d
@@ -14704,7 +14704,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _eqN
     lda arg1
@@ -14731,7 +14731,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _ltNu
     lda #$1d
@@ -14755,7 +14755,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _leNu
     lda #$1d
@@ -14779,7 +14779,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _ltNu
     lda #$1d
@@ -14803,7 +14803,7 @@
     lda #$0e
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _leNu
     lda #$1d
@@ -14827,7 +14827,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr1m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _comp2N
     rts
@@ -14845,7 +14845,7 @@
     lda #$1c
     sta arg0
     jsr _fp2ptr2m
-    lda #$14
+    lda #$0e
     sta arg0
     jsr _bit_notN
     rts
@@ -14866,7 +14866,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _addN
     rts
@@ -14887,7 +14887,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _subN
     rts
@@ -14908,7 +14908,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_andN
     rts
@@ -14929,7 +14929,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_orN
     rts
@@ -14950,7 +14950,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_xorN
     rts
@@ -14974,7 +14974,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _mulN
     lda #$00
@@ -14983,7 +14983,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15013,7 +15013,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr3p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _divN
     lda #$00
@@ -15022,7 +15022,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15052,7 +15052,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr3p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _divN
     lda #$0f
@@ -15061,7 +15061,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15088,7 +15088,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _lslN
     rts
@@ -15112,7 +15112,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _asrN
     rts
@@ -15130,7 +15130,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _eqN
     lda #$1f
@@ -15154,7 +15154,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _eqN
     lda arg1
@@ -15181,7 +15181,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _ltNs
     lda #$1f
@@ -15205,7 +15205,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _leNs
     lda #$1f
@@ -15229,7 +15229,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _ltNs
     lda #$1f
@@ -15253,7 +15253,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _leNs
     lda #$1f
@@ -15277,7 +15277,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _comp2N
     rts
@@ -15295,7 +15295,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_notN
     rts
@@ -15316,7 +15316,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _addN
     rts
@@ -15337,7 +15337,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _subN
     rts
@@ -15358,7 +15358,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_andN
     rts
@@ -15379,7 +15379,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_orN
     rts
@@ -15400,7 +15400,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_xorN
     rts
@@ -15424,7 +15424,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _mulN
     lda #$00
@@ -15433,7 +15433,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15463,7 +15463,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr3p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _divN
     lda #$00
@@ -15472,7 +15472,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15502,7 +15502,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr3p
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _divN
     lda #$0f
@@ -15511,7 +15511,7 @@
     lda #$2d
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _cpyN
     lda #$1e
@@ -15538,7 +15538,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _lslN
     rts
@@ -15562,7 +15562,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _lsrN
     rts
@@ -15580,7 +15580,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _eqN
     lda #$1f
@@ -15604,7 +15604,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _eqN
     lda arg1
@@ -15631,7 +15631,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _ltNu
     lda #$1f
@@ -15655,7 +15655,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _leNu
     lda #$1f
@@ -15679,7 +15679,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _ltNu
     lda #$1f
@@ -15703,7 +15703,7 @@
     lda #$0f
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _leNu
     lda #$1f
@@ -15727,7 +15727,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr1m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _comp2N
     rts
@@ -15745,7 +15745,7 @@
     lda #$1e
     sta arg0
     jsr _fp2ptr2m
-    lda #$15
+    lda #$0f
     sta arg0
     jsr _bit_notN
     rts
@@ -15766,7 +15766,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _addN
     rts
@@ -15787,7 +15787,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _subN
     rts
@@ -15808,7 +15808,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_andN
     rts
@@ -15829,7 +15829,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_orN
     rts
@@ -15850,7 +15850,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_xorN
     rts
@@ -15874,7 +15874,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _mulN
     lda #$00
@@ -15883,7 +15883,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -15913,7 +15913,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr3p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _divN
     lda #$00
@@ -15922,7 +15922,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -15952,7 +15952,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr3p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _divN
     lda #$10
@@ -15961,7 +15961,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -15988,7 +15988,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$16
+    lda #$10
     sta arg0
     jsr _lslN
     rts
@@ -16012,7 +16012,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$16
+    lda #$10
     sta arg0
     jsr _asrN
     rts
@@ -16030,7 +16030,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _eqN
     lda #$21
@@ -16054,7 +16054,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _eqN
     lda arg1
@@ -16081,7 +16081,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _ltNs
     lda #$21
@@ -16105,7 +16105,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _leNs
     lda #$21
@@ -16129,7 +16129,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _ltNs
     lda #$21
@@ -16153,7 +16153,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _leNs
     lda #$21
@@ -16177,7 +16177,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _comp2N
     rts
@@ -16195,7 +16195,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_notN
     rts
@@ -16216,7 +16216,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _addN
     rts
@@ -16237,7 +16237,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _subN
     rts
@@ -16258,7 +16258,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_andN
     rts
@@ -16279,7 +16279,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_orN
     rts
@@ -16300,7 +16300,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_xorN
     rts
@@ -16324,7 +16324,7 @@
     lda #$00
     sta arg0
     jsr _fp2ptr2p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _mulN
     lda #$00
@@ -16333,7 +16333,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -16363,7 +16363,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr3p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _divN
     lda #$00
@@ -16372,7 +16372,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -16402,7 +16402,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr3p
-    lda #$16
+    lda #$10
     sta arg0
     jsr _divN
     lda #$10
@@ -16411,7 +16411,7 @@
     lda #$30
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _cpyN
     lda #$20
@@ -16438,7 +16438,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$16
+    lda #$10
     sta arg0
     jsr _lslN
     rts
@@ -16462,7 +16462,7 @@
     ldy #0
     lda (ptr2),y
     sta arg1
-    lda #$16
+    lda #$10
     sta arg0
     jsr _lsrN
     rts
@@ -16480,7 +16480,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _eqN
     lda #$21
@@ -16504,7 +16504,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _eqN
     lda arg1
@@ -16531,7 +16531,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _ltNu
     lda #$21
@@ -16555,7 +16555,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _leNu
     lda #$21
@@ -16579,7 +16579,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _ltNu
     lda #$21
@@ -16603,7 +16603,7 @@
     lda #$10
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _leNu
     lda #$21
@@ -16627,7 +16627,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr1m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _comp2N
     rts
@@ -16645,7 +16645,7 @@
     lda #$20
     sta arg0
     jsr _fp2ptr2m
-    lda #$16
+    lda #$10
     sta arg0
     jsr _bit_notN
     rts
@@ -16657,16 +16657,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$02
-    bne @zero_loop
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _faddN
     rts
 .endproc
 
@@ -16676,16 +16680,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$02
-    bne @zero_loop
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fsubN
     rts
 .endproc
 
@@ -16695,16 +16703,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$02
-    bne @zero_loop
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fmulN
     rts
 .endproc
 
@@ -16714,16 +16726,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
     lda #$06
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$02
-    bne @zero_loop
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fdivN
     rts
 .endproc
 
@@ -16733,11 +16749,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16748,11 +16781,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16763,11 +16813,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16778,11 +16846,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16793,11 +16879,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16808,11 +16912,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$02
+    sta arg0
+    lda #$05
+    sta arg1
+    jsr _fcmp
     lda #$05
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16823,16 +16945,23 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$02
+    sta arg0
+    jsr _fp2ptr0m
     lda #$04
     sta arg0
     jsr _fp2ptr1m
     ldy #0
-@zero_loop:
-    lda #0
+@copy_loop:
+    lda (ptr0),y
     sta (ptr1),y
     iny
     cpy #$02
-    bne @zero_loop
+    bne @copy_loop
+    ldy #$01
+    lda (ptr1),y
+    eor #$80
+    sta (ptr1),y
     rts
 .endproc
 
@@ -16842,16 +16971,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$04
-    bne @zero_loop
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _faddN
     rts
 .endproc
 
@@ -16861,16 +16994,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$04
-    bne @zero_loop
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fsubN
     rts
 .endproc
 
@@ -16880,16 +17017,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$04
-    bne @zero_loop
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fmulN
     rts
 .endproc
 
@@ -16899,16 +17040,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
     lda #$0c
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$04
-    bne @zero_loop
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fdivN
     rts
 .endproc
 
@@ -16918,11 +17063,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16933,11 +17095,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16948,11 +17127,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16963,11 +17160,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16978,11 +17193,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -16993,11 +17226,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$04
+    sta arg0
+    lda #$08
+    sta arg1
+    jsr _fcmp
     lda #$09
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17008,16 +17259,23 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$04
+    sta arg0
+    jsr _fp2ptr0m
     lda #$08
     sta arg0
     jsr _fp2ptr1m
     ldy #0
-@zero_loop:
-    lda #0
+@copy_loop:
+    lda (ptr0),y
     sta (ptr1),y
     iny
     cpy #$04
-    bne @zero_loop
+    bne @copy_loop
+    ldy #$03
+    lda (ptr1),y
+    eor #$80
+    sta (ptr1),y
     rts
 .endproc
 
@@ -17027,16 +17285,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$08
-    bne @zero_loop
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _faddN
     rts
 .endproc
 
@@ -17046,16 +17308,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$08
-    bne @zero_loop
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fsubN
     rts
 .endproc
 
@@ -17065,16 +17331,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$08
-    bne @zero_loop
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fmulN
     rts
 .endproc
 
@@ -17084,16 +17354,20 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
     lda #$18
     sta arg0
     jsr _fp2ptr2m
-    ldy #0
-@zero_loop:
-    lda #0
-    sta (ptr2),y
-    iny
-    cpy #$08
-    bne @zero_loop
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fdivN
     rts
 .endproc
 
@@ -17103,11 +17377,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17118,11 +17409,28 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17133,11 +17441,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17148,11 +17474,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17163,11 +17507,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$01
+    beq @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17178,11 +17540,29 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _fp2ptr1m
+    lda #$08
+    sta arg0
+    lda #$0b
+    sta arg1
+    jsr _fcmp
     lda #$11
     sta arg0
     jsr _fp2ptr2m
     ldy #0
+    lda arg1
+    cmp #$ff
+    bne @true
     lda #0
+    beq @store
+@true:
+    lda #1
+@store:
     sta (ptr2),y
     rts
 .endproc
@@ -17193,16 +17573,23 @@
     sta fp+1
     lda sp
     sta fp
+    lda #$08
+    sta arg0
+    jsr _fp2ptr0m
     lda #$10
     sta arg0
     jsr _fp2ptr1m
     ldy #0
-@zero_loop:
-    lda #0
+@copy_loop:
+    lda (ptr0),y
     sta (ptr1),y
     iny
     cpy #$08
-    bne @zero_loop
+    bne @copy_loop
+    ldy #$07
+    lda (ptr1),y
+    eor #$80
+    sta (ptr1),y
     rts
 .endproc
 
