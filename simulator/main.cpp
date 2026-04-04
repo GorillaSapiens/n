@@ -2,15 +2,22 @@
 #include <stdint.h>
 #include <string.h>
 #include <inttypes.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdlib.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "mos6502/mos6502.h"
 
+mos6502 *cpu = NULL;
+uint16_t gpc = 0xffff;
 uint16_t trace_ops = 0;
 #define TRACE_OP_READS    (1 << 0)
 #define TRACE_OP_WRITES   (1 << 1)
@@ -21,6 +28,354 @@ uint16_t trace_ops = 0;
 
 uint64_t counter = 0;
 uint8_t mem[65536];
+
+static constexpr size_t MAX_NAME = 128;
+
+struct memory_region_t {
+   uint16_t start;
+   uint16_t size;
+   char type[8];
+   int define_yes;
+   char name[MAX_NAME];
+};
+
+struct simulator_config_t {
+   memory_region_t mem[16];
+   size_t mem_count;
+};
+
+struct parse_result_t {
+   uint32_t value;
+   size_t pos;
+   int ok;
+};
+
+struct simulator_options_t {
+   const char *hex_path;
+   const char *cfg_path;
+   uint16_t trace;
+   int trace_set;
+};
+
+static simulator_config_t g_cfg = {};
+static int g_cfg_loaded = 0;
+
+void trace_regs(void);
+void trace_disasm(uint16_t pc);
+
+static void usage(FILE *fp) {
+   fprintf(fp,
+      "Usage:\n"
+      "  n65sim [options] file.hex\n"
+      "\n"
+      "Options:\n"
+      "  -t MASK              Enable trace bitmask MASK\n"
+      "  --trace=MASK         Same as -t MASK\n"
+      "  -T FILE              Use FILE as simulator linker-style config\n"
+      "  --config=FILE        Same as -T FILE\n"
+      "  --script=FILE        Same as -T FILE\n"
+      "  -h, --help           Show this help text\n"
+      "\n"
+      "Compatibility:\n"
+      "  n65sim file.hex [trace]\n"
+      "  n65sim [layout.cfg] [trace] file.hex\n");
+}
+
+static int ends_with(const char *s, const char *suffix) {
+   size_t slen = strlen(s);
+   size_t tlen = strlen(suffix);
+   if (slen < tlen)
+      return 0;
+   return strcmp(s + slen - tlen, suffix) == 0;
+}
+
+static int str_ieq(const char *a, const char *b) {
+   while (*a && *b) {
+      int ca = toupper((unsigned char)*a++);
+      int cb = toupper((unsigned char)*b++);
+      if (ca != cb)
+         return 0;
+   }
+   return *a == '\0' && *b == '\0';
+}
+
+static char *trim(char *s) {
+   char *e;
+   while (isspace((unsigned char)*s))
+      s++;
+   if (*s == '\0')
+      return s;
+   e = s + strlen(s) - 1;
+   while (e > s && isspace((unsigned char)*e))
+      *e-- = '\0';
+   return s;
+}
+
+static parse_result_t parse_number(const char *s) {
+   parse_result_t r;
+   char *end = NULL;
+
+   while (isspace((unsigned char)*s))
+      s++;
+
+   r.ok = 0;
+   r.value = 0;
+   r.pos = 0;
+
+   if (*s == '$') {
+      r.value = strtoul(s + 1, &end, 16);
+      if (end && end != s + 1)
+         r.ok = 1;
+   }
+   else {
+      r.value = strtoul(s, &end, 0);
+      if (end && end != s)
+         r.ok = 1;
+   }
+
+   if (r.ok)
+      r.pos = (size_t)(end - s);
+   return r;
+}
+
+static void parse_memory_property(memory_region_t *mem_region, const char *key, const char *value) {
+   parse_result_t n;
+
+   if (str_ieq(key, "start")) {
+      n = parse_number(value);
+      if (!n.ok || n.value > 0xFFFFu) {
+         fprintf(stderr, "n65sim: bad memory start '%s'\n", value);
+         exit(1);
+      }
+      mem_region->start = (uint16_t)n.value;
+   }
+   else if (str_ieq(key, "size")) {
+      n = parse_number(value);
+      if (!n.ok || n.value > 0xFFFFu) {
+         fprintf(stderr, "n65sim: bad memory size '%s'\n", value);
+         exit(1);
+      }
+      mem_region->size = (uint16_t)n.value;
+   }
+   else if (str_ieq(key, "type")) {
+      snprintf(mem_region->type, sizeof(mem_region->type), "%s", trim((char *)value));
+   }
+   else if (str_ieq(key, "define")) {
+      mem_region->define_yes = str_ieq(trim((char *)value), "yes");
+   }
+}
+
+static void parse_cfg_file(simulator_config_t *cfg, const char *path) {
+   FILE *fp = fopen(path, "r");
+   char line[1024];
+   enum { NONE, MEMORY, SKIP_BLOCK } block = NONE;
+
+   if (!fp) {
+      fprintf(stderr, "n65sim: cannot open '%s': %s\n", path, strerror(errno));
+      exit(1);
+   }
+
+   memset(cfg, 0, sizeof(*cfg));
+
+   while (fgets(line, sizeof(line), fp)) {
+      char *s = line;
+      char *brace;
+      char *comment = strchr(s, '#');
+      if (comment)
+         *comment = '\0';
+      s = trim(s);
+      if (*s == '\0')
+         continue;
+
+      if (str_ieq(s, "MEMORY {") || str_ieq(s, "MEMORY{")) {
+         block = MEMORY;
+         continue;
+      }
+      if (ends_with(s, "{") || ends_with(s, "{")) {
+         block = SKIP_BLOCK;
+         continue;
+      }
+      if (strcmp(s, "}") == 0) {
+         block = NONE;
+         continue;
+      }
+      if (block != MEMORY)
+         continue;
+
+      brace = strchr(s, ':');
+      if (!brace)
+         continue;
+      *brace++ = '\0';
+      s = trim(s);
+      brace = trim(brace);
+      {
+         char *semi = strrchr(brace, ';');
+         char *tok;
+         if (semi)
+            *semi = '\0';
+
+         if (cfg->mem_count >= (sizeof(cfg->mem) / sizeof(cfg->mem[0]))) {
+            fprintf(stderr, "n65sim: too many MEMORY entries\n");
+            exit(1);
+         }
+
+         memory_region_t *mem_region = &cfg->mem[cfg->mem_count++];
+         memset(mem_region, 0, sizeof(*mem_region));
+         snprintf(mem_region->name, sizeof(mem_region->name), "%s", s);
+         tok = strtok(brace, ",");
+         while (tok) {
+            char *eq = strchr(tok, '=');
+            if (eq) {
+               *eq++ = '\0';
+               parse_memory_property(mem_region, trim(tok), trim(eq));
+            }
+            tok = strtok(NULL, ",");
+         }
+      }
+   }
+
+   fclose(fp);
+}
+
+static int address_is_read_only(uint16_t addr) {
+   if (!g_cfg_loaded)
+      return 0;
+
+   for (size_t i = 0; i < g_cfg.mem_count; ++i) {
+      const memory_region_t *mem_region = &g_cfg.mem[i];
+      uint32_t start = mem_region->start;
+      uint32_t end = start + mem_region->size;
+
+      if (mem_region->size == 0)
+         continue;
+      if (!str_ieq(mem_region->type, "ro"))
+         continue;
+      if (addr >= start && addr < end)
+         return 1;
+   }
+
+   return 0;
+}
+
+static void store_mem(uint16_t addr, uint8_t val, int allow_ro_write) {
+   if (!allow_ro_write && address_is_read_only(addr)) {
+      fprintf(stderr, "n65sim: write to read-only memory at $%04X\n", addr);
+      trace_regs();
+      trace_disasm(gpc);
+      exit(1);
+   }
+   mem[addr] = val;
+}
+
+static int assign_option_value(const char **out, const char *current, int *argi, int argc, char **argv, const char *label) {
+   if (current[0] != '\0') {
+      *out = current;
+      return 1;
+   }
+   if (*argi + 1 >= argc) {
+      fprintf(stderr, "n65sim: missing argument for %s\n", label);
+      exit(1);
+   }
+   *out = argv[++(*argi)];
+   return 1;
+}
+
+static void parse_args(simulator_options_t *opts, int argc, char **argv) {
+   memset(opts, 0, sizeof(*opts));
+
+   for (int argi = 1; argi < argc; ++argi) {
+      const char *arg = argv[argi];
+
+      if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0) {
+         usage(stdout);
+         exit(0);
+      }
+      else if (strcmp(arg, "-t") == 0) {
+         const char *value;
+         assign_option_value(&value, "", &argi, argc, argv, "-t");
+         parse_result_t parsed = parse_number(value);
+         if (!parsed.ok || value[parsed.pos] != '\0' || parsed.value > 0xFFFFu) {
+            fprintf(stderr, "n65sim: bad trace mask '%s'\n", value);
+            exit(1);
+         }
+         opts->trace = (uint16_t)parsed.value;
+         opts->trace_set = 1;
+      }
+      else if (strncmp(arg, "--trace=", 8) == 0) {
+         const char *value = arg + 8;
+         parse_result_t parsed = parse_number(value);
+         if (!parsed.ok || value[parsed.pos] != '\0' || parsed.value > 0xFFFFu) {
+            fprintf(stderr, "n65sim: bad trace mask '%s'\n", value);
+            exit(1);
+         }
+         opts->trace = (uint16_t)parsed.value;
+         opts->trace_set = 1;
+      }
+      else if (strcmp(arg, "--trace") == 0) {
+         const char *value;
+         assign_option_value(&value, "", &argi, argc, argv, "--trace");
+         parse_result_t parsed = parse_number(value);
+         if (!parsed.ok || value[parsed.pos] != '\0' || parsed.value > 0xFFFFu) {
+            fprintf(stderr, "n65sim: bad trace mask '%s'\n", value);
+            exit(1);
+         }
+         opts->trace = (uint16_t)parsed.value;
+         opts->trace_set = 1;
+      }
+      else if (strcmp(arg, "-T") == 0) {
+         const char *value;
+         assign_option_value(&value, "", &argi, argc, argv, "-T");
+         opts->cfg_path = value;
+      }
+      else if (strncmp(arg, "--config=", 9) == 0) {
+         opts->cfg_path = arg + 9;
+      }
+      else if (strcmp(arg, "--config") == 0) {
+         const char *value;
+         assign_option_value(&value, "", &argi, argc, argv, "--config");
+         opts->cfg_path = value;
+      }
+      else if (strncmp(arg, "--script=", 9) == 0) {
+         opts->cfg_path = arg + 9;
+      }
+      else if (strcmp(arg, "--script") == 0) {
+         const char *value;
+         assign_option_value(&value, "", &argi, argc, argv, "--script");
+         opts->cfg_path = value;
+      }
+      else if (arg[0] == '-') {
+         fprintf(stderr, "n65sim: unknown option '%s'\n", arg);
+         usage(stderr);
+         exit(1);
+      }
+      else if (ends_with(arg, ".cfg") && opts->cfg_path == nullptr) {
+         opts->cfg_path = arg;
+      }
+      else if (ends_with(arg, ".hex") && opts->hex_path == nullptr) {
+         opts->hex_path = arg;
+      }
+      else {
+         parse_result_t parsed = parse_number(arg);
+         if (parsed.ok && arg[parsed.pos] == '\0' && parsed.value <= 0xFFFFu && !opts->trace_set) {
+            opts->trace = (uint16_t)parsed.value;
+            opts->trace_set = 1;
+         }
+         else if (opts->hex_path == nullptr) {
+            opts->hex_path = arg;
+         }
+         else {
+            fprintf(stderr, "n65sim: unexpected argument '%s'\n", arg);
+            usage(stderr);
+            exit(1);
+         }
+      }
+   }
+
+   if (opts->hex_path == nullptr) {
+      usage(stderr);
+      exit(1);
+   }
+}
 
 static uint8_t ihex_checksum(const uint8_t *bytes, size_t n) {
    uint32_t sum = 0;
@@ -108,7 +463,7 @@ void load_intel_hex(const char *filename) {
          {
             if (full_addr + i >= 65536)
                throw std::runtime_error("Address out of range for 64K memory");
-            mem[full_addr + i] = hex_byte(line, 9 + i * 2);
+            store_mem(static_cast<uint16_t>(full_addr + i), hex_byte(line, 9 + i * 2), 1);
          }
       }
       else if (type == 0x01)   // EOF
@@ -136,7 +491,7 @@ void write_cb(uint16_t addr, uint8_t val) {
    if (trace_ops & TRACE_OP_WRITES) {
       printf("write $%02x -> $%04x\n", val, addr);
    }
-   mem[addr] = val;
+   store_mem(addr, val, 0);
 }
 
 uint8_t read_cb(uint16_t addr) {
@@ -146,8 +501,8 @@ uint8_t read_cb(uint16_t addr) {
    return mem[addr];
 }
 
-void clock_cb(mos6502* cpu) {
-   (void) cpu; // unused parameter
+void clock_cb(mos6502* unused) {
+   (void) unused; // unused parameter
    if (trace_ops & TRACE_OP_CYCLES) {
       printf("cycle %" PRId64 "\n", counter);
    }
@@ -177,7 +532,7 @@ void dispatch(uint8_t op, uint16_t arg) {
    }
 }
 
-void trace_regs(mos6502 *cpu) {
+void trace_regs(void) {
    uint8_t p = cpu->GetP();
    printf("A:$%02x X:$%02x Y:$%02x P:$%02x(%c%c%c%c%c%c%c%c) SP:$%02x PC:$%04x\n",
       cpu->GetA(),
@@ -196,8 +551,7 @@ void trace_regs(mos6502 *cpu) {
       cpu->GetPC());
 }
 
-void trace_disasm(mos6502 *cpu) {
-   uint16_t pc = cpu->GetPC();
+void trace_disasm(uint16_t pc) {
    const char *code = cpu->GetCode(mem[pc]);
    const char *addr = cpu->GetAddr(mem[pc]);
 
@@ -224,7 +578,7 @@ void trace_disasm(mos6502 *cpu) {
                // ACC
                printf("ASM: $%04x: %s A            ; %02x\n", pc, code, mem[pc]);
                break;
-         } 
+         }
          break;
       case  'I':
          switch(addr[2]) {
@@ -270,29 +624,34 @@ void trace_disasm(mos6502 *cpu) {
 }
 
 int main (int argc, char **argv) {
-   if (argc != 2 && argc != 3) {
-      fprintf(stderr, "Usage: %s <hex> [<trace>]\n", argv[0]);
-      exit(-1);
+   simulator_options_t opts;
+
+   parse_args(&opts, argc, argv);
+
+   if (opts.trace_set) {
+      trace_ops = opts.trace;
    }
 
-   if (argc == 3) {
-      trace_ops = strtoul(argv[2], NULL, 0);
+   if (opts.cfg_path != nullptr) {
+      parse_cfg_file(&g_cfg, opts.cfg_path);
+      g_cfg_loaded = 1;
    }
 
    memset(mem, 0xFF, 65536);
 
-   load_intel_hex(argv[1]);
+   load_intel_hex(opts.hex_path);
 
-   mos6502 *cpu = new mos6502(read_cb, write_cb, clock_cb);
+   cpu = new mos6502(read_cb, write_cb, clock_cb);
 
    cpu->Reset();
 
    while (1) {
+      gpc = cpu->GetPC();
       if (trace_ops & TRACE_OP_REGS) {
-         trace_regs(cpu);
+         trace_regs();
       }
       if (trace_ops & TRACE_OP_DISASM) {
-         trace_disasm(cpu);
+         trace_disasm(gpc);
       }
       cpu->Run(1, counter, mos6502::INST_COUNT);
       if (cpu->GetPC() == 0xFFFF) {
@@ -302,11 +661,11 @@ int main (int argc, char **argv) {
          dispatch(op, arg);
 
          uint8_t tmp = mem[0xFFFF]; // remember original value
-         mem[0xFFFF] = 0x60; // insert an RTS there
+         store_mem(0xFFFF, 0x60, 1); // insert an RTS there
 
          cpu->Run(1, counter, mos6502::INST_COUNT);
 
-         mem[0xFFFF] = tmp; // restore original value
+         store_mem(0xFFFF, tmp, 1); // restore original value
       }
    }
 

@@ -69,12 +69,15 @@ sub parse_directives {
       expectasmordered => [],
       expecterr => [],
       expectsim => [],
+      expectsimerr => [],
       expectlinkerr => [],
       expectmap => [],
       archive => [],
       archivegroup => [],
       object => [],
       linkcfg => undef,
+      simcfg => undef,
+      simargs => [],
       expectfail => 0,
       expectlinkfail => 0,
       expectexit => undef,
@@ -95,6 +98,9 @@ sub parse_directives {
       elsif ($line =~ /^\/\/ expectsim:\s*(.*?)\s*$/) {
          push @{$meta{expectsim}}, $1;
       }
+      elsif ($line =~ /^\/\/ expectsimerr:\s*(.*?)\s*$/) {
+         push @{$meta{expectsimerr}}, $1;
+      }
       elsif ($line =~ /^\/\/ expectlinkerr:\s*(.*?)\s*$/) {
          push @{$meta{expectlinkerr}}, $1;
       }
@@ -114,6 +120,16 @@ sub parse_directives {
       }
       elsif ($line =~ /^\/\/ linkcfg:\s*(.*?)\s*$/) {
          $meta{linkcfg} = $1;
+      }
+      elsif ($line =~ /^\/\/ simcfg:\s*(.*?)\s*$/) {
+         $meta{simcfg} = $1;
+      }
+      elsif ($line =~ /^\/\/ simargs:\s*(.*?)\s*$/) {
+         my $args = $1;
+         if ($args =~ /[;`]/) {
+            die "[$FAIL] $path :: hey! no sneaky shell shenanigans !!!\n";
+         }
+         push @{$meta{simargs}}, grep { length($_) } split(/\s+/, $args);
       }
       elsif ($line =~ /^\/\/ expectfail\s*$/) {
          $meta{expectfail} = 1;
@@ -139,6 +155,9 @@ sub is_e2e_case {
       || scalar(@{$meta->{archivegroup}})
       || scalar(@{$meta->{object}})
       || defined($meta->{linkcfg})
+      || defined($meta->{simcfg})
+      || scalar(@{$meta->{simargs}})
+      || scalar(@{$meta->{expectsimerr}})
       || $meta->{expectlinkfail}
       || defined($meta->{expectexit});
 }
@@ -433,7 +452,10 @@ sub run_e2e_case {
 
    my $sim_out = File::Spec->catfile($tmp, 'sim.out');
    my $sim_err = File::Spec->catfile($tmp, 'sim.err');
-   my @sim_cmd = ('stdbuf', '-o0', $n65sim, $hex_path);
+   my @sim_cmd = ('stdbuf', '-o0', $n65sim, @{$meta->{simargs}}, $hex_path);
+   if (defined $meta->{simcfg}) {
+      push @sim_cmd, '-T', File::Spec->catfile($test_root, $meta->{simcfg});
+   }
    my ($timed_out, $sim_exit, $sim_sig) = run_cmd_with_timeout(\@sim_cmd, $sim_out, $sim_err, 2);
    my $sim_stdout = slurp_file($sim_out);
    my $sim_stderr = slurp_file($sim_err);
@@ -460,7 +482,120 @@ sub run_e2e_case {
    }
 
    require_substrings($sim_stdout, $meta->{expectsim}, 'simulator output', $file, $sim_out);
+   require_substrings($sim_stderr, $meta->{expectsimerr}, 'simulator stderr', $file, $sim_err);
    print "[$PASS] $file\n";
+}
+
+sub ihex_record {
+   my ($addr, $type, @bytes) = @_;
+   my $count = scalar(@bytes);
+   my $sum = $count + (($addr >> 8) & 0xFF) + ($addr & 0xFF) + $type;
+   my $text = sprintf(':%02X%04X%02X', $count, $addr, $type);
+   for my $byte (@bytes) {
+      $sum += $byte;
+      $text .= sprintf('%02X', $byte);
+   }
+   my $checksum = ((-$sum) & 0xFF);
+   return sprintf('%s%02X\n', $text, $checksum);
+}
+
+sub write_ihex_file {
+   my ($path, @records) = @_;
+   open(my $fh, '>', $path) or die "[$FAIL] could not write $path: $!\n";
+   print $fh @records;
+   print $fh ":00000001FF\n";
+   close($fh);
+}
+
+sub write_text_file {
+   my ($path, $text) = @_;
+   open(my $fh, '>', $path) or die "[$FAIL] could not write $path: $!\n";
+   print $fh $text;
+   close($fh);
+}
+
+sub run_simulator_smoke_tests {
+   return if $compile_only;
+
+   my $sim_tmp = tempdir("n_sim_smoke_XXXX", TMPDIR => 1, CLEANUP => 1);
+   my $exit_hex = File::Spec->catfile($sim_tmp, 'exit.hex');
+   my $ro_hex = File::Spec->catfile($sim_tmp, 'ro_write.hex');
+   my $cfg_path = File::Spec->catfile($sim_tmp, 'sim.cfg');
+
+   write_text_file($exit_hex, <<'EOF_EXIT_HEX');
+:09200000A9FFA207A00020FFFFC8
+:02FFFC000020E3
+:00000001FF
+EOF_EXIT_HEX
+
+   write_text_file($ro_hex, <<'EOF_RO_HEX');
+:0E200000A9428D0020A9FFA200A00020FFFF32
+:02FFFC000020E3
+:00000001FF
+EOF_RO_HEX
+
+   write_text_file($cfg_path, <<'EOF_SIMCFG');
+MEMORY {
+    ZP:       start = $0000, size = $0100, type = rw, define = yes;
+    CPUSTACK: start = $0100, size = $0100, type = rw, define = yes;
+    RAM:      start = $0200, size = $1E00, type = rw, define = yes;
+    ROM:      start = $2000, size = $E000, type = ro, define = yes;
+}
+
+SEGMENTS {
+    ZEROPAGE: load = ROM, run=ZP,  type = zp,   define = yes;
+    CODE:     load = ROM,          type = ro,   define = yes;
+    RODATA:   load = ROM,          type = ro,   define = yes;
+    BSS:      load = RAM,          type = bss,  define = yes;
+    DATA:     load = ROM, run=RAM, type = data, define = yes;
+}
+EOF_SIMCFG
+
+   my $trace_out = File::Spec->catfile($sim_tmp, 'trace.out');
+   my $trace_err = File::Spec->catfile($sim_tmp, 'trace.err');
+   my @trace_cmd = ('stdbuf', '-o0', $n65sim, '--trace', '0x20', $exit_hex, '-T', $cfg_path);
+   my ($trace_timed_out, $trace_exit, $trace_sig) = run_cmd_with_timeout(\@trace_cmd, $trace_out, $trace_err, 2);
+   if ($trace_timed_out) {
+      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke timed out\n";
+      print join(' ', @trace_cmd), "\n";
+      exit(-1);
+   }
+   if ($trace_exit != 7) {
+      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke exit code $trace_exit signal $trace_sig expected 7\n";
+      print join(' ', @trace_cmd), "\n";
+      print slurp_file($trace_err);
+      exit(-1);
+   }
+   my $trace_stdout = slurp_file($trace_out);
+   if (index($trace_stdout, 'dispatch ff 0007') < 0) {
+      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke missing dispatch trace\n";
+      print $trace_out, "\n";
+      exit(-1);
+   }
+   print "[$PASS] simulator_cli_reordered_trace_cfg_smoke\n";
+
+   my $ro_out = File::Spec->catfile($sim_tmp, 'ro.out');
+   my $ro_err = File::Spec->catfile($sim_tmp, 'ro.err');
+   my @ro_cmd = ('stdbuf', '-o0', $n65sim, '-T', $cfg_path, $ro_hex);
+   my ($ro_timed_out, $ro_exit, $ro_sig) = run_cmd_with_timeout(\@ro_cmd, $ro_out, $ro_err, 2);
+   if ($ro_timed_out) {
+      print "[$FAIL] simulator_ro_cfg_smoke timed out\n";
+      print join(' ', @ro_cmd), "\n";
+      exit(-1);
+   }
+   if ($ro_exit != 1) {
+      print "[$FAIL] simulator_ro_cfg_smoke exit code $ro_exit signal $ro_sig expected 1\n";
+      print join(' ', @ro_cmd), "\n";
+      print slurp_file($ro_err);
+      exit(-1);
+   }
+   my $ro_stderr = slurp_file($ro_err);
+   if (index($ro_stderr, 'write to read-only memory at $2000') < 0) {
+      print "[$FAIL] simulator_ro_cfg_smoke missing protection diagnostic\n";
+      print $ro_err, "\n";
+      exit(-1);
+   }
+   print "[$PASS] simulator_ro_cfg_smoke\n";
 }
 
 sub run_assembler_smoke_tests {
@@ -555,3 +690,4 @@ for my $file (@files) {
 }
 
 run_assembler_smoke_tests();
+run_simulator_smoke_tests();

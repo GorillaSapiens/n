@@ -5,11 +5,22 @@
 ## Command line
 
 ```sh
-./n65sim program.hex [trace]
+./n65sim [options] program.hex
 ```
 
 The simulator expects an Intel HEX input file.
-The optional `trace` argument is a bitmask parsed with `strtoul(..., 0)`, so decimal, hex, and octal forms all work.
+It now accepts the input `.hex`, optional trace mask, and optional linker-style cfg in any order.
+Supported forms are:
+
+```sh
+./n65sim program.hex
+./n65sim program.hex 0x0c
+./n65sim --trace 0x0c program.hex
+./n65sim --trace=0x20 program.hex -T linker/cfg/sim.cfg
+./n65sim linker/cfg/sim.cfg program.hex 0x20
+```
+
+The trace argument is still parsed with `strtoul(..., 0)`, so decimal, hex, and octal forms all work.
 For example, `0x0c` enables register and disassembly tracing, while `0x20` enables dispatch logging.
 
 ## Trace flags
@@ -28,7 +39,8 @@ Examples:
 
 ```sh
 ./n65sim program.hex 0x0c
-./n65sim program.hex 0x2f
+./n65sim --trace=0x2f program.hex
+./n65sim --trace 0x20 program.hex -T linker/cfg/sim.cfg
 ```
 
 With tracing enabled, the simulator currently prints lines like:
@@ -47,6 +59,17 @@ Notes:
 - disassembly tracing happens before each instruction
 - cycle tracing prints the current instruction counter value passed to the clock callback
 - dispatch logging is printed only when the dispatch trace bit (`0x20`) is enabled
+
+
+## Optional cfg-based ROM protection
+
+When a linker-style cfg is supplied with `-T`, `--config`, `--script`, or as a positional `.cfg` file, `n65sim` reads its `MEMORY` block and treats every `type = ro` region as read-only for guest writes. A guest write into one of those regions stops the simulator with a diagnostic such as:
+
+```text
+n65sim: write to read-only memory at $2FFF
+```
+
+This protection applies only to guest-side writes through the emulated CPU. The simulator still allows its own image loader and internal `$FFFF` dispatch shim to touch memory as needed.
 
 ## Dispatch hook
 
