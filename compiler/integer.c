@@ -183,10 +183,11 @@ int make_le_int(const char *p, unsigned char *target, int size) {
 
    int ret;
 
-   if (!strcmp(p, "0")) {
-      for (int i = 0; i < size; i++) {
-         target[i] = 0;
-      }
+   if (!strcmp(p, "0") || !strcmp(p, "false")) {
+      ret = 1;
+   }
+   else if (!strcmp(p, "true")) {
+      target[0] = 1;
       ret = 1;
    }
    else if (!strncasecmp(p, "0b", 2)) {
