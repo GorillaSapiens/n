@@ -1,8 +1,8 @@
 // n65cc -I .
 // expectexit: 0
-// archive: generated_float_archive/gf3be/gf3be_operator_mul.n
+// archive: generated_float_archive_gf3be_operator_mul.n
 include "machine_6502.n"
-include "generated_float_archive/gf3be/gf3be_decls.n"
+include "generated_float_archive_gf3be_decls.n"
 
 union gf3be_bits {
    gf3be f;

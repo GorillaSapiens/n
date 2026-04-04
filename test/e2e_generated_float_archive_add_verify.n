@@ -1,8 +1,8 @@
 // n65cc -I .
 // expectexit: 0
-// archive: generated_float_archive/gf32/gf32_operator_add.n
+// archive: generated_float_archive_gf32_operator_add.n
 include "machine_6502.n"
-include "generated_float_archive/gf32/gf32_decls.n"
+include "generated_float_archive_gf32_decls.n"
 
 union gf32_bits {
    gf32 f;

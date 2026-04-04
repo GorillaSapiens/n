@@ -1,11 +1,11 @@
 // n65cc -I .
 // expectexit: 0
-// archivegroup: gf32_archive generated_float_archive/gf32/gf32_operator_eq.n
-// archivegroup: gf32_archive generated_float_archive/gf32/gf32_operator_ne.n
-// archivegroup: gf32_archive generated_float_archive/gf32/gf32_operator_lt.n
-// archivegroup: gf32_archive generated_float_archive/gf32/gf32_operator_ge.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_eq.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_ne.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_lt.n
+// archivegroup: gf32_archive generated_float_archive_gf32_operator_ge.n
 include "machine_6502.n"
-include "generated_float_archive/gf32/gf32_decls.n"
+include "generated_float_archive_gf32_decls.n"
 
 union gf32_bits {
    gf32 f;

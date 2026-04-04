@@ -4,7 +4,7 @@
 // expectasm: jsr operatorx2B__gf32_p0_a0__gf32_p0_a0
 // expectasm: jsr operatorx3Ex3D__gf32_p0_a0__gf32_p0_a0
 include "machine_6502.n"
-include "generated_float_archive/gf32/gf32_decls.n"
+include "generated_float_archive_gf32_decls.n"
 
 void main(void) {
    gf32 a;

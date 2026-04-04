@@ -4,7 +4,6 @@ use strict;
 use warnings;
 use File::Spec;
 use File::Temp qw(tempdir tempfile);
-use File::Path qw(make_path);
 use Cwd qw(abs_path);
 use Getopt::Long qw(GetOptions);
 
@@ -266,10 +265,6 @@ sub compile_n_to_object {
    my $o_path   = File::Spec->catfile($tmp, "$stem.o65");
    my $out_path = File::Spec->catfile($tmp, "$stem.compile.out");
    my $err_path = File::Spec->catfile($tmp, "$stem.compile.err");
-   for my $path ($s_path, $o_path, $out_path, $err_path) {
-      my ($vol, $dir, undef) = File::Spec->splitpath($path);
-      make_path(File::Spec->catpath($vol, $dir, '')) if length($dir);
-   }
    my @cmd = ($n65cc, '-quiet', @$runner_args, $src_path, '-o', $s_path, '-dumpbase', $src_name, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
    my ($exit_code) = run_cmd(\@cmd, $out_path, $err_path);
    if ($exit_code != 0) {
