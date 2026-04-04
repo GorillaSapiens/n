@@ -40,6 +40,8 @@ The implementation is pure `.n` code. It uses a union overlay plus a bitfield st
 
 The generated helpers and scratch globals are ordinary user-defined `.n` symbols with an `nlf_` prefix. They intentionally do not start with `_`, and the compiler preserves that at the assembly/object-symbol layer too; raw `nlib` helper names remain separate assembly symbols like `_pushN` and `_callptr0`.
 
+The repository root `Makefile` uses this build mode to regenerate the flat archive-fixture files under `test/` via the `generated_float_archive_fixtures` target. Those files exist only to feed the test harness; `libraries/float/gen.pl` remains the source of truth.
+
 Current limits:
 
 - supports sizes up to 8 bytes
