@@ -6,46 +6,6 @@
 #include "messages.h"
 #include "xray.h"
 
-static long long parse_binary(const char *p) {
-   long long ret = 0;
-   p += 2; // skip leading 0[bB]
-   while (*p) {
-      ret <<= 1;
-      ret |= (*p - '0');
-      p++;
-   }
-   return ret;
-}
-
-long long parse_int(const char *p) {
-   long long ret;
-   bool negate = false;
-
-   if (*p == '-') {
-      negate = true;
-      p++;
-   }
-
-   if (!strcmp(p, "true")) {
-      ret = 1;
-   }
-   else if (!strcmp(p, "false")) {
-      ret = 0;
-   }
-   else if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
-      ret = parse_binary(p);
-   }
-   else {
-      ret = atoll(p);
-   }
-
-   if (negate) {
-      ret = -ret;
-   }
-
-   return ret;
-}
-
 static int c2n(char c) {
    if (c >= '0' && c <= '9') {
       return c - '0';
@@ -195,3 +155,30 @@ void negate_be_int(unsigned char *target, int size) {
       carry >>= 8;
    }
 }
+
+long long parse_int(const char *p) {
+   long long ret = 1;
+   bool negate = false;
+   const char *q = (const char *) &ret;
+
+   if (*p == '-') {
+      negate = true;
+      p++;
+   }
+
+   if (*q == 1) {
+      make_le_int(p, (unsigned char *) &ret, sizeof(ret));
+      if (negate) {
+         negate_le_int((unsigned char *) &ret, sizeof(ret));
+      }
+   }
+   else {
+      make_be_int(p, (unsigned char *) &ret, sizeof(ret));
+      if (negate) {
+         negate_be_int((unsigned char *) &ret, sizeof(ret));
+      }
+   }
+
+   return ret;
+}
+
