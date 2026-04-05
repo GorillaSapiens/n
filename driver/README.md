@@ -20,7 +20,9 @@ By default it links `libraries/nlib/nlib.a65` unless `-nostdlib` is used.
 ## What it requires
 
 `n65driver` is only a coordinator.
-It requires these sibling tools to exist in the repository tree:
+It needs the rest of the toolchain plus the default runtime archive.
+
+When run from the built repository tree, it finds:
 
 - `compiler/n65cc`
 - `assembler/n65asm`
@@ -29,7 +31,13 @@ It requires these sibling tools to exist in the repository tree:
 - `simulator/n65sim` (only for path reporting via `-print-prog-name=sim`)
 - `libraries/nlib/nlib.a65` for default linking
 
-The driver finds them relative to its own executable path, so it is meant to be used from the built source tree unless you install the whole family together.
+When installed, it expects this layout under the same prefix:
+
+- `bin/n65driver`, `bin/n65cc`, `bin/n65asm`, `bin/n65ld`, `bin/n65ar`, `bin/n65sim`
+- `lib/n/nlib.a65`
+- `include/n/nlib.inc` for the assembler's implicit runtime include path
+
+So the same binary works both from the source tree and from an installed prefix without extra path flags.
 
 ## Input kinds
 

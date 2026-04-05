@@ -32,6 +32,27 @@ n65ld -o sieve.hex sieve.o65 libraries/nlib/nlib.a65
 n65sim sieve.hex
 ```
 
+
+## Installing
+
+The tree now supports staged installs and relocatable packaging:
+
+```sh
+make install PREFIX=/usr/local
+make install DESTDIR=/tmp/n-pkg PREFIX=/usr/local
+make uninstall PREFIX=/usr/local
+make package PACKAGE_PREFIX=/usr/local
+```
+
+Installed layout:
+
+- `$(PREFIX)/bin/` ... `n65driver`, `n65cc`, `n65asm`, `n65ar`, `n65ld`, `n65sim`
+- `$(PREFIX)/lib/n/` ... default runtime archives such as `nlib.a65` and `nint.a65`
+- `$(PREFIX)/include/n/` ... `nlib.h` and `nlib.inc`
+- `$(PREFIX)/share/n/` ... packaged library/config/source extras such as `nlib/n.cfg`, `float/gen.pl`, and `vcs/` files
+
+The installed `n65driver` will first use the built source-tree layout when run from the repository, and otherwise will find sibling installed tools in `bin/` plus the default runtime assets under `lib/n/` and `include/n/`.
+
 ## Testing
 
 Run `make test` at the repository root to execute the unified `test/test.pl` harness across both compiler-side source tests and end-to-end `n65cc -> n65asm -> n65ld -> n65sim` regression tests. Use `make unit` for compile-only cases, `make e2e` for end-to-end cases, and `make sieve` for a quick `n65driver` smoke build.

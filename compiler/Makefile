@@ -13,6 +13,12 @@ CFLAGS += -g
 #CFLAGS += -O2
 
 TARGET = n65cc
+
+BINDIR ?= /usr/local/bin
+DESTDIR ?=
+INSTALL ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+INSTALL_DATA ?= $(INSTALL) -m 0644
 TEST   = test
 
 GENSRC = parser.tab.c lex.yy.c
@@ -71,6 +77,13 @@ delexer.h: lexer.l delexer.pl
 
 coverage_map.h: parser.y coverage.pl
 	./coverage.pl > coverage_map.h
+
+install: $(TARGET)
+	$(INSTALL) -d $(DESTDIR)$(BINDIR)
+	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(TARGET)
 
 clean:
 	rm -f $(TARGET) $(OBJ) $(DEP)

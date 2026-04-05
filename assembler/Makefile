@@ -14,6 +14,12 @@ CFLAGS += -g
 
 TARGET = n65asm
 
+BINDIR ?= /usr/local/bin
+DESTDIR ?=
+INSTALL ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+INSTALL_DATA ?= $(INSTALL) -m 0644
+
 GENSRC = parser.tab.c lex.yy.c
 GENHDR = parser.tab.h
 
@@ -56,6 +62,17 @@ tarball:
 tidy:
 	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d *.gz
 	
+install: $(TARGET)
+	$(INSTALL) -d $(DESTDIR)$(BINDIR)
+	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
+	$(INSTALL_DATA) default.cfg $(DESTDIR)$(BINDIR)/default.cfg
+	$(INSTALL_DATA) illegals.cfg $(DESTDIR)$(BINDIR)/illegals.cfg
+
+uninstall:
+	rm -f $(DESTDIR)$(BINDIR)/$(TARGET)
+	rm -f $(DESTDIR)$(BINDIR)/default.cfg
+	rm -f $(DESTDIR)$(BINDIR)/illegals.cfg
+
 clean: tidy
 	rm -f $(GENSRC) $(GENHDR) parser.output
 

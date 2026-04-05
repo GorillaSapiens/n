@@ -199,6 +199,19 @@ static void copy_cstr(char *out, size_t out_sz, const char *src)
    memcpy(out, src, len + 1);
 }
 
+static void join_path2(char *out, size_t out_sz, const char *a, const char *b)
+{
+   size_t alen = strlen(a);
+   size_t blen = strlen(b);
+
+   if (alen + 1 + blen + 1 > out_sz)
+      die("path too long");
+
+   memcpy(out, a, alen);
+   out[alen] = '/';
+   memcpy(out + alen + 1, b, blen + 1);
+}
+
 static void join_path3(char *out, size_t out_sz, const char *a, const char *b, const char *c)
 {
    size_t alen = strlen(a);
@@ -213,6 +226,11 @@ static void join_path3(char *out, size_t out_sz, const char *a, const char *b, c
    memcpy(out + alen + 1, b, blen);
    out[alen + 1 + blen] = '/';
    memcpy(out + alen + 1 + blen + 1, c, clen + 1);
+}
+
+static bool path_is_accessible(const char *path, int mode)
+{
+   return access(path, mode) == 0;
 }
 
 static void make_suffixed_path(const char *path, const char *suffix, char *out, size_t out_sz)
@@ -347,13 +365,106 @@ static void get_self_path(char *out, size_t out_sz, const char *argv0)
    copy_cstr(out, out_sz, argv0);
 }
 
-static void build_tool_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *tool)
+static void build_repo_tree_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *tool)
 {
    char self_dir[PATH_MAX];
    char repo_dir[PATH_MAX];
    path_dirname(self_path, self_dir, sizeof(self_dir));
    path_dirname(self_dir, repo_dir, sizeof(repo_dir));
    join_path3(out, out_sz, repo_dir, subdir, tool);
+}
+
+static void build_installed_tool_path(char *out, size_t out_sz, const char *self_path, const char *tool)
+{
+   char self_dir[PATH_MAX];
+   path_dirname(self_path, self_dir, sizeof(self_dir));
+   join_path2(out, out_sz, self_dir, tool);
+}
+
+static void build_installed_prefix_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *name)
+{
+   char self_dir[PATH_MAX];
+   char prefix_dir[PATH_MAX];
+   path_dirname(self_path, self_dir, sizeof(self_dir));
+   path_dirname(self_dir, prefix_dir, sizeof(prefix_dir));
+   join_path3(out, out_sz, prefix_dir, subdir, name);
+}
+
+static void resolve_tool_paths(const char *self_path,
+   char *cc_path, size_t cc_sz,
+   char *as_path, size_t as_sz,
+   char *ld_path, size_t ld_sz,
+   char *ar_path, size_t ar_sz,
+   char *sim_path, size_t sim_sz,
+   char *nlib_path, size_t nlib_sz,
+   char *nlib_inc, size_t nlib_inc_sz)
+{
+   char cc_repo[PATH_MAX];
+   char as_repo[PATH_MAX];
+   char ld_repo[PATH_MAX];
+   char ar_repo[PATH_MAX];
+   char sim_repo[PATH_MAX];
+   char nlib_repo[PATH_MAX];
+   char nlib_inc_repo[PATH_MAX];
+   char cc_inst[PATH_MAX];
+   char as_inst[PATH_MAX];
+   char ld_inst[PATH_MAX];
+   char ar_inst[PATH_MAX];
+   char sim_inst[PATH_MAX];
+   char nlib_inst[PATH_MAX];
+   char nlib_inc_inst[PATH_MAX];
+
+   build_repo_tree_path(cc_repo, sizeof(cc_repo), self_path, "compiler", "n65cc");
+   build_repo_tree_path(as_repo, sizeof(as_repo), self_path, "assembler", "n65asm");
+   build_repo_tree_path(ld_repo, sizeof(ld_repo), self_path, "linker", "n65ld");
+   build_repo_tree_path(ar_repo, sizeof(ar_repo), self_path, "archiver", "n65ar");
+   build_repo_tree_path(sim_repo, sizeof(sim_repo), self_path, "simulator", "n65sim");
+   build_repo_tree_path(nlib_repo, sizeof(nlib_repo), self_path, "libraries/nlib", "nlib.a65");
+   build_repo_tree_path(nlib_inc_repo, sizeof(nlib_inc_repo), self_path, "libraries/nlib", "nlib.inc");
+
+   if (path_is_accessible(cc_repo, X_OK) &&
+       path_is_accessible(as_repo, X_OK) &&
+       path_is_accessible(ld_repo, X_OK) &&
+       path_is_accessible(ar_repo, X_OK) &&
+       path_is_accessible(sim_repo, X_OK) &&
+       path_is_accessible(nlib_repo, R_OK) &&
+       path_is_accessible(nlib_inc_repo, R_OK)) {
+      copy_cstr(cc_path, cc_sz, cc_repo);
+      copy_cstr(as_path, as_sz, as_repo);
+      copy_cstr(ld_path, ld_sz, ld_repo);
+      copy_cstr(ar_path, ar_sz, ar_repo);
+      copy_cstr(sim_path, sim_sz, sim_repo);
+      copy_cstr(nlib_path, nlib_sz, nlib_repo);
+      path_dirname(nlib_inc_repo, nlib_inc, nlib_inc_sz);
+      return;
+   }
+
+   build_installed_tool_path(cc_inst, sizeof(cc_inst), self_path, "n65cc");
+   build_installed_tool_path(as_inst, sizeof(as_inst), self_path, "n65asm");
+   build_installed_tool_path(ld_inst, sizeof(ld_inst), self_path, "n65ld");
+   build_installed_tool_path(ar_inst, sizeof(ar_inst), self_path, "n65ar");
+   build_installed_tool_path(sim_inst, sizeof(sim_inst), self_path, "n65sim");
+   build_installed_prefix_path(nlib_inst, sizeof(nlib_inst), self_path, "lib/n", "nlib.a65");
+   build_installed_prefix_path(nlib_inc_inst, sizeof(nlib_inc_inst), self_path, "include/n", "nlib.inc");
+
+   if (path_is_accessible(cc_inst, X_OK) &&
+       path_is_accessible(as_inst, X_OK) &&
+       path_is_accessible(ld_inst, X_OK) &&
+       path_is_accessible(ar_inst, X_OK) &&
+       path_is_accessible(sim_inst, X_OK) &&
+       path_is_accessible(nlib_inst, R_OK) &&
+       path_is_accessible(nlib_inc_inst, R_OK)) {
+      copy_cstr(cc_path, cc_sz, cc_inst);
+      copy_cstr(as_path, as_sz, as_inst);
+      copy_cstr(ld_path, ld_sz, ld_inst);
+      copy_cstr(ar_path, ar_sz, ar_inst);
+      copy_cstr(sim_path, sim_sz, sim_inst);
+      copy_cstr(nlib_path, nlib_sz, nlib_inst);
+      path_dirname(nlib_inc_inst, nlib_inc, nlib_inc_sz);
+      return;
+   }
+
+   die("could not locate companion tools/runtime next to %s or in the source tree", self_path);
 }
 
 static void temp_store_init(temp_store_t *ts)
@@ -760,14 +871,14 @@ int main(int argc, char **argv)
    arg0 = argv[0];
    temp_store_init(&temps);
    get_self_path(self_path, sizeof(self_path), argv[0]);
-   build_tool_path(cc_path, sizeof(cc_path), self_path, "compiler", "n65cc");
-   build_tool_path(as_path, sizeof(as_path), self_path, "assembler", "n65asm");
-   build_tool_path(ld_path, sizeof(ld_path), self_path, "linker", "n65ld");
-   build_tool_path(ar_path, sizeof(ar_path), self_path, "archiver", "n65ar");
-   build_tool_path(sim_path, sizeof(sim_path), self_path, "simulator", "n65sim");
-   build_tool_path(nlib_path, sizeof(nlib_path), self_path, "libraries/nlib", "nlib.a65");
-   build_tool_path(nlib_inc, sizeof(nlib_inc), self_path, "libraries/nlib", "nlib.inc");
-   path_dirname(nlib_inc, nlib_inc, sizeof(nlib_inc));
+   resolve_tool_paths(self_path,
+      cc_path, sizeof(cc_path),
+      as_path, sizeof(as_path),
+      ld_path, sizeof(ld_path),
+      ar_path, sizeof(ar_path),
+      sim_path, sizeof(sim_path),
+      nlib_path, sizeof(nlib_path),
+      nlib_inc, sizeof(nlib_inc));
 
    parse_args(argc, argv, &opt, cc_path, as_path, ld_path, ar_path, sim_path);
 
