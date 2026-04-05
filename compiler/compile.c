@@ -49,6 +49,8 @@ static const char *named_loop_continue_stack[128];
 static int named_loop_depth = 0;
 static const char *pending_loop_label_name = NULL;
 
+static const char *next_label(const char *prefix);
+
 typedef struct OperatorOverload {
    const char *name;
    const ASTNode *node;
@@ -2321,6 +2323,18 @@ static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned ch
    }
 }
 
+static void emit_sign_fill_from_masked_a(void) {
+   const char *zero_label = next_label("signext_zero");
+   const char *done_label = next_label("signext_done");
+
+   emit(&es_code, "    beq %s\n", zero_label);
+   emit(&es_code, "    lda #$ff\n");
+   emit(&es_code, "    bne %s\n", done_label);
+   emit(&es_code, "%s:\n", zero_label);
+   emit(&es_code, "    lda #$00\n");
+   emit(&es_code, "%s:\n", done_label);
+}
+
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
@@ -2356,12 +2370,7 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
             emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + sign_src_mem) : sign_src_mem);
             emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
             emit(&es_code, "    and #$80\n");
-            emit(&es_code, "    beq :+\n");
-            emit(&es_code, "    lda #$ff\n");
-            emit(&es_code, "    bne :++\n");
-            emit(&es_code, ":\n");
-            emit(&es_code, "    lda #$00\n");
-            emit(&es_code, ":\n");
+            emit_sign_fill_from_masked_a();
          }
          else {
             emit(&es_code, "    lda #$00\n");
@@ -2387,12 +2396,7 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
          emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + sign_src_mem) : sign_src_mem);
          emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr0)");
          emit(&es_code, "    and #$80\n");
-         emit(&es_code, "    beq :+\n");
-         emit(&es_code, "    lda #$ff\n");
-         emit(&es_code, "    bne :++\n");
-         emit(&es_code, ":\n");
-         emit(&es_code, "    lda #$00\n");
-         emit(&es_code, ":\n");
+         emit_sign_fill_from_masked_a();
       }
       else {
          emit(&es_code, "    lda #$00\n");
@@ -2430,12 +2434,7 @@ static void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, 
          emit(&es_code, "    ldy #%d\n", src_offset + sign_src_mem);
          emit(&es_code, "    lda %s,y\n", symbol);
          emit(&es_code, "    and #$80\n");
-         emit(&es_code, "    beq :+\n");
-         emit(&es_code, "    lda #$ff\n");
-         emit(&es_code, "    bne :++\n");
-         emit(&es_code, ":\n");
-         emit(&es_code, "    lda #$00\n");
-         emit(&es_code, ":\n");
+         emit_sign_fill_from_masked_a();
       }
       else {
          emit(&es_code, "    lda #$00\n");

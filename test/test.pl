@@ -67,6 +67,7 @@ sub parse_directives {
    my %meta = (
       expectasm => [],
       expectasmordered => [],
+      forbidasm => [],
       expecterr => [],
       forbiderr => [],
       expectsim => [],
@@ -94,6 +95,9 @@ sub parse_directives {
       }
       elsif ($line =~ /^\/\/ expectasmordered:\s*(.*?)\s*$/) {
          push @{$meta{expectasmordered}}, $1;
+      }
+      elsif ($line =~ /^\/\/ forbidasm:\s*(.*?)\s*$/) {
+         push @{$meta{forbidasm}}, $1;
       }
       elsif ($line =~ /^\/\/ expecterr:\s*(.*?)\s*$/) {
          push @{$meta{expecterr}}, $1;
@@ -303,7 +307,7 @@ sub run_compile_case {
       exit(-1);
    }
 
-   if (@{$meta->{expectasm}} || @{$meta->{expectasmordered}}) {
+   if (@{$meta->{expectasm}} || @{$meta->{expectasmordered}} || @{$meta->{forbidasm}}) {
       my $asm = slurp_file($outfile);
       require_substrings($asm, $meta->{expectasm}, 'assembly', $file, $outfile);
       my $start = 0;
@@ -315,6 +319,13 @@ sub run_compile_case {
             exit(-1);
          }
          $start = $pos + length($needle);
+      }
+      for my $needle (@{$meta->{forbidasm}}) {
+         if (index($asm, $needle) >= 0) {
+            print "[$FAIL] $file unexpected assembly fragment: $needle\n";
+            print "$outfile\n";
+            exit(-1);
+         }
       }
    }
 

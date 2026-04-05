@@ -1,0 +1,21 @@
+// n65cc -I .
+// expectasmordered: beq @signext_zero_
+// expectasmordered: lda #$ff
+// expectasmordered: bne @signext_done_
+// expectasmordered: @signext_zero_
+// expectasmordered: lda #$00
+// expectasmordered: @signext_done_
+// forbidasm: beq :+
+// forbidasm: bne :++
+
+include "machine_6502.n"
+
+type s2 { $size:2 $signed $endian:little };
+type u3 { $size:3 $unsigned $endian:little };
+
+u3 g;
+s2 a;
+
+void main(void) {
+   g := a;
+}
