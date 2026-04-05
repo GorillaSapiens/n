@@ -214,8 +214,8 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 {STRING} {
    yylval.str = strdup(yytext + 1);
    yylval.str[strlen(yylval.str) - 1] = 0;
-   // TODO FIX process backslash escapes somewhere
-   // should not be done here, as we'll need to do character set translation
+   // we do not process backslash escapes here.
+   // that along with character set translation in xform.c
    return STRING;
 }
 
