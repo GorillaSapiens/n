@@ -1,6 +1,6 @@
 # n Toolchain (`n65driver`, `n65cc`, `n65asm`, `n65ar`, `n65ld`, `n65sim`)
 
-`n` is a small, experimental C-like programming language designed for simplicity, low-level clarity, and eventual embedded use. The project focuses on human-readable syntax, a minimal type system, and ease of compiler implementation... good for teaching, systems tinkering, or writing your own language from scratch.
+`n` is a small C-like programming language designed for simplicity, low-level clarity, and embedded use. The project focuses on human-readable syntax, a minimal type system, and ease of compiler implementation... good for teaching, systems tinkering, or writing your own language from scratch.
 
 This repository contains the `n` language compiler (`n65cc`) plus a companion 6502 assembler (`n65asm`), archiver (`n65ar`), linker (`n65ld`), simulator (`n65sim`), a GCC-like driver (`n65driver`), and support libraries.
 
