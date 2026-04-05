@@ -54,7 +54,6 @@ usage() if $expbits !~ /^\d+$/ || $expbits <= 0;
 
 my $total = $size * 8;
 die "$0: invalid layout\n" if 1 + $expbits >= $total;
-die "$0: generated arithmetic currently supports sizes up to 8 bytes\n" if $size > 8;
 
 my $mbits = $total - 1 - $expbits;
 my $last = $size - 1;
@@ -380,6 +379,22 @@ sub base_runtime_block {
    return $s;
 }
 
+sub proc_decl_text {
+   my ($name) = @_;
+   return "extern void $name(void);
+
+";
+}
+
+sub build_unit_text {
+   my ($storage_prefix, $vars, $decls, $body) = @_;
+   return comment_header()
+      . standalone_prelude()
+      . base_runtime_block($storage_prefix, $vars)
+      . ($decls || '')
+      . ($body || '');
+}
+
 sub add_impl_text {
    my ($static_prefix) = @_;
    my $s = "${static_prefix}void $add_impl(void) {\n";
@@ -642,47 +657,94 @@ PRELUDE
    return $s;
 }
 
-my %build_ops = (
+my %build_units = (
+   core => {
+      source_name => "${typename}_core.n",
+      source_text => sub { return build_unit_text('', {
+         ga => 1, gb => 1, gr => 1,
+         gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1,
+         gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1, gunordered => 1,
+      }, '', ''); },
+   },
+   add_impl => {
+      source_name => "${typename}_add_impl.n",
+      source_text => sub { return build_unit_text('extern ', {
+         ga => 1, gb => 1, gr => 1,
+         gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1,
+      }, '', add_impl_text('')); },
+   },
+   cmp_impl => {
+      source_name => "${typename}_cmp_impl.n",
+      source_text => sub { return build_unit_text('extern ', {
+         ga => 1, gb => 1, gcmp => 1, gunordered => 1,
+      }, '', cmp_impl_text('')); },
+   },
+   mul_impl => {
+      source_name => "${typename}_mul_impl.n",
+      source_text => sub { return build_unit_text('extern ', {
+         ga => 1, gb => 1, gr => 1,
+         gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1,
+         gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1,
+      }, '', mul_impl_text('')); },
+   },
+   div_impl => {
+      source_name => "${typename}_div_impl.n",
+      source_text => sub { return build_unit_text('extern ', {
+         ga => 1, gb => 1, gr => 1,
+         gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1,
+         gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1,
+      }, '', div_impl_text('')); },
+   },
    add => {
       source_name => "${typename}_operator_add.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1 }) . add_impl_text('static ') . operator_add_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($add_impl), operator_add_text()); },
    },
    sub => {
       source_name => "${typename}_operator_sub.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1 }) . add_impl_text('static ') . operator_sub_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($add_impl), operator_sub_text()); },
    },
    mul => {
       source_name => "${typename}_operator_mul.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 }) . mul_impl_text('static ') . operator_mul_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($mul_impl), operator_mul_text()); },
    },
    div => {
       source_name => "${typename}_operator_div.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gr => 1, gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1, gmant_ll => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 }) . div_impl_text('static ') . operator_div_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($div_impl), operator_div_text()); },
    },
    eq => {
       source_name => "${typename}_operator_eq.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_eq_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_eq_text()); },
    },
    ne => {
       source_name => "${typename}_operator_ne.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_ne_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_ne_text()); },
    },
    lt => {
       source_name => "${typename}_operator_lt.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_lt_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_lt_text()); },
    },
    gt => {
       source_name => "${typename}_operator_gt.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_gt_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_gt_text()); },
    },
    le => {
       source_name => "${typename}_operator_le.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_le_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_le_text()); },
    },
    ge => {
       source_name => "${typename}_operator_ge.n",
-      source_text => sub { return comment_header() . standalone_prelude() . base_runtime_block('static ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }) . cmp_impl_text('static ') . operator_ge_text(); },
+      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_ge_text()); },
    },
+);
+
+my @build_order = qw(
+   add sub mul div eq ne lt gt le ge
+   add_impl cmp_impl mul_impl div_impl
+   core
 );
 
 sub run_checked {
@@ -716,15 +778,15 @@ sub build_mode {
    close($dfh);
 
    my @member_objects;
-   for my $key (qw(add sub mul div eq ne lt gt le ge)) {
-      my $src_name = $build_ops{$key}->{source_name};
+   for my $key (@build_order) {
+      my $src_name = $build_units{$key}->{source_name};
       my $src_path = File::Spec->catfile($out_dir, $src_name);
       my ($stem) = $src_name =~ /^(.*)\.n$/;
       my $s_path = File::Spec->catfile($out_dir, "$stem.s");
       my $o_path = File::Spec->catfile($out_dir, "$stem.o65");
 
       open(my $sfh, '>', $src_path) or die "$0: could not write $src_path: $!\n";
-      print $sfh $build_ops{$key}->{source_text}->();
+      print $sfh $build_units{$key}->{source_text}->();
       close($sfh);
 
       run_checked($n65cc, '-quiet', $src_path, '-o', $s_path);

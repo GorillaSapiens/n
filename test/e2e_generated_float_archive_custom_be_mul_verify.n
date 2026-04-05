@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectexit: 0
-// archive: generated_float_archive_gf3be_operator_mul.n
+// archivegroup: gf3be_mul_archive generated_float_archive_gf3be_operator_mul.n generated_float_archive_gf3be_mul_impl.n generated_float_archive_gf3be_core.n
 include "machine_6502.n"
 include "generated_float_archive_gf3be_decls.n"
 

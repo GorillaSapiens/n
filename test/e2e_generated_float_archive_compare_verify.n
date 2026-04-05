@@ -1,6 +1,8 @@
 // n65cc -I .
 // expectexit: 0
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_eq.n
+// archivegroup: gf32_archive generated_float_archive_gf32_cmp_impl.n
+// archivegroup: gf32_archive generated_float_archive_gf32_core.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_ne.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_lt.n
 // archivegroup: gf32_archive generated_float_archive_gf32_operator_le.n

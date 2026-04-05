@@ -1,5 +1,9 @@
 GENERATED_FLOAT_ARCHIVE_FIXTURES = \
+	generated_float_archive_gf32_add_impl.n \
+	generated_float_archive_gf32_cmp_impl.n \
+	generated_float_archive_gf32_core.n \
 	generated_float_archive_gf32_decls.n \
+	generated_float_archive_gf32_div_impl.n \
 	generated_float_archive_gf32_operator_add.n \
 	generated_float_archive_gf32_operator_div.n \
 	generated_float_archive_gf32_operator_eq.n \
@@ -8,7 +12,10 @@ GENERATED_FLOAT_ARCHIVE_FIXTURES = \
 	generated_float_archive_gf32_operator_le.n \
 	generated_float_archive_gf32_operator_lt.n \
 	generated_float_archive_gf32_operator_ne.n \
+	generated_float_archive_gf32_operator_sub.n \
+	generated_float_archive_gf3be_core.n \
 	generated_float_archive_gf3be_decls.n \
+	generated_float_archive_gf3be_mul_impl.n \
 	generated_float_archive_gf3be_operator_mul.n
 
 all: unit e2e
@@ -17,7 +24,11 @@ generated_float_archive_fixtures:
 	tmpdir=$$(mktemp -d); \
 	trap 'rm -rf "$$tmpdir"' 0 1 2 3 15; \
 	perl ../libraries/float/gen.pl --build "$$tmpdir/gf32" gf32 little 4 8; \
+	cp "$$tmpdir/gf32/gf32_add_impl.n" generated_float_archive_gf32_add_impl.n; \
+	cp "$$tmpdir/gf32/gf32_cmp_impl.n" generated_float_archive_gf32_cmp_impl.n; \
+	cp "$$tmpdir/gf32/gf32_core.n" generated_float_archive_gf32_core.n; \
 	cp "$$tmpdir/gf32/gf32_decls.n" generated_float_archive_gf32_decls.n; \
+	cp "$$tmpdir/gf32/gf32_div_impl.n" generated_float_archive_gf32_div_impl.n; \
 	cp "$$tmpdir/gf32/gf32_operator_add.n" generated_float_archive_gf32_operator_add.n; \
 	cp "$$tmpdir/gf32/gf32_operator_div.n" generated_float_archive_gf32_operator_div.n; \
 	cp "$$tmpdir/gf32/gf32_operator_eq.n" generated_float_archive_gf32_operator_eq.n; \
@@ -26,8 +37,11 @@ generated_float_archive_fixtures:
 	cp "$$tmpdir/gf32/gf32_operator_le.n" generated_float_archive_gf32_operator_le.n; \
 	cp "$$tmpdir/gf32/gf32_operator_lt.n" generated_float_archive_gf32_operator_lt.n; \
 	cp "$$tmpdir/gf32/gf32_operator_ne.n" generated_float_archive_gf32_operator_ne.n; \
+	cp "$$tmpdir/gf32/gf32_operator_sub.n" generated_float_archive_gf32_operator_sub.n; \
 	perl ../libraries/float/gen.pl --build "$$tmpdir/gf3be" gf3be big 3 7; \
+	cp "$$tmpdir/gf3be/gf3be_core.n" generated_float_archive_gf3be_core.n; \
 	cp "$$tmpdir/gf3be/gf3be_decls.n" generated_float_archive_gf3be_decls.n; \
+	cp "$$tmpdir/gf3be/gf3be_mul_impl.n" generated_float_archive_gf3be_mul_impl.n; \
 	cp "$$tmpdir/gf3be/gf3be_operator_mul.n" generated_float_archive_gf3be_operator_mul.n
 
 unit: generated_float_archive_fixtures

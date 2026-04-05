@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectexit: 0
-// archive: generated_float_archive_gf32_operator_add.n
+// archivegroup: gf32_add_archive generated_float_archive_gf32_operator_add.n generated_float_archive_gf32_operator_sub.n generated_float_archive_gf32_add_impl.n generated_float_archive_gf32_core.n
 include "machine_6502.n"
 include "generated_float_archive_gf32_decls.n"
 
@@ -40,6 +40,7 @@ void main(void) {
    gf32_bits mone;
    gf32_bits mtwo;
    gf32_bits mthree;
+   gf32_bits two;
    gf32_bits got;
 
    one.f := 1.0;
@@ -48,12 +49,16 @@ void main(void) {
    mone.f := -1.0;
    mtwo.f := -2.0;
    mthree.f := -3.0;
+   two.f := 2.0;
 
    got.f := one.f + halfv.f;
    expect4(got, onep5, 1);
 
    got.f := mone.f + mtwo.f;
    expect4(got, mthree, 5);
+
+   got.f := two.f - halfv.f;
+   expect4(got, onep5, 9);
 
    pass();
 }

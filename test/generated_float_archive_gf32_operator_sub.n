@@ -28,17 +28,15 @@ union nlf_gf32_overlay {
 };
 extern nlf_gf32_overlay nlf_gf32_a;
 extern nlf_gf32_overlay nlf_gf32_b;
-extern int nlf_gf32_cmp;
-extern bool nlf_gf32_unordered;
+extern nlf_gf32_overlay nlf_gf32_r;
 
-extern void nlf_gf32_cmp_impl(void);
+extern void nlf_gf32_add_impl(void);
 
-bool operator>(gf32 lhs, gf32 rhs) {
+gf32 operator-(gf32 lhs, gf32 rhs) {
    nlf_gf32_a.value := lhs;
    nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return false; }
-   if (nlf_gf32_cmp == 2) { return true; }
-   return false;
+   nlf_gf32_b.bits.sign ^= 1`nlf_gf32_u;
+   nlf_gf32_add_impl();
+   return nlf_gf32_r.value;
 }
 

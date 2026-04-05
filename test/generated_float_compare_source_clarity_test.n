@@ -1,7 +1,8 @@
 // n65cc -I .
-// expectfile: generated_float_archive_gf32_operator_eq.n static bool nlf_gf32_unordered;
-// expectfile: generated_float_archive_gf32_operator_eq.n nlf_gf32_unordered := false;
-// expectfile: generated_float_archive_gf32_operator_eq.n nlf_gf32_unordered := true;
+// expectfile: generated_float_archive_gf32_core.n bool nlf_gf32_unordered;
+// expectfile: generated_float_archive_gf32_cmp_impl.n nlf_gf32_unordered := false;
+// expectfile: generated_float_archive_gf32_cmp_impl.n nlf_gf32_unordered := true;
+// expectfile: generated_float_archive_gf32_operator_eq.n extern void nlf_gf32_cmp_impl(void);
 // expectfile: generated_float_archive_gf32_operator_eq.n if (nlf_gf32_unordered) { return false; }
 // expectfile: generated_float_archive_gf32_operator_eq.n if (nlf_gf32_cmp == 0) { return true; }
 // expectfile: generated_float_archive_gf32_operator_ne.n if (nlf_gf32_unordered) { return true; }

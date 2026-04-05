@@ -15,6 +15,8 @@ type longlong { $size:8 $endian:little };
 type gf32 { $size:4 $endian:little $float:ieee754 };
 
 type nlf_gf32_u { $size:4 $unsigned $endian:little };
+type nlf_gf32_wide_u { $size:8 $unsigned $endian:little };
+
 struct nlf_gf32_bits {
    nlf_gf32_u mantissa:23;
    nlf_gf32_u exponent:8;
@@ -26,19 +28,25 @@ union nlf_gf32_overlay {
    char bytes[4];
    nlf_gf32_bits bits;
 };
-extern nlf_gf32_overlay nlf_gf32_a;
-extern nlf_gf32_overlay nlf_gf32_b;
-extern int nlf_gf32_cmp;
-extern bool nlf_gf32_unordered;
+union nlf_gf32_wide_overlay {
+   nlf_gf32_wide_u v;
+   char bytes[8];
+};
 
-extern void nlf_gf32_cmp_impl(void);
-
-bool operator>(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return false; }
-   if (nlf_gf32_cmp == 2) { return true; }
-   return false;
-}
+nlf_gf32_overlay nlf_gf32_a;
+nlf_gf32_overlay nlf_gf32_b;
+nlf_gf32_overlay nlf_gf32_r;
+nlf_gf32_wide_overlay nlf_gf32_wide_a;
+nlf_gf32_wide_overlay nlf_gf32_wide_b;
+nlf_gf32_wide_overlay nlf_gf32_wide_p;
+nlf_gf32_wide_overlay nlf_gf32_wide_t;
+long nlf_gf32_mant_ll;
+long nlf_gf32_exp_a;
+long nlf_gf32_exp_b;
+int nlf_gf32_sign_out;
+long nlf_gf32_sig_a;
+long nlf_gf32_sig_b;
+long nlf_gf32_sig_out;
+int nlf_gf32_cmp;
+bool nlf_gf32_unordered;
 
