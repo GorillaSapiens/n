@@ -361,6 +361,9 @@ static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend)
 static void emit_deref_ptr(int ptrno);
 static int expr_byte_index(const ASTNode *type, int size, int i);
 static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
+static void emit_runtime_fill_ptr1(int count, unsigned char value);
+static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type);
+static void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size);
 static void emit_store_immediate_to_fp(int dst_offset, const unsigned char *bytes, int size);
 static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, int fallback);
 static bool string_literal_is_char_constant(const char *text);
@@ -2307,20 +2310,59 @@ static bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int 
    return false;
 }
 
-static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value) {
-   bool direct;
+static void emit_runtime_fill_ptr1(int count, unsigned char value) {
+   const char *helper;
+
    if (count <= 0) {
       return;
    }
-   direct = dst_offset >= 0 && dst_offset + start + count <= 256;
-   if (!direct) {
-      emit_prepare_fp_ptr(0, dst_offset + start);
-   }
-   for (int i = 0; i < count; i++) {
-      emit(&es_code, "    ldy #%d\n", direct ? (dst_offset + start + i) : i);
+
+   helper = value == 0 ? "zeroN" : "setN";
+   remember_runtime_import(helper);
+   emit(&es_code, "    lda #$%02x\n", count & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   if (value != 0) {
       emit(&es_code, "    lda #$%02x\n", value);
-      emit(&es_code, "    sta %s,y\n", direct ? "(fp)" : "(ptr0)");
+      emit(&es_code, "    sta arg1\n");
    }
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type) {
+   bool src_big_endian = type_is_big_endian(src_type);
+   bool dst_big_endian = type_is_big_endian(dst_type);
+   bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
+
+   if (dst_size <= 0 || src_size <= 0 || dst_size == src_size || src_big_endian != dst_big_endian || src_big_endian) {
+      return NULL;
+   }
+   return is_signed ? "copysxN" : "copyzxN";
+}
+
+static void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size) {
+   if (!helper || src_size <= 0 || dst_size <= 0) {
+      return;
+   }
+
+   remember_runtime_import(helper);
+   emit(&es_code, "    lda #$%02x\n", src_size & 0xff);
+   emit(&es_code, "    sta arg0\n");
+   if (!strcmp(helper, "cpyN")) {
+      emit(&es_code, "    jsr _cpyN\n");
+      return;
+   }
+   emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
+   emit(&es_code, "    sta arg1\n");
+   emit(&es_code, "    jsr _%s\n", helper);
+}
+
+static void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value) {
+   if (count <= 0) {
+      return;
+   }
+
+   emit_prepare_fp_ptr(1, dst_offset + start);
+   emit_runtime_fill_ptr1(count, value);
 }
 
 static void emit_sign_fill_from_masked_a(void) {
@@ -2342,6 +2384,7 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
    bool dst_direct;
    bool src_direct;
    int sign_src_mem;
+   const char *helper;
 
    if (dst_size <= 0 || src_size <= 0) {
       return;
@@ -2350,6 +2393,14 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
    dst_direct = dst_offset >= 0 && dst_offset + dst_size <= 256;
    src_direct = src_offset >= 0 && src_offset + src_size <= 256;
    sign_src_mem = endian_mem_index_for_significance(src_size, src_big_endian, src_size - 1);
+   helper = runtime_copy_convert_helper_name(dst_size, dst_type, src_size, src_type);
+
+   if (helper) {
+      emit_prepare_fp_ptr(0, src_offset);
+      emit_prepare_fp_ptr(1, dst_offset);
+      emit_runtime_copy_ptr0_to_ptr1(helper, src_size, dst_size);
+      return;
+   }
 
    if (!src_direct) {
       emit_prepare_fp_ptr(0, src_offset);
@@ -2412,6 +2463,7 @@ static void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, 
    bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
    bool dst_direct;
    int sign_src_mem;
+   const char *helper;
 
    if (dst_size <= 0 || src_size <= 0) {
       return;
@@ -2419,6 +2471,13 @@ static void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, 
 
    dst_direct = dst_offset >= 0 && dst_offset + dst_size <= 256;
    sign_src_mem = endian_mem_index_for_significance(src_size, src_big_endian, src_size - 1);
+   helper = runtime_copy_convert_helper_name(dst_size, dst_type, src_size, src_type);
+   if (helper) {
+      emit_load_address_to_ptr(0, symbol, src_offset);
+      emit_prepare_fp_ptr(1, dst_offset);
+      emit_runtime_copy_ptr0_to_ptr1(helper, src_size, dst_size);
+      return;
+   }
    if (!dst_direct) {
       emit_prepare_fp_ptr(1, dst_offset);
    }
@@ -4701,11 +4760,10 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
          ctx->locals = protected_locals;
       }
    }
-   for (int i = 0; i < copy_size; i++) {
-      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-      emit(&es_code, "    lda #$00\n");
-      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+   if (dst_direct) {
+      emit_prepare_fp_ptr(1, dst_offset);
    }
+   emit_runtime_fill_ptr1(copy_size, 0x00);
    for (int bit = 0; bit < src->bit_width; bit++) {
       int src_byte = (src->bit_offset + bit) / 8;
       int src_mask = 1 << ((src->bit_offset + bit) % 8);
@@ -4738,10 +4796,14 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
          emit(&es_code, "    ora #$%02x\n", ((0xff << rem) & 0xff));
          emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
       }
-      for (int i = sign_byte + 1; i < copy_size; i++) {
-         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-         emit(&es_code, "    lda #$ff\n");
-         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      if (copy_size - (sign_byte + 1) > 0) {
+         if (dst_direct) {
+            emit_prepare_fp_ptr(1, dst_offset + sign_byte + 1);
+         }
+         else {
+            emit_add_immediate_to_ptr(1, sign_byte + 1);
+         }
+         emit_runtime_fill_ptr1(copy_size - (sign_byte + 1), 0xff);
       }
       emit(&es_code, "%s:\n", skip_label);
    }

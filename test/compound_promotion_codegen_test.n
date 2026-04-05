@@ -1,10 +1,17 @@
 // n65cc
-// expectasm: and #$80
-// expectasm: ldy #6
-// expectasm: sta (fp),y
-// expectasm: ldy #9
-// expectasm: lda #$00
-// expectasm: sta (fp),y
+// expectasm: .import _copysxN
+// expectasm: .import _copyzxN
+// expectasmordered: lda #$02
+// expectasmordered: sta arg0
+// expectasmordered: lda #$04
+// expectasmordered: sta arg1
+// expectasmordered: jsr _copysxN
+// expectasmordered: lda #$04
+// expectasmordered: sta arg0
+// expectasmordered: lda #$05
+// expectasmordered: sta arg1
+// expectasmordered: jsr _copyzxN
+// forbidasm: and #$80
 
 type void      { $size:0 };
 type bool      { $size:1 };

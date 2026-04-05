@@ -1,10 +1,12 @@
 // n65cc -I .
-// expectasmordered: beq @signext_zero_
-// expectasmordered: lda #$ff
-// expectasmordered: bne @signext_done_
-// expectasmordered: @signext_zero_
-// expectasmordered: lda #$00
-// expectasmordered: @signext_done_
+// expectasm: .import _copysxN
+// expectasmordered: lda #$02
+// expectasmordered: sta arg0
+// expectasmordered: lda #$03
+// expectasmordered: sta arg1
+// expectasmordered: jsr _copysxN
+// forbidasm: @signext_zero_
+// forbidasm: @signext_done_
 // forbidasm: beq :+
 // forbidasm: bne :++
 

@@ -74,6 +74,10 @@ void shiftN(void);
 void pushN(void);
 void popN(void);
 void cpyN(void);
+void setN(void);
+void zeroN(void);
+void copyzxN(void);
+void copysxN(void);
 void comp2N(void);
 void swapN(void);
 

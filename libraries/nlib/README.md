@@ -34,7 +34,7 @@ These are mostly small assembly helpers that the compiler can target directly:
 - comparisons: `eq`, `lt`, `le`
 - bitwise ops: `and`, `or`, `xor`, `not`
 - shifts: logical/arithmetic, by 1, by 8, and by arbitrary counts
-- stack/frame helpers: `pushN`, `popN`, `cpyN`, `swapN`, `comp2N`, `fp2ptr*`
+- stack/frame helpers: `pushN`, `popN`, `cpyN`, `setN`, `zeroN`, `copyzxN`, `copysxN`, `swapN`, `comp2N`, `fp2ptr*`
 - increment/decrement helpers
 
 The exact entry points are visible in `nlib.h`, the assembly sources in `asm/`, and the built archive members in `wrk/` after `make`.

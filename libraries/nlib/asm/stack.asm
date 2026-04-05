@@ -40,6 +40,106 @@
     rts
 .endproc
 
+.proc _setN
+    ; set arg0 bytes at ptr1 to arg1
+    ldx arg0
+    beq @done
+    ldy #0
+    lda arg1
+@loop:
+    sta (ptr1), y
+    iny
+    dex
+    bne @loop
+@done:
+    rts
+.endproc
+
+.proc _zeroN
+    ; zero arg0 bytes at ptr1
+    lda #0
+    sta arg1
+    jmp _setN
+.endproc
+
+.proc _copyzxN
+    ; little-endian copy from ptr0 to ptr1 with zero extension/truncation
+    ; arg0 = source size, arg1 = destination size
+    ldy #0
+    lda arg0
+    cmp arg1
+    bcc @copy_src
+    ldx arg1
+    jmp @copy
+@copy_src:
+    ldx arg0
+@copy:
+    beq @post_copy
+@copy_loop:
+    lda (ptr0), y
+    sta (ptr1), y
+    iny
+    dex
+    bne @copy_loop
+@post_copy:
+    lda arg1
+    cmp arg0
+    bcc @done
+    beq @done
+    lda #0
+@fill_loop:
+    sta (ptr1), y
+    iny
+    cpy arg1
+    bcc @fill_loop
+@done:
+    rts
+.endproc
+
+.proc _copysxN
+    ; little-endian copy from ptr0 to ptr1 with sign extension/truncation
+    ; arg0 = source size, arg1 = destination size
+    ldy #0
+    lda arg0
+    cmp arg1
+    bcc @copy_src
+    ldx arg1
+    jmp @copy
+@copy_src:
+    ldx arg0
+@copy:
+    beq @post_copy
+@copy_loop:
+    lda (ptr0), y
+    sta (ptr1), y
+    iny
+    dex
+    bne @copy_loop
+@post_copy:
+    lda arg1
+    cmp arg0
+    bcc @done
+    beq @done
+    tya
+    beq @zero_fill
+    dey
+    lda (ptr0), y
+    and #$80
+    iny
+    beq @zero_fill
+    lda #$ff
+    bne @fill_loop
+@zero_fill:
+    lda #$00
+@fill_loop:
+    sta (ptr1), y
+    iny
+    cpy arg1
+    bcc @fill_loop
+@done:
+    rts
+.endproc
+
 .proc _comp2N
     ; arg0 bytes ptr1 = 2's complement of ptr0
     ldx arg0

@@ -1,8 +1,11 @@
 // n65cc
+// expectasm: .import _zeroN
 // expectasm: .export __init_
 // expectasm: .proc __init_
-// expectasm: jsr twice
-// expectasm: sta g,y
+// expectasmordered: .proc __init_
+// expectasmordered: jsr _zeroN
+// expectasmordered: jsr twice
+// expectasmordered: sta g,y
 
 type void { $size:0 };
 type bool { $size:1 };
