@@ -8,7 +8,7 @@
 
 static long long parse_binary(const char *p) {
    long long ret = 0;
-   p += 2;
+   p += 2; // skip leading 0[bB]
    while (*p) {
       ret <<= 1;
       ret |= (*p - '0');
@@ -59,61 +59,36 @@ static int c2n(char c) {
    return -1;
 }
 
-static int make_le_helper(const char *digits, const char *op, int bpc,
+static int make_le_helper(const char *p, const char *op, int bpc,
                           unsigned char *target, int size) {
-   int len = strlen(digits);
-   int n = 0;
-   int used = 0;
-   int o = 0;
-   int a = 0;
    int i;
-   bool overflow = false;
-   const char *p = digits + len - 1;
+   int max = 1;
+   int carry = 0;
 
-   for (i = 0; i < len; i++) {
-      unsigned char byte;
+   while (*p) {
+      carry = c2n(*p);
 
-      a |= c2n(*p) << o;
-      o += bpc;
-      if (o >= 8) {
-         byte = a;
-         if (n < size) {
-            target[n] = byte;
-         }
-         else if (byte) {
-            overflow = true;
-         }
-         if (byte) {
-            used = n + 1;
-         }
-         n++;
-         o -= 8;
-         a >>= 8;
+      if (carry < 0 || carry >= (1 << bpc)) {
+         error_user("character '%c' in '%s' is not a valid digit!", *p, op);
+         return size;
       }
-      p--;
+
+      for (i = 0; i < max; i++) {
+         carry = (target[i] << bpc) + carry;
+         target[i] = carry;
+         carry >>= 8;
+      }
+      if (carry) {
+         if (max >= size) {
+            error_user("integer '%s' is too big for %d bytes!", op, size);
+            return size;
+         }
+         target[max++] = carry;
+      }
+      p++;
    }
 
-   if (o > 0 || n == 0) {
-      unsigned char byte = a;
-      if (n < size) {
-         target[n] = byte;
-      }
-      else if (byte) {
-         overflow = true;
-      }
-      if (byte) {
-         used = n + 1;
-      }
-      n++;
-   }
-
-   if (overflow) {
-      warning("integer '%s' is too big for %d bytes!", op, size);
-      // TODO FIX should this be an error?
-      return size;
-   }
-
-   return used ? used : 1;
+   return max;
 }
 
 static int make_le_binary(const char *p, const char *op,
@@ -134,42 +109,28 @@ static int make_le_octal(const char *p, const char *op,
 static int make_le_decimal(const char *p, unsigned char *target, int size) {
    int i;
    int max = 1;
-   int carry;
+   int carry = 0;
    const char *op = p;
 
    while (*p) {
-      carry = 0;
+      carry = c2n(*p);
+
+      if (carry < 0 || carry >= 10) {
+         error_user("character '%c' in '%s' is not a valid digit!", *p, op);
+         return size;
+      }
+
       for (i = 0; i < max; i++) {
          carry = target[i] * 10 + carry;
          target[i] = carry;
          carry >>= 8;
       }
       if (carry) {
-         target[max++] = carry;
-         if (max > size) {
-            warning("integer '%s' is too big for %d bytes!", op, size);
-            // TODO FIX should this be an error?
+         if (max >= size) {
+            error_user("integer '%s' is too big for %d bytes!", op, size);
             return size;
          }
-      }
-
-      carry = target[0] + *p - '0';
-      target[0] = carry;
-      carry >>= 8;
-      i = 1;
-      while (i < max && carry) {
-         carry = target[i] + carry;
-         target[i] = carry;
-         carry >>= 8;
-         i++;
-      }
-      if (carry) {
          target[max++] = carry;
-         if (max > size) {
-            warning("integer '%s' is too big for %d bytes!", op, size);
-            // TODO FIX should this be an error?
-            return size;
-         }
       }
       p++;
    }
