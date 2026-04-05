@@ -76,6 +76,16 @@
 .proc _callptr0
     ; indirect call through ptr0
     ; pushes (target - 1) so RTS transfers control to ptr0
+    ;
+    ; Indirect call trampoline for the 6502. The CPU has no JSR (addr) instruction,
+    ; so this routine fakes one by taking the target address in ptr0, subtracting 1,
+    ; pushing that adjusted address onto the hardware stack in the order RTS expects,
+    ; and then executing RTS. Since RTS pulls the stacked address, adds 1, and jumps
+    ; to it, control transfers to ptr0. This preserves normal call/return behavior
+    ; only because _callptr0 itself was entered by JSR, so the caller's real return
+    ; address is already sitting underneath the fake one on the stack; when the
+    ; target later executes RTS, it returns to the original caller as usual.
+    ;
     sec
     lda ptr0
     sbc #1
