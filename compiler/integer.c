@@ -1,6 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <stdbool.h>
 
 #include "messages.h"
@@ -150,12 +149,18 @@ int make_be_int(const char *p, unsigned char *target, int size) {
 void negate_be_int(unsigned char *target, int size) {
    int carry = 1;
    for (int i = size - 1; i >= 0; i--) {
-      carry = (target[i] ^  0xFF) + carry;
+      carry = (target[i] ^ 0xFF) + carry;
       target[i] = carry;
       carry >>= 8;
    }
 }
 
+// Build the value by writing its byte representation
+// directly into a native long long. This assumes an
+// 8-bit-byte, two's-complement host and chooses
+// little- or big-endian packing based on the host
+// representation so parse_int() and make_{le,be}_int()
+// share exactly the same integer-literal decoding path.
 long long parse_int(const char *p) {
    long long ret = 1;
    bool negate = false;
