@@ -132,7 +132,6 @@ empty_cov: ;
    a := 1;
    a := "hello";
 
-   // TODO FIX this is fugly!
    a := { 1, 2, 3, };
    a := { 1, 2, 3 };
    a := { 3.14 };

@@ -81,7 +81,7 @@ int *pia;
 
 enum blanket_case_enum { BLANKET_CASE_ZERO := 0, BLANKET_CASE_ONE };
 
-int ** @ 13; // TODO FIX
+int ** @ 13;
 int *;
 
 void foo(void) {
