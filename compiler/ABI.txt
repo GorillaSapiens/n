@@ -45,13 +45,14 @@ reset/startup:
 ; initialize both sp and fp to the initial argument-stack base
 ; because the argument stack grows upward, startup should seed them at __stack_start
 
-TODO: do we need to save/restore APXY ??
-PHA/PLA is push pop for A
-PHP/PLP is push pop for P
-X and Y done through A
+A, P, X, and Y are caller-clobbered across ordinary function calls.
+Callers must assume callees may freely overwrite them unless an API explicitly
+documents stronger guarantees. The default calling sequence only preserves the
+frame pointer so the callee can establish its stack frame and the caller can
+recover it after the call.
 
-NOTE: If you care about preserving and restoring both A and P, and you want P exactly as it was, you must pull P last:
-Edit
+NOTE: If you do have a special-case wrapper that needs to preserve both A and P,
+and you want P exactly as it was, you must pull P last:
 PHP      ; save status
 PHA      ; save A
 ...

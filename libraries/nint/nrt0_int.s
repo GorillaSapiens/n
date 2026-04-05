@@ -11,6 +11,11 @@
 
 .segment "CODE"
 
+; Ordinary n function calls treat A, P, X, and Y as caller-clobbered.
+; Interrupt entry is different: the interrupted code did not agree to that ABI,
+; so the runtime saves and restores the full machine state that C-visible code
+; might have been using before it vectors to the language-level handlers.
+
 __nmi:
    php
    pha
