@@ -73,6 +73,38 @@ static void str_append(char **sp, int *lp, unsigned char byte) {
 static ASTNode *context = NULL;
 static ASTNode *working = NULL;
 
+static void describe_utf8_bytes(char *buf, size_t buflen, const char *s) {
+   size_t used = 0;
+   const unsigned char *us = (const unsigned char *) s;
+
+   if (buflen == 0) {
+      return;
+   }
+
+   buf[0] = '\0';
+   for (int i = 0; i < 4 && us[i]; i++) {
+      int wrote = snprintf(buf + used, buflen - used,
+         "%s0x%02X", i ? " " : "", us[i]);
+      if (wrote < 0 || (size_t) wrote >= buflen - used) {
+         used = buflen - 1;
+         break;
+      }
+      used += wrote;
+   }
+
+   if (used == 0) {
+      snprintf(buf, buflen, "<eos>");
+   }
+}
+
+static void error_invalid_utf8(const char *start, const char *s, const char *name) {
+   char bytes[32];
+   describe_utf8_bytes(bytes, sizeof(bytes), s);
+   error_user("[%s:%d.%d] invalid utf8 in string literal at byte offset %d while applying xform '%s' near bytes %s",
+      working->file, working->line, working->column,
+      (int) (s - start), name[0] ? name : "", bytes);
+}
+
 static void str_append_helper(char **sp, int *lp, const char *match) {
    for (int i = 0; i < context->count; i++) {
       ASTNode *item = context->children[i];
@@ -113,24 +145,24 @@ static void str_append_utf8(char **sp, int *lp, int codepoint) {
 
    if (codepoint <= 0x7F) {
       buf[0] = codepoint;
-      buf[1] = '\0';
+      buf[1] = 0;
    } else if (codepoint <= 0x7FF) {
       buf[0] = 0xC0 | ((codepoint >> 6) & 0x1F);
       buf[1] = 0x80 | (codepoint & 0x3F);
-      buf[2] = '\0';
+      buf[2] = 0;
    } else if (codepoint <= 0xFFFF) {
       buf[0] = 0xE0 | ((codepoint >> 12) & 0x0F);
       buf[1] = 0x80 | ((codepoint >> 6) & 0x3F);
       buf[2] = 0x80 | (codepoint & 0x3F);
-      buf[3] = '\0';
+      buf[3] = 0;
    } else if (codepoint <= 0x10FFFF) {
       buf[0] = 0xF0 | ((codepoint >> 18) & 0x07);
       buf[1] = 0x80 | ((codepoint >> 12) & 0x3F);
       buf[2] = 0x80 | ((codepoint >> 6) & 0x3F);
       buf[3] = 0x80 | (codepoint & 0x3F);
-      buf[4] = '\0';
+      buf[4] = 0;
    } else {
-      buf[0] = '\0'; // invalid code point
+      buf[0] = 0; // invalid code point
    }
 
    for (char *p = buf; *p; p++) {
@@ -249,9 +281,7 @@ ASTNode *do_xform(ASTNode *node, const char *name) {
             // named xform, utf8 is a lookup
             int skip = decode_utf8(s, &codepoint);
             if (skip == 0) {
-               // TODO FIX give a bit more information
-               error_user("invalid utf8 found");
-               exit(-1);
+               error_invalid_utf8(node->strval, s, name);
             }
             s += skip;
             str_append_codepoint(&ret, &retlen, codepoint);
