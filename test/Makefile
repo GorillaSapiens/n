@@ -16,7 +16,8 @@ GENERATED_FLOAT_ARCHIVE_FIXTURES = \
 	generated_float_archive_gf3be_core.n \
 	generated_float_archive_gf3be_decls.n \
 	generated_float_archive_gf3be_mul_impl.n \
-	generated_float_archive_gf3be_operator_mul.n
+	generated_float_archive_gf3be_operator_mul.n \
+	$(wildcard generated_float_archive_gf10_*.n)
 
 all: unit e2e
 
@@ -42,7 +43,11 @@ generated_float_archive_fixtures:
 	cp "$$tmpdir/gf3be/gf3be_core.n" generated_float_archive_gf3be_core.n; \
 	cp "$$tmpdir/gf3be/gf3be_decls.n" generated_float_archive_gf3be_decls.n; \
 	cp "$$tmpdir/gf3be/gf3be_mul_impl.n" generated_float_archive_gf3be_mul_impl.n; \
-	cp "$$tmpdir/gf3be/gf3be_operator_mul.n" generated_float_archive_gf3be_operator_mul.n
+	cp "$$tmpdir/gf3be/gf3be_operator_mul.n" generated_float_archive_gf3be_operator_mul.n; \
+	perl ../libraries/float/gen.pl --build "$$tmpdir/gf10" gf10 little 10 12; \
+	for f in "$$tmpdir/gf10"/gf10_*.n; do \
+		cp "$$f" "generated_float_archive_$$(basename "$$f")"; \
+	done
 
 unit: generated_float_archive_fixtures
 	./test.pl --compile-only

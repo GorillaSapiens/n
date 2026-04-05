@@ -112,6 +112,44 @@ my $cmp_impl = "nlf_${san}_cmp_impl";
 my $mul_impl = "nlf_${san}_mul_impl";
 my $div_impl = "nlf_${san}_div_impl";
 
+my $wide_math = ($size > 8) ? 1 : 0;
+my $u8 = "nlf_${san}_u8";
+my $sig = "nlf_${san}_sig";
+my $wide = "nlf_${san}_wide";
+my $sig_bytes = int(($mbits + 5 + 7) / 8);
+my $sig_last = $sig_bytes - 1;
+my $sig_bits = $sig_bytes * 8;
+my $wide_sig_bytes = $sig_bytes * 2;
+my $wide_sig_last = $wide_sig_bytes - 1;
+my $ebits = $expbits + 2;
+my $ebytes = int(($ebits + 7) / 8);
+$ebytes = 2 if $ebytes < 2;
+my ($et, $et_is_builtin);
+if ($expbits <= 14) {
+   $et = "int";
+   $et_is_builtin = 1;
+}
+elsif ($expbits <= 30) {
+   $et = "long";
+   $et_is_builtin = 1;
+}
+elsif ($expbits <= 62) {
+   $et = "longlong";
+   $et_is_builtin = 1;
+}
+else {
+   $et = "nlf_${san}_exp_t";
+   $et_is_builtin = 0;
+}
+my $EXP_ZERO_E = typed(0, $et);
+my $EXP_ONE_E = typed(1, $et);
+my $EXP_MAX_E = typed(all1s($expbits), $et);
+my $EXP_BIAS_E = typed(biass($expbits), $et);
+my $sig_hidden_bit = $mbits;
+my $sig_hidden_ext_bit = $mbits + 3;
+my $sig_carry_bit = $mbits + 1;
+my $mul_shift = $mbits - 3;
+
 my $ZERO = typed(0, $u);
 my $ONE = typed(1, $u);
 my $W_ZERO = typed(0, $wu);
@@ -274,8 +312,256 @@ sub pack_snippet {
 ";
 }
 
+
+sub wide_helper_text {
+   my $s = "";
+   $s .= "void nlf_${san}_sig_zero($sig *p) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      p->bytes[i] := 0;\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_zero($wide *p) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $wide_sig_bytes) {\n      p->bytes[i] := 0;\n      i++;\n   }\n}\n\n";
+   $s .= "bool nlf_${san}_sig_is_zero($sig *p) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      if (p->bytes[i] != 0) { return false; }\n      i++;\n   }\n   return true;\n}\n\n";
+   $s .= "nlf_${san}_u8 nlf_${san}_mask8(int bitno) {
+";
+   $s .= "   if (bitno == 0) { return 1; }
+   if (bitno == 1) { return 2; }
+   if (bitno == 2) { return 4; }
+   if (bitno == 3) { return 8; }
+   if (bitno == 4) { return 16; }
+   if (bitno == 5) { return 32; }
+   if (bitno == 6) { return 64; }
+   return 128;
+}
+
+";
+   $s .= "nlf_${san}_u8 nlf_${san}_shr1_u8(nlf_${san}_u8 value) {
+";
+   $s .= "   nlf_${san}_u8 out;
+   out := 0;
+   if ((value & 2) != 0) { out := out | 1; }
+   if ((value & 4) != 0) { out := out | 2; }
+   if ((value & 8) != 0) { out := out | 4; }
+   if ((value & 16) != 0) { out := out | 8; }
+   if ((value & 32) != 0) { out := out | 16; }
+   if ((value & 64) != 0) { out := out | 32; }
+   if ((value & 128) != 0) { out := out | 64; }
+   return out;
+}
+
+";
+   $s .= "void nlf_${san}_sig_copy($sig *dst, $sig *src) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_copy($wide *dst, $wide *src) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $wide_sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "int nlf_${san}_sig_cmp($sig *lhs, $sig *rhs) {\n";
+   $s .= "   int i;\n   i := $sig_last;\n   while (i >= 0) {\n      if (lhs->bytes[i] < rhs->bytes[i]) { return $CMP_LT; }\n      if (lhs->bytes[i] > rhs->bytes[i]) { return $CMP_GT; }\n      i--;\n   }\n   return $CMP_EQ;\n}\n\n";
+   $s .= "bool nlf_${san}_sig_get_bit($sig *p, int bitno) {\n";
+   $s .= "   int bytei;\n   int biti;\n   bytei := bitno / 8;\n   biti := bitno & 7;\n   if (bytei < 0 || bytei >= $sig_bytes) { return false; }\n   return (p->bytes[bytei] & nlf_${san}_mask8(biti)) != 0;\n}\n\n";
+   $s .= "void nlf_${san}_sig_set_bit($sig *p, int bitno) {\n";
+   $s .= "   int bytei;\n   int biti;\n   bytei := bitno / 8;\n   biti := bitno & 7;\n   if (bytei < 0 || bytei >= $sig_bytes) { return; }\n   p->bytes[bytei] := p->bytes[bytei] | nlf_${san}_mask8(biti);\n}\n\n";
+   $s .= "void nlf_${san}_sig_shl1($sig *p) {\n";
+   $s .= "   int i;\n   int carry;\n   i := 0;\n   carry := 0;\n   while (i < $sig_bytes) {\n      int nextc;\n      nextc := 0;\n      if ((p->bytes[i] & 128) != 0) { nextc := 1; }\n      p->bytes[i] := p->bytes[i] + p->bytes[i];\n      if (carry != 0) { p->bytes[i] := p->bytes[i] | 1; }\n      carry := nextc;\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_shr1($sig *p) {\n";
+   $s .= "   int i;\n   int carry;\n   i := $sig_bytes;\n   carry := 0;\n   while (i > 0) {\n      int nextc;\n      i--;\n      nextc := 0;\n      if ((p->bytes[i] & 1) != 0) { nextc := 1; }\n      p->bytes[i] := nlf_${san}_shr1_u8(p->bytes[i]);\n      if (carry != 0) { p->bytes[i] := p->bytes[i] | 128; }\n      carry := nextc;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_shr1_sticky($sig *p) {\n";
+   $s .= "   int lost;\n   lost := p->bytes[0] & 1;\n   nlf_${san}_sig_shr1(p);\n   if (lost != 0) { p->bytes[0] := p->bytes[0] | 1; }\n}\n\n";
+   $s .= "void nlf_${san}_sig_shl_bits($sig *p, int count) {\n   while (count > 0) { nlf_${san}_sig_shl1(p); count--; }\n}\n\n";
+   $s .= "void nlf_${san}_sig_shr_bits_sticky($sig *p, int count) {\n   while (count > 0) { nlf_${san}_sig_shr1_sticky(p); count--; }\n}\n\n";
+   $s .= "void nlf_${san}_wide_shl1($wide *p) {\n";
+   $s .= "   int i;\n   int carry;\n   i := 0;\n   carry := 0;\n   while (i < $wide_sig_bytes) {\n      int nextc;\n      nextc := 0;\n      if ((p->bytes[i] & 128) != 0) { nextc := 1; }\n      p->bytes[i] := p->bytes[i] + p->bytes[i];\n      if (carry != 0) { p->bytes[i] := p->bytes[i] | 1; }\n      carry := nextc;\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_shr1($wide *p) {\n";
+   $s .= "   int i;\n   int carry;\n   i := $wide_sig_bytes;\n   carry := 0;\n   while (i > 0) {\n      int nextc;\n      i--;\n      nextc := 0;\n      if ((p->bytes[i] & 1) != 0) { nextc := 1; }\n      p->bytes[i] := nlf_${san}_shr1_u8(p->bytes[i]);\n      if (carry != 0) { p->bytes[i] := p->bytes[i] | 128; }\n      carry := nextc;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_shr1_sticky($wide *p) {\n";
+   $s .= "   int lost;\n   lost := p->bytes[0] & 1;\n   nlf_${san}_wide_shr1(p);\n   if (lost != 0) { p->bytes[0] := p->bytes[0] | 1; }\n}\n\n";
+   $s .= "void nlf_${san}_wide_shl_bits($wide *p, int count) {\n   while (count > 0) { nlf_${san}_wide_shl1(p); count--; }\n}\n\n";
+   $s .= "void nlf_${san}_wide_shr_bits_sticky($wide *p, int count) {\n   while (count > 0) { nlf_${san}_wide_shr1_sticky(p); count--; }\n}\n\n";
+   $s .= "void nlf_${san}_sig_add_inplace($sig *dst, $sig *src) {\n";
+   $s .= "   int i;\n   int carry;\n   i := 0;\n   carry := 0;\n   while (i < $sig_bytes) {\n      int t;\n      t := dst->bytes[i] + src->bytes[i] + carry;\n      if (t >= 256) { dst->bytes[i] := t - 256; carry := 1; }\n      else { dst->bytes[i] := t; carry := 0; }\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_inc1($sig *dst) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      if (dst->bytes[i] != 255) { dst->bytes[i]++; return; }\n      dst->bytes[i] := 0;\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_sub_inplace($sig *dst, $sig *src) {\n";
+   $s .= "   int i;\n   int borrow;\n   i := 0;\n   borrow := 0;\n   while (i < $sig_bytes) {\n      int lhs;\n      int rhs;\n      lhs := dst->bytes[i];\n      rhs := src->bytes[i] + borrow;\n      if (lhs < rhs) { dst->bytes[i] := lhs + 256 - rhs; borrow := 1; }\n      else { dst->bytes[i] := lhs - rhs; borrow := 0; }\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_from_u($sig *dst, $u value) {\n";
+   $s .= "   $uov tmp;\n   int i;\n   nlf_${san}_sig_zero(dst);\n   tmp.value := value;\n   i := 0;\n   while (i < $size && i < $sig_bytes) {\n      dst->bytes[i] := tmp.bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_to_u($sig *src, $uov *dst) {\n";
+   $s .= "   int i;\n   dst->value := $ZERO;\n   i := 0;\n   while (i < $size && i < $sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_from_sig($wide *dst, $sig *src) {\n";
+   $s .= "   int i;\n   nlf_${san}_wide_zero(dst);\n   i := 0;\n   while (i < $sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_sig_from_wide_low($sig *dst, $wide *src) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_wide_mul($wide *dst, $sig *lhs, $sig *rhs) {\n";
+   $s .= "   int i;\n   nlf_${san}_wide_zero(dst);\n   i := 0;\n   while (i < $sig_bytes) {\n      int j;\n      long carry;\n      j := 0;\n      carry := 0;\n      while (j < $sig_bytes) {\n         int idx;\n         long t;\n         idx := i + j;\n         t := dst->bytes[idx] + lhs->bytes[i] * rhs->bytes[j] + carry;\n         dst->bytes[idx] := t & 255;\n         carry := t / 256;\n         j++;\n      }\n      while (carry != 0 && j + i < $wide_sig_bytes) {\n         int idx2;\n         long t2;\n         idx2 := i + j;\n         t2 := dst->bytes[idx2] + carry;\n         dst->bytes[idx2] := t2 & 255;\n         carry := t2 / 256;\n         j++;\n      }\n      i++;\n   }\n}\n\n";
+   $s .= "int nlf_${san}_sig_high_bit($sig *p) {\n";
+   $s .= "   int i;\n   i := $sig_last;\n   while (i >= 0) {\n      if (p->bytes[i] != 0) {\n         int b;\n         b := 7;\n         while (b >= 0) {\n            if ((p->bytes[i] & nlf_${san}_mask8(b)) != 0) { return i * 8 + b; }\n            b--;\n         }\n      }\n      i--;\n   }\n   return 0;\n}\n\n";
+   $s .= "void nlf_${san}_sig_div_shifted($sig *quot, $sig *num, $sig *den, int shift, bool *sticky) {\n";
+   $s .= "   $sig rem;\n   int highest;\n   int bitno;\n   nlf_${san}_sig_zero(quot);\n   nlf_${san}_sig_zero(&rem);\n   if (nlf_${san}_sig_is_zero(num)) { *sticky := false; return; }\n   highest := nlf_${san}_sig_high_bit(num);\n   bitno := highest + shift;\n   while (bitno >= 0) {\n      int srcbit;\n      nlf_${san}_sig_shl1(&rem);\n      srcbit := bitno - shift;\n      if (srcbit >= 0 && nlf_${san}_sig_get_bit(num, srcbit)) { rem.bytes[0] := rem.bytes[0] | 1; }\n      nlf_${san}_sig_shl1(quot);\n      if (nlf_${san}_sig_cmp(&rem, den) != $CMP_LT) {\n         nlf_${san}_sig_sub_inplace(&rem, den);\n         quot->bytes[0] := quot->bytes[0] | 1;\n      }\n      bitno--;\n   }\n   *sticky := !nlf_${san}_sig_is_zero(&rem);\n}\n\n";
+   $s .= "void nlf_${san}_ov_copy($ov *dst, $ov *src) {\n";
+   $s .= "   int i;\n   i := 0;\n   while (i < $size) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
+   $s .= "int nlf_${san}_ov_sign($ov *src) {\n   return (src->bytes[$last] >> 7) & 1;\n}\n\n";
+   $s .= "bool nlf_${san}_ov_exp_zero($ov *src) {\n   int i;\n   i := 0;\n   while (i < $expbits) {\n      if ((src->bytes[" . int($mbits / 8) . " + ((" . ($mbits % 8) . " + i) / 8)] & nlf_${san}_mask8((" . ($mbits % 8) . " + i) & 7)) != 0) { return false; }\n      i++;\n   }\n   return true;\n}\n\n";
+   $s .= "bool nlf_${san}_ov_exp_max($ov *src) {\n   int i;\n   i := 0;\n   while (i < $expbits) {\n      if ((src->bytes[" . int($mbits / 8) . " + ((" . ($mbits % 8) . " + i) / 8)] & nlf_${san}_mask8((" . ($mbits % 8) . " + i) & 7)) == 0) { return false; }\n      i++;\n   }\n   return true;\n}\n\n";
+   $s .= "bool nlf_${san}_ov_mant_zero($ov *src) {\n   int i;\n   i := 0;\n   while (i < " . int($mbits / 8) . ") {\n      if (src->bytes[i] != 0) { return false; }\n      i++;\n   }\n";
+   if ($mbits % 8) {
+      $s .= "   if ((src->bytes[" . int($mbits / 8) . "] & " . ((1 << ($mbits % 8)) - 1) . ") != 0) { return false; }\n";
+   }
+   $s .= "   return true;\n}\n\n";
+   $s .= "void nlf_${san}_ov_mant_to_sig($sig *dst, $ov *src) {\n   int i;\n   nlf_${san}_sig_zero(dst);\n   i := 0;\n   while (i < " . int($mbits / 8) . ") {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n";
+   if ($mbits % 8) {
+      $s .= "   dst->bytes[" . int($mbits / 8) . "] := src->bytes[" . int($mbits / 8) . "] & " . ((1 << ($mbits % 8)) - 1) . ";\n";
+   }
+   $s .= "}\n\n";
+   if ($et_is_builtin) {
+      $s .= "";
+      $s .= "$et nlf_${san}_ov_exp($ov *src) {
+   $et e;
+   $et bit;
+   int i;
+   e := 0`$et;
+   bit := 1`$et;
+   i := 0;
+   while (i < $expbits) {
+      if ((src->bytes[" . int($mbits / 8) . " + ((" . ($mbits % 8) . " + i) / 8)] & nlf_${san}_mask8((" . ($mbits % 8) . " + i) & 7)) != 0) {
+         e := e + bit;
+      }
+      bit := bit + bit;
+      i++;
+   }
+   return e;
+}
+
+";
+   }
+   $s .= "void nlf_${san}_ov_set_zero($ov *dst, int sign) {\n   int i;\n   i := 0;\n   while (i < $size) {\n      dst->bytes[i] := 0;\n      i++;\n   }\n   if (sign != 0) { dst->bytes[$last] := 128; }\n}\n\n";
+   $s .= "void nlf_${san}_ov_set_inf($ov *dst, int sign) {\n   int i;\n   nlf_${san}_ov_set_zero(dst, sign);\n   i := 0;\n   while (i < $expbits) {\n      dst->bytes[" . int($mbits / 8) . " + ((" . ($mbits % 8) . " + i) / 8)] := dst->bytes[" . int($mbits / 8) . " + ((" . ($mbits % 8) . " + i) / 8)] | nlf_${san}_mask8((" . ($mbits % 8) . " + i) & 7);\n      i++;\n   }\n}\n\n";
+   $s .= "void nlf_${san}_ov_set_qnan($ov *dst) {\n   nlf_${san}_ov_set_inf(dst, 0);\n   dst->bytes[" . int(($mbits > 1 ? $mbits - 1 : 0) / 8) . "] := dst->bytes[" . int(($mbits > 1 ? $mbits - 1 : 0) / 8) . "] | nlf_${san}_mask8(" . (($mbits > 1 ? $mbits - 1 : 0) % 8) . ");\n}\n\n";
+   $s .= "void nlf_${san}_pack_result(void) {\n";
+   $s .= "   $sig mant;\n   int low;\n   $uov tmp;\n   $gr.raw := $ZERO;\n   if (nlf_${san}_sig_is_zero(&$gsig_out)) {\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n   low := $gsig_out.bytes[0] & 7;\n   nlf_${san}_sig_copy(&mant, &$gsig_out);\n   nlf_${san}_sig_shr_bits_sticky(&mant, 3);\n   if ((low & 4) != 0 && (((low & 3) != 0) || ((mant.bytes[0] & 1) != 0))) {\n      nlf_${san}_sig_inc1(&mant);\n   }\n   if (nlf_${san}_sig_get_bit(&mant, $sig_carry_bit)) {\n      nlf_${san}_sig_shr1(&mant);\n      $gexp_a++;\n   }\n   if ($gexp_a >= $EXP_MAX_E) {\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      $gr.bits.mantissa := $ZERO;\n      return;\n   }\n   $gr.bits.sign := $gsign_out;\n   nlf_${san}_sig_to_u(&mant, &tmp);\n   if (nlf_${san}_sig_get_bit(&mant, $sig_hidden_bit)) {\n      $gr.bits.exponent := $gexp_a;\n      $gr.bits.mantissa := tmp.value;\n   }\n   else {\n      $gr.bits.exponent := $ZERO;\n      $gr.bits.mantissa := tmp.value;\n   }\n}\n\n";
+   return $s;
+}
+
+
+sub wide_helper_proto_text {
+   my (@names) = @_;
+   my %proto = (
+      "nlf_${san}_sig_zero" => "extern void nlf_${san}_sig_zero($sig *p);\n",
+      "nlf_${san}_wide_zero" => "extern void nlf_${san}_wide_zero($wide *p);\n",
+      "nlf_${san}_sig_is_zero" => "extern bool nlf_${san}_sig_is_zero($sig *p);\n",
+      "nlf_${san}_mask8" => "extern nlf_${san}_u8 nlf_${san}_mask8(int bitno);\n",
+      "nlf_${san}_shr1_u8" => "extern nlf_${san}_u8 nlf_${san}_shr1_u8(nlf_${san}_u8 value);\n",
+      "nlf_${san}_sig_copy" => "extern void nlf_${san}_sig_copy($sig *dst, $sig *src);\n",
+      "nlf_${san}_wide_copy" => "extern void nlf_${san}_wide_copy($wide *dst, $wide *src);\n",
+      "nlf_${san}_sig_cmp" => "extern int nlf_${san}_sig_cmp($sig *lhs, $sig *rhs);\n",
+      "nlf_${san}_sig_get_bit" => "extern bool nlf_${san}_sig_get_bit($sig *p, int bitno);\n",
+      "nlf_${san}_sig_set_bit" => "extern void nlf_${san}_sig_set_bit($sig *p, int bitno);\n",
+      "nlf_${san}_sig_shl1" => "extern void nlf_${san}_sig_shl1($sig *p);\n",
+      "nlf_${san}_sig_shr1" => "extern void nlf_${san}_sig_shr1($sig *p);\n",
+      "nlf_${san}_sig_shr1_sticky" => "extern void nlf_${san}_sig_shr1_sticky($sig *p);\n",
+      "nlf_${san}_sig_shl_bits" => "extern void nlf_${san}_sig_shl_bits($sig *p, int count);\n",
+      "nlf_${san}_sig_shr_bits_sticky" => "extern void nlf_${san}_sig_shr_bits_sticky($sig *p, int count);\n",
+      "nlf_${san}_wide_shl1" => "extern void nlf_${san}_wide_shl1($wide *p);\n",
+      "nlf_${san}_wide_shr1" => "extern void nlf_${san}_wide_shr1($wide *p);\n",
+      "nlf_${san}_wide_shr1_sticky" => "extern void nlf_${san}_wide_shr1_sticky($wide *p);\n",
+      "nlf_${san}_wide_shl_bits" => "extern void nlf_${san}_wide_shl_bits($wide *p, int count);\n",
+      "nlf_${san}_wide_shr_bits_sticky" => "extern void nlf_${san}_wide_shr_bits_sticky($wide *p, int count);\n",
+      "nlf_${san}_sig_add_inplace" => "extern void nlf_${san}_sig_add_inplace($sig *dst, $sig *src);\n",
+      "nlf_${san}_sig_inc1" => "extern void nlf_${san}_sig_inc1($sig *dst);\n",
+      "nlf_${san}_sig_sub_inplace" => "extern void nlf_${san}_sig_sub_inplace($sig *dst, $sig *src);\n",
+      "nlf_${san}_sig_from_u" => "extern void nlf_${san}_sig_from_u($sig *dst, $u value);\n",
+      "nlf_${san}_sig_to_u" => "extern void nlf_${san}_sig_to_u($sig *src, $uov *dst);\n",
+      "nlf_${san}_wide_from_sig" => "extern void nlf_${san}_wide_from_sig($wide *dst, $sig *src);\n",
+      "nlf_${san}_sig_from_wide_low" => "extern void nlf_${san}_sig_from_wide_low($sig *dst, $wide *src);\n",
+      "nlf_${san}_wide_mul" => "extern void nlf_${san}_wide_mul($wide *dst, $sig *lhs, $sig *rhs);\n",
+      "nlf_${san}_sig_high_bit" => "extern int nlf_${san}_sig_high_bit($sig *p);\n",
+      "nlf_${san}_sig_div_shifted" => "extern void nlf_${san}_sig_div_shifted($sig *quot, $sig *num, $sig *den, int shift, bool *sticky);\n",
+      "nlf_${san}_ov_copy" => "extern void nlf_${san}_ov_copy($ov *dst, $ov *src);
+",
+      "nlf_${san}_ov_sign" => "extern int nlf_${san}_ov_sign($ov *src);
+",
+      "nlf_${san}_ov_exp_zero" => "extern bool nlf_${san}_ov_exp_zero($ov *src);
+",
+      "nlf_${san}_ov_exp_max" => "extern bool nlf_${san}_ov_exp_max($ov *src);
+",
+      "nlf_${san}_ov_mant_zero" => "extern bool nlf_${san}_ov_mant_zero($ov *src);
+",
+      "nlf_${san}_ov_mant_to_sig" => "extern void nlf_${san}_ov_mant_to_sig($sig *dst, $ov *src);
+",
+      "nlf_${san}_ov_exp" => "extern $et nlf_${san}_ov_exp($ov *src);
+",
+      "nlf_${san}_ov_set_zero" => "extern void nlf_${san}_ov_set_zero($ov *dst, int sign);
+",
+      "nlf_${san}_ov_set_inf" => "extern void nlf_${san}_ov_set_inf($ov *dst, int sign);
+",
+      "nlf_${san}_ov_set_qnan" => "extern void nlf_${san}_ov_set_qnan($ov *dst);
+",
+      "nlf_${san}_pack_result" => "extern void nlf_${san}_pack_result(void);\n",
+   );
+   my $s = '';
+   for my $name (@names) {
+      $s .= $proto{$name} if exists $proto{$name};
+   }
+   return $s;
+}
+
+sub wide_runtime_block {
+   my ($static_prefix, $vars, $with_helpers, $helper_names, $extra_decls) = @_;
+   $vars //= {};
+   my $s = '';
+   $s .= "type $u8 { \$size:1 \$unsigned };\n";
+   $s .= "type $u { \$size:$size \$unsigned \$endian:little };\n";
+   $s .= "type $et { \$size:$ebytes \$endian:little };\n" if !$et_is_builtin;
+   $s .= "struct $sig {\n   $u8 bytes[$sig_bytes];\n};\n";
+   $s .= "struct $wide {\n   $u8 bytes[$wide_sig_bytes];\n};\n";
+   $s .= "struct $bits {\n";
+   $s .= "   $u mantissa:$mbits;\n";
+   $s .= "   $u exponent:$expbits;\n";
+   $s .= "   $u sign:1;\n";
+   $s .= "};\n";
+   if ($endian eq 'little') {
+      $s .= "union $ov {\n   $typename value;\n   $u raw;\n   $u8 bytes[$size];\n   $bits bits;\n};\n";
+   }
+   else {
+      $s .= "union $vov {\n   $typename value;\n   $u8 bytes[$size];\n};\n\n";
+      $s .= "union $ov {\n   $u raw;\n   $u8 bytes[$size];\n   $bits bits;\n};\n";
+   }
+   $s .= "union $uov {\n   $u value;\n   $u8 bytes[$size];\n};\n\n";
+   my @decls;
+   push @decls, "$ov $ga" if $vars->{ga};
+   push @decls, "$ov $gb" if $vars->{gb};
+   push @decls, "$ov $gr" if $vars->{gr};
+   push @decls, "$wide $gwide_a" if $vars->{gwide_a};
+   push @decls, "$wide $gwide_b" if $vars->{gwide_b};
+   push @decls, "$wide $gwide_p" if $vars->{gwide_p};
+   push @decls, "$wide $gwide_t" if $vars->{gwide_t};
+   push @decls, "$et $gexp_a" if $vars->{gexp_a};
+   push @decls, "$et $gexp_b" if $vars->{gexp_b};
+   push @decls, "int $gsign_out" if $vars->{gsign_out};
+   push @decls, "$sig $gsig_a" if $vars->{gsig_a};
+   push @decls, "$sig $gsig_b" if $vars->{gsig_b};
+   push @decls, "$sig $gsig_out" if $vars->{gsig_out};
+   push @decls, "int $gcmp" if $vars->{gcmp};
+   push @decls, "bool $gunordered" if $vars->{gunordered};
+   for my $decl (@decls) {
+      $s .= "$static_prefix$decl;\n";
+   }
+   $s .= "\n";
+   $with_helpers = ($static_prefix eq '') if !defined $with_helpers;
+   if ($with_helpers) {
+      $s .= wide_helper_text();
+   }
+   elsif (defined $helper_names) {
+      $s .= wide_helper_proto_text(@$helper_names);
+      $s .= "
+" if @$helper_names;
+   }
+   $s .= $extra_decls if defined $extra_decls;
+   return $s;
+}
+
 sub base_runtime_block {
    my ($static_prefix, $vars) = @_;
+   if ($wide_math) {
+      return wide_runtime_block($static_prefix, $vars);
+   }
    $vars //= {};
 
    my $need_ov = 0;
@@ -397,6 +683,28 @@ sub build_unit_text {
 
 sub add_impl_text {
    my ($static_prefix) = @_;
+   if ($wide_math) {
+      my $s = "${static_prefix}void $add_impl(void) {\n";
+      $s .= "   if (nlf_${san}_ov_exp_max(&$ga) && !nlf_${san}_ov_mant_zero(&$ga)) {\n      nlf_${san}_ov_copy(&$gr, &$ga);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_max(&$gb) && !nlf_${san}_ov_mant_zero(&$gb)) {\n      nlf_${san}_ov_copy(&$gr, &$gb);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_max(&$ga) && nlf_${san}_ov_exp_max(&$gb) && nlf_${san}_ov_sign(&$ga) != nlf_${san}_ov_sign(&$gb)) {\n      nlf_${san}_ov_set_qnan(&$gr);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_max(&$ga) && nlf_${san}_ov_mant_zero(&$ga)) {\n      nlf_${san}_ov_copy(&$gr, &$ga);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_max(&$gb) && nlf_${san}_ov_mant_zero(&$gb)) {\n      nlf_${san}_ov_copy(&$gr, &$gb);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_zero(&$ga) && nlf_${san}_ov_mant_zero(&$ga) && nlf_${san}_ov_exp_zero(&$gb) && nlf_${san}_ov_mant_zero(&$gb)) {\n      if (nlf_${san}_ov_sign(&$ga) == nlf_${san}_ov_sign(&$gb)) { nlf_${san}_ov_set_zero(&$gr, nlf_${san}_ov_sign(&$ga)); } else { nlf_${san}_ov_set_zero(&$gr, 0); }\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_zero(&$ga) && nlf_${san}_ov_mant_zero(&$ga)) {\n      nlf_${san}_ov_copy(&$gr, &$gb);\n      return;\n   }\n";
+      $s .= "   if (nlf_${san}_ov_exp_zero(&$gb) && nlf_${san}_ov_mant_zero(&$gb)) {\n      nlf_${san}_ov_copy(&$gr, &$ga);\n      return;\n   }\n";
+      $s .= "   nlf_${san}_ov_mant_to_sig(&$gsig_a, &$ga);\n   nlf_${san}_ov_mant_to_sig(&$gsig_b, &$gb);\n   $gexp_a := nlf_${san}_ov_exp(&$ga);\n   $gexp_b := nlf_${san}_ov_exp(&$gb);\n   if ($gexp_a == $EXP_ZERO_E) { $gexp_a := $EXP_ONE_E; }\n   if ($gexp_b == $EXP_ZERO_E) { $gexp_b := $EXP_ONE_E; }\n   if (!nlf_${san}_ov_exp_zero(&$ga)) { nlf_${san}_sig_set_bit(&$gsig_a, $sig_hidden_bit); }\n   if (!nlf_${san}_ov_exp_zero(&$gb)) { nlf_${san}_sig_set_bit(&$gsig_b, $sig_hidden_bit); }\n   nlf_${san}_sig_shl_bits(&$gsig_a, 3);\n   nlf_${san}_sig_shl_bits(&$gsig_b, 3);\n";
+      $s .= "   if (nlf_${san}_ov_sign(&$ga) == nlf_${san}_ov_sign(&$gb)) {\n      while ($gexp_a < $gexp_b) { nlf_${san}_sig_shr1_sticky(&$gsig_a); $gexp_a++; }\n      while ($gexp_b < $gexp_a) { nlf_${san}_sig_shr1_sticky(&$gsig_b); $gexp_b++; }\n      nlf_${san}_sig_copy(&$gsig_out, &$gsig_a);\n      nlf_${san}_sig_add_inplace(&$gsig_out, &$gsig_b);\n      $gsign_out := nlf_${san}_ov_sign(&$ga);\n      nlf_${san}_pack_result();\n      return;\n   }\n";
+      $s .= mag_cmp_snippet($gcmp, $ga, $gb, '   ');
+      $s .= "   if ($gcmp == $CMP_EQ) { nlf_${san}_ov_set_zero(&$gr, 0); return; }\n";
+      $s .= "   if ($gcmp == $CMP_LT) {\n      nlf_${san}_ov_copy(&$gr, &$ga);\n      nlf_${san}_ov_copy(&$ga, &$gb);\n      nlf_${san}_ov_copy(&$gb, &$gr);\n      nlf_${san}_ov_mant_to_sig(&$gsig_a, &$ga);\n      nlf_${san}_ov_mant_to_sig(&$gsig_b, &$gb);\n      $gexp_a := nlf_${san}_ov_exp(&$ga);\n      $gexp_b := nlf_${san}_ov_exp(&$gb);\n      if ($gexp_a == $EXP_ZERO_E) { $gexp_a := $EXP_ONE_E; }\n      if ($gexp_b == $EXP_ZERO_E) { $gexp_b := $EXP_ONE_E; }\n      if (!nlf_${san}_ov_exp_zero(&$ga)) { nlf_${san}_sig_set_bit(&$gsig_a, $sig_hidden_bit); }\n      if (!nlf_${san}_ov_exp_zero(&$gb)) { nlf_${san}_sig_set_bit(&$gsig_b, $sig_hidden_bit); }\n      nlf_${san}_sig_shl_bits(&$gsig_a, 3);\n      nlf_${san}_sig_shl_bits(&$gsig_b, 3);\n   }\n";
+      $s .= "   while ($gexp_a < $gexp_b) { nlf_${san}_sig_shr1_sticky(&$gsig_a); $gexp_a++; }\n";
+      $s .= "   while ($gexp_b < $gexp_a) { nlf_${san}_sig_shr1_sticky(&$gsig_b); $gexp_b++; }\n";
+      $s .= "   nlf_${san}_sig_copy(&$gsig_out, &$gsig_a);\n   nlf_${san}_sig_sub_inplace(&$gsig_out, &$gsig_b);\n   $gsign_out := nlf_${san}_ov_sign(&$ga);\n";
+      $s .= "   while (!nlf_${san}_sig_is_zero(&$gsig_out) && $gexp_a > $EXP_ONE_E && !nlf_${san}_sig_get_bit(&$gsig_out, $sig_hidden_ext_bit)) { nlf_${san}_sig_shl1(&$gsig_out); $gexp_a--; }\n";
+      $s .= "   nlf_${san}_pack_result();\n}\n\n";
+      return $s;
+   }
    my $s = "${static_prefix}void $add_impl(void) {\n";
    $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
    $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
@@ -418,6 +726,16 @@ sub add_impl_text {
 
 sub cmp_impl_text {
    my ($static_prefix) = @_;
+   if ($wide_math) {
+      return "${static_prefix}void $cmp_impl(void) {\n"
+         . "   $gunordered := false;\n"
+         . "   if (nlf_${san}_ov_exp_max(&$ga) && !nlf_${san}_ov_mant_zero(&$ga)) { $gunordered := true; $gcmp := 0; return; }\n"
+         . "   if (nlf_${san}_ov_exp_max(&$gb) && !nlf_${san}_ov_mant_zero(&$gb)) { $gunordered := true; $gcmp := 0; return; }\n"
+         . "   if (nlf_${san}_ov_exp_zero(&$ga) && nlf_${san}_ov_mant_zero(&$ga) && nlf_${san}_ov_exp_zero(&$gb) && nlf_${san}_ov_mant_zero(&$gb)) { $gcmp := 0; return; }\n"
+         . "   if (nlf_${san}_ov_sign(&$ga) != nlf_${san}_ov_sign(&$gb)) { if (nlf_${san}_ov_sign(&$ga) != 0) { $gcmp := $CMP_LT; } else { $gcmp := $CMP_GT; } return; }\n"
+         . mag_cmp_snippet($gcmp, $ga, $gb, '   ')
+         . "   if (nlf_${san}_ov_sign(&$ga) != 0) { if ($gcmp == $CMP_LT) { $gcmp := $CMP_GT; } else { if ($gcmp == $CMP_GT) { $gcmp := $CMP_LT; } } }\n}\n\n";
+   }
    return "${static_prefix}void $cmp_impl(void) {\n   $gunordered := false;\n   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) { $gunordered := true; $gcmp := 0; return; }\n   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) { $gunordered := true; $gcmp := 0; return; }\n   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) { $gcmp := 0; return; }\n   if ($ga.bits.sign != $gb.bits.sign) { if ($ga.bits.sign != $ZERO) { $gcmp := $CMP_LT; } else { $gcmp := $CMP_GT; } return; }\n"
       . mag_cmp_snippet($gcmp, $ga, $gb, '   ')
       . "   if ($ga.bits.sign != $ZERO) { if ($gcmp == $CMP_LT) { $gcmp := $CMP_GT; } else { if ($gcmp == $CMP_GT) { $gcmp := $CMP_LT; } } }\n}\n\n";
@@ -425,51 +743,327 @@ sub cmp_impl_text {
 
 sub mul_impl_text {
    my ($static_prefix) = @_;
-   my $s = "${static_prefix}void $mul_impl(void) {\n";
-   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
-   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
-   $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;\n";
-   $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) || ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO && $ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $ZERO;\n      $gr.bits.exponent := $EXP_MAX;\n      $gr.bits.mantissa := $NAN_PAYLOAD;\n      return;\n   }\n";
-   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
-   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
-   $s .= "   if (($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) || ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
-   $s .= "   $gsig_a := $ga.bits.mantissa;\n   $gsig_b := $gb.bits.mantissa;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a + $gexp_b - $M_BIAS;\n   $gwide_a.v := $gsig_a;\n   $gwide_b.v := $gsig_b;\n   $gwide_p.v := $gwide_a.v * $gwide_b.v;\n";
+   if ($wide_math) {
+      my $s = "${static_prefix}void $mul_impl(void) {
+";
+      $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {
+      $gr.raw := $ga.raw;
+      return;
+   }
+";
+      $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {
+      $gr.raw := $gb.raw;
+      return;
+   }
+";
+      $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;
+";
+      $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) || ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO && $ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $ZERO;
+      $gr.bits.exponent := $EXP_MAX;
+      $gr.bits.mantissa := $NAN_PAYLOAD;
+      return;
+   }
+";
+      $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+      $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+      $s .= "   if (($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) || ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+      $s .= "   nlf_${san}_sig_from_u(&$gsig_a, $ga.bits.mantissa);
+   nlf_${san}_sig_from_u(&$gsig_b, $gb.bits.mantissa);
+";
+      $s .= "   $gexp_a := $ga.bits.exponent;
+   $gexp_b := $gb.bits.exponent;
+";
+      $s .= "   if ($gexp_a == $EXP_ZERO_E) { $gexp_a := $EXP_ONE_E; }
+   if ($gexp_b == $EXP_ZERO_E) { $gexp_b := $EXP_ONE_E; }
+";
+      $s .= "   if ($ga.bits.exponent != $ZERO) { nlf_${san}_sig_set_bit(&$gsig_a, $sig_hidden_bit); }
+";
+      $s .= "   if ($gb.bits.exponent != $ZERO) { nlf_${san}_sig_set_bit(&$gsig_b, $sig_hidden_bit); }
+";
+      $s .= "   $gexp_a := $gexp_a + $gexp_b - $EXP_BIAS_E;
+";
+      $s .= "   nlf_${san}_wide_mul(&$gwide_p, &$gsig_a, &$gsig_b);
+";
+      if ($mul_shift > 0) {
+         $s .= "   nlf_${san}_wide_shr_bits_sticky(&$gwide_p, $mul_shift);
+";
+      }
+      elsif ($mul_shift < 0) {
+         my $l = -$mul_shift;
+         $s .= "   nlf_${san}_wide_shl_bits(&$gwide_p, $l);
+";
+      }
+      $s .= "   nlf_${san}_sig_from_wide_low(&$gsig_out, &$gwide_p);
+";
+      $s .= "   while (!nlf_${san}_sig_is_zero(&$gsig_out) && $gexp_a > $EXP_ONE_E && !nlf_${san}_sig_get_bit(&$gsig_out, $sig_hidden_ext_bit)) { nlf_${san}_sig_shl1(&$gsig_out); $gexp_a--; }
+";
+      $s .= "   while (!nlf_${san}_sig_is_zero(&$gsig_out) && $gexp_a < $EXP_ONE_E) { nlf_${san}_sig_shr1_sticky(&$gsig_out); $gexp_a++; }
+";
+      $s .= "   nlf_${san}_pack_result();
+}
+
+";
+      return $s;
+   }
+   my $s = "${static_prefix}void $mul_impl(void) {
+";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {
+      $gr.raw := $ga.raw;
+      return;
+   }
+";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {
+      $gr.raw := $gb.raw;
+      return;
+   }
+";
+   $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;
+";
+   $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) || ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO && $ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $ZERO;
+      $gr.bits.exponent := $EXP_MAX;
+      $gr.bits.mantissa := $NAN_PAYLOAD;
+      return;
+   }
+";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+   $s .= "   if (($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) || ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+   $s .= "   $gsig_a := $ga.bits.mantissa;
+   $gsig_b := $gb.bits.mantissa;
+   $gexp_a := $ga.bits.exponent;
+   $gexp_b := $gb.bits.exponent;
+   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }
+   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }
+   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }
+   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }
+   $gexp_a := $gexp_a + $gexp_b - $M_BIAS;
+   $gwide_a.v := $gsig_a;
+   $gwide_b.v := $gsig_b;
+   $gwide_p.v := $gwide_a.v * $gwide_b.v;
+";
    if ($mbits > 3) {
       my $shift = $mbits - 3;
-      $s .= "   $gwide_t.v := $gwide_p.v >> $shift;\n";
-      $s .= "   $gwide_a.v := $gwide_t.v << $shift;\n";
-      $s .= "   if ($gwide_a.v != $gwide_p.v) { $gwide_t.v |= $W_ONE; }\n";
-      $s .= "   $gwide_p.v := $gwide_t.v;\n";
+      $s .= "   $gwide_t.v := $gwide_p.v >> $shift;
+";
+      $s .= "   $gwide_a.v := $gwide_t.v << $shift;
+";
+      $s .= "   if ($gwide_a.v != $gwide_p.v) { $gwide_t.v |= $W_ONE; }
+";
+      $s .= "   $gwide_p.v := $gwide_t.v;
+";
    }
    elsif ($mbits < 3) {
       my $shift = 3 - $mbits;
-      $s .= "   $gwide_p.v := $gwide_p.v << $shift;\n";
+      $s .= "   $gwide_p.v := $gwide_p.v << $shift;
+";
    }
-   $s .= "   $gsig_out := $gwide_p.v;\n";
-   $s .= "   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }\n";
-   $s .= "   while ($gsig_out != $M_ZERO && $gexp_a < $M_ONE) { $matht lost; lost := $gsig_out & $M_ONE; $gsig_out /= $M_TWO; if (lost != $M_ZERO) { $gsig_out |= $M_ONE; } $gexp_a++; }\n";
+   $s .= "   $gsig_out := $gwide_p.v;
+";
+   $s .= "   while ($gsig_out != $M_ZERO && $gexp_a > $M_ONE && $gsig_out < $M_HIDDEN_EXT) { $gsig_out *= $M_TWO; $gexp_a--; }
+";
+   $s .= "   while ($gsig_out != $M_ZERO && $gexp_a < $M_ONE) { $matht lost; lost := $gsig_out & $M_ONE; $gsig_out /= $M_TWO; if (lost != $M_ZERO) { $gsig_out |= $M_ONE; } $gexp_a++; }
+";
    $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
-   $s .= "}\n\n";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub div_impl_text {
    my ($static_prefix) = @_;
-   my $s = "${static_prefix}void $div_impl(void) {\n";
-   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {\n      $gr.raw := $ga.raw;\n      return;\n   }\n";
-   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {\n      $gr.raw := $gb.raw;\n      return;\n   }\n";
-   $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;\n";
-   $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) || ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $ZERO;\n      $gr.bits.exponent := $EXP_MAX;\n      $gr.bits.mantissa := $NAN_PAYLOAD;\n      return;\n   }\n";
-   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
-   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
-   $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      $gr.bits.exponent := $EXP_MAX;\n      return;\n   }\n";
-   $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {\n      $gr.raw := $ZERO;\n      $gr.bits.sign := $gsign_out;\n      return;\n   }\n";
-   $s .= "   $gsig_a := $ga.bits.mantissa;\n   $gsig_b := $gb.bits.mantissa;\n   $gexp_a := $ga.bits.exponent;\n   $gexp_b := $gb.bits.exponent;\n   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }\n   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }\n   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }\n   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }\n   $gexp_a := $gexp_a - $gexp_b + $M_BIAS;\n   $gwide_a.v := $gsig_a;\n   $gwide_a.v := $gwide_a.v << @{[$mbits + 3]};\n   $gwide_b.v := $gsig_b;\n   $gwide_p.v := $gwide_a.v / $gwide_b.v;\n   $gwide_t.v := $gwide_p.v * $gwide_b.v;\n   if ($gwide_t.v != $gwide_a.v) { $gwide_p.v |= $W_ONE; }\n";
-   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a > $M_ONE && $gwide_p.v < $W_HIDDEN_EXT) { $gwide_p.v := $gwide_p.v << 1; $gexp_a--; }\n";
-   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a < $M_ONE) { $gwide_t.v := $gwide_p.v & $W_ONE; $gwide_p.v := $gwide_p.v >> 1; if ($gwide_t.v != $W_ZERO) { $gwide_p.v |= $W_ONE; } $gexp_a++; }\n";
-   $s .= "   $gsig_out := $gwide_p.v;\n";
+   if ($wide_math) {
+      my $s = "${static_prefix}void $div_impl(void) {
+";
+      $s .= "   bool rem_sticky;
+";
+      $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {
+      $gr.raw := $ga.raw;
+      return;
+   }
+";
+      $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {
+      $gr.raw := $gb.raw;
+      return;
+   }
+";
+      $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;
+";
+      $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) || ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $ZERO;
+      $gr.bits.exponent := $EXP_MAX;
+      $gr.bits.mantissa := $NAN_PAYLOAD;
+      return;
+   }
+";
+      $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+      $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+      $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+      $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+      $s .= "   nlf_${san}_sig_from_u(&$gsig_a, $ga.bits.mantissa);
+   nlf_${san}_sig_from_u(&$gsig_b, $gb.bits.mantissa);
+";
+      $s .= "   $gexp_a := $ga.bits.exponent;
+   $gexp_b := $gb.bits.exponent;
+";
+      $s .= "   if ($gexp_a == $EXP_ZERO_E) { $gexp_a := $EXP_ONE_E; }
+   if ($gexp_b == $EXP_ZERO_E) { $gexp_b := $EXP_ONE_E; }
+";
+      $s .= "   if ($ga.bits.exponent != $ZERO) { nlf_${san}_sig_set_bit(&$gsig_a, $sig_hidden_bit); }
+";
+      $s .= "   if ($gb.bits.exponent != $ZERO) { nlf_${san}_sig_set_bit(&$gsig_b, $sig_hidden_bit); }
+";
+      $s .= "   $gexp_a := $gexp_a - $gexp_b + $EXP_BIAS_E;
+";
+      $s .= "   nlf_${san}_sig_div_shifted(&$gsig_out, &$gsig_a, &$gsig_b, @{[$mbits + 3]}, &rem_sticky);
+";
+      $s .= "   if (rem_sticky) { $gsig_out.bytes[0] := $gsig_out.bytes[0] | 1; }
+";
+      $s .= "   while (!nlf_${san}_sig_is_zero(&$gsig_out) && $gexp_a > $EXP_ONE_E && !nlf_${san}_sig_get_bit(&$gsig_out, $sig_hidden_ext_bit)) { nlf_${san}_sig_shl1(&$gsig_out); $gexp_a--; }
+";
+      $s .= "   while (!nlf_${san}_sig_is_zero(&$gsig_out) && $gexp_a < $EXP_ONE_E) { nlf_${san}_sig_shr1_sticky(&$gsig_out); $gexp_a++; }
+";
+      $s .= "   nlf_${san}_pack_result();
+}
+
+";
+      return $s;
+   }
+   my $s = "${static_prefix}void $div_impl(void) {
+";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa != $ZERO) {
+      $gr.raw := $ga.raw;
+      return;
+   }
+";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa != $ZERO) {
+      $gr.raw := $gb.raw;
+      return;
+   }
+";
+   $s .= "   $gsign_out := $ga.bits.sign ^ $gb.bits.sign;
+";
+   $s .= "   if (($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) || ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO && $gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO)) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $ZERO;
+      $gr.bits.exponent := $EXP_MAX;
+      $gr.bits.mantissa := $NAN_PAYLOAD;
+      return;
+   }
+";
+   $s .= "   if ($ga.bits.exponent == $EXP_MAX && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+   $s .= "   if ($gb.bits.exponent == $EXP_MAX && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+   $s .= "   if ($gb.bits.exponent == $ZERO && $gb.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      $gr.bits.exponent := $EXP_MAX;
+      return;
+   }
+";
+   $s .= "   if ($ga.bits.exponent == $ZERO && $ga.bits.mantissa == $ZERO) {
+      $gr.raw := $ZERO;
+      $gr.bits.sign := $gsign_out;
+      return;
+   }
+";
+   $s .= "   $gsig_a := $ga.bits.mantissa;
+   $gsig_b := $gb.bits.mantissa;
+   $gexp_a := $ga.bits.exponent;
+   $gexp_b := $gb.bits.exponent;
+   if ($gexp_a == $M_ZERO) { $gexp_a := $M_ONE; }
+   if ($gexp_b == $M_ZERO) { $gexp_b := $M_ONE; }
+   if ($ga.bits.exponent != $ZERO) { $gsig_a |= $M_HIDDEN; }
+   if ($gb.bits.exponent != $ZERO) { $gsig_b |= $M_HIDDEN; }
+   $gexp_a := $gexp_a - $gexp_b + $M_BIAS;
+   $gwide_a.v := $gsig_a;
+   $gwide_a.v := $gwide_a.v << @{[$mbits + 3]};
+   $gwide_b.v := $gsig_b;
+   $gwide_p.v := $gwide_a.v / $gwide_b.v;
+   $gwide_t.v := $gwide_p.v * $gwide_b.v;
+   if ($gwide_t.v != $gwide_a.v) { $gwide_p.v |= $W_ONE; }
+";
+   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a > $M_ONE && $gwide_p.v < $W_HIDDEN_EXT) { $gwide_p.v := $gwide_p.v << 1; $gexp_a--; }
+";
+   $s .= "   while ($gwide_p.v != $W_ZERO && $gexp_a < $M_ONE) { $gwide_t.v := $gwide_p.v & $W_ONE; $gwide_p.v := $gwide_p.v >> 1; if ($gwide_t.v != $W_ZERO) { $gwide_p.v |= $W_ONE; } $gexp_a++; }
+";
+   $s .= "   $gsig_out := $gwide_p.v;
+";
    $s .= pack_snippet($gsig_out, $gexp_a, $gsign_out, $gr, $gmant_ll);
-   $s .= "}\n\n";
+   $s .= "}
+
+";
    return $s;
 }
 
@@ -590,7 +1184,7 @@ sub ieee754_expbits_for_size {
    return 5 if $n == 2;
    return 8 if $n == 4;
    return 11 if $n == 8;
-   return -1;
+   return 0 - 1;
 }
 
 sub simple_expbits_for_size {
@@ -747,6 +1341,56 @@ my @build_order = qw(
    core
 );
 
+
+sub split_generated_functions {
+   my ($text) = @_;
+   my @out;
+   my $len = length($text);
+   my $pos = 0;
+   while ($pos < $len) {
+      while ($pos < $len && substr($text, $pos, 1) =~ /\s/) { $pos++; }
+      last if $pos >= $len;
+      my $start = $pos;
+      if (substr($text, $pos) !~ /\A(?:void|bool|int|long|longlong|[A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z0-9_]+)\s*\([^)]*\)\s*\{/s) {
+         die "$0: could not split generated helper functions near: " . substr($text, $pos, 40) . "\n";
+      }
+      my $name = $1;
+      my $brace = 0;
+      while ($pos < $len) {
+         my $c = substr($text, $pos, 1);
+         $brace++ if $c eq '{';
+         $brace-- if $c eq '}';
+         $pos++;
+         last if $brace == 0 && $c eq '}';
+      }
+      my $chunk = substr($text, $start, $pos - $start) . "\n\n";
+      push @out, [$name, $chunk];
+   }
+   return @out;
+}
+
+
+sub helper_names_in_text {
+   my ($text, @exclude) = @_;
+   my %skip = map { $_ => 1 } @exclude;
+   my %seen;
+   while ($text =~ /\b(nlf_${san}_[A-Za-z0-9_]+)\s*\(/g) {
+      my $name = $1;
+      next if $skip{$name};
+      next if $name eq $add_impl || $name eq $cmp_impl || $name eq $mul_impl || $name eq $div_impl;
+      $seen{$name} = 1;
+   }
+   return sort keys %seen;
+}
+
+sub wide_build_unit_text {
+   my ($vars, $helper_names, $decls, $body) = @_;
+   return comment_header()
+      . standalone_prelude()
+      . wide_runtime_block('extern ', $vars, 0, $helper_names, $decls)
+      . ($body || '');
+}
+
 sub run_checked {
    my (@cmd) = @_;
    system(@cmd);
@@ -766,32 +1410,123 @@ sub build_mode {
    my $nlib_inc = File::Spec->catdir($repo_root, 'libraries', 'nlib');
 
    for my $tool ($n65cc, $n65asm, $n65ar) {
-      die "$0: required tool not found: $tool\n" if !-x $tool;
+      die "$0: required tool not found: $tool
+" if !-x $tool;
    }
-   die "$0: required include dir not found: $nlib_inc\n" if !-d $nlib_inc;
+   die "$0: required include dir not found: $nlib_inc
+" if !-d $nlib_inc;
 
    make_path($out_dir) if !-d $out_dir;
 
    my $decls_path = File::Spec->catfile($out_dir, "${typename}_decls.n");
-   open(my $dfh, '>', $decls_path) or die "$0: could not write $decls_path: $!\n";
+   open(my $dfh, '>', $decls_path) or die "$0: could not write $decls_path: $!
+";
    print $dfh decls_text();
    close($dfh);
 
    my @member_objects;
-   for my $key (@build_order) {
-      my $src_name = $build_units{$key}->{source_name};
-      my $src_path = File::Spec->catfile($out_dir, $src_name);
-      my ($stem) = $src_name =~ /^(.*)\.n$/;
-      my $s_path = File::Spec->catfile($out_dir, "$stem.s");
-      my $o_path = File::Spec->catfile($out_dir, "$stem.o65");
+   if ($wide_math) {
+      my %allvars = (
+         ga => 1, gb => 1, gr => 1,
+         gwide_a => 1, gwide_b => 1, gwide_p => 1, gwide_t => 1,
+         gexp_a => 1, gexp_b => 1, gsign_out => 1,
+         gsig_a => 1, gsig_b => 1, gsig_out => 1,
+         gcmp => 1, gunordered => 1,
+      );
+      my %helper_vars = (
+         "nlf_${san}_pack_result" => { gr => 1, gexp_a => 1, gsign_out => 1, gsig_out => 1 },
+      );
+      my %unit_vars = (
+         add_impl => { ga => 1, gb => 1, gr => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1, gcmp => 1 },
+         cmp_impl => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         mul_impl => { ga => 1, gb => 1, gr => 1, gwide_p => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 },
+         div_impl => { ga => 1, gb => 1, gr => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 },
+         add => { ga => 1, gb => 1, gr => 1 },
+         sub => { ga => 1, gb => 1, gr => 1 },
+         mul => { ga => 1, gb => 1, gr => 1 },
+         div => { ga => 1, gb => 1, gr => 1 },
+         eq => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         ne => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         lt => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         gt => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         le => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         ge => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+      );
+      my %unit_decl = (
+         add => proc_decl_text($add_impl),
+         sub => proc_decl_text($add_impl),
+         mul => proc_decl_text($mul_impl),
+         div => proc_decl_text($div_impl),
+         eq => proc_decl_text($cmp_impl),
+         ne => proc_decl_text($cmp_impl),
+         lt => proc_decl_text($cmp_impl),
+         gt => proc_decl_text($cmp_impl),
+         le => proc_decl_text($cmp_impl),
+         ge => proc_decl_text($cmp_impl),
+      );
+      my %unit_body = (
+         add_impl => add_impl_text(''),
+         cmp_impl => cmp_impl_text(''),
+         mul_impl => mul_impl_text(''),
+         div_impl => div_impl_text(''),
+         add => operator_add_text(),
+         sub => operator_sub_text(),
+         mul => operator_mul_text(),
+         div => operator_div_text(),
+         eq => operator_eq_text(),
+         ne => operator_ne_text(),
+         lt => operator_lt_text(),
+         gt => operator_gt_text(),
+         le => operator_le_text(),
+         ge => operator_ge_text(),
+      );
+      my @wide_units;
+      push @wide_units, ["${typename}_core.n", comment_header() . standalone_prelude() . wide_runtime_block('', \%allvars, 0, [], undef)];
+      for my $ent (split_generated_functions(wide_helper_text())) {
+         my ($name, $chunk) = @$ent;
+         my @deps = helper_names_in_text($chunk, $name);
+         my $src_name = "${typename}_${name}.n";
+         my $src_text = comment_header() . standalone_prelude() . wide_runtime_block('extern ', $helper_vars{$name} || {}, 0, \@deps, undef) . $chunk;
+         push @wide_units, [$src_name, $src_text];
+      }
+      for my $key (@build_order) {
+         next if $key eq "core";
+         my @deps = helper_names_in_text($unit_body{$key});
+         my $src_text = wide_build_unit_text($unit_vars{$key}, \@deps, $unit_decl{$key}, $unit_body{$key});
+         push @wide_units, [$build_units{$key}->{source_name}, $src_text];
+      }
+      for my $ent (@wide_units) {
+         my ($src_name, $src_text) = @$ent;
+         my $src_path = File::Spec->catfile($out_dir, $src_name);
+         my ($stem) = $src_name =~ /^(.*)\.n$/;
+         my $s_path = File::Spec->catfile($out_dir, "$stem.s");
+         my $o_path = File::Spec->catfile($out_dir, "$stem.o65");
+         open(my $sfh, '>', $src_path) or die "$0: could not write $src_path: $!
+";
+         print $sfh $src_text;
+         close($sfh);
+         run_checked($n65cc, '-quiet', $src_path, '-o', $s_path);
+         run_checked($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
+         push @member_objects, $o_path;
+      }
+   }
+   else {
+      for my $key (@build_order) {
+         my $src_name = $build_units{$key}->{source_name};
+         my $src_path = File::Spec->catfile($out_dir, $src_name);
+         my ($stem) = $src_name =~ /^(.*)\.n$/;
+         my $s_path = File::Spec->catfile($out_dir, "$stem.s");
+         my $o_path = File::Spec->catfile($out_dir, "$stem.o65");
 
-      open(my $sfh, '>', $src_path) or die "$0: could not write $src_path: $!\n";
-      print $sfh $build_units{$key}->{source_text}->();
-      close($sfh);
+         open(my $sfh, '>', $src_path) or die "$0: could not write $src_path: $!
+";
+         print $sfh $build_units{$key}->{source_text}->();
+         close($sfh);
 
-      run_checked($n65cc, '-quiet', $src_path, '-o', $s_path);
-      run_checked($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
-      push @member_objects, $o_path;
+         run_checked($n65cc, '-quiet', $src_path, '-o', $s_path);
+         run_checked($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
+         push @member_objects, $o_path;
+      }
    }
 
    my $archive_path = File::Spec->catfile($out_dir, "${typename}.a65");
