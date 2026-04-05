@@ -1,5 +1,5 @@
 // n65cc -I .
-// expecterr: exceeds host double size; inaccuracies may appear
+// forbiderr: exceeds host double size; inaccuracies may appear
 // expectasmordered: ldy #13
 // expectasmordered: lda #$00
 // expectasmordered: sta (fp),y
