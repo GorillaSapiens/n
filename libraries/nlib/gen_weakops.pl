@@ -26,24 +26,35 @@ sub sym {
 }
 
 sub emit_prologue {
-   print "    lda sp+1\n";
-   print "    sta fp+1\n";
-   print "    lda sp\n";
-   print "    sta fp\n";
+}
+
+sub emit_byte_arg0 {
+   my ($value) = @_;
+   die "byte value out of range: $value" if $value < 0 || $value > 255;
+   print "    lda #\$" . sprintf('%02x', $value) . "\n";
+   print "    sta arg0\n";
 }
 
 sub emit_ptr {
-   my ($ptrn, $off) = @_;
-   print "    lda #\$$off\n";
-   print "    sta arg0\n";
-   print "    jsr _fp2ptr${ptrn}m\n";
+   my ($ptrn, $off, $sp_bias) = @_;
+   $sp_bias = 0 if !defined $sp_bias;
+   my $delta = hex($off) + $sp_bias;
+   emit_byte_arg0($delta);
+   print "    jsr _sp2ptr${ptrn}m\n";
 }
 
 sub emit_ptrp {
-   my ($ptrn, $off) = @_;
-   print "    lda #\$$off\n";
-   print "    sta arg0\n";
-   print "    jsr _fp2ptr${ptrn}p\n";
+   my ($ptrn, $off, $sp_bias) = @_;
+   $sp_bias = 0 if !defined $sp_bias;
+   my $delta = hex($off) - $sp_bias;
+   if ($delta >= 0) {
+      emit_byte_arg0($delta);
+      print "    jsr _sp2ptr${ptrn}p\n";
+   }
+   else {
+      emit_byte_arg0(-$delta);
+      print "    jsr _sp2ptr${ptrn}m\n";
+   }
 }
 
 sub emit_rts { print "    rts\n"; }
@@ -107,14 +118,14 @@ for my $t (@types) {
       print "    lda #\$" . sprintf('%02x', $scratch) . "\n";
       print "    sta arg0\n";
       print "    jsr _pushN\n";
-      emit_ptr(0, sprintf('%02x', $arg1));
-      emit_ptr(1, sprintf('%02x', $arg2));
-      emit_ptrp(2, sprintf('%02x', 0));
+      emit_ptr(0, sprintf('%02x', $arg1), $scratch);
+      emit_ptr(1, sprintf('%02x', $arg2), $scratch);
+      emit_ptrp(2, sprintf('%02x', 0), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _mulN\n";
-      emit_ptrp(0, sprintf('%02x', 0));
-      emit_ptr(1, sprintf('%02x', $ret));
+      emit_ptrp(0, sprintf('%02x', 0), $scratch);
+      emit_ptr(1, sprintf('%02x', $ret), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _cpyN\n";
@@ -135,15 +146,15 @@ for my $t (@types) {
       print "    lda #\$" . sprintf('%02x', $scratch) . "\n";
       print "    sta arg0\n";
       print "    jsr _pushN\n";
-      emit_ptr(0, sprintf('%02x', $arg1));
-      emit_ptr(1, sprintf('%02x', $arg2));
-      emit_ptrp(2, sprintf('%02x', $quo));
-      emit_ptrp(3, sprintf('%02x', $rem));
+      emit_ptr(0, sprintf('%02x', $arg1), $scratch);
+      emit_ptr(1, sprintf('%02x', $arg2), $scratch);
+      emit_ptrp(2, sprintf('%02x', $quo), $scratch);
+      emit_ptrp(3, sprintf('%02x', $rem), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _divN\n";
-      emit_ptrp(0, sprintf('%02x', $want_rem ? $rem : $quo));
-      emit_ptr(1, sprintf('%02x', $ret));
+      emit_ptrp(0, sprintf('%02x', $want_rem ? $rem : $quo), $scratch);
+      emit_ptr(1, sprintf('%02x', $ret), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
       print "    jsr _cpyN\n";

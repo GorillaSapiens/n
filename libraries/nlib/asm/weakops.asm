@@ -3,19 +3,15 @@
 
 .weak operatorx2B__int_p0_a0__int_p0_a0
 .proc operatorx2B__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _addN
@@ -24,19 +20,15 @@
 
 .weak operatorx2D__int_p0_a0__int_p0_a0
 .proc operatorx2D__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _subN
@@ -45,19 +37,15 @@
 
 .weak operatorx26__int_p0_a0__int_p0_a0
 .proc operatorx26__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_andN
@@ -66,19 +54,15 @@
 
 .weak operatorx7C__int_p0_a0__int_p0_a0
 .proc operatorx7C__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_orN
@@ -87,19 +71,15 @@
 
 .weak operatorx5E__int_p0_a0__int_p0_a0
 .proc operatorx5E__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_xorN
@@ -108,31 +88,27 @@
 
 .weak operatorx2A__int_p0_a0__int_p0_a0
 .proc operatorx2A__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -144,34 +120,30 @@
 
 .weak operatorx2F__int_p0_a0__int_p0_a0
 .proc operatorx2F__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -183,34 +155,30 @@
 
 .weak operatorx25__int_p0_a0__int_p0_a0
 .proc operatorx25__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
     lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -222,19 +190,15 @@
 
 .weak operatorx3Cx3C__int_p0_a0__int_p0_a0
 .proc operatorx3Cx3C__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -246,19 +210,15 @@
 
 .weak operatorx3Ex3E__int_p0_a0__int_p0_a0
 .proc operatorx3Ex3E__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -270,22 +230,18 @@
 
 .weak operatorx3Dx3D__int_p0_a0__int_p0_a0
 .proc operatorx3Dx3D__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -294,16 +250,12 @@
 
 .weak operatorx21x3D__int_p0_a0__int_p0_a0
 .proc operatorx21x3D__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
@@ -312,7 +264,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -321,22 +273,18 @@
 
 .weak operatorx3C__int_p0_a0__int_p0_a0
 .proc operatorx3C__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -345,22 +293,18 @@
 
 .weak operatorx3Cx3D__int_p0_a0__int_p0_a0
 .proc operatorx3Cx3D__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -369,22 +313,18 @@
 
 .weak operatorx3E__int_p0_a0__int_p0_a0
 .proc operatorx3E__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -393,22 +333,18 @@
 
 .weak operatorx3Ex3D__int_p0_a0__int_p0_a0
 .proc operatorx3Ex3D__int_p0_a0__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -417,16 +353,12 @@
 
 .weak operatorx2D__int_p0_a0
 .proc operatorx2D__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _comp2N
@@ -435,16 +367,12 @@
 
 .weak operatorx7E__int_p0_a0
 .proc operatorx7E__int_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_notN
@@ -453,19 +381,15 @@
 
 .weak operatorx2B__long_p0_a0__long_p0_a0
 .proc operatorx2B__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _addN
@@ -474,19 +398,15 @@
 
 .weak operatorx2D__long_p0_a0__long_p0_a0
 .proc operatorx2D__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _subN
@@ -495,19 +415,15 @@
 
 .weak operatorx26__long_p0_a0__long_p0_a0
 .proc operatorx26__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_andN
@@ -516,19 +432,15 @@
 
 .weak operatorx7C__long_p0_a0__long_p0_a0
 .proc operatorx7C__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_orN
@@ -537,19 +449,15 @@
 
 .weak operatorx5E__long_p0_a0__long_p0_a0
 .proc operatorx5E__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_xorN
@@ -558,31 +466,27 @@
 
 .weak operatorx2A__long_p0_a0__long_p0_a0
 .proc operatorx2A__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -594,34 +498,30 @@
 
 .weak operatorx2F__long_p0_a0__long_p0_a0
 .proc operatorx2F__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -633,34 +533,30 @@
 
 .weak operatorx25__long_p0_a0__long_p0_a0
 .proc operatorx25__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
     lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -672,19 +568,15 @@
 
 .weak operatorx3Cx3C__long_p0_a0__long_p0_a0
 .proc operatorx3Cx3C__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -696,19 +588,15 @@
 
 .weak operatorx3Ex3E__long_p0_a0__long_p0_a0
 .proc operatorx3Ex3E__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -720,22 +608,18 @@
 
 .weak operatorx3Dx3D__long_p0_a0__long_p0_a0
 .proc operatorx3Dx3D__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -744,16 +628,12 @@
 
 .weak operatorx21x3D__long_p0_a0__long_p0_a0
 .proc operatorx21x3D__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
@@ -762,7 +642,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -771,22 +651,18 @@
 
 .weak operatorx3C__long_p0_a0__long_p0_a0
 .proc operatorx3C__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -795,22 +671,18 @@
 
 .weak operatorx3Cx3D__long_p0_a0__long_p0_a0
 .proc operatorx3Cx3D__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -819,22 +691,18 @@
 
 .weak operatorx3E__long_p0_a0__long_p0_a0
 .proc operatorx3E__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -843,22 +711,18 @@
 
 .weak operatorx3Ex3D__long_p0_a0__long_p0_a0
 .proc operatorx3Ex3D__long_p0_a0__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -867,16 +731,12 @@
 
 .weak operatorx2D__long_p0_a0
 .proc operatorx2D__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _comp2N
@@ -885,16 +745,12 @@
 
 .weak operatorx7E__long_p0_a0
 .proc operatorx7E__long_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_notN
@@ -903,19 +759,15 @@
 
 .weak operatorx2B__longlong_p0_a0__longlong_p0_a0
 .proc operatorx2B__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _addN
@@ -924,19 +776,15 @@
 
 .weak operatorx2D__longlong_p0_a0__longlong_p0_a0
 .proc operatorx2D__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _subN
@@ -945,19 +793,15 @@
 
 .weak operatorx26__longlong_p0_a0__longlong_p0_a0
 .proc operatorx26__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_andN
@@ -966,19 +810,15 @@
 
 .weak operatorx7C__longlong_p0_a0__longlong_p0_a0
 .proc operatorx7C__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_orN
@@ -987,19 +827,15 @@
 
 .weak operatorx5E__longlong_p0_a0__longlong_p0_a0
 .proc operatorx5E__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_xorN
@@ -1008,31 +844,27 @@
 
 .weak operatorx2A__longlong_p0_a0__longlong_p0_a0
 .proc operatorx2A__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -1044,34 +876,30 @@
 
 .weak operatorx2F__longlong_p0_a0__longlong_p0_a0
 .proc operatorx2F__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -1083,34 +911,30 @@
 
 .weak operatorx25__longlong_p0_a0__longlong_p0_a0
 .proc operatorx25__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
     lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -1122,19 +946,15 @@
 
 .weak operatorx3Cx3C__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3Cx3C__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -1146,19 +966,15 @@
 
 .weak operatorx3Ex3E__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3Ex3E__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -1170,22 +986,18 @@
 
 .weak operatorx3Dx3D__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3Dx3D__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1194,16 +1006,12 @@
 
 .weak operatorx21x3D__longlong_p0_a0__longlong_p0_a0
 .proc operatorx21x3D__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
@@ -1212,7 +1020,7 @@
     sta arg1
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1221,22 +1029,18 @@
 
 .weak operatorx3C__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3C__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1245,22 +1049,18 @@
 
 .weak operatorx3Cx3D__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3Cx3D__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1269,22 +1069,18 @@
 
 .weak operatorx3E__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3E__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1293,22 +1089,18 @@
 
 .weak operatorx3Ex3D__longlong_p0_a0__longlong_p0_a0
 .proc operatorx3Ex3D__longlong_p0_a0__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1317,16 +1109,12 @@
 
 .weak operatorx2D__longlong_p0_a0
 .proc operatorx2D__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _comp2N
@@ -1335,16 +1123,12 @@
 
 .weak operatorx7E__longlong_p0_a0
 .proc operatorx7E__longlong_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_notN
@@ -1353,19 +1137,15 @@
 
 .weak operatorx2B__char_p0_a0__char_p0_a0
 .proc operatorx2B__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _addN
@@ -1374,19 +1154,15 @@
 
 .weak operatorx2D__char_p0_a0__char_p0_a0
 .proc operatorx2D__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _subN
@@ -1395,19 +1171,15 @@
 
 .weak operatorx26__char_p0_a0__char_p0_a0
 .proc operatorx26__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_andN
@@ -1416,19 +1188,15 @@
 
 .weak operatorx7C__char_p0_a0__char_p0_a0
 .proc operatorx7C__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_orN
@@ -1437,19 +1205,15 @@
 
 .weak operatorx5E__char_p0_a0__char_p0_a0
 .proc operatorx5E__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_xorN
@@ -1458,31 +1222,27 @@
 
 .weak operatorx2A__char_p0_a0__char_p0_a0
 .proc operatorx2A__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -1494,34 +1254,30 @@
 
 .weak operatorx2F__char_p0_a0__char_p0_a0
 .proc operatorx2F__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -1533,34 +1289,30 @@
 
 .weak operatorx25__char_p0_a0__char_p0_a0
 .proc operatorx25__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
     lda #$01
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -1572,19 +1324,15 @@
 
 .weak operatorx3Cx3C__char_p0_a0__char_p0_a0
 .proc operatorx3Cx3C__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -1596,19 +1344,15 @@
 
 .weak operatorx3Ex3E__char_p0_a0__char_p0_a0
 .proc operatorx3Ex3E__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -1620,22 +1364,18 @@
 
 .weak operatorx3Dx3D__char_p0_a0__char_p0_a0
 .proc operatorx3Dx3D__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1644,16 +1384,12 @@
 
 .weak operatorx21x3D__char_p0_a0__char_p0_a0
 .proc operatorx21x3D__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
@@ -1662,7 +1398,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1671,22 +1407,18 @@
 
 .weak operatorx3C__char_p0_a0__char_p0_a0
 .proc operatorx3C__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1695,22 +1427,18 @@
 
 .weak operatorx3Cx3D__char_p0_a0__char_p0_a0
 .proc operatorx3Cx3D__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1719,22 +1447,18 @@
 
 .weak operatorx3E__char_p0_a0__char_p0_a0
 .proc operatorx3E__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1743,22 +1467,18 @@
 
 .weak operatorx3Ex3D__char_p0_a0__char_p0_a0
 .proc operatorx3Ex3D__char_p0_a0__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -1767,16 +1487,12 @@
 
 .weak operatorx2D__char_p0_a0
 .proc operatorx2D__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _comp2N
@@ -1785,16 +1501,12 @@
 
 .weak operatorx7E__char_p0_a0
 .proc operatorx7E__char_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_notN
@@ -1803,19 +1515,15 @@
 
 .weak operatorx2B__bool_p0_a0__bool_p0_a0
 .proc operatorx2B__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _addN
@@ -1824,19 +1532,15 @@
 
 .weak operatorx2D__bool_p0_a0__bool_p0_a0
 .proc operatorx2D__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _subN
@@ -1845,19 +1549,15 @@
 
 .weak operatorx26__bool_p0_a0__bool_p0_a0
 .proc operatorx26__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_andN
@@ -1866,19 +1566,15 @@
 
 .weak operatorx7C__bool_p0_a0__bool_p0_a0
 .proc operatorx7C__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_orN
@@ -1887,19 +1583,15 @@
 
 .weak operatorx5E__bool_p0_a0__bool_p0_a0
 .proc operatorx5E__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_xorN
@@ -1908,31 +1600,27 @@
 
 .weak operatorx2A__bool_p0_a0__bool_p0_a0
 .proc operatorx2A__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -1944,34 +1632,30 @@
 
 .weak operatorx2F__bool_p0_a0__bool_p0_a0
 .proc operatorx2F__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -1983,34 +1667,30 @@
 
 .weak operatorx25__bool_p0_a0__bool_p0_a0
 .proc operatorx25__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
     lda #$01
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2022,19 +1702,15 @@
 
 .weak operatorx3Cx3C__bool_p0_a0__bool_p0_a0
 .proc operatorx3Cx3C__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2046,19 +1722,15 @@
 
 .weak operatorx3Ex3E__bool_p0_a0__bool_p0_a0
 .proc operatorx3Ex3E__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2070,22 +1742,18 @@
 
 .weak operatorx3Dx3D__bool_p0_a0__bool_p0_a0
 .proc operatorx3Dx3D__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2094,16 +1762,12 @@
 
 .weak operatorx21x3D__bool_p0_a0__bool_p0_a0
 .proc operatorx21x3D__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
@@ -2112,7 +1776,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2121,22 +1785,18 @@
 
 .weak operatorx3C__bool_p0_a0__bool_p0_a0
 .proc operatorx3C__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2145,22 +1805,18 @@
 
 .weak operatorx3Cx3D__bool_p0_a0__bool_p0_a0
 .proc operatorx3Cx3D__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2169,22 +1825,18 @@
 
 .weak operatorx3E__bool_p0_a0__bool_p0_a0
 .proc operatorx3E__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2193,22 +1845,18 @@
 
 .weak operatorx3Ex3D__bool_p0_a0__bool_p0_a0
 .proc operatorx3Ex3D__bool_p0_a0__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2217,16 +1865,12 @@
 
 .weak operatorx2D__bool_p0_a0
 .proc operatorx2D__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _comp2N
@@ -2235,16 +1879,12 @@
 
 .weak operatorx7E__bool_p0_a0
 .proc operatorx7E__bool_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_notN
@@ -2253,19 +1893,15 @@
 
 .weak operatorx2B__s1_p0_a0__s1_p0_a0
 .proc operatorx2B__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _addN
@@ -2274,19 +1910,15 @@
 
 .weak operatorx2D__s1_p0_a0__s1_p0_a0
 .proc operatorx2D__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _subN
@@ -2295,19 +1927,15 @@
 
 .weak operatorx26__s1_p0_a0__s1_p0_a0
 .proc operatorx26__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_andN
@@ -2316,19 +1944,15 @@
 
 .weak operatorx7C__s1_p0_a0__s1_p0_a0
 .proc operatorx7C__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_orN
@@ -2337,19 +1961,15 @@
 
 .weak operatorx5E__s1_p0_a0__s1_p0_a0
 .proc operatorx5E__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_xorN
@@ -2358,31 +1978,27 @@
 
 .weak operatorx2A__s1_p0_a0__s1_p0_a0
 .proc operatorx2A__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2394,34 +2010,30 @@
 
 .weak operatorx2F__s1_p0_a0__s1_p0_a0
 .proc operatorx2F__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2433,34 +2045,30 @@
 
 .weak operatorx25__s1_p0_a0__s1_p0_a0
 .proc operatorx25__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
     lda #$01
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2472,19 +2080,15 @@
 
 .weak operatorx3Cx3C__s1_p0_a0__s1_p0_a0
 .proc operatorx3Cx3C__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2496,19 +2100,15 @@
 
 .weak operatorx3Ex3E__s1_p0_a0__s1_p0_a0
 .proc operatorx3Ex3E__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2520,22 +2120,18 @@
 
 .weak operatorx3Dx3D__s1_p0_a0__s1_p0_a0
 .proc operatorx3Dx3D__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2544,16 +2140,12 @@
 
 .weak operatorx21x3D__s1_p0_a0__s1_p0_a0
 .proc operatorx21x3D__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
@@ -2562,7 +2154,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2571,22 +2163,18 @@
 
 .weak operatorx3C__s1_p0_a0__s1_p0_a0
 .proc operatorx3C__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNs
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2595,22 +2183,18 @@
 
 .weak operatorx3Cx3D__s1_p0_a0__s1_p0_a0
 .proc operatorx3Cx3D__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNs
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2619,22 +2203,18 @@
 
 .weak operatorx3E__s1_p0_a0__s1_p0_a0
 .proc operatorx3E__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNs
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2643,22 +2223,18 @@
 
 .weak operatorx3Ex3D__s1_p0_a0__s1_p0_a0
 .proc operatorx3Ex3D__s1_p0_a0__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNs
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2667,16 +2243,12 @@
 
 .weak operatorx2D__s1_p0_a0
 .proc operatorx2D__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _comp2N
@@ -2685,16 +2257,12 @@
 
 .weak operatorx7E__s1_p0_a0
 .proc operatorx7E__s1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_notN
@@ -2703,19 +2271,15 @@
 
 .weak operatorx2B__u1_p0_a0__u1_p0_a0
 .proc operatorx2B__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _addN
@@ -2724,19 +2288,15 @@
 
 .weak operatorx2D__u1_p0_a0__u1_p0_a0
 .proc operatorx2D__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _subN
@@ -2745,19 +2305,15 @@
 
 .weak operatorx26__u1_p0_a0__u1_p0_a0
 .proc operatorx26__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_andN
@@ -2766,19 +2322,15 @@
 
 .weak operatorx7C__u1_p0_a0__u1_p0_a0
 .proc operatorx7C__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_orN
@@ -2787,19 +2339,15 @@
 
 .weak operatorx5E__u1_p0_a0__u1_p0_a0
 .proc operatorx5E__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_xorN
@@ -2808,31 +2356,27 @@
 
 .weak operatorx2A__u1_p0_a0__u1_p0_a0
 .proc operatorx2A__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2844,34 +2388,30 @@
 
 .weak operatorx2F__u1_p0_a0__u1_p0_a0
 .proc operatorx2F__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2883,34 +2423,30 @@
 
 .weak operatorx25__u1_p0_a0__u1_p0_a0
 .proc operatorx25__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
     jsr _pushN
-    lda #$01
+    lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$04
+    sta arg0
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$01
     sta arg0
     jsr _divN
     lda #$01
     sta arg0
-    jsr _fp2ptr0p
-    lda #$03
+    jsr _sp2ptr0m
+    lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _cpyN
@@ -2922,19 +2458,15 @@
 
 .weak operatorx3Cx3C__u1_p0_a0__u1_p0_a0
 .proc operatorx3Cx3C__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2946,19 +2478,15 @@
 
 .weak operatorx3Ex3E__u1_p0_a0__u1_p0_a0
 .proc operatorx3Ex3E__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -2970,22 +2498,18 @@
 
 .weak operatorx3Dx3D__u1_p0_a0__u1_p0_a0
 .proc operatorx3Dx3D__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -2994,16 +2518,12 @@
 
 .weak operatorx21x3D__u1_p0_a0__u1_p0_a0
 .proc operatorx21x3D__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _eqN
@@ -3012,7 +2532,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3021,22 +2541,18 @@
 
 .weak operatorx3C__u1_p0_a0__u1_p0_a0
 .proc operatorx3C__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3045,22 +2561,18 @@
 
 .weak operatorx3Cx3D__u1_p0_a0__u1_p0_a0
 .proc operatorx3Cx3D__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3069,22 +2581,18 @@
 
 .weak operatorx3E__u1_p0_a0__u1_p0_a0
 .proc operatorx3E__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _ltNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3093,22 +2601,18 @@
 
 .weak operatorx3Ex3D__u1_p0_a0__u1_p0_a0
 .proc operatorx3Ex3D__u1_p0_a0__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$01
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _leNu
     lda #$03
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3117,16 +2621,12 @@
 
 .weak operatorx2D__u1_p0_a0
 .proc operatorx2D__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$01
     sta arg0
     jsr _comp2N
@@ -3135,16 +2635,12 @@
 
 .weak operatorx7E__u1_p0_a0
 .proc operatorx7E__u1_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$01
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$01
     sta arg0
     jsr _bit_notN
@@ -3153,19 +2649,15 @@
 
 .weak operatorx2B__s2_p0_a0__s2_p0_a0
 .proc operatorx2B__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _addN
@@ -3174,19 +2666,15 @@
 
 .weak operatorx2D__s2_p0_a0__s2_p0_a0
 .proc operatorx2D__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _subN
@@ -3195,19 +2683,15 @@
 
 .weak operatorx26__s2_p0_a0__s2_p0_a0
 .proc operatorx26__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_andN
@@ -3216,19 +2700,15 @@
 
 .weak operatorx7C__s2_p0_a0__s2_p0_a0
 .proc operatorx7C__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_orN
@@ -3237,19 +2717,15 @@
 
 .weak operatorx5E__s2_p0_a0__s2_p0_a0
 .proc operatorx5E__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_xorN
@@ -3258,31 +2734,27 @@
 
 .weak operatorx2A__s2_p0_a0__s2_p0_a0
 .proc operatorx2A__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3294,34 +2766,30 @@
 
 .weak operatorx2F__s2_p0_a0__s2_p0_a0
 .proc operatorx2F__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3333,34 +2801,30 @@
 
 .weak operatorx25__s2_p0_a0__s2_p0_a0
 .proc operatorx25__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
     lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3372,19 +2836,15 @@
 
 .weak operatorx3Cx3C__s2_p0_a0__s2_p0_a0
 .proc operatorx3Cx3C__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -3396,19 +2856,15 @@
 
 .weak operatorx3Ex3E__s2_p0_a0__s2_p0_a0
 .proc operatorx3Ex3E__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -3420,22 +2876,18 @@
 
 .weak operatorx3Dx3D__s2_p0_a0__s2_p0_a0
 .proc operatorx3Dx3D__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3444,16 +2896,12 @@
 
 .weak operatorx21x3D__s2_p0_a0__s2_p0_a0
 .proc operatorx21x3D__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
@@ -3462,7 +2910,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3471,22 +2919,18 @@
 
 .weak operatorx3C__s2_p0_a0__s2_p0_a0
 .proc operatorx3C__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNs
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3495,22 +2939,18 @@
 
 .weak operatorx3Cx3D__s2_p0_a0__s2_p0_a0
 .proc operatorx3Cx3D__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNs
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3519,22 +2959,18 @@
 
 .weak operatorx3E__s2_p0_a0__s2_p0_a0
 .proc operatorx3E__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNs
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3543,22 +2979,18 @@
 
 .weak operatorx3Ex3D__s2_p0_a0__s2_p0_a0
 .proc operatorx3Ex3D__s2_p0_a0__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNs
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3567,16 +2999,12 @@
 
 .weak operatorx2D__s2_p0_a0
 .proc operatorx2D__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _comp2N
@@ -3585,16 +3013,12 @@
 
 .weak operatorx7E__s2_p0_a0
 .proc operatorx7E__s2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_notN
@@ -3603,19 +3027,15 @@
 
 .weak operatorx2B__u2_p0_a0__u2_p0_a0
 .proc operatorx2B__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _addN
@@ -3624,19 +3044,15 @@
 
 .weak operatorx2D__u2_p0_a0__u2_p0_a0
 .proc operatorx2D__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _subN
@@ -3645,19 +3061,15 @@
 
 .weak operatorx26__u2_p0_a0__u2_p0_a0
 .proc operatorx26__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_andN
@@ -3666,19 +3078,15 @@
 
 .weak operatorx7C__u2_p0_a0__u2_p0_a0
 .proc operatorx7C__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_orN
@@ -3687,19 +3095,15 @@
 
 .weak operatorx5E__u2_p0_a0__u2_p0_a0
 .proc operatorx5E__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_xorN
@@ -3708,31 +3112,27 @@
 
 .weak operatorx2A__u2_p0_a0__u2_p0_a0
 .proc operatorx2A__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3744,34 +3144,30 @@
 
 .weak operatorx2F__u2_p0_a0__u2_p0_a0
 .proc operatorx2F__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3783,34 +3179,30 @@
 
 .weak operatorx25__u2_p0_a0__u2_p0_a0
 .proc operatorx25__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
     jsr _pushN
-    lda #$02
+    lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$08
+    sta arg0
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$02
     sta arg0
     jsr _divN
     lda #$02
     sta arg0
-    jsr _fp2ptr0p
-    lda #$06
+    jsr _sp2ptr0m
+    lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _cpyN
@@ -3822,19 +3214,15 @@
 
 .weak operatorx3Cx3C__u2_p0_a0__u2_p0_a0
 .proc operatorx3Cx3C__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -3846,19 +3234,15 @@
 
 .weak operatorx3Ex3E__u2_p0_a0__u2_p0_a0
 .proc operatorx3Ex3E__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -3870,22 +3254,18 @@
 
 .weak operatorx3Dx3D__u2_p0_a0__u2_p0_a0
 .proc operatorx3Dx3D__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3894,16 +3274,12 @@
 
 .weak operatorx21x3D__u2_p0_a0__u2_p0_a0
 .proc operatorx21x3D__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _eqN
@@ -3912,7 +3288,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3921,22 +3297,18 @@
 
 .weak operatorx3C__u2_p0_a0__u2_p0_a0
 .proc operatorx3C__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3945,22 +3317,18 @@
 
 .weak operatorx3Cx3D__u2_p0_a0__u2_p0_a0
 .proc operatorx3Cx3D__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3969,22 +3337,18 @@
 
 .weak operatorx3E__u2_p0_a0__u2_p0_a0
 .proc operatorx3E__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _ltNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -3993,22 +3357,18 @@
 
 .weak operatorx3Ex3D__u2_p0_a0__u2_p0_a0
 .proc operatorx3Ex3D__u2_p0_a0__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$02
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _leNu
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4017,16 +3377,12 @@
 
 .weak operatorx2D__u2_p0_a0
 .proc operatorx2D__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     jsr _comp2N
@@ -4035,16 +3391,12 @@
 
 .weak operatorx7E__u2_p0_a0
 .proc operatorx7E__u2_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     jsr _bit_notN
@@ -4053,19 +3405,15 @@
 
 .weak operatorx2B__s3_p0_a0__s3_p0_a0
 .proc operatorx2B__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _addN
@@ -4074,19 +3422,15 @@
 
 .weak operatorx2D__s3_p0_a0__s3_p0_a0
 .proc operatorx2D__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _subN
@@ -4095,19 +3439,15 @@
 
 .weak operatorx26__s3_p0_a0__s3_p0_a0
 .proc operatorx26__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_andN
@@ -4116,19 +3456,15 @@
 
 .weak operatorx7C__s3_p0_a0__s3_p0_a0
 .proc operatorx7C__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_orN
@@ -4137,19 +3473,15 @@
 
 .weak operatorx5E__s3_p0_a0__s3_p0_a0
 .proc operatorx5E__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_xorN
@@ -4158,31 +3490,27 @@
 
 .weak operatorx2A__s3_p0_a0__s3_p0_a0
 .proc operatorx2A__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4194,34 +3522,30 @@
 
 .weak operatorx2F__s3_p0_a0__s3_p0_a0
 .proc operatorx2F__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$03
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4233,34 +3557,30 @@
 
 .weak operatorx25__s3_p0_a0__s3_p0_a0
 .proc operatorx25__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$03
     sta arg0
     jsr _divN
     lda #$03
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4272,19 +3592,15 @@
 
 .weak operatorx3Cx3C__s3_p0_a0__s3_p0_a0
 .proc operatorx3Cx3C__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -4296,19 +3612,15 @@
 
 .weak operatorx3Ex3E__s3_p0_a0__s3_p0_a0
 .proc operatorx3Ex3E__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -4320,22 +3632,18 @@
 
 .weak operatorx3Dx3D__s3_p0_a0__s3_p0_a0
 .proc operatorx3Dx3D__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _eqN
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4344,16 +3652,12 @@
 
 .weak operatorx21x3D__s3_p0_a0__s3_p0_a0
 .proc operatorx21x3D__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _eqN
@@ -4362,7 +3666,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4371,22 +3675,18 @@
 
 .weak operatorx3C__s3_p0_a0__s3_p0_a0
 .proc operatorx3C__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _ltNs
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4395,22 +3695,18 @@
 
 .weak operatorx3Cx3D__s3_p0_a0__s3_p0_a0
 .proc operatorx3Cx3D__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _leNs
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4419,22 +3715,18 @@
 
 .weak operatorx3E__s3_p0_a0__s3_p0_a0
 .proc operatorx3E__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _ltNs
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4443,22 +3735,18 @@
 
 .weak operatorx3Ex3D__s3_p0_a0__s3_p0_a0
 .proc operatorx3Ex3D__s3_p0_a0__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _leNs
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4467,16 +3755,12 @@
 
 .weak operatorx2D__s3_p0_a0
 .proc operatorx2D__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _comp2N
@@ -4485,16 +3769,12 @@
 
 .weak operatorx7E__s3_p0_a0
 .proc operatorx7E__s3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_notN
@@ -4503,19 +3783,15 @@
 
 .weak operatorx2B__u3_p0_a0__u3_p0_a0
 .proc operatorx2B__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _addN
@@ -4524,19 +3800,15 @@
 
 .weak operatorx2D__u3_p0_a0__u3_p0_a0
 .proc operatorx2D__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _subN
@@ -4545,19 +3817,15 @@
 
 .weak operatorx26__u3_p0_a0__u3_p0_a0
 .proc operatorx26__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_andN
@@ -4566,19 +3834,15 @@
 
 .weak operatorx7C__u3_p0_a0__u3_p0_a0
 .proc operatorx7C__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_orN
@@ -4587,19 +3851,15 @@
 
 .weak operatorx5E__u3_p0_a0__u3_p0_a0
 .proc operatorx5E__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_xorN
@@ -4608,31 +3868,27 @@
 
 .weak operatorx2A__u3_p0_a0__u3_p0_a0
 .proc operatorx2A__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4644,34 +3900,30 @@
 
 .weak operatorx2F__u3_p0_a0__u3_p0_a0
 .proc operatorx2F__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$03
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4683,34 +3935,30 @@
 
 .weak operatorx25__u3_p0_a0__u3_p0_a0
 .proc operatorx25__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
     jsr _pushN
-    lda #$03
+    lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$0c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$03
     sta arg0
     jsr _divN
     lda #$03
     sta arg0
-    jsr _fp2ptr0p
-    lda #$09
+    jsr _sp2ptr0m
+    lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _cpyN
@@ -4722,19 +3970,15 @@
 
 .weak operatorx3Cx3C__u3_p0_a0__u3_p0_a0
 .proc operatorx3Cx3C__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -4746,19 +3990,15 @@
 
 .weak operatorx3Ex3E__u3_p0_a0__u3_p0_a0
 .proc operatorx3Ex3E__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -4770,22 +4010,18 @@
 
 .weak operatorx3Dx3D__u3_p0_a0__u3_p0_a0
 .proc operatorx3Dx3D__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _eqN
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4794,16 +4030,12 @@
 
 .weak operatorx21x3D__u3_p0_a0__u3_p0_a0
 .proc operatorx21x3D__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _eqN
@@ -4812,7 +4044,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4821,22 +4053,18 @@
 
 .weak operatorx3C__u3_p0_a0__u3_p0_a0
 .proc operatorx3C__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _ltNu
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4845,22 +4073,18 @@
 
 .weak operatorx3Cx3D__u3_p0_a0__u3_p0_a0
 .proc operatorx3Cx3D__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _leNu
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4869,22 +4093,18 @@
 
 .weak operatorx3E__u3_p0_a0__u3_p0_a0
 .proc operatorx3E__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _ltNu
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4893,22 +4113,18 @@
 
 .weak operatorx3Ex3D__u3_p0_a0__u3_p0_a0
 .proc operatorx3Ex3D__u3_p0_a0__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$03
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _leNu
     lda #$07
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -4917,16 +4133,12 @@
 
 .weak operatorx2D__u3_p0_a0
 .proc operatorx2D__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$03
     sta arg0
     jsr _comp2N
@@ -4935,16 +4147,12 @@
 
 .weak operatorx7E__u3_p0_a0
 .proc operatorx7E__u3_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$03
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$03
     sta arg0
     jsr _bit_notN
@@ -4953,19 +4161,15 @@
 
 .weak operatorx2B__s4_p0_a0__s4_p0_a0
 .proc operatorx2B__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _addN
@@ -4974,19 +4178,15 @@
 
 .weak operatorx2D__s4_p0_a0__s4_p0_a0
 .proc operatorx2D__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _subN
@@ -4995,19 +4195,15 @@
 
 .weak operatorx26__s4_p0_a0__s4_p0_a0
 .proc operatorx26__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_andN
@@ -5016,19 +4212,15 @@
 
 .weak operatorx7C__s4_p0_a0__s4_p0_a0
 .proc operatorx7C__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_orN
@@ -5037,19 +4229,15 @@
 
 .weak operatorx5E__s4_p0_a0__s4_p0_a0
 .proc operatorx5E__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_xorN
@@ -5058,31 +4246,27 @@
 
 .weak operatorx2A__s4_p0_a0__s4_p0_a0
 .proc operatorx2A__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5094,34 +4278,30 @@
 
 .weak operatorx2F__s4_p0_a0__s4_p0_a0
 .proc operatorx2F__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5133,34 +4313,30 @@
 
 .weak operatorx25__s4_p0_a0__s4_p0_a0
 .proc operatorx25__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
     lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5172,19 +4348,15 @@
 
 .weak operatorx3Cx3C__s4_p0_a0__s4_p0_a0
 .proc operatorx3Cx3C__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -5196,19 +4368,15 @@
 
 .weak operatorx3Ex3E__s4_p0_a0__s4_p0_a0
 .proc operatorx3Ex3E__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -5220,22 +4388,18 @@
 
 .weak operatorx3Dx3D__s4_p0_a0__s4_p0_a0
 .proc operatorx3Dx3D__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5244,16 +4408,12 @@
 
 .weak operatorx21x3D__s4_p0_a0__s4_p0_a0
 .proc operatorx21x3D__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
@@ -5262,7 +4422,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5271,22 +4431,18 @@
 
 .weak operatorx3C__s4_p0_a0__s4_p0_a0
 .proc operatorx3C__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNs
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5295,22 +4451,18 @@
 
 .weak operatorx3Cx3D__s4_p0_a0__s4_p0_a0
 .proc operatorx3Cx3D__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNs
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5319,22 +4471,18 @@
 
 .weak operatorx3E__s4_p0_a0__s4_p0_a0
 .proc operatorx3E__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNs
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5343,22 +4491,18 @@
 
 .weak operatorx3Ex3D__s4_p0_a0__s4_p0_a0
 .proc operatorx3Ex3D__s4_p0_a0__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNs
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5367,16 +4511,12 @@
 
 .weak operatorx2D__s4_p0_a0
 .proc operatorx2D__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _comp2N
@@ -5385,16 +4525,12 @@
 
 .weak operatorx7E__s4_p0_a0
 .proc operatorx7E__s4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_notN
@@ -5403,19 +4539,15 @@
 
 .weak operatorx2B__u4_p0_a0__u4_p0_a0
 .proc operatorx2B__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _addN
@@ -5424,19 +4556,15 @@
 
 .weak operatorx2D__u4_p0_a0__u4_p0_a0
 .proc operatorx2D__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _subN
@@ -5445,19 +4573,15 @@
 
 .weak operatorx26__u4_p0_a0__u4_p0_a0
 .proc operatorx26__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_andN
@@ -5466,19 +4590,15 @@
 
 .weak operatorx7C__u4_p0_a0__u4_p0_a0
 .proc operatorx7C__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_orN
@@ -5487,19 +4607,15 @@
 
 .weak operatorx5E__u4_p0_a0__u4_p0_a0
 .proc operatorx5E__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_xorN
@@ -5508,31 +4624,27 @@
 
 .weak operatorx2A__u4_p0_a0__u4_p0_a0
 .proc operatorx2A__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5544,34 +4656,30 @@
 
 .weak operatorx2F__u4_p0_a0__u4_p0_a0
 .proc operatorx2F__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5583,34 +4691,30 @@
 
 .weak operatorx25__u4_p0_a0__u4_p0_a0
 .proc operatorx25__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
     jsr _pushN
-    lda #$04
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$10
+    sta arg0
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$04
     sta arg0
     jsr _divN
     lda #$04
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0c
+    jsr _sp2ptr0m
+    lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _cpyN
@@ -5622,19 +4726,15 @@
 
 .weak operatorx3Cx3C__u4_p0_a0__u4_p0_a0
 .proc operatorx3Cx3C__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -5646,19 +4746,15 @@
 
 .weak operatorx3Ex3E__u4_p0_a0__u4_p0_a0
 .proc operatorx3Ex3E__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -5670,22 +4766,18 @@
 
 .weak operatorx3Dx3D__u4_p0_a0__u4_p0_a0
 .proc operatorx3Dx3D__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5694,16 +4786,12 @@
 
 .weak operatorx21x3D__u4_p0_a0__u4_p0_a0
 .proc operatorx21x3D__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _eqN
@@ -5712,7 +4800,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5721,22 +4809,18 @@
 
 .weak operatorx3C__u4_p0_a0__u4_p0_a0
 .proc operatorx3C__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5745,22 +4829,18 @@
 
 .weak operatorx3Cx3D__u4_p0_a0__u4_p0_a0
 .proc operatorx3Cx3D__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5769,22 +4849,18 @@
 
 .weak operatorx3E__u4_p0_a0__u4_p0_a0
 .proc operatorx3E__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _ltNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5793,22 +4869,18 @@
 
 .weak operatorx3Ex3D__u4_p0_a0__u4_p0_a0
 .proc operatorx3Ex3D__u4_p0_a0__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _leNu
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -5817,16 +4889,12 @@
 
 .weak operatorx2D__u4_p0_a0
 .proc operatorx2D__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     jsr _comp2N
@@ -5835,16 +4903,12 @@
 
 .weak operatorx7E__u4_p0_a0
 .proc operatorx7E__u4_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     jsr _bit_notN
@@ -5853,19 +4917,15 @@
 
 .weak operatorx2B__s5_p0_a0__s5_p0_a0
 .proc operatorx2B__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _addN
@@ -5874,19 +4934,15 @@
 
 .weak operatorx2D__s5_p0_a0__s5_p0_a0
 .proc operatorx2D__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _subN
@@ -5895,19 +4951,15 @@
 
 .weak operatorx26__s5_p0_a0__s5_p0_a0
 .proc operatorx26__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_andN
@@ -5916,19 +4968,15 @@
 
 .weak operatorx7C__s5_p0_a0__s5_p0_a0
 .proc operatorx7C__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_orN
@@ -5937,19 +4985,15 @@
 
 .weak operatorx5E__s5_p0_a0__s5_p0_a0
 .proc operatorx5E__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_xorN
@@ -5958,31 +5002,27 @@
 
 .weak operatorx2A__s5_p0_a0__s5_p0_a0
 .proc operatorx2A__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -5994,34 +5034,30 @@
 
 .weak operatorx2F__s5_p0_a0__s5_p0_a0
 .proc operatorx2F__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$05
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -6033,34 +5069,30 @@
 
 .weak operatorx25__s5_p0_a0__s5_p0_a0
 .proc operatorx25__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$05
     sta arg0
     jsr _divN
     lda #$05
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -6072,19 +5104,15 @@
 
 .weak operatorx3Cx3C__s5_p0_a0__s5_p0_a0
 .proc operatorx3Cx3C__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -6096,19 +5124,15 @@
 
 .weak operatorx3Ex3E__s5_p0_a0__s5_p0_a0
 .proc operatorx3Ex3E__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -6120,22 +5144,18 @@
 
 .weak operatorx3Dx3D__s5_p0_a0__s5_p0_a0
 .proc operatorx3Dx3D__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _eqN
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6144,16 +5164,12 @@
 
 .weak operatorx21x3D__s5_p0_a0__s5_p0_a0
 .proc operatorx21x3D__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _eqN
@@ -6162,7 +5178,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6171,22 +5187,18 @@
 
 .weak operatorx3C__s5_p0_a0__s5_p0_a0
 .proc operatorx3C__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _ltNs
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6195,22 +5207,18 @@
 
 .weak operatorx3Cx3D__s5_p0_a0__s5_p0_a0
 .proc operatorx3Cx3D__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _leNs
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6219,22 +5227,18 @@
 
 .weak operatorx3E__s5_p0_a0__s5_p0_a0
 .proc operatorx3E__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _ltNs
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6243,22 +5247,18 @@
 
 .weak operatorx3Ex3D__s5_p0_a0__s5_p0_a0
 .proc operatorx3Ex3D__s5_p0_a0__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _leNs
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6267,16 +5267,12 @@
 
 .weak operatorx2D__s5_p0_a0
 .proc operatorx2D__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _comp2N
@@ -6285,16 +5281,12 @@
 
 .weak operatorx7E__s5_p0_a0
 .proc operatorx7E__s5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_notN
@@ -6303,19 +5295,15 @@
 
 .weak operatorx2B__u5_p0_a0__u5_p0_a0
 .proc operatorx2B__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _addN
@@ -6324,19 +5312,15 @@
 
 .weak operatorx2D__u5_p0_a0__u5_p0_a0
 .proc operatorx2D__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _subN
@@ -6345,19 +5329,15 @@
 
 .weak operatorx26__u5_p0_a0__u5_p0_a0
 .proc operatorx26__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_andN
@@ -6366,19 +5346,15 @@
 
 .weak operatorx7C__u5_p0_a0__u5_p0_a0
 .proc operatorx7C__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_orN
@@ -6387,19 +5363,15 @@
 
 .weak operatorx5E__u5_p0_a0__u5_p0_a0
 .proc operatorx5E__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_xorN
@@ -6408,31 +5380,27 @@
 
 .weak operatorx2A__u5_p0_a0__u5_p0_a0
 .proc operatorx2A__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -6444,34 +5412,30 @@
 
 .weak operatorx2F__u5_p0_a0__u5_p0_a0
 .proc operatorx2F__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$05
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -6483,34 +5447,30 @@
 
 .weak operatorx25__u5_p0_a0__u5_p0_a0
 .proc operatorx25__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
     jsr _pushN
-    lda #$05
+    lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$14
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$05
     sta arg0
     jsr _divN
     lda #$05
     sta arg0
-    jsr _fp2ptr0p
-    lda #$0f
+    jsr _sp2ptr0m
+    lda #$19
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _cpyN
@@ -6522,19 +5482,15 @@
 
 .weak operatorx3Cx3C__u5_p0_a0__u5_p0_a0
 .proc operatorx3Cx3C__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -6546,19 +5502,15 @@
 
 .weak operatorx3Ex3E__u5_p0_a0__u5_p0_a0
 .proc operatorx3Ex3E__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -6570,22 +5522,18 @@
 
 .weak operatorx3Dx3D__u5_p0_a0__u5_p0_a0
 .proc operatorx3Dx3D__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _eqN
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6594,16 +5542,12 @@
 
 .weak operatorx21x3D__u5_p0_a0__u5_p0_a0
 .proc operatorx21x3D__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _eqN
@@ -6612,7 +5556,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6621,22 +5565,18 @@
 
 .weak operatorx3C__u5_p0_a0__u5_p0_a0
 .proc operatorx3C__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _ltNu
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6645,22 +5585,18 @@
 
 .weak operatorx3Cx3D__u5_p0_a0__u5_p0_a0
 .proc operatorx3Cx3D__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _leNu
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6669,22 +5605,18 @@
 
 .weak operatorx3E__u5_p0_a0__u5_p0_a0
 .proc operatorx3E__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _ltNu
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6693,22 +5625,18 @@
 
 .weak operatorx3Ex3D__u5_p0_a0__u5_p0_a0
 .proc operatorx3Ex3D__u5_p0_a0__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$05
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _leNu
     lda #$0b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -6717,16 +5645,12 @@
 
 .weak operatorx2D__u5_p0_a0
 .proc operatorx2D__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$05
     sta arg0
     jsr _comp2N
@@ -6735,16 +5659,12 @@
 
 .weak operatorx7E__u5_p0_a0
 .proc operatorx7E__u5_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$05
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$05
     sta arg0
     jsr _bit_notN
@@ -6753,19 +5673,15 @@
 
 .weak operatorx2B__s6_p0_a0__s6_p0_a0
 .proc operatorx2B__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _addN
@@ -6774,19 +5690,15 @@
 
 .weak operatorx2D__s6_p0_a0__s6_p0_a0
 .proc operatorx2D__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _subN
@@ -6795,19 +5707,15 @@
 
 .weak operatorx26__s6_p0_a0__s6_p0_a0
 .proc operatorx26__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_andN
@@ -6816,19 +5724,15 @@
 
 .weak operatorx7C__s6_p0_a0__s6_p0_a0
 .proc operatorx7C__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_orN
@@ -6837,19 +5741,15 @@
 
 .weak operatorx5E__s6_p0_a0__s6_p0_a0
 .proc operatorx5E__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_xorN
@@ -6858,31 +5758,27 @@
 
 .weak operatorx2A__s6_p0_a0__s6_p0_a0
 .proc operatorx2A__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -6894,34 +5790,30 @@
 
 .weak operatorx2F__s6_p0_a0__s6_p0_a0
 .proc operatorx2F__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$06
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -6933,34 +5825,30 @@
 
 .weak operatorx25__s6_p0_a0__s6_p0_a0
 .proc operatorx25__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$06
     sta arg0
     jsr _divN
     lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -6972,19 +5860,15 @@
 
 .weak operatorx3Cx3C__s6_p0_a0__s6_p0_a0
 .proc operatorx3Cx3C__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -6996,19 +5880,15 @@
 
 .weak operatorx3Ex3E__s6_p0_a0__s6_p0_a0
 .proc operatorx3Ex3E__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -7020,22 +5900,18 @@
 
 .weak operatorx3Dx3D__s6_p0_a0__s6_p0_a0
 .proc operatorx3Dx3D__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _eqN
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7044,16 +5920,12 @@
 
 .weak operatorx21x3D__s6_p0_a0__s6_p0_a0
 .proc operatorx21x3D__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _eqN
@@ -7062,7 +5934,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7071,22 +5943,18 @@
 
 .weak operatorx3C__s6_p0_a0__s6_p0_a0
 .proc operatorx3C__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _ltNs
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7095,22 +5963,18 @@
 
 .weak operatorx3Cx3D__s6_p0_a0__s6_p0_a0
 .proc operatorx3Cx3D__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _leNs
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7119,22 +5983,18 @@
 
 .weak operatorx3E__s6_p0_a0__s6_p0_a0
 .proc operatorx3E__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _ltNs
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7143,22 +6003,18 @@
 
 .weak operatorx3Ex3D__s6_p0_a0__s6_p0_a0
 .proc operatorx3Ex3D__s6_p0_a0__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _leNs
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7167,16 +6023,12 @@
 
 .weak operatorx2D__s6_p0_a0
 .proc operatorx2D__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _comp2N
@@ -7185,16 +6037,12 @@
 
 .weak operatorx7E__s6_p0_a0
 .proc operatorx7E__s6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_notN
@@ -7203,19 +6051,15 @@
 
 .weak operatorx2B__u6_p0_a0__u6_p0_a0
 .proc operatorx2B__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _addN
@@ -7224,19 +6068,15 @@
 
 .weak operatorx2D__u6_p0_a0__u6_p0_a0
 .proc operatorx2D__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _subN
@@ -7245,19 +6085,15 @@
 
 .weak operatorx26__u6_p0_a0__u6_p0_a0
 .proc operatorx26__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_andN
@@ -7266,19 +6102,15 @@
 
 .weak operatorx7C__u6_p0_a0__u6_p0_a0
 .proc operatorx7C__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_orN
@@ -7287,19 +6119,15 @@
 
 .weak operatorx5E__u6_p0_a0__u6_p0_a0
 .proc operatorx5E__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_xorN
@@ -7308,31 +6136,27 @@
 
 .weak operatorx2A__u6_p0_a0__u6_p0_a0
 .proc operatorx2A__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -7344,34 +6168,30 @@
 
 .weak operatorx2F__u6_p0_a0__u6_p0_a0
 .proc operatorx2F__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$06
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -7383,34 +6203,30 @@
 
 .weak operatorx25__u6_p0_a0__u6_p0_a0
 .proc operatorx25__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
     jsr _pushN
-    lda #$06
+    lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$18
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$06
     sta arg0
     jsr _divN
     lda #$06
     sta arg0
-    jsr _fp2ptr0p
-    lda #$12
+    jsr _sp2ptr0m
+    lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _cpyN
@@ -7422,19 +6238,15 @@
 
 .weak operatorx3Cx3C__u6_p0_a0__u6_p0_a0
 .proc operatorx3Cx3C__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -7446,19 +6258,15 @@
 
 .weak operatorx3Ex3E__u6_p0_a0__u6_p0_a0
 .proc operatorx3Ex3E__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -7470,22 +6278,18 @@
 
 .weak operatorx3Dx3D__u6_p0_a0__u6_p0_a0
 .proc operatorx3Dx3D__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _eqN
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7494,16 +6298,12 @@
 
 .weak operatorx21x3D__u6_p0_a0__u6_p0_a0
 .proc operatorx21x3D__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _eqN
@@ -7512,7 +6312,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7521,22 +6321,18 @@
 
 .weak operatorx3C__u6_p0_a0__u6_p0_a0
 .proc operatorx3C__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _ltNu
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7545,22 +6341,18 @@
 
 .weak operatorx3Cx3D__u6_p0_a0__u6_p0_a0
 .proc operatorx3Cx3D__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _leNu
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7569,22 +6361,18 @@
 
 .weak operatorx3E__u6_p0_a0__u6_p0_a0
 .proc operatorx3E__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _ltNu
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7593,22 +6381,18 @@
 
 .weak operatorx3Ex3D__u6_p0_a0__u6_p0_a0
 .proc operatorx3Ex3D__u6_p0_a0__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$06
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _leNu
     lda #$0d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7617,16 +6401,12 @@
 
 .weak operatorx2D__u6_p0_a0
 .proc operatorx2D__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
     jsr _comp2N
@@ -7635,16 +6415,12 @@
 
 .weak operatorx7E__u6_p0_a0
 .proc operatorx7E__u6_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$06
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$06
     sta arg0
     jsr _bit_notN
@@ -7653,19 +6429,15 @@
 
 .weak operatorx2B__s7_p0_a0__s7_p0_a0
 .proc operatorx2B__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _addN
@@ -7674,19 +6446,15 @@
 
 .weak operatorx2D__s7_p0_a0__s7_p0_a0
 .proc operatorx2D__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _subN
@@ -7695,19 +6463,15 @@
 
 .weak operatorx26__s7_p0_a0__s7_p0_a0
 .proc operatorx26__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_andN
@@ -7716,19 +6480,15 @@
 
 .weak operatorx7C__s7_p0_a0__s7_p0_a0
 .proc operatorx7C__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_orN
@@ -7737,19 +6497,15 @@
 
 .weak operatorx5E__s7_p0_a0__s7_p0_a0
 .proc operatorx5E__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_xorN
@@ -7758,31 +6514,27 @@
 
 .weak operatorx2A__s7_p0_a0__s7_p0_a0
 .proc operatorx2A__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -7794,34 +6546,30 @@
 
 .weak operatorx2F__s7_p0_a0__s7_p0_a0
 .proc operatorx2F__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$07
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -7833,34 +6581,30 @@
 
 .weak operatorx25__s7_p0_a0__s7_p0_a0
 .proc operatorx25__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$07
     sta arg0
     jsr _divN
     lda #$07
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -7872,19 +6616,15 @@
 
 .weak operatorx3Cx3C__s7_p0_a0__s7_p0_a0
 .proc operatorx3Cx3C__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$15
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -7896,19 +6636,15 @@
 
 .weak operatorx3Ex3E__s7_p0_a0__s7_p0_a0
 .proc operatorx3Ex3E__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$15
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -7920,22 +6656,18 @@
 
 .weak operatorx3Dx3D__s7_p0_a0__s7_p0_a0
 .proc operatorx3Dx3D__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _eqN
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7944,16 +6676,12 @@
 
 .weak operatorx21x3D__s7_p0_a0__s7_p0_a0
 .proc operatorx21x3D__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _eqN
@@ -7962,7 +6690,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7971,22 +6699,18 @@
 
 .weak operatorx3C__s7_p0_a0__s7_p0_a0
 .proc operatorx3C__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _ltNs
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -7995,22 +6719,18 @@
 
 .weak operatorx3Cx3D__s7_p0_a0__s7_p0_a0
 .proc operatorx3Cx3D__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _leNs
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8019,22 +6739,18 @@
 
 .weak operatorx3E__s7_p0_a0__s7_p0_a0
 .proc operatorx3E__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$07
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _ltNs
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8043,22 +6759,18 @@
 
 .weak operatorx3Ex3D__s7_p0_a0__s7_p0_a0
 .proc operatorx3Ex3D__s7_p0_a0__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$07
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _leNs
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8067,16 +6779,12 @@
 
 .weak operatorx2D__s7_p0_a0
 .proc operatorx2D__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _comp2N
@@ -8085,16 +6793,12 @@
 
 .weak operatorx7E__s7_p0_a0
 .proc operatorx7E__s7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_notN
@@ -8103,19 +6807,15 @@
 
 .weak operatorx2B__u7_p0_a0__u7_p0_a0
 .proc operatorx2B__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _addN
@@ -8124,19 +6824,15 @@
 
 .weak operatorx2D__u7_p0_a0__u7_p0_a0
 .proc operatorx2D__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _subN
@@ -8145,19 +6841,15 @@
 
 .weak operatorx26__u7_p0_a0__u7_p0_a0
 .proc operatorx26__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_andN
@@ -8166,19 +6858,15 @@
 
 .weak operatorx7C__u7_p0_a0__u7_p0_a0
 .proc operatorx7C__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_orN
@@ -8187,19 +6875,15 @@
 
 .weak operatorx5E__u7_p0_a0__u7_p0_a0
 .proc operatorx5E__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_xorN
@@ -8208,31 +6892,27 @@
 
 .weak operatorx2A__u7_p0_a0__u7_p0_a0
 .proc operatorx2A__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -8244,34 +6924,30 @@
 
 .weak operatorx2F__u7_p0_a0__u7_p0_a0
 .proc operatorx2F__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$07
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -8283,34 +6959,30 @@
 
 .weak operatorx25__u7_p0_a0__u7_p0_a0
 .proc operatorx25__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
     jsr _pushN
-    lda #$07
+    lda #$15
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$1c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$07
     sta arg0
     jsr _divN
     lda #$07
     sta arg0
-    jsr _fp2ptr0p
-    lda #$15
+    jsr _sp2ptr0m
+    lda #$23
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _cpyN
@@ -8322,19 +6994,15 @@
 
 .weak operatorx3Cx3C__u7_p0_a0__u7_p0_a0
 .proc operatorx3Cx3C__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$15
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -8346,19 +7014,15 @@
 
 .weak operatorx3Ex3E__u7_p0_a0__u7_p0_a0
 .proc operatorx3Ex3E__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$15
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -8370,22 +7034,18 @@
 
 .weak operatorx3Dx3D__u7_p0_a0__u7_p0_a0
 .proc operatorx3Dx3D__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _eqN
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8394,16 +7054,12 @@
 
 .weak operatorx21x3D__u7_p0_a0__u7_p0_a0
 .proc operatorx21x3D__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _eqN
@@ -8412,7 +7068,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8421,22 +7077,18 @@
 
 .weak operatorx3C__u7_p0_a0__u7_p0_a0
 .proc operatorx3C__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _ltNu
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8445,22 +7097,18 @@
 
 .weak operatorx3Cx3D__u7_p0_a0__u7_p0_a0
 .proc operatorx3Cx3D__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _leNu
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8469,22 +7117,18 @@
 
 .weak operatorx3E__u7_p0_a0__u7_p0_a0
 .proc operatorx3E__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$07
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _ltNu
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8493,22 +7137,18 @@
 
 .weak operatorx3Ex3D__u7_p0_a0__u7_p0_a0
 .proc operatorx3Ex3D__u7_p0_a0__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$07
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _leNu
     lda #$0f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8517,16 +7157,12 @@
 
 .weak operatorx2D__u7_p0_a0
 .proc operatorx2D__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$07
     sta arg0
     jsr _comp2N
@@ -8535,16 +7171,12 @@
 
 .weak operatorx7E__u7_p0_a0
 .proc operatorx7E__u7_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$07
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$07
     sta arg0
     jsr _bit_notN
@@ -8553,19 +7185,15 @@
 
 .weak operatorx2B__s8_p0_a0__s8_p0_a0
 .proc operatorx2B__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _addN
@@ -8574,19 +7202,15 @@
 
 .weak operatorx2D__s8_p0_a0__s8_p0_a0
 .proc operatorx2D__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _subN
@@ -8595,19 +7219,15 @@
 
 .weak operatorx26__s8_p0_a0__s8_p0_a0
 .proc operatorx26__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_andN
@@ -8616,19 +7236,15 @@
 
 .weak operatorx7C__s8_p0_a0__s8_p0_a0
 .proc operatorx7C__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_orN
@@ -8637,19 +7253,15 @@
 
 .weak operatorx5E__s8_p0_a0__s8_p0_a0
 .proc operatorx5E__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_xorN
@@ -8658,31 +7270,27 @@
 
 .weak operatorx2A__s8_p0_a0__s8_p0_a0
 .proc operatorx2A__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -8694,34 +7302,30 @@
 
 .weak operatorx2F__s8_p0_a0__s8_p0_a0
 .proc operatorx2F__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -8733,34 +7337,30 @@
 
 .weak operatorx25__s8_p0_a0__s8_p0_a0
 .proc operatorx25__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
     lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -8772,19 +7372,15 @@
 
 .weak operatorx3Cx3C__s8_p0_a0__s8_p0_a0
 .proc operatorx3Cx3C__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -8796,19 +7392,15 @@
 
 .weak operatorx3Ex3E__s8_p0_a0__s8_p0_a0
 .proc operatorx3Ex3E__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -8820,22 +7412,18 @@
 
 .weak operatorx3Dx3D__s8_p0_a0__s8_p0_a0
 .proc operatorx3Dx3D__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8844,16 +7432,12 @@
 
 .weak operatorx21x3D__s8_p0_a0__s8_p0_a0
 .proc operatorx21x3D__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
@@ -8862,7 +7446,7 @@
     sta arg1
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8871,22 +7455,18 @@
 
 .weak operatorx3C__s8_p0_a0__s8_p0_a0
 .proc operatorx3C__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNs
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8895,22 +7475,18 @@
 
 .weak operatorx3Cx3D__s8_p0_a0__s8_p0_a0
 .proc operatorx3Cx3D__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNs
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8919,22 +7495,18 @@
 
 .weak operatorx3E__s8_p0_a0__s8_p0_a0
 .proc operatorx3E__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNs
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8943,22 +7515,18 @@
 
 .weak operatorx3Ex3D__s8_p0_a0__s8_p0_a0
 .proc operatorx3Ex3D__s8_p0_a0__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNs
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -8967,16 +7535,12 @@
 
 .weak operatorx2D__s8_p0_a0
 .proc operatorx2D__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _comp2N
@@ -8985,16 +7549,12 @@
 
 .weak operatorx7E__s8_p0_a0
 .proc operatorx7E__s8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_notN
@@ -9003,19 +7563,15 @@
 
 .weak operatorx2B__u8_p0_a0__u8_p0_a0
 .proc operatorx2B__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _addN
@@ -9024,19 +7580,15 @@
 
 .weak operatorx2D__u8_p0_a0__u8_p0_a0
 .proc operatorx2D__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _subN
@@ -9045,19 +7597,15 @@
 
 .weak operatorx26__u8_p0_a0__u8_p0_a0
 .proc operatorx26__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_andN
@@ -9066,19 +7614,15 @@
 
 .weak operatorx7C__u8_p0_a0__u8_p0_a0
 .proc operatorx7C__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_orN
@@ -9087,19 +7631,15 @@
 
 .weak operatorx5E__u8_p0_a0__u8_p0_a0
 .proc operatorx5E__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_xorN
@@ -9108,31 +7648,27 @@
 
 .weak operatorx2A__u8_p0_a0__u8_p0_a0
 .proc operatorx2A__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -9144,34 +7680,30 @@
 
 .weak operatorx2F__u8_p0_a0__u8_p0_a0
 .proc operatorx2F__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -9183,34 +7715,30 @@
 
 .weak operatorx25__u8_p0_a0__u8_p0_a0
 .proc operatorx25__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
     jsr _pushN
-    lda #$08
+    lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$20
+    sta arg0
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$08
     sta arg0
     jsr _divN
     lda #$08
     sta arg0
-    jsr _fp2ptr0p
-    lda #$18
+    jsr _sp2ptr0m
+    lda #$28
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _cpyN
@@ -9222,19 +7750,15 @@
 
 .weak operatorx3Cx3C__u8_p0_a0__u8_p0_a0
 .proc operatorx3Cx3C__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -9246,19 +7770,15 @@
 
 .weak operatorx3Ex3E__u8_p0_a0__u8_p0_a0
 .proc operatorx3Ex3E__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -9270,22 +7790,18 @@
 
 .weak operatorx3Dx3D__u8_p0_a0__u8_p0_a0
 .proc operatorx3Dx3D__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9294,16 +7810,12 @@
 
 .weak operatorx21x3D__u8_p0_a0__u8_p0_a0
 .proc operatorx21x3D__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _eqN
@@ -9312,7 +7824,7 @@
     sta arg1
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9321,22 +7833,18 @@
 
 .weak operatorx3C__u8_p0_a0__u8_p0_a0
 .proc operatorx3C__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9345,22 +7853,18 @@
 
 .weak operatorx3Cx3D__u8_p0_a0__u8_p0_a0
 .proc operatorx3Cx3D__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9369,22 +7873,18 @@
 
 .weak operatorx3E__u8_p0_a0__u8_p0_a0
 .proc operatorx3E__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _ltNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9393,22 +7893,18 @@
 
 .weak operatorx3Ex3D__u8_p0_a0__u8_p0_a0
 .proc operatorx3Ex3D__u8_p0_a0__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _leNu
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9417,16 +7913,12 @@
 
 .weak operatorx2D__u8_p0_a0
 .proc operatorx2D__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     jsr _comp2N
@@ -9435,16 +7927,12 @@
 
 .weak operatorx7E__u8_p0_a0
 .proc operatorx7E__u8_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     jsr _bit_notN
@@ -9453,19 +7941,15 @@
 
 .weak operatorx2B__s9_p0_a0__s9_p0_a0
 .proc operatorx2B__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _addN
@@ -9474,19 +7958,15 @@
 
 .weak operatorx2D__s9_p0_a0__s9_p0_a0
 .proc operatorx2D__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _subN
@@ -9495,19 +7975,15 @@
 
 .weak operatorx26__s9_p0_a0__s9_p0_a0
 .proc operatorx26__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_andN
@@ -9516,19 +7992,15 @@
 
 .weak operatorx7C__s9_p0_a0__s9_p0_a0
 .proc operatorx7C__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_orN
@@ -9537,19 +8009,15 @@
 
 .weak operatorx5E__s9_p0_a0__s9_p0_a0
 .proc operatorx5E__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_xorN
@@ -9558,31 +8026,27 @@
 
 .weak operatorx2A__s9_p0_a0__s9_p0_a0
 .proc operatorx2A__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$12
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -9594,34 +8058,30 @@
 
 .weak operatorx2F__s9_p0_a0__s9_p0_a0
 .proc operatorx2F__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$09
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$12
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -9633,34 +8093,30 @@
 
 .weak operatorx25__s9_p0_a0__s9_p0_a0
 .proc operatorx25__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$09
     sta arg0
     jsr _divN
     lda #$09
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -9672,19 +8128,15 @@
 
 .weak operatorx3Cx3C__s9_p0_a0__s9_p0_a0
 .proc operatorx3Cx3C__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -9696,19 +8148,15 @@
 
 .weak operatorx3Ex3E__s9_p0_a0__s9_p0_a0
 .proc operatorx3Ex3E__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -9720,22 +8168,18 @@
 
 .weak operatorx3Dx3D__s9_p0_a0__s9_p0_a0
 .proc operatorx3Dx3D__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _eqN
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9744,16 +8188,12 @@
 
 .weak operatorx21x3D__s9_p0_a0__s9_p0_a0
 .proc operatorx21x3D__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _eqN
@@ -9762,7 +8202,7 @@
     sta arg1
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9771,22 +8211,18 @@
 
 .weak operatorx3C__s9_p0_a0__s9_p0_a0
 .proc operatorx3C__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _ltNs
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9795,22 +8231,18 @@
 
 .weak operatorx3Cx3D__s9_p0_a0__s9_p0_a0
 .proc operatorx3Cx3D__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _leNs
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9819,22 +8251,18 @@
 
 .weak operatorx3E__s9_p0_a0__s9_p0_a0
 .proc operatorx3E__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _ltNs
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9843,22 +8271,18 @@
 
 .weak operatorx3Ex3D__s9_p0_a0__s9_p0_a0
 .proc operatorx3Ex3D__s9_p0_a0__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _leNs
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -9867,16 +8291,12 @@
 
 .weak operatorx2D__s9_p0_a0
 .proc operatorx2D__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _comp2N
@@ -9885,16 +8305,12 @@
 
 .weak operatorx7E__s9_p0_a0
 .proc operatorx7E__s9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_notN
@@ -9903,19 +8319,15 @@
 
 .weak operatorx2B__u9_p0_a0__u9_p0_a0
 .proc operatorx2B__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _addN
@@ -9924,19 +8336,15 @@
 
 .weak operatorx2D__u9_p0_a0__u9_p0_a0
 .proc operatorx2D__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _subN
@@ -9945,19 +8353,15 @@
 
 .weak operatorx26__u9_p0_a0__u9_p0_a0
 .proc operatorx26__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_andN
@@ -9966,19 +8370,15 @@
 
 .weak operatorx7C__u9_p0_a0__u9_p0_a0
 .proc operatorx7C__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_orN
@@ -9987,19 +8387,15 @@
 
 .weak operatorx5E__u9_p0_a0__u9_p0_a0
 .proc operatorx5E__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_xorN
@@ -10008,31 +8404,27 @@
 
 .weak operatorx2A__u9_p0_a0__u9_p0_a0
 .proc operatorx2A__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$12
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -10044,34 +8436,30 @@
 
 .weak operatorx2F__u9_p0_a0__u9_p0_a0
 .proc operatorx2F__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$09
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$12
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -10083,34 +8471,30 @@
 
 .weak operatorx25__u9_p0_a0__u9_p0_a0
 .proc operatorx25__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
     jsr _pushN
-    lda #$09
+    lda #$1b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$24
+    sta arg0
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$09
     sta arg0
     jsr _divN
     lda #$09
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1b
+    jsr _sp2ptr0m
+    lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _cpyN
@@ -10122,19 +8506,15 @@
 
 .weak operatorx3Cx3C__u9_p0_a0__u9_p0_a0
 .proc operatorx3Cx3C__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -10146,19 +8526,15 @@
 
 .weak operatorx3Ex3E__u9_p0_a0__u9_p0_a0
 .proc operatorx3Ex3E__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -10170,22 +8546,18 @@
 
 .weak operatorx3Dx3D__u9_p0_a0__u9_p0_a0
 .proc operatorx3Dx3D__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _eqN
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10194,16 +8566,12 @@
 
 .weak operatorx21x3D__u9_p0_a0__u9_p0_a0
 .proc operatorx21x3D__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _eqN
@@ -10212,7 +8580,7 @@
     sta arg1
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10221,22 +8589,18 @@
 
 .weak operatorx3C__u9_p0_a0__u9_p0_a0
 .proc operatorx3C__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _ltNu
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10245,22 +8609,18 @@
 
 .weak operatorx3Cx3D__u9_p0_a0__u9_p0_a0
 .proc operatorx3Cx3D__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _leNu
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10269,22 +8629,18 @@
 
 .weak operatorx3E__u9_p0_a0__u9_p0_a0
 .proc operatorx3E__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _ltNu
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10293,22 +8649,18 @@
 
 .weak operatorx3Ex3D__u9_p0_a0__u9_p0_a0
 .proc operatorx3Ex3D__u9_p0_a0__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$12
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$09
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _leNu
     lda #$13
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10317,16 +8669,12 @@
 
 .weak operatorx2D__u9_p0_a0
 .proc operatorx2D__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$09
     sta arg0
     jsr _comp2N
@@ -10335,16 +8683,12 @@
 
 .weak operatorx7E__u9_p0_a0
 .proc operatorx7E__u9_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$09
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$12
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$09
     sta arg0
     jsr _bit_notN
@@ -10353,19 +8697,15 @@
 
 .weak operatorx2B__s10_p0_a0__s10_p0_a0
 .proc operatorx2B__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _addN
@@ -10374,19 +8714,15 @@
 
 .weak operatorx2D__s10_p0_a0__s10_p0_a0
 .proc operatorx2D__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _subN
@@ -10395,19 +8731,15 @@
 
 .weak operatorx26__s10_p0_a0__s10_p0_a0
 .proc operatorx26__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_andN
@@ -10416,19 +8748,15 @@
 
 .weak operatorx7C__s10_p0_a0__s10_p0_a0
 .proc operatorx7C__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_orN
@@ -10437,19 +8765,15 @@
 
 .weak operatorx5E__s10_p0_a0__s10_p0_a0
 .proc operatorx5E__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_xorN
@@ -10458,31 +8782,27 @@
 
 .weak operatorx2A__s10_p0_a0__s10_p0_a0
 .proc operatorx2A__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$14
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -10494,34 +8814,30 @@
 
 .weak operatorx2F__s10_p0_a0__s10_p0_a0
 .proc operatorx2F__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0a
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$14
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -10533,34 +8849,30 @@
 
 .weak operatorx25__s10_p0_a0__s10_p0_a0
 .proc operatorx25__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0a
     sta arg0
     jsr _divN
     lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -10572,19 +8884,15 @@
 
 .weak operatorx3Cx3C__s10_p0_a0__s10_p0_a0
 .proc operatorx3Cx3C__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -10596,19 +8904,15 @@
 
 .weak operatorx3Ex3E__s10_p0_a0__s10_p0_a0
 .proc operatorx3Ex3E__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -10620,22 +8924,18 @@
 
 .weak operatorx3Dx3D__s10_p0_a0__s10_p0_a0
 .proc operatorx3Dx3D__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _eqN
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10644,16 +8944,12 @@
 
 .weak operatorx21x3D__s10_p0_a0__s10_p0_a0
 .proc operatorx21x3D__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _eqN
@@ -10662,7 +8958,7 @@
     sta arg1
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10671,22 +8967,18 @@
 
 .weak operatorx3C__s10_p0_a0__s10_p0_a0
 .proc operatorx3C__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _ltNs
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10695,22 +8987,18 @@
 
 .weak operatorx3Cx3D__s10_p0_a0__s10_p0_a0
 .proc operatorx3Cx3D__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _leNs
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10719,22 +9007,18 @@
 
 .weak operatorx3E__s10_p0_a0__s10_p0_a0
 .proc operatorx3E__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _ltNs
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10743,22 +9027,18 @@
 
 .weak operatorx3Ex3D__s10_p0_a0__s10_p0_a0
 .proc operatorx3Ex3D__s10_p0_a0__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _leNs
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -10767,16 +9047,12 @@
 
 .weak operatorx2D__s10_p0_a0
 .proc operatorx2D__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _comp2N
@@ -10785,16 +9061,12 @@
 
 .weak operatorx7E__s10_p0_a0
 .proc operatorx7E__s10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_notN
@@ -10803,19 +9075,15 @@
 
 .weak operatorx2B__u10_p0_a0__u10_p0_a0
 .proc operatorx2B__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _addN
@@ -10824,19 +9092,15 @@
 
 .weak operatorx2D__u10_p0_a0__u10_p0_a0
 .proc operatorx2D__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _subN
@@ -10845,19 +9109,15 @@
 
 .weak operatorx26__u10_p0_a0__u10_p0_a0
 .proc operatorx26__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_andN
@@ -10866,19 +9126,15 @@
 
 .weak operatorx7C__u10_p0_a0__u10_p0_a0
 .proc operatorx7C__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_orN
@@ -10887,19 +9143,15 @@
 
 .weak operatorx5E__u10_p0_a0__u10_p0_a0
 .proc operatorx5E__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_xorN
@@ -10908,31 +9160,27 @@
 
 .weak operatorx2A__u10_p0_a0__u10_p0_a0
 .proc operatorx2A__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$14
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -10944,34 +9192,30 @@
 
 .weak operatorx2F__u10_p0_a0__u10_p0_a0
 .proc operatorx2F__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0a
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$14
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -10983,34 +9227,30 @@
 
 .weak operatorx25__u10_p0_a0__u10_p0_a0
 .proc operatorx25__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
     jsr _pushN
-    lda #$0a
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$28
+    sta arg0
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0a
     sta arg0
     jsr _divN
     lda #$0a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$1e
+    jsr _sp2ptr0m
+    lda #$32
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _cpyN
@@ -11022,19 +9262,15 @@
 
 .weak operatorx3Cx3C__u10_p0_a0__u10_p0_a0
 .proc operatorx3Cx3C__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11046,19 +9282,15 @@
 
 .weak operatorx3Ex3E__u10_p0_a0__u10_p0_a0
 .proc operatorx3Ex3E__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11070,22 +9302,18 @@
 
 .weak operatorx3Dx3D__u10_p0_a0__u10_p0_a0
 .proc operatorx3Dx3D__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _eqN
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11094,16 +9322,12 @@
 
 .weak operatorx21x3D__u10_p0_a0__u10_p0_a0
 .proc operatorx21x3D__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _eqN
@@ -11112,7 +9336,7 @@
     sta arg1
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11121,22 +9345,18 @@
 
 .weak operatorx3C__u10_p0_a0__u10_p0_a0
 .proc operatorx3C__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _ltNu
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11145,22 +9365,18 @@
 
 .weak operatorx3Cx3D__u10_p0_a0__u10_p0_a0
 .proc operatorx3Cx3D__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _leNu
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11169,22 +9385,18 @@
 
 .weak operatorx3E__u10_p0_a0__u10_p0_a0
 .proc operatorx3E__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _ltNu
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11193,22 +9405,18 @@
 
 .weak operatorx3Ex3D__u10_p0_a0__u10_p0_a0
 .proc operatorx3Ex3D__u10_p0_a0__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$14
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _leNu
     lda #$15
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11217,16 +9425,12 @@
 
 .weak operatorx2D__u10_p0_a0
 .proc operatorx2D__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0a
     sta arg0
     jsr _comp2N
@@ -11235,16 +9439,12 @@
 
 .weak operatorx7E__u10_p0_a0
 .proc operatorx7E__u10_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$14
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0a
     sta arg0
     jsr _bit_notN
@@ -11253,19 +9453,15 @@
 
 .weak operatorx2B__s11_p0_a0__s11_p0_a0
 .proc operatorx2B__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _addN
@@ -11274,19 +9470,15 @@
 
 .weak operatorx2D__s11_p0_a0__s11_p0_a0
 .proc operatorx2D__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _subN
@@ -11295,19 +9487,15 @@
 
 .weak operatorx26__s11_p0_a0__s11_p0_a0
 .proc operatorx26__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_andN
@@ -11316,19 +9504,15 @@
 
 .weak operatorx7C__s11_p0_a0__s11_p0_a0
 .proc operatorx7C__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_orN
@@ -11337,19 +9521,15 @@
 
 .weak operatorx5E__s11_p0_a0__s11_p0_a0
 .proc operatorx5E__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_xorN
@@ -11358,31 +9538,27 @@
 
 .weak operatorx2A__s11_p0_a0__s11_p0_a0
 .proc operatorx2A__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$16
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11394,34 +9570,30 @@
 
 .weak operatorx2F__s11_p0_a0__s11_p0_a0
 .proc operatorx2F__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0b
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$16
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11433,34 +9605,30 @@
 
 .weak operatorx25__s11_p0_a0__s11_p0_a0
 .proc operatorx25__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0b
     sta arg0
     jsr _divN
     lda #$0b
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11472,19 +9640,15 @@
 
 .weak operatorx3Cx3C__s11_p0_a0__s11_p0_a0
 .proc operatorx3Cx3C__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$21
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11496,19 +9660,15 @@
 
 .weak operatorx3Ex3E__s11_p0_a0__s11_p0_a0
 .proc operatorx3Ex3E__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$21
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11520,22 +9680,18 @@
 
 .weak operatorx3Dx3D__s11_p0_a0__s11_p0_a0
 .proc operatorx3Dx3D__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _eqN
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11544,16 +9700,12 @@
 
 .weak operatorx21x3D__s11_p0_a0__s11_p0_a0
 .proc operatorx21x3D__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _eqN
@@ -11562,7 +9714,7 @@
     sta arg1
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11571,22 +9723,18 @@
 
 .weak operatorx3C__s11_p0_a0__s11_p0_a0
 .proc operatorx3C__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _ltNs
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11595,22 +9743,18 @@
 
 .weak operatorx3Cx3D__s11_p0_a0__s11_p0_a0
 .proc operatorx3Cx3D__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _leNs
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11619,22 +9763,18 @@
 
 .weak operatorx3E__s11_p0_a0__s11_p0_a0
 .proc operatorx3E__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _ltNs
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11643,22 +9783,18 @@
 
 .weak operatorx3Ex3D__s11_p0_a0__s11_p0_a0
 .proc operatorx3Ex3D__s11_p0_a0__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _leNs
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11667,16 +9803,12 @@
 
 .weak operatorx2D__s11_p0_a0
 .proc operatorx2D__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _comp2N
@@ -11685,16 +9817,12 @@
 
 .weak operatorx7E__s11_p0_a0
 .proc operatorx7E__s11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_notN
@@ -11703,19 +9831,15 @@
 
 .weak operatorx2B__u11_p0_a0__u11_p0_a0
 .proc operatorx2B__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _addN
@@ -11724,19 +9848,15 @@
 
 .weak operatorx2D__u11_p0_a0__u11_p0_a0
 .proc operatorx2D__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _subN
@@ -11745,19 +9865,15 @@
 
 .weak operatorx26__u11_p0_a0__u11_p0_a0
 .proc operatorx26__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_andN
@@ -11766,19 +9882,15 @@
 
 .weak operatorx7C__u11_p0_a0__u11_p0_a0
 .proc operatorx7C__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_orN
@@ -11787,19 +9899,15 @@
 
 .weak operatorx5E__u11_p0_a0__u11_p0_a0
 .proc operatorx5E__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_xorN
@@ -11808,31 +9916,27 @@
 
 .weak operatorx2A__u11_p0_a0__u11_p0_a0
 .proc operatorx2A__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$16
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11844,34 +9948,30 @@
 
 .weak operatorx2F__u11_p0_a0__u11_p0_a0
 .proc operatorx2F__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0b
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$16
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11883,34 +9983,30 @@
 
 .weak operatorx25__u11_p0_a0__u11_p0_a0
 .proc operatorx25__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
     jsr _pushN
-    lda #$0b
+    lda #$21
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$2c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0b
     sta arg0
     jsr _divN
     lda #$0b
     sta arg0
-    jsr _fp2ptr0p
-    lda #$21
+    jsr _sp2ptr0m
+    lda #$37
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _cpyN
@@ -11922,19 +10018,15 @@
 
 .weak operatorx3Cx3C__u11_p0_a0__u11_p0_a0
 .proc operatorx3Cx3C__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$21
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11946,19 +10038,15 @@
 
 .weak operatorx3Ex3E__u11_p0_a0__u11_p0_a0
 .proc operatorx3Ex3E__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$21
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -11970,22 +10058,18 @@
 
 .weak operatorx3Dx3D__u11_p0_a0__u11_p0_a0
 .proc operatorx3Dx3D__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _eqN
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -11994,16 +10078,12 @@
 
 .weak operatorx21x3D__u11_p0_a0__u11_p0_a0
 .proc operatorx21x3D__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _eqN
@@ -12012,7 +10092,7 @@
     sta arg1
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12021,22 +10101,18 @@
 
 .weak operatorx3C__u11_p0_a0__u11_p0_a0
 .proc operatorx3C__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _ltNu
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12045,22 +10121,18 @@
 
 .weak operatorx3Cx3D__u11_p0_a0__u11_p0_a0
 .proc operatorx3Cx3D__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _leNu
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12069,22 +10141,18 @@
 
 .weak operatorx3E__u11_p0_a0__u11_p0_a0
 .proc operatorx3E__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _ltNu
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12093,22 +10161,18 @@
 
 .weak operatorx3Ex3D__u11_p0_a0__u11_p0_a0
 .proc operatorx3Ex3D__u11_p0_a0__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$16
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _leNu
     lda #$17
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12117,16 +10181,12 @@
 
 .weak operatorx2D__u11_p0_a0
 .proc operatorx2D__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0b
     sta arg0
     jsr _comp2N
@@ -12135,16 +10195,12 @@
 
 .weak operatorx7E__u11_p0_a0
 .proc operatorx7E__u11_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0b
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$16
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0b
     sta arg0
     jsr _bit_notN
@@ -12153,19 +10209,15 @@
 
 .weak operatorx2B__s12_p0_a0__s12_p0_a0
 .proc operatorx2B__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _addN
@@ -12174,19 +10226,15 @@
 
 .weak operatorx2D__s12_p0_a0__s12_p0_a0
 .proc operatorx2D__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _subN
@@ -12195,19 +10243,15 @@
 
 .weak operatorx26__s12_p0_a0__s12_p0_a0
 .proc operatorx26__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_andN
@@ -12216,19 +10260,15 @@
 
 .weak operatorx7C__s12_p0_a0__s12_p0_a0
 .proc operatorx7C__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_orN
@@ -12237,19 +10277,15 @@
 
 .weak operatorx5E__s12_p0_a0__s12_p0_a0
 .proc operatorx5E__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_xorN
@@ -12258,31 +10294,27 @@
 
 .weak operatorx2A__s12_p0_a0__s12_p0_a0
 .proc operatorx2A__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$18
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12294,34 +10326,30 @@
 
 .weak operatorx2F__s12_p0_a0__s12_p0_a0
 .proc operatorx2F__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0c
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$18
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12333,34 +10361,30 @@
 
 .weak operatorx25__s12_p0_a0__s12_p0_a0
 .proc operatorx25__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0c
     sta arg0
     jsr _divN
     lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12372,19 +10396,15 @@
 
 .weak operatorx3Cx3C__s12_p0_a0__s12_p0_a0
 .proc operatorx3Cx3C__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$24
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -12396,19 +10416,15 @@
 
 .weak operatorx3Ex3E__s12_p0_a0__s12_p0_a0
 .proc operatorx3Ex3E__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$24
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -12420,22 +10436,18 @@
 
 .weak operatorx3Dx3D__s12_p0_a0__s12_p0_a0
 .proc operatorx3Dx3D__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _eqN
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12444,16 +10456,12 @@
 
 .weak operatorx21x3D__s12_p0_a0__s12_p0_a0
 .proc operatorx21x3D__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _eqN
@@ -12462,7 +10470,7 @@
     sta arg1
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12471,22 +10479,18 @@
 
 .weak operatorx3C__s12_p0_a0__s12_p0_a0
 .proc operatorx3C__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _ltNs
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12495,22 +10499,18 @@
 
 .weak operatorx3Cx3D__s12_p0_a0__s12_p0_a0
 .proc operatorx3Cx3D__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _leNs
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12519,22 +10519,18 @@
 
 .weak operatorx3E__s12_p0_a0__s12_p0_a0
 .proc operatorx3E__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _ltNs
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12543,22 +10539,18 @@
 
 .weak operatorx3Ex3D__s12_p0_a0__s12_p0_a0
 .proc operatorx3Ex3D__s12_p0_a0__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _leNs
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12567,16 +10559,12 @@
 
 .weak operatorx2D__s12_p0_a0
 .proc operatorx2D__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _comp2N
@@ -12585,16 +10573,12 @@
 
 .weak operatorx7E__s12_p0_a0
 .proc operatorx7E__s12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_notN
@@ -12603,19 +10587,15 @@
 
 .weak operatorx2B__u12_p0_a0__u12_p0_a0
 .proc operatorx2B__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _addN
@@ -12624,19 +10604,15 @@
 
 .weak operatorx2D__u12_p0_a0__u12_p0_a0
 .proc operatorx2D__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _subN
@@ -12645,19 +10621,15 @@
 
 .weak operatorx26__u12_p0_a0__u12_p0_a0
 .proc operatorx26__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_andN
@@ -12666,19 +10638,15 @@
 
 .weak operatorx7C__u12_p0_a0__u12_p0_a0
 .proc operatorx7C__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_orN
@@ -12687,19 +10655,15 @@
 
 .weak operatorx5E__u12_p0_a0__u12_p0_a0
 .proc operatorx5E__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$24
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_xorN
@@ -12708,31 +10672,27 @@
 
 .weak operatorx2A__u12_p0_a0__u12_p0_a0
 .proc operatorx2A__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$18
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12744,34 +10704,30 @@
 
 .weak operatorx2F__u12_p0_a0__u12_p0_a0
 .proc operatorx2F__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0c
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$18
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12783,34 +10739,30 @@
 
 .weak operatorx25__u12_p0_a0__u12_p0_a0
 .proc operatorx25__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
     jsr _pushN
-    lda #$0c
+    lda #$24
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$30
+    sta arg0
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0c
     sta arg0
     jsr _divN
     lda #$0c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$24
+    jsr _sp2ptr0m
+    lda #$3c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _cpyN
@@ -12822,19 +10774,15 @@
 
 .weak operatorx3Cx3C__u12_p0_a0__u12_p0_a0
 .proc operatorx3Cx3C__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$24
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -12846,19 +10794,15 @@
 
 .weak operatorx3Ex3E__u12_p0_a0__u12_p0_a0
 .proc operatorx3Ex3E__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$24
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -12870,22 +10814,18 @@
 
 .weak operatorx3Dx3D__u12_p0_a0__u12_p0_a0
 .proc operatorx3Dx3D__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _eqN
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12894,16 +10834,12 @@
 
 .weak operatorx21x3D__u12_p0_a0__u12_p0_a0
 .proc operatorx21x3D__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _eqN
@@ -12912,7 +10848,7 @@
     sta arg1
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12921,22 +10857,18 @@
 
 .weak operatorx3C__u12_p0_a0__u12_p0_a0
 .proc operatorx3C__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _ltNu
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12945,22 +10877,18 @@
 
 .weak operatorx3Cx3D__u12_p0_a0__u12_p0_a0
 .proc operatorx3Cx3D__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _leNu
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12969,22 +10897,18 @@
 
 .weak operatorx3E__u12_p0_a0__u12_p0_a0
 .proc operatorx3E__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _ltNu
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -12993,22 +10917,18 @@
 
 .weak operatorx3Ex3D__u12_p0_a0__u12_p0_a0
 .proc operatorx3Ex3D__u12_p0_a0__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$18
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _leNu
     lda #$19
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13017,16 +10937,12 @@
 
 .weak operatorx2D__u12_p0_a0
 .proc operatorx2D__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
     jsr _comp2N
@@ -13035,16 +10951,12 @@
 
 .weak operatorx7E__u12_p0_a0
 .proc operatorx7E__u12_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0c
     sta arg0
     jsr _bit_notN
@@ -13053,19 +10965,15 @@
 
 .weak operatorx2B__s13_p0_a0__s13_p0_a0
 .proc operatorx2B__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _addN
@@ -13074,19 +10982,15 @@
 
 .weak operatorx2D__s13_p0_a0__s13_p0_a0
 .proc operatorx2D__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _subN
@@ -13095,19 +10999,15 @@
 
 .weak operatorx26__s13_p0_a0__s13_p0_a0
 .proc operatorx26__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_andN
@@ -13116,19 +11016,15 @@
 
 .weak operatorx7C__s13_p0_a0__s13_p0_a0
 .proc operatorx7C__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_orN
@@ -13137,19 +11033,15 @@
 
 .weak operatorx5E__s13_p0_a0__s13_p0_a0
 .proc operatorx5E__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_xorN
@@ -13158,31 +11050,27 @@
 
 .weak operatorx2A__s13_p0_a0__s13_p0_a0
 .proc operatorx2A__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13194,34 +11082,30 @@
 
 .weak operatorx2F__s13_p0_a0__s13_p0_a0
 .proc operatorx2F__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0d
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13233,34 +11117,30 @@
 
 .weak operatorx25__s13_p0_a0__s13_p0_a0
 .proc operatorx25__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0d
     sta arg0
     jsr _divN
     lda #$0d
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13272,19 +11152,15 @@
 
 .weak operatorx3Cx3C__s13_p0_a0__s13_p0_a0
 .proc operatorx3Cx3C__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$27
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -13296,19 +11172,15 @@
 
 .weak operatorx3Ex3E__s13_p0_a0__s13_p0_a0
 .proc operatorx3Ex3E__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$27
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -13320,22 +11192,18 @@
 
 .weak operatorx3Dx3D__s13_p0_a0__s13_p0_a0
 .proc operatorx3Dx3D__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _eqN
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13344,16 +11212,12 @@
 
 .weak operatorx21x3D__s13_p0_a0__s13_p0_a0
 .proc operatorx21x3D__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _eqN
@@ -13362,7 +11226,7 @@
     sta arg1
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13371,22 +11235,18 @@
 
 .weak operatorx3C__s13_p0_a0__s13_p0_a0
 .proc operatorx3C__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _ltNs
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13395,22 +11255,18 @@
 
 .weak operatorx3Cx3D__s13_p0_a0__s13_p0_a0
 .proc operatorx3Cx3D__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _leNs
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13419,22 +11275,18 @@
 
 .weak operatorx3E__s13_p0_a0__s13_p0_a0
 .proc operatorx3E__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _ltNs
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13443,22 +11295,18 @@
 
 .weak operatorx3Ex3D__s13_p0_a0__s13_p0_a0
 .proc operatorx3Ex3D__s13_p0_a0__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _leNs
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13467,16 +11315,12 @@
 
 .weak operatorx2D__s13_p0_a0
 .proc operatorx2D__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _comp2N
@@ -13485,16 +11329,12 @@
 
 .weak operatorx7E__s13_p0_a0
 .proc operatorx7E__s13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_notN
@@ -13503,19 +11343,15 @@
 
 .weak operatorx2B__u13_p0_a0__u13_p0_a0
 .proc operatorx2B__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _addN
@@ -13524,19 +11360,15 @@
 
 .weak operatorx2D__u13_p0_a0__u13_p0_a0
 .proc operatorx2D__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _subN
@@ -13545,19 +11377,15 @@
 
 .weak operatorx26__u13_p0_a0__u13_p0_a0
 .proc operatorx26__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_andN
@@ -13566,19 +11394,15 @@
 
 .weak operatorx7C__u13_p0_a0__u13_p0_a0
 .proc operatorx7C__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_orN
@@ -13587,19 +11411,15 @@
 
 .weak operatorx5E__u13_p0_a0__u13_p0_a0
 .proc operatorx5E__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$27
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_xorN
@@ -13608,31 +11428,27 @@
 
 .weak operatorx2A__u13_p0_a0__u13_p0_a0
 .proc operatorx2A__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13644,34 +11460,30 @@
 
 .weak operatorx2F__u13_p0_a0__u13_p0_a0
 .proc operatorx2F__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0d
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1a
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13683,34 +11495,30 @@
 
 .weak operatorx25__u13_p0_a0__u13_p0_a0
 .proc operatorx25__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
     jsr _pushN
-    lda #$0d
+    lda #$27
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$34
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0d
     sta arg0
     jsr _divN
     lda #$0d
     sta arg0
-    jsr _fp2ptr0p
-    lda #$27
+    jsr _sp2ptr0m
+    lda #$41
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _cpyN
@@ -13722,19 +11530,15 @@
 
 .weak operatorx3Cx3C__u13_p0_a0__u13_p0_a0
 .proc operatorx3Cx3C__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$27
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -13746,19 +11550,15 @@
 
 .weak operatorx3Ex3E__u13_p0_a0__u13_p0_a0
 .proc operatorx3Ex3E__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$27
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -13770,22 +11570,18 @@
 
 .weak operatorx3Dx3D__u13_p0_a0__u13_p0_a0
 .proc operatorx3Dx3D__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _eqN
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13794,16 +11590,12 @@
 
 .weak operatorx21x3D__u13_p0_a0__u13_p0_a0
 .proc operatorx21x3D__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _eqN
@@ -13812,7 +11604,7 @@
     sta arg1
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13821,22 +11613,18 @@
 
 .weak operatorx3C__u13_p0_a0__u13_p0_a0
 .proc operatorx3C__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _ltNu
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13845,22 +11633,18 @@
 
 .weak operatorx3Cx3D__u13_p0_a0__u13_p0_a0
 .proc operatorx3Cx3D__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _leNu
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13869,22 +11653,18 @@
 
 .weak operatorx3E__u13_p0_a0__u13_p0_a0
 .proc operatorx3E__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _ltNu
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13893,22 +11673,18 @@
 
 .weak operatorx3Ex3D__u13_p0_a0__u13_p0_a0
 .proc operatorx3Ex3D__u13_p0_a0__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _leNu
     lda #$1b
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -13917,16 +11693,12 @@
 
 .weak operatorx2D__u13_p0_a0
 .proc operatorx2D__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0d
     sta arg0
     jsr _comp2N
@@ -13935,16 +11707,12 @@
 
 .weak operatorx7E__u13_p0_a0
 .proc operatorx7E__u13_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0d
     sta arg0
     jsr _bit_notN
@@ -13953,19 +11721,15 @@
 
 .weak operatorx2B__s14_p0_a0__s14_p0_a0
 .proc operatorx2B__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _addN
@@ -13974,19 +11738,15 @@
 
 .weak operatorx2D__s14_p0_a0__s14_p0_a0
 .proc operatorx2D__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _subN
@@ -13995,19 +11755,15 @@
 
 .weak operatorx26__s14_p0_a0__s14_p0_a0
 .proc operatorx26__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_andN
@@ -14016,19 +11772,15 @@
 
 .weak operatorx7C__s14_p0_a0__s14_p0_a0
 .proc operatorx7C__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_orN
@@ -14037,19 +11789,15 @@
 
 .weak operatorx5E__s14_p0_a0__s14_p0_a0
 .proc operatorx5E__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_xorN
@@ -14058,31 +11806,27 @@
 
 .weak operatorx2A__s14_p0_a0__s14_p0_a0
 .proc operatorx2A__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14094,34 +11838,30 @@
 
 .weak operatorx2F__s14_p0_a0__s14_p0_a0
 .proc operatorx2F__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0e
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14133,34 +11873,30 @@
 
 .weak operatorx25__s14_p0_a0__s14_p0_a0
 .proc operatorx25__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0e
     sta arg0
     jsr _divN
     lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14172,19 +11908,15 @@
 
 .weak operatorx3Cx3C__s14_p0_a0__s14_p0_a0
 .proc operatorx3Cx3C__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -14196,19 +11928,15 @@
 
 .weak operatorx3Ex3E__s14_p0_a0__s14_p0_a0
 .proc operatorx3Ex3E__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -14220,22 +11948,18 @@
 
 .weak operatorx3Dx3D__s14_p0_a0__s14_p0_a0
 .proc operatorx3Dx3D__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _eqN
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14244,16 +11968,12 @@
 
 .weak operatorx21x3D__s14_p0_a0__s14_p0_a0
 .proc operatorx21x3D__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _eqN
@@ -14262,7 +11982,7 @@
     sta arg1
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14271,22 +11991,18 @@
 
 .weak operatorx3C__s14_p0_a0__s14_p0_a0
 .proc operatorx3C__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _ltNs
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14295,22 +12011,18 @@
 
 .weak operatorx3Cx3D__s14_p0_a0__s14_p0_a0
 .proc operatorx3Cx3D__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _leNs
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14319,22 +12031,18 @@
 
 .weak operatorx3E__s14_p0_a0__s14_p0_a0
 .proc operatorx3E__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _ltNs
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14343,22 +12051,18 @@
 
 .weak operatorx3Ex3D__s14_p0_a0__s14_p0_a0
 .proc operatorx3Ex3D__s14_p0_a0__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _leNs
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14367,16 +12071,12 @@
 
 .weak operatorx2D__s14_p0_a0
 .proc operatorx2D__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _comp2N
@@ -14385,16 +12085,12 @@
 
 .weak operatorx7E__s14_p0_a0
 .proc operatorx7E__s14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_notN
@@ -14403,19 +12099,15 @@
 
 .weak operatorx2B__u14_p0_a0__u14_p0_a0
 .proc operatorx2B__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _addN
@@ -14424,19 +12116,15 @@
 
 .weak operatorx2D__u14_p0_a0__u14_p0_a0
 .proc operatorx2D__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _subN
@@ -14445,19 +12133,15 @@
 
 .weak operatorx26__u14_p0_a0__u14_p0_a0
 .proc operatorx26__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_andN
@@ -14466,19 +12150,15 @@
 
 .weak operatorx7C__u14_p0_a0__u14_p0_a0
 .proc operatorx7C__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_orN
@@ -14487,19 +12167,15 @@
 
 .weak operatorx5E__u14_p0_a0__u14_p0_a0
 .proc operatorx5E__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2a
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_xorN
@@ -14508,31 +12184,27 @@
 
 .weak operatorx2A__u14_p0_a0__u14_p0_a0
 .proc operatorx2A__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14544,34 +12216,30 @@
 
 .weak operatorx2F__u14_p0_a0__u14_p0_a0
 .proc operatorx2F__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0e
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1c
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14583,34 +12251,30 @@
 
 .weak operatorx25__u14_p0_a0__u14_p0_a0
 .proc operatorx25__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
     jsr _pushN
-    lda #$0e
+    lda #$2a
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$38
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0e
     sta arg0
     jsr _divN
     lda #$0e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2a
+    jsr _sp2ptr0m
+    lda #$46
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _cpyN
@@ -14622,19 +12286,15 @@
 
 .weak operatorx3Cx3C__u14_p0_a0__u14_p0_a0
 .proc operatorx3Cx3C__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -14646,19 +12306,15 @@
 
 .weak operatorx3Ex3E__u14_p0_a0__u14_p0_a0
 .proc operatorx3Ex3E__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2a
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -14670,22 +12326,18 @@
 
 .weak operatorx3Dx3D__u14_p0_a0__u14_p0_a0
 .proc operatorx3Dx3D__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _eqN
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14694,16 +12346,12 @@
 
 .weak operatorx21x3D__u14_p0_a0__u14_p0_a0
 .proc operatorx21x3D__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _eqN
@@ -14712,7 +12360,7 @@
     sta arg1
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14721,22 +12369,18 @@
 
 .weak operatorx3C__u14_p0_a0__u14_p0_a0
 .proc operatorx3C__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _ltNu
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14745,22 +12389,18 @@
 
 .weak operatorx3Cx3D__u14_p0_a0__u14_p0_a0
 .proc operatorx3Cx3D__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _leNu
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14769,22 +12409,18 @@
 
 .weak operatorx3E__u14_p0_a0__u14_p0_a0
 .proc operatorx3E__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _ltNu
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14793,22 +12429,18 @@
 
 .weak operatorx3Ex3D__u14_p0_a0__u14_p0_a0
 .proc operatorx3Ex3D__u14_p0_a0__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1c
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _leNu
     lda #$1d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -14817,16 +12449,12 @@
 
 .weak operatorx2D__u14_p0_a0
 .proc operatorx2D__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0e
     sta arg0
     jsr _comp2N
@@ -14835,16 +12463,12 @@
 
 .weak operatorx7E__u14_p0_a0
 .proc operatorx7E__u14_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0e
     sta arg0
     jsr _bit_notN
@@ -14853,19 +12477,15 @@
 
 .weak operatorx2B__s15_p0_a0__s15_p0_a0
 .proc operatorx2B__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _addN
@@ -14874,19 +12494,15 @@
 
 .weak operatorx2D__s15_p0_a0__s15_p0_a0
 .proc operatorx2D__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _subN
@@ -14895,19 +12511,15 @@
 
 .weak operatorx26__s15_p0_a0__s15_p0_a0
 .proc operatorx26__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_andN
@@ -14916,19 +12528,15 @@
 
 .weak operatorx7C__s15_p0_a0__s15_p0_a0
 .proc operatorx7C__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_orN
@@ -14937,19 +12545,15 @@
 
 .weak operatorx5E__s15_p0_a0__s15_p0_a0
 .proc operatorx5E__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_xorN
@@ -14958,31 +12562,27 @@
 
 .weak operatorx2A__s15_p0_a0__s15_p0_a0
 .proc operatorx2A__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -14994,34 +12594,30 @@
 
 .weak operatorx2F__s15_p0_a0__s15_p0_a0
 .proc operatorx2F__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0f
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -15033,34 +12629,30 @@
 
 .weak operatorx25__s15_p0_a0__s15_p0_a0
 .proc operatorx25__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0f
     sta arg0
     jsr _divN
     lda #$0f
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -15072,19 +12664,15 @@
 
 .weak operatorx3Cx3C__s15_p0_a0__s15_p0_a0
 .proc operatorx3Cx3C__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -15096,19 +12684,15 @@
 
 .weak operatorx3Ex3E__s15_p0_a0__s15_p0_a0
 .proc operatorx3Ex3E__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -15120,22 +12704,18 @@
 
 .weak operatorx3Dx3D__s15_p0_a0__s15_p0_a0
 .proc operatorx3Dx3D__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _eqN
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15144,16 +12724,12 @@
 
 .weak operatorx21x3D__s15_p0_a0__s15_p0_a0
 .proc operatorx21x3D__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _eqN
@@ -15162,7 +12738,7 @@
     sta arg1
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15171,22 +12747,18 @@
 
 .weak operatorx3C__s15_p0_a0__s15_p0_a0
 .proc operatorx3C__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _ltNs
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15195,22 +12767,18 @@
 
 .weak operatorx3Cx3D__s15_p0_a0__s15_p0_a0
 .proc operatorx3Cx3D__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _leNs
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15219,22 +12787,18 @@
 
 .weak operatorx3E__s15_p0_a0__s15_p0_a0
 .proc operatorx3E__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _ltNs
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15243,22 +12807,18 @@
 
 .weak operatorx3Ex3D__s15_p0_a0__s15_p0_a0
 .proc operatorx3Ex3D__s15_p0_a0__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _leNs
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15267,16 +12827,12 @@
 
 .weak operatorx2D__s15_p0_a0
 .proc operatorx2D__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _comp2N
@@ -15285,16 +12841,12 @@
 
 .weak operatorx7E__s15_p0_a0
 .proc operatorx7E__s15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_notN
@@ -15303,19 +12855,15 @@
 
 .weak operatorx2B__u15_p0_a0__u15_p0_a0
 .proc operatorx2B__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _addN
@@ -15324,19 +12872,15 @@
 
 .weak operatorx2D__u15_p0_a0__u15_p0_a0
 .proc operatorx2D__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _subN
@@ -15345,19 +12889,15 @@
 
 .weak operatorx26__u15_p0_a0__u15_p0_a0
 .proc operatorx26__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_andN
@@ -15366,19 +12906,15 @@
 
 .weak operatorx7C__u15_p0_a0__u15_p0_a0
 .proc operatorx7C__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_orN
@@ -15387,19 +12923,15 @@
 
 .weak operatorx5E__u15_p0_a0__u15_p0_a0
 .proc operatorx5E__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$2d
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_xorN
@@ -15408,31 +12940,27 @@
 
 .weak operatorx2A__u15_p0_a0__u15_p0_a0
 .proc operatorx2A__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -15444,34 +12972,30 @@
 
 .weak operatorx2F__u15_p0_a0__u15_p0_a0
 .proc operatorx2F__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0f
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$1e
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -15483,34 +13007,30 @@
 
 .weak operatorx25__u15_p0_a0__u15_p0_a0
 .proc operatorx25__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
     jsr _pushN
-    lda #$0f
+    lda #$2d
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$3c
+    sta arg0
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$0f
     sta arg0
     jsr _divN
     lda #$0f
     sta arg0
-    jsr _fp2ptr0p
-    lda #$2d
+    jsr _sp2ptr0m
+    lda #$4b
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _cpyN
@@ -15522,19 +13042,15 @@
 
 .weak operatorx3Cx3C__u15_p0_a0__u15_p0_a0
 .proc operatorx3Cx3C__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -15546,19 +13062,15 @@
 
 .weak operatorx3Ex3E__u15_p0_a0__u15_p0_a0
 .proc operatorx3Ex3E__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$2d
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -15570,22 +13082,18 @@
 
 .weak operatorx3Dx3D__u15_p0_a0__u15_p0_a0
 .proc operatorx3Dx3D__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _eqN
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15594,16 +13102,12 @@
 
 .weak operatorx21x3D__u15_p0_a0__u15_p0_a0
 .proc operatorx21x3D__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _eqN
@@ -15612,7 +13116,7 @@
     sta arg1
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15621,22 +13125,18 @@
 
 .weak operatorx3C__u15_p0_a0__u15_p0_a0
 .proc operatorx3C__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _ltNu
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15645,22 +13145,18 @@
 
 .weak operatorx3Cx3D__u15_p0_a0__u15_p0_a0
 .proc operatorx3Cx3D__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _leNu
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15669,22 +13165,18 @@
 
 .weak operatorx3E__u15_p0_a0__u15_p0_a0
 .proc operatorx3E__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _ltNu
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15693,22 +13185,18 @@
 
 .weak operatorx3Ex3D__u15_p0_a0__u15_p0_a0
 .proc operatorx3Ex3D__u15_p0_a0__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$1e
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$0f
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _leNu
     lda #$1f
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -15717,16 +13205,12 @@
 
 .weak operatorx2D__u15_p0_a0
 .proc operatorx2D__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0f
     sta arg0
     jsr _comp2N
@@ -15735,16 +13219,12 @@
 
 .weak operatorx7E__u15_p0_a0
 .proc operatorx7E__u15_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$0f
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$1e
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$0f
     sta arg0
     jsr _bit_notN
@@ -15753,19 +13233,15 @@
 
 .weak operatorx2B__s16_p0_a0__s16_p0_a0
 .proc operatorx2B__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _addN
@@ -15774,19 +13250,15 @@
 
 .weak operatorx2D__s16_p0_a0__s16_p0_a0
 .proc operatorx2D__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _subN
@@ -15795,19 +13267,15 @@
 
 .weak operatorx26__s16_p0_a0__s16_p0_a0
 .proc operatorx26__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_andN
@@ -15816,19 +13284,15 @@
 
 .weak operatorx7C__s16_p0_a0__s16_p0_a0
 .proc operatorx7C__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_orN
@@ -15837,19 +13301,15 @@
 
 .weak operatorx5E__s16_p0_a0__s16_p0_a0
 .proc operatorx5E__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_xorN
@@ -15858,31 +13318,27 @@
 
 .weak operatorx2A__s16_p0_a0__s16_p0_a0
 .proc operatorx2A__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$20
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -15894,34 +13350,30 @@
 
 .weak operatorx2F__s16_p0_a0__s16_p0_a0
 .proc operatorx2F__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$10
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$20
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -15933,34 +13385,30 @@
 
 .weak operatorx25__s16_p0_a0__s16_p0_a0
 .proc operatorx25__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$10
     sta arg0
     jsr _divN
     lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -15972,19 +13420,15 @@
 
 .weak operatorx3Cx3C__s16_p0_a0__s16_p0_a0
 .proc operatorx3Cx3C__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$30
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -15996,19 +13440,15 @@
 
 .weak operatorx3Ex3E__s16_p0_a0__s16_p0_a0
 .proc operatorx3Ex3E__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$30
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -16020,22 +13460,18 @@
 
 .weak operatorx3Dx3D__s16_p0_a0__s16_p0_a0
 .proc operatorx3Dx3D__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _eqN
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16044,16 +13480,12 @@
 
 .weak operatorx21x3D__s16_p0_a0__s16_p0_a0
 .proc operatorx21x3D__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _eqN
@@ -16062,7 +13494,7 @@
     sta arg1
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16071,22 +13503,18 @@
 
 .weak operatorx3C__s16_p0_a0__s16_p0_a0
 .proc operatorx3C__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _ltNs
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16095,22 +13523,18 @@
 
 .weak operatorx3Cx3D__s16_p0_a0__s16_p0_a0
 .proc operatorx3Cx3D__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _leNs
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16119,22 +13543,18 @@
 
 .weak operatorx3E__s16_p0_a0__s16_p0_a0
 .proc operatorx3E__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _ltNs
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16143,22 +13563,18 @@
 
 .weak operatorx3Ex3D__s16_p0_a0__s16_p0_a0
 .proc operatorx3Ex3D__s16_p0_a0__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _leNs
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16167,16 +13583,12 @@
 
 .weak operatorx2D__s16_p0_a0
 .proc operatorx2D__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _comp2N
@@ -16185,16 +13597,12 @@
 
 .weak operatorx7E__s16_p0_a0
 .proc operatorx7E__s16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_notN
@@ -16203,19 +13611,15 @@
 
 .weak operatorx2B__u16_p0_a0__u16_p0_a0
 .proc operatorx2B__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _addN
@@ -16224,19 +13628,15 @@
 
 .weak operatorx2D__u16_p0_a0__u16_p0_a0
 .proc operatorx2D__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _subN
@@ -16245,19 +13645,15 @@
 
 .weak operatorx26__u16_p0_a0__u16_p0_a0
 .proc operatorx26__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_andN
@@ -16266,19 +13662,15 @@
 
 .weak operatorx7C__u16_p0_a0__u16_p0_a0
 .proc operatorx7C__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_orN
@@ -16287,19 +13679,15 @@
 
 .weak operatorx5E__u16_p0_a0__u16_p0_a0
 .proc operatorx5E__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$30
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_xorN
@@ -16308,31 +13696,27 @@
 
 .weak operatorx2A__u16_p0_a0__u16_p0_a0
 .proc operatorx2A__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _mulN
-    lda #$00
+    lda #$20
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -16344,34 +13728,30 @@
 
 .weak operatorx2F__u16_p0_a0__u16_p0_a0
 .proc operatorx2F__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$10
     sta arg0
     jsr _divN
-    lda #$00
+    lda #$20
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -16383,34 +13763,30 @@
 
 .weak operatorx25__u16_p0_a0__u16_p0_a0
 .proc operatorx25__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
     jsr _pushN
-    lda #$10
+    lda #$30
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
+    lda #$40
+    sta arg0
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
-    lda #$00
-    sta arg0
-    jsr _fp2ptr2p
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _fp2ptr3p
+    jsr _sp2ptr3m
     lda #$10
     sta arg0
     jsr _divN
     lda #$10
     sta arg0
-    jsr _fp2ptr0p
-    lda #$30
+    jsr _sp2ptr0m
+    lda #$50
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _cpyN
@@ -16422,19 +13798,15 @@
 
 .weak operatorx3Cx3C__u16_p0_a0__u16_p0_a0
 .proc operatorx3Cx3C__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$30
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -16446,19 +13818,15 @@
 
 .weak operatorx3Ex3E__u16_p0_a0__u16_p0_a0
 .proc operatorx3Ex3E__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$30
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda (ptr2),y
     sta arg1
@@ -16470,22 +13838,18 @@
 
 .weak operatorx3Dx3D__u16_p0_a0__u16_p0_a0
 .proc operatorx3Dx3D__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _eqN
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16494,16 +13858,12 @@
 
 .weak operatorx21x3D__u16_p0_a0__u16_p0_a0
 .proc operatorx21x3D__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _eqN
@@ -16512,7 +13872,7 @@
     sta arg1
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16521,22 +13881,18 @@
 
 .weak operatorx3C__u16_p0_a0__u16_p0_a0
 .proc operatorx3C__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _ltNu
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16545,22 +13901,18 @@
 
 .weak operatorx3Cx3D__u16_p0_a0__u16_p0_a0
 .proc operatorx3Cx3D__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _leNu
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16569,22 +13921,18 @@
 
 .weak operatorx3E__u16_p0_a0__u16_p0_a0
 .proc operatorx3E__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _ltNu
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16593,22 +13941,18 @@
 
 .weak operatorx3Ex3D__u16_p0_a0__u16_p0_a0
 .proc operatorx3Ex3D__u16_p0_a0__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$20
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _leNu
     lda #$21
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     sta (ptr2),y
@@ -16617,16 +13961,12 @@
 
 .weak operatorx2D__u16_p0_a0
 .proc operatorx2D__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$10
     sta arg0
     jsr _comp2N
@@ -16635,16 +13975,12 @@
 
 .weak operatorx7E__u16_p0_a0
 .proc operatorx7E__u16_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$10
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$20
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$10
     sta arg0
     jsr _bit_notN
@@ -16653,19 +13989,15 @@
 
 .weak operatorx2B__half_p0_a0__half_p0_a0
 .proc operatorx2B__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     lda #$05
@@ -16676,19 +14008,15 @@
 
 .weak operatorx2D__half_p0_a0__half_p0_a0
 .proc operatorx2D__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     lda #$05
@@ -16699,19 +14027,15 @@
 
 .weak operatorx2A__half_p0_a0__half_p0_a0
 .proc operatorx2A__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     lda #$05
@@ -16722,19 +14046,15 @@
 
 .weak operatorx2F__half_p0_a0__half_p0_a0
 .proc operatorx2F__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$02
     sta arg0
     lda #$05
@@ -16745,16 +14065,12 @@
 
 .weak operatorx3Dx3D__half_p0_a0__half_p0_a0
 .proc operatorx3Dx3D__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16762,7 +14078,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     beq @true
@@ -16777,16 +14093,12 @@
 
 .weak operatorx21x3D__half_p0_a0__half_p0_a0
 .proc operatorx21x3D__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16794,7 +14106,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     bne @true
@@ -16809,16 +14121,12 @@
 
 .weak operatorx3C__half_p0_a0__half_p0_a0
 .proc operatorx3C__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16826,7 +14134,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -16842,16 +14150,12 @@
 
 .weak operatorx3Cx3D__half_p0_a0__half_p0_a0
 .proc operatorx3Cx3D__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16859,7 +14163,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -16875,16 +14179,12 @@
 
 .weak operatorx3E__half_p0_a0__half_p0_a0
 .proc operatorx3E__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16892,7 +14192,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -16908,16 +14208,12 @@
 
 .weak operatorx3Ex3D__half_p0_a0__half_p0_a0
 .proc operatorx3Ex3D__half_p0_a0__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$02
     sta arg0
     lda #$05
@@ -16925,7 +14221,7 @@
     jsr _fcmp
     lda #$05
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -16941,16 +14237,12 @@
 
 .weak operatorx2D__half_p0_a0
 .proc operatorx2D__half_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$02
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$04
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     ldy #0
 @copy_loop:
     lda (ptr0),y
@@ -16967,19 +14259,15 @@
 
 .weak operatorx2B__float_p0_a0__float_p0_a0
 .proc operatorx2B__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     lda #$08
@@ -16990,19 +14278,15 @@
 
 .weak operatorx2D__float_p0_a0__float_p0_a0
 .proc operatorx2D__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     lda #$08
@@ -17013,19 +14297,15 @@
 
 .weak operatorx2A__float_p0_a0__float_p0_a0
 .proc operatorx2A__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     lda #$08
@@ -17036,19 +14316,15 @@
 
 .weak operatorx2F__float_p0_a0__float_p0_a0
 .proc operatorx2F__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$04
     sta arg0
     lda #$08
@@ -17059,16 +14335,12 @@
 
 .weak operatorx3Dx3D__float_p0_a0__float_p0_a0
 .proc operatorx3Dx3D__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17076,7 +14348,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     beq @true
@@ -17091,16 +14363,12 @@
 
 .weak operatorx21x3D__float_p0_a0__float_p0_a0
 .proc operatorx21x3D__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17108,7 +14376,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     bne @true
@@ -17123,16 +14391,12 @@
 
 .weak operatorx3C__float_p0_a0__float_p0_a0
 .proc operatorx3C__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17140,7 +14404,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -17156,16 +14420,12 @@
 
 .weak operatorx3Cx3D__float_p0_a0__float_p0_a0
 .proc operatorx3Cx3D__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17173,7 +14433,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -17189,16 +14449,12 @@
 
 .weak operatorx3E__float_p0_a0__float_p0_a0
 .proc operatorx3E__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17206,7 +14462,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -17222,16 +14478,12 @@
 
 .weak operatorx3Ex3D__float_p0_a0__float_p0_a0
 .proc operatorx3Ex3D__float_p0_a0__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$04
     sta arg0
     lda #$08
@@ -17239,7 +14491,7 @@
     jsr _fcmp
     lda #$09
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -17255,16 +14507,12 @@
 
 .weak operatorx2D__float_p0_a0
 .proc operatorx2D__float_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$04
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$08
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     ldy #0
 @copy_loop:
     lda (ptr0),y
@@ -17281,19 +14529,15 @@
 
 .weak operatorx2B__double_p0_a0__double_p0_a0
 .proc operatorx2B__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     lda #$0b
@@ -17304,19 +14548,15 @@
 
 .weak operatorx2D__double_p0_a0__double_p0_a0
 .proc operatorx2D__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     lda #$0b
@@ -17327,19 +14567,15 @@
 
 .weak operatorx2A__double_p0_a0__double_p0_a0
 .proc operatorx2A__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     lda #$0b
@@ -17350,19 +14586,15 @@
 
 .weak operatorx2F__double_p0_a0__double_p0_a0
 .proc operatorx2F__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$18
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     lda #$08
     sta arg0
     lda #$0b
@@ -17373,16 +14605,12 @@
 
 .weak operatorx3Dx3D__double_p0_a0__double_p0_a0
 .proc operatorx3Dx3D__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17390,7 +14618,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     beq @true
@@ -17405,16 +14633,12 @@
 
 .weak operatorx21x3D__double_p0_a0__double_p0_a0
 .proc operatorx21x3D__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17422,7 +14646,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     bne @true
@@ -17437,16 +14661,12 @@
 
 .weak operatorx3C__double_p0_a0__double_p0_a0
 .proc operatorx3C__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17454,7 +14674,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -17470,16 +14690,12 @@
 
 .weak operatorx3Cx3D__double_p0_a0__double_p0_a0
 .proc operatorx3Cx3D__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17487,7 +14703,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -17503,16 +14719,12 @@
 
 .weak operatorx3E__double_p0_a0__double_p0_a0
 .proc operatorx3E__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17520,7 +14732,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$01
@@ -17536,16 +14748,12 @@
 
 .weak operatorx3Ex3D__double_p0_a0__double_p0_a0
 .proc operatorx3Ex3D__double_p0_a0__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     lda #$08
     sta arg0
     lda #$0b
@@ -17553,7 +14761,7 @@
     jsr _fcmp
     lda #$11
     sta arg0
-    jsr _fp2ptr2m
+    jsr _sp2ptr2m
     ldy #0
     lda arg1
     cmp #$ff
@@ -17569,16 +14777,12 @@
 
 .weak operatorx2D__double_p0_a0
 .proc operatorx2D__double_p0_a0
-    lda sp+1
-    sta fp+1
-    lda sp
-    sta fp
     lda #$08
     sta arg0
-    jsr _fp2ptr0m
+    jsr _sp2ptr0m
     lda #$10
     sta arg0
-    jsr _fp2ptr1m
+    jsr _sp2ptr1m
     ldy #0
 @copy_loop:
     lda (ptr0),y

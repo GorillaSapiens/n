@@ -90,3 +90,13 @@ void fp2ptr0m(void);
 void fp2ptr1m(void);
 void fp2ptr2m(void);
 void fp2ptr3m(void);
+
+void sp2ptr0p(void);
+void sp2ptr1p(void);
+void sp2ptr2p(void);
+void sp2ptr3p(void);
+
+void sp2ptr0m(void);
+void sp2ptr1m(void);
+void sp2ptr2m(void);
+void sp2ptr3m(void);

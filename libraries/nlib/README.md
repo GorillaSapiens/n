@@ -34,7 +34,7 @@ These are mostly small assembly helpers that the compiler can target directly:
 - comparisons: `eq`, `lt`, `le`
 - bitwise ops: `and`, `or`, `xor`, `not`
 - shifts: logical/arithmetic, by 1, by 8, and by arbitrary counts
-- stack/frame helpers: `pushN`, `popN`, `cpyN`, `setN`, `zeroN`, `copyzxN`, `copysxN`, `swapN`, `comp2N`, `fp2ptr*`
+- stack/frame helpers: `pushN`, `popN`, `cpyN`, `setN`, `zeroN`, `copyzxN`, `copysxN`, `swapN`, `comp2N`, `fp2ptr*`, `sp2ptr*`
 - increment/decrement helpers
 
 The exact entry points are visible in `nlib.h`, the assembly sources in `asm/`, and the built archive members in `wrk/` after `make`.
@@ -51,6 +51,7 @@ The `sbrk` pointer grows downward from `__stack_top`, so both share the same fre
 A size-0 request returns the current heap pointer without changing it.
 
 This is still a very small runtime allocator interface, not a full malloc/free system.
+Most other low-level helper wrappers can stay frame-free and address argument-stack data straight from `sp` via `sp2ptr*`; `_sbrk` is the notable ABI-facing exception that still mirrors `sp` into `fp`.
 There is no free list, no block reuse, and no protection against later argument-stack growth colliding with already allocated heap memory.
 
 ## What it requires
