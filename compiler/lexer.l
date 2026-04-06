@@ -199,6 +199,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 ">>="           return RSHIFT_ASSIGN;
 "-="            return SUB_ASSIGN;
 "^="            return XOR_ASSIGN;
+"..."           return ELLIPSIS;
 ".."            return DOTDOT;
 
 {FLAG} {

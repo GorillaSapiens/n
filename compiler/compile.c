@@ -11222,7 +11222,7 @@ static void calculate_struct_union_sizes(ASTNode *program) {
                }
                else {
                   pair_insert(typesizes, name, (void *)(intptr_t)size);
-                  warning("sizeof(%s) == %d", name, size);
+                  debug("sizeof(%s) == %d", name, size);
                }
             }
          }
