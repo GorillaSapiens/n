@@ -125,10 +125,12 @@
     dey
     lda (ptr0), y
     and #$80
+    beq @prep_zero_fill
     iny
-    beq @zero_fill
     lda #$ff
     bne @fill_loop
+@prep_zero_fill:
+    iny
 @zero_fill:
     lda #$00
 @fill_loop:
