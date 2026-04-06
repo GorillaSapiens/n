@@ -216,6 +216,17 @@ The assembler preprocesses the root source before lexing/parsing:
 7. relaxation
 8. pass 2 emission
 
+During assembly, `n65asm` prints a per-pass progress summary in plain English. For example:
+
+```text
+pass 001 layout: bytes 2697, instructions 1147, directives 46, labels 19, constants 1, zero-page 0, absolute 438, long branches 7, still relaxable 3, errors 0
+pass 001 after relaxation: bytes 2466 (-231), instructions 1147, directives 46, labels 19, constants 1, zero-page 222 (+222), absolute 216 (-222), long branches 4 (-3), still relaxable 0 (-3), errors 0
+pass 004 stable: bytes 2463, instructions 1147, directives 46, labels 19, constants 1, zero-page 222, absolute 216, long branches 3, still relaxable 0, errors 0
+pass 999 final emission: bytes 2463, instructions 1147, directives 46, labels 19, constants 1, zero-page 222, absolute 216, long branches 3, still relaxable 0, errors 0
+```
+
+The signed deltas show what changed since the previous line, so it is easier to see when relaxation actually saved bytes or collapsed long branches.
+
 This means `.include` and macros are **source-level features**, not parser-level features.
 
 ## Syntax

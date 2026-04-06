@@ -1021,9 +1021,7 @@ static void segment_advance(asm_context_t *ctx, asm_segment_t *seg, const stmt_t
    }
 }
 
-static void print_pass_stats(const asm_context_t *ctx, int pass_index, const char *phase)
-{
-   const stmt_t *stmt;
+typedef struct asm_pass_stats {
    int insn_count;
    int dir_count;
    int label_count;
@@ -1033,52 +1031,50 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
    int abs_like;
    int long_count;
    int long_relax_count;
+   int error_count;
+} asm_pass_stats_t;
 
-   insn_count = 0;
-   dir_count = 0;
-   label_count = 0;
-   const_count = 0;
-   total_bytes = 0;
-   zp_like = 0;
-   abs_like = 0;
-   long_count = 0;
-   long_relax_count = 0;
+static void collect_pass_stats(const asm_context_t *ctx, asm_pass_stats_t *stats)
+{
+   const stmt_t *stmt;
+
+   memset(stats, 0, sizeof(*stats));
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {
          case STMT_LABEL:
-            label_count++;
+            stats->label_count++;
             break;
 
          case STMT_DIR:
-            dir_count++;
+            stats->dir_count++;
             break;
 
          case STMT_CONST:
-            const_count++;
+            stats->const_count++;
             break;
 
          case STMT_INSN:
-            insn_count++;
-            total_bytes += stmt->u.insn.size;
+            stats->insn_count++;
+            stats->total_bytes += stmt->u.insn.size;
 
             switch (stmt->u.insn.final_mode) {
                case EM_ZP:
                case EM_ZPX:
                case EM_ZPY:
-                  zp_like++;
+                  stats->zp_like++;
                   break;
 
                case EM_ABS:
                case EM_ABSX:
                case EM_ABSY:
-                  abs_like++;
+                  stats->abs_like++;
                   break;
 
                case EM_REL_LONG:
-                  long_count++;
+                  stats->long_count++;
                   if (insn_can_relax_long_branch(stmt, ctx))
-                     long_relax_count++;
+                     stats->long_relax_count++;
                   break;
 
                default:
@@ -1088,8 +1084,90 @@ static void print_pass_stats(const asm_context_t *ctx, int pass_index, const cha
       }
    }
 
-   printf("%03d %-10s bytes=%d insns=%d dirs=%d labels=%d consts=%d zp=%d abs=%d long=%d long_relax=%d errors=%d\n",
-         pass_index, phase, total_bytes, insn_count, dir_count, label_count, const_count, zp_like, abs_like, long_count, long_relax_count, ctx->error_count);
+   stats->error_count = ctx->error_count;
+}
+
+static const char *describe_pass_phase(const char *phase)
+{
+   if (!strcmp(phase, "layout"))
+      return "layout";
+   if (!strcmp(phase, "relaxed"))
+      return "after relaxation";
+   if (!strcmp(phase, "stable"))
+      return "stable";
+   if (!strcmp(phase, "emit"))
+      return "final emission";
+   return phase;
+}
+
+static void format_delta(char *buf, size_t buf_size, int current, int previous, int have_previous)
+{
+   int delta;
+
+   if (!have_previous) {
+      buf[0] = '\0';
+      return;
+   }
+
+   delta = current - previous;
+   if (delta == 0) {
+      buf[0] = '\0';
+      return;
+   }
+
+   snprintf(buf, buf_size, " (%+d)", delta);
+}
+
+static void print_pass_stats(const asm_context_t *ctx, int pass_index, const char *phase)
+{
+   static int have_previous = 0;
+   static asm_pass_stats_t previous;
+   asm_pass_stats_t current;
+   const char *label;
+   char bytes_delta[32];
+   char insn_delta[32];
+   char dir_delta[32];
+   char label_delta[32];
+   char const_delta[32];
+   char zp_delta[32];
+   char abs_delta[32];
+   char long_delta[32];
+   char relax_delta[32];
+   char error_delta[32];
+
+   collect_pass_stats(ctx, &current);
+
+   if (pass_index == 1 && !strcmp(phase, "layout"))
+      have_previous = 0;
+
+   label = describe_pass_phase(phase);
+   format_delta(bytes_delta, sizeof(bytes_delta), current.total_bytes, previous.total_bytes, have_previous);
+   format_delta(insn_delta, sizeof(insn_delta), current.insn_count, previous.insn_count, have_previous);
+   format_delta(dir_delta, sizeof(dir_delta), current.dir_count, previous.dir_count, have_previous);
+   format_delta(label_delta, sizeof(label_delta), current.label_count, previous.label_count, have_previous);
+   format_delta(const_delta, sizeof(const_delta), current.const_count, previous.const_count, have_previous);
+   format_delta(zp_delta, sizeof(zp_delta), current.zp_like, previous.zp_like, have_previous);
+   format_delta(abs_delta, sizeof(abs_delta), current.abs_like, previous.abs_like, have_previous);
+   format_delta(long_delta, sizeof(long_delta), current.long_count, previous.long_count, have_previous);
+   format_delta(relax_delta, sizeof(relax_delta), current.long_relax_count, previous.long_relax_count, have_previous);
+   format_delta(error_delta, sizeof(error_delta), current.error_count, previous.error_count, have_previous);
+
+   printf("pass %03d %s: bytes %d%s, instructions %d%s, directives %d%s, labels %d%s, constants %d%s, zero-page %d%s, absolute %d%s, long branches %d%s, still relaxable %d%s, errors %d%s\n",
+         pass_index,
+         label,
+         current.total_bytes, bytes_delta,
+         current.insn_count, insn_delta,
+         current.dir_count, dir_delta,
+         current.label_count, label_delta,
+         current.const_count, const_delta,
+         current.zp_like, zp_delta,
+         current.abs_like, abs_delta,
+         current.long_count, long_delta,
+         current.long_relax_count, relax_delta,
+         current.error_count, error_delta);
+
+   previous = current;
+   have_previous = 1;
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65)

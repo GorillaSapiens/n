@@ -687,12 +687,42 @@ EOF_ASM
       exit(-1);
    }
    my $asm_hex_text = slurp_file($asm_hex);
+   my $asm_stdout = slurp_file($asm_out);
    if (index($asm_hex_text, 'A912AB348D3412F001EAEA') < 0) {
       print "[$FAIL] assembler rich-opcode smoke missing expected bytes\n";
       print "$asm_hex\n";
       exit(-1);
    }
+   require_substrings($asm_stdout,
+      [
+         'pass 001 layout: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
+         'pass 001 after relaxation: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
+         'pass 999 final emission: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
+      ],
+      'assembler stdout', 'assembler_rich_opcode_smoke', $asm_out);
    print "[$PASS] assembler_rich_opcode_smoke\n";
+
+   my $asm_relax_hex = File::Spec->catfile($asm_smoke_tmp, 'good.hex');
+   my $asm_relax_out = File::Spec->catfile($asm_smoke_tmp, 'good.out');
+   my $asm_relax_err = File::Spec->catfile($asm_smoke_tmp, 'good.err');
+   my $asm_relax_src = File::Spec->catfile($repo_root, 'assembler', 'tests', 'good.s');
+   my @asm_relax_cmd = ($n65asm, '--hex=' . $asm_relax_hex, $asm_relax_src);
+   my ($asm_relax_exit) = run_cmd(\@asm_relax_cmd, $asm_relax_out, $asm_relax_err);
+   if ($asm_relax_exit != 0) {
+      print "[$FAIL] assembler relaxation-summary smoke exit code $asm_relax_exit\n";
+      print join(' ', @asm_relax_cmd), "\n";
+      print slurp_file($asm_relax_err);
+      exit(-1);
+   }
+   my $asm_relax_stdout = slurp_file($asm_relax_out);
+   require_substrings($asm_relax_stdout,
+      [
+         'pass 001 layout: bytes 258, instructions 115, directives 7, labels 12, constants 0, zero-page 2, absolute 37, long branches 8, still relaxable 8, errors 0',
+         'pass 001 after relaxation: bytes 219 (-39), instructions 115, directives 7, labels 12, constants 0, zero-page 17 (+15), absolute 22 (-15), long branches 0 (-8), still relaxable 0 (-8), errors 0',
+         'pass 003 stable: bytes 219, instructions 115, directives 7, labels 12, constants 0, zero-page 17, absolute 22, long branches 0, still relaxable 0, errors 0',
+      ],
+      'assembler stdout', 'assembler_relaxation_summary_smoke', $asm_relax_out);
+   print "[$PASS] assembler_relaxation_summary_smoke\n";
 
    my $asm_bad_src = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.s');
    my $asm_bad_hex = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.hex');
