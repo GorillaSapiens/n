@@ -693,14 +693,42 @@ EOF_ASM
       print "$asm_hex\n";
       exit(-1);
    }
-   require_substrings($asm_stdout,
-      [
-         'pass 001 layout: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
-         'pass 001 after relaxation: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
-         'pass 999 final emission: bytes 11, instructions 6, directives 4, labels 1, constants 0, zero-page 0, absolute 1, long branches 0, still relaxable 0, errors 0',
-      ],
-      'assembler stdout', 'assembler_rich_opcode_smoke', $asm_out);
+   if ($asm_stdout ne '') {
+      print "[$FAIL] assembler rich-opcode smoke unexpectedly wrote debug output without -X passes\n";
+      print "$asm_out\n";
+      exit(-1);
+   }
    print "[$PASS] assembler_rich_opcode_smoke\n";
+
+   my $asm_xray_out = File::Spec->catfile($asm_smoke_tmp, 'rich_xray.out');
+   my $asm_xray_err = File::Spec->catfile($asm_smoke_tmp, 'rich_xray.err');
+   my @asm_xray_cmd = ($n65asm, '-X', 'passes', '--illegals', '--hex=' . $asm_hex, $asm_src);
+   my ($asm_xray_exit) = run_cmd(\@asm_xray_cmd, $asm_xray_out, $asm_xray_err);
+   if ($asm_xray_exit != 0) {
+      print "[$FAIL] assembler xray-pass smoke exit code $asm_xray_exit\n";
+      print join(' ', @asm_xray_cmd), "\n";
+      print slurp_file($asm_xray_err);
+      exit(-1);
+   }
+   my $asm_xray_stdout = slurp_file($asm_xray_out);
+   require_substrings($asm_xray_stdout,
+      [
+         'pass 001: begin',
+         '   bytes: 11',
+         '   instructions: 6',
+         '   directives: 4',
+         '   labels: 1',
+         '   constants: 0',
+         '   zero-page encodings: 0',
+         '   absolute encodings: 1',
+         '   long branches: 0',
+         '   still relaxable: 0',
+         '   errors: 0',
+         'pass 002: begin',
+         'pass 002: stable',
+      ],
+      'assembler stdout', 'assembler_xray_passes_smoke', $asm_xray_out);
+   print "[$PASS] assembler_xray_passes_smoke\n";
 
    my $asm_relax_hex = File::Spec->catfile($asm_smoke_tmp, 'good.hex');
    my $asm_relax_out = File::Spec->catfile($asm_smoke_tmp, 'good.out');
@@ -715,13 +743,49 @@ EOF_ASM
       exit(-1);
    }
    my $asm_relax_stdout = slurp_file($asm_relax_out);
-   require_substrings($asm_relax_stdout,
+   if ($asm_relax_stdout ne '') {
+      print "[$FAIL] assembler relaxation-summary smoke unexpectedly wrote debug output without -X passes\n";
+      print "$asm_relax_out\n";
+      exit(-1);
+   }
+
+   my $asm_relax_xray_out = File::Spec->catfile($asm_smoke_tmp, 'good_xray.out');
+   my $asm_relax_xray_err = File::Spec->catfile($asm_smoke_tmp, 'good_xray.err');
+   my @asm_relax_xray_cmd = ($n65asm, '-X', 'passes', '--hex=' . $asm_relax_hex, $asm_relax_src);
+   my ($asm_relax_xray_exit) = run_cmd(\@asm_relax_xray_cmd, $asm_relax_xray_out, $asm_relax_xray_err);
+   if ($asm_relax_xray_exit != 0) {
+      print "[$FAIL] assembler relaxation-summary xray smoke exit code $asm_relax_xray_exit\n";
+      print join(' ', @asm_relax_xray_cmd), "\n";
+      print slurp_file($asm_relax_xray_err);
+      exit(-1);
+   }
+   my $asm_relax_xray_stdout = slurp_file($asm_relax_xray_out);
+   require_substrings($asm_relax_xray_stdout,
       [
-         'pass 001 layout: bytes 258, instructions 115, directives 7, labels 12, constants 0, zero-page 2, absolute 37, long branches 8, still relaxable 8, errors 0',
-         'pass 001 after relaxation: bytes 219 (-39), instructions 115, directives 7, labels 12, constants 0, zero-page 17 (+15), absolute 22 (-15), long branches 0 (-8), still relaxable 0 (-8), errors 0',
-         'pass 003 stable: bytes 219, instructions 115, directives 7, labels 12, constants 0, zero-page 17, absolute 22, long branches 0, still relaxable 0, errors 0',
+         'pass 001: begin',
+         '   bytes: 258',
+         '   instructions: 115',
+         '   directives: 7',
+         '   labels: 12',
+         '   zero-page encodings: 2',
+         '   absolute encodings: 37',
+         '   long branches: 8',
+         '   still relaxable: 8',
+         '   bytes: 258 -> 219 (-39)',
+         '   zero-page encodings: 2 -> 17 (+15)',
+         '   absolute encodings: 37 -> 22 (-15)',
+         '   long branches: 8 -> 0 (-8)',
+         '   still relaxable: 8 -> 0 (-8)',
+         'pass 002: begin',
+         'pass 003: begin',
+         'pass 003: stable',
+         '   bytes: 219',
+         '   zero-page encodings: 17',
+         '   absolute encodings: 22',
+         '   long branches: 0',
+         '   still relaxable: 0',
       ],
-      'assembler stdout', 'assembler_relaxation_summary_smoke', $asm_relax_out);
+      'assembler stdout', 'assembler_relaxation_summary_smoke', $asm_relax_xray_out);
    print "[$PASS] assembler_relaxation_summary_smoke\n";
 
    my $asm_bad_src = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.s');

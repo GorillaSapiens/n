@@ -12,6 +12,7 @@
 #include "o65.h"
 #include "opcode.h"
 #include "util.h"
+#include "xray.h"
 
 int yyparse(void);
 extern FILE *yyin;
@@ -57,6 +58,7 @@ static void usage(const char *argv0)
       "       --illegals          load the bundled illegals.cfg opcode set\n"
       "   -i, --input <file>      compatibility alias for positional input file\n"
       "       --o65[=file]        compatibility alias for object output\n"
+      "   -X <name>               enable named assembler xray option (use list to see them)\n"
       "   -h, --help              show this help\n"
       "\n"
       "notes:\n"
@@ -68,10 +70,10 @@ static void usage(const char *argv0)
       "   %s prog.s\n"
       "   %s -o prog.o65 prog.s\n"
       "   %s --illegals --hex=prog.hex prog.s\n"
-      "   %s --opcode-cfg cpu65c02.cfg -I include prog.s\n",
-      argv0, argv0, argv0, argv0, argv0);
+      "   %s --opcode-cfg cpu65c02.cfg -I include prog.s\n"
+      "   %s -X passes --hex=prog.hex prog.s\n",
+      argv0, argv0, argv0, argv0, argv0, argv0);
 }
-
 static char *make_output_path(const char *input_path, const char *ext)
 {
    const char *slash;
@@ -339,6 +341,11 @@ static bool load_opcode_configs(const char *argv0, const options_t *opt)
    return true;
 }
 
+static void opt_xray(const char *name)
+{
+   assembler_set_xray(assembler_lookup_xray(name));
+}
+
 static bool parse_args(int argc, char **argv, options_t *opt)
 {
    int ch;
@@ -362,8 +369,12 @@ static bool parse_args(int argc, char **argv, options_t *opt)
 
    memset(opt, 0, sizeof(*opt));
 
-   while ((ch = getopt_long(argc, argv, "hI:i:o:", long_options, &option_index)) != -1) {
+   while ((ch = getopt_long(argc, argv, "X:hI:i:o:", long_options, &option_index)) != -1) {
       switch (ch) {
+      case 'X':
+         opt_xray(optarg);
+         break;
+
       case 'h':
          usage(argv[0]);
          exit(0);

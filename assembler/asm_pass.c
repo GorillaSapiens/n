@@ -6,6 +6,7 @@
 #include "asm_pass.h"
 #include "opcode.h"
 #include "util.h"
+#include "xray.h"
 
 #define DEFAULT_SEGMENT_NAME "__default__"
 #define O65_SEG_UNDEF 0
@@ -1087,87 +1088,81 @@ static void collect_pass_stats(const asm_context_t *ctx, asm_pass_stats_t *stats
    stats->error_count = ctx->error_count;
 }
 
-static const char *describe_pass_phase(const char *phase)
+static void print_pass_sizes(const asm_pass_stats_t *stats)
 {
-   if (!strcmp(phase, "layout"))
-      return "layout";
-   if (!strcmp(phase, "relaxed"))
-      return "after relaxation";
-   if (!strcmp(phase, "stable"))
-      return "stable";
-   if (!strcmp(phase, "emit"))
-      return "final emission";
-   return phase;
+   printf("   bytes: %d\n", stats->total_bytes);
+   printf("   instructions: %d\n", stats->insn_count);
+   printf("   directives: %d\n", stats->dir_count);
+   printf("   labels: %d\n", stats->label_count);
+   printf("   constants: %d\n", stats->const_count);
+   printf("   zero-page encodings: %d\n", stats->zp_like);
+   printf("   absolute encodings: %d\n", stats->abs_like);
+   printf("   long branches: %d\n", stats->long_count);
+   printf("   still relaxable: %d\n", stats->long_relax_count);
+   printf("   errors: %d\n", stats->error_count);
 }
 
-static void format_delta(char *buf, size_t buf_size, int current, int previous, int have_previous)
+static void print_change_line(const char *label, int before, int after)
 {
    int delta;
 
-   if (!have_previous) {
-      buf[0] = '\0';
+   if (before == after)
       return;
-   }
 
-   delta = current - previous;
-   if (delta == 0) {
-      buf[0] = '\0';
-      return;
-   }
-
-   snprintf(buf, buf_size, " (%+d)", delta);
+   delta = after - before;
+   printf("   %s: %d -> %d (%+d)\n", label, before, after, delta);
 }
 
-static void print_pass_stats(const asm_context_t *ctx, int pass_index, const char *phase)
+static void print_pass_changes(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
 {
-   static int have_previous = 0;
-   static asm_pass_stats_t previous;
-   asm_pass_stats_t current;
-   const char *label;
-   char bytes_delta[32];
-   char insn_delta[32];
-   char dir_delta[32];
-   char label_delta[32];
-   char const_delta[32];
-   char zp_delta[32];
-   char abs_delta[32];
-   char long_delta[32];
-   char relax_delta[32];
-   char error_delta[32];
+   print_change_line("bytes", before->total_bytes, after->total_bytes);
+   print_change_line("instructions", before->insn_count, after->insn_count);
+   print_change_line("directives", before->dir_count, after->dir_count);
+   print_change_line("labels", before->label_count, after->label_count);
+   print_change_line("constants", before->const_count, after->const_count);
+   print_change_line("zero-page encodings", before->zp_like, after->zp_like);
+   print_change_line("absolute encodings", before->abs_like, after->abs_like);
+   print_change_line("long branches", before->long_count, after->long_count);
+   print_change_line("still relaxable", before->long_relax_count, after->long_relax_count);
+   print_change_line("errors", before->error_count, after->error_count);
+}
 
-   collect_pass_stats(ctx, &current);
+static void trace_pass_begin(int pass_index)
+{
+   if (!assembler_get_xray(ASM_XRAY_PASSES))
+      return;
 
-   if (pass_index == 1 && !strcmp(phase, "layout"))
-      have_previous = 0;
+   printf("pass %03d: begin\n", pass_index);
+}
 
-   label = describe_pass_phase(phase);
-   format_delta(bytes_delta, sizeof(bytes_delta), current.total_bytes, previous.total_bytes, have_previous);
-   format_delta(insn_delta, sizeof(insn_delta), current.insn_count, previous.insn_count, have_previous);
-   format_delta(dir_delta, sizeof(dir_delta), current.dir_count, previous.dir_count, have_previous);
-   format_delta(label_delta, sizeof(label_delta), current.label_count, previous.label_count, have_previous);
-   format_delta(const_delta, sizeof(const_delta), current.const_count, previous.const_count, have_previous);
-   format_delta(zp_delta, sizeof(zp_delta), current.zp_like, previous.zp_like, have_previous);
-   format_delta(abs_delta, sizeof(abs_delta), current.abs_like, previous.abs_like, have_previous);
-   format_delta(long_delta, sizeof(long_delta), current.long_count, previous.long_count, have_previous);
-   format_delta(relax_delta, sizeof(relax_delta), current.long_relax_count, previous.long_relax_count, have_previous);
-   format_delta(error_delta, sizeof(error_delta), current.error_count, previous.error_count, have_previous);
+static int pass_stats_differ(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
+{
+   return memcmp(before, after, sizeof(*before)) != 0;
+}
 
-   printf("pass %03d %s: bytes %d%s, instructions %d%s, directives %d%s, labels %d%s, constants %d%s, zero-page %d%s, absolute %d%s, long branches %d%s, still relaxable %d%s, errors %d%s\n",
-         pass_index,
-         label,
-         current.total_bytes, bytes_delta,
-         current.insn_count, insn_delta,
-         current.dir_count, dir_delta,
-         current.label_count, label_delta,
-         current.const_count, const_delta,
-         current.zp_like, zp_delta,
-         current.abs_like, abs_delta,
-         current.long_count, long_delta,
-         current.long_relax_count, relax_delta,
-         current.error_count, error_delta);
+static void trace_pass_initial_sizes(const asm_pass_stats_t *stats)
+{
+   if (!assembler_get_xray(ASM_XRAY_PASSES))
+      return;
 
-   previous = current;
-   have_previous = 1;
+   print_pass_sizes(stats);
+}
+
+static void trace_pass_changes(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
+{
+   if (!assembler_get_xray(ASM_XRAY_PASSES))
+      return;
+
+   print_pass_changes(before, after);
+}
+
+static void trace_pass_stable(int pass_index, const asm_pass_stats_t *stats)
+{
+   if (!assembler_get_xray(ASM_XRAY_PASSES))
+      return;
+
+   printf("pass %03d: stable\n", pass_index);
+   print_pass_sizes(stats);
 }
 
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65)
@@ -1565,7 +1560,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
    publish_segment_symbols(ctx);
    resolve_constants(ctx);
    validate_imports(ctx);
-   print_pass_stats(ctx, pass_index, "layout");
+   (void)pass_index;
    return 0;
 }
 
@@ -1618,12 +1613,18 @@ int asm_relax(asm_context_t *ctx)
 {
    int iter;
    int changed;
+   int have_previous_stats = 0;
    stmt_t *stmt;
    asm_segment_t *seg;
+   asm_pass_stats_t previous_stats;
 
    for (iter = 1; iter <= 50; iter++) {
       long segment_signature_before = 0;
       long segment_signature_after = 0;
+      asm_pass_stats_t layout_stats;
+      asm_pass_stats_t relaxed_stats;
+
+      trace_pass_begin(iter);
 
       for (seg = ctx->segments; seg; seg = seg->next) {
          segment_signature_before ^= seg->base;
@@ -1632,6 +1633,16 @@ int asm_relax(asm_context_t *ctx)
       }
 
       asm_pass1(ctx, iter);
+      collect_pass_stats(ctx, &layout_stats);
+
+      if (!have_previous_stats) {
+         trace_pass_initial_sizes(&layout_stats);
+      } else {
+         if (pass_stats_differ(&previous_stats, &layout_stats))
+            trace_pass_changes(&previous_stats, &layout_stats);
+      }
+      previous_stats = layout_stats;
+      have_previous_stats = 1;
 
       for (seg = ctx->segments; seg; seg = seg->next) {
          segment_signature_after ^= seg->base;
@@ -1675,10 +1686,15 @@ int asm_relax(asm_context_t *ctx)
          }
       }
 
-      print_pass_stats(ctx, iter, changed ? "relaxed" : "stable");
+      collect_pass_stats(ctx, &relaxed_stats);
+      if (pass_stats_differ(&previous_stats, &relaxed_stats))
+         trace_pass_changes(&previous_stats, &relaxed_stats);
+      previous_stats = relaxed_stats;
 
-      if (!changed)
+      if (!changed) {
+         trace_pass_stable(iter, &relaxed_stats);
          break;
+      }
    }
 
    return ctx->error_count ? 1 : 0;
@@ -2151,7 +2167,6 @@ int asm_pass2(asm_context_t *ctx)
    int rc;
 
    ihex_image_init(&ctx->image);
-   print_pass_stats(ctx, 999, "emit");
 
    for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
       switch (stmt->kind) {

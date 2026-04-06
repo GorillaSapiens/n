@@ -35,6 +35,7 @@ SRCSRC = \
    source_loader.c \
    symtab.c \
    util.c \
+   xray.c \
    main.c
 
 SRC = $(SRCSRC) $(GENSRC)
