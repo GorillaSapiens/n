@@ -5788,31 +5788,33 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
       int arg_offset = ptr_size + ret_size + (variadic ? variadic_total + ptr_size + len_size + fixed_stack_total : fixed_stack_total);
       int actual_index = 0;
 
-      if (variadic && args && !is_empty(args)) {
+      if (variadic) {
          int extra_offset = ptr_size;
 
-         for (int i = fixed_params; i < arg_count; i++) {
-            ContextEntry tmp;
-            int actual_size = expr_value_size(args->children[i], ctx);
-            const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
-            const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
+         if (args && !is_empty(args)) {
+            for (int i = fixed_params; i < arg_count; i++) {
+               ContextEntry tmp;
+               int actual_size = expr_value_size(args->children[i], ctx);
+               const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
+               const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
 
-            tmp.name = "$vararg";
-            tmp.type = actual_type ? actual_type : required_typename_node("int");
-            tmp.declarator = actual_decl;
-            tmp.is_static = false;
-            tmp.is_zeropage = false;
-            tmp.is_global = false;
-            tmp.is_ref = false;
-            tmp.is_absolute_ref = false;
-            tmp.read_expr = NULL;
-            tmp.write_expr = NULL;
-            tmp.offset = base_locals + extra_offset;
-            tmp.size = actual_size;
-            if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
-               goto fail;
+               tmp.name = "$vararg";
+               tmp.type = actual_type ? actual_type : required_typename_node("int");
+               tmp.declarator = actual_decl;
+               tmp.is_static = false;
+               tmp.is_zeropage = false;
+               tmp.is_global = false;
+               tmp.is_ref = false;
+               tmp.is_absolute_ref = false;
+               tmp.read_expr = NULL;
+               tmp.write_expr = NULL;
+               tmp.offset = base_locals + extra_offset;
+               tmp.size = actual_size;
+               if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
+                  goto fail;
+               }
+               extra_offset += actual_size;
             }
-            extra_offset += actual_size;
          }
 
          emit_prepare_fp_ptr(0, base_locals + ptr_size);
@@ -6042,31 +6044,33 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
          goto fail;
       }
 
-      if (variadic && args && !is_empty(args)) {
+      if (variadic) {
          int extra_offset = 0;
 
-         for (int i = fixed_params; i < arg_count; i++) {
-            ContextEntry tmp;
-            int actual_size = expr_value_size(args->children[i], ctx);
-            const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
-            const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
+         if (args && !is_empty(args)) {
+            for (int i = fixed_params; i < arg_count; i++) {
+               ContextEntry tmp;
+               int actual_size = expr_value_size(args->children[i], ctx);
+               const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
+               const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
 
-            tmp.name = "$vararg";
-            tmp.type = actual_type ? actual_type : required_typename_node("int");
-            tmp.declarator = actual_decl;
-            tmp.is_static = false;
-            tmp.is_zeropage = false;
-            tmp.is_global = false;
-            tmp.is_ref = false;
-            tmp.is_absolute_ref = false;
-            tmp.read_expr = NULL;
-            tmp.write_expr = NULL;
-            tmp.offset = base_locals + extra_offset;
-            tmp.size = actual_size;
-            if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
-               goto fail;
+               tmp.name = "$vararg";
+               tmp.type = actual_type ? actual_type : required_typename_node("int");
+               tmp.declarator = actual_decl;
+               tmp.is_static = false;
+               tmp.is_zeropage = false;
+               tmp.is_global = false;
+               tmp.is_ref = false;
+               tmp.is_absolute_ref = false;
+               tmp.read_expr = NULL;
+               tmp.write_expr = NULL;
+               tmp.offset = base_locals + extra_offset;
+               tmp.size = actual_size;
+               if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
+                  goto fail;
+               }
+               extra_offset += actual_size;
             }
-            extra_offset += actual_size;
          }
 
          emit_prepare_fp_ptr(0, base_locals);
