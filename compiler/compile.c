@@ -174,6 +174,8 @@ typedef struct CallGraphEdge {
 } CallGraphEdge;
 
 #define SYMBOL_BACKED_META_PREFIX "__sbpmeta$"
+#define VARIADIC_HIDDEN_ARGS_NAME "__va_args"
+#define VARIADIC_HIDDEN_BYTES_NAME "__va_arg_bytes"
 
 typedef enum LValueAccessMode {
    LVALUE_ACCESS_READ = 0,
@@ -266,8 +268,15 @@ static bool entry_has_write_address(const ContextEntry *entry);
 static bool entry_is_absolute_ref(const ContextEntry *entry);
 static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g);
 static bool parameter_is_ref(const ASTNode *parameter);
+static bool parameter_is_ellipsis(const ASTNode *parameter);
 static int parameter_storage_size(const ASTNode *parameter);
 static bool parameter_is_void(const ASTNode *parameter);
+static bool parameter_list_is_variadic(const ASTNode *params);
+static bool function_is_variadic(const ASTNode *fn);
+static int fixed_parameter_stack_bytes_from_params(const ASTNode *params);
+static int function_fixed_parameter_stack_bytes(const ASTNode *fn);
+static void add_variadic_hidden_locals(Context *ctx);
+static void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx);
 static bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
 static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode);
 static const ASTNode *unwrap_expr_node(const ASTNode *expr);
@@ -535,6 +544,52 @@ static bool function_has_body(const ASTNode *fn) {
    return fn && fn->count == 3;
 }
 
+static bool parameter_is_ellipsis(const ASTNode *parameter) {
+   return parameter && parameter->name && !strcmp(parameter->name, "ellipsis");
+}
+
+static bool parameter_list_is_variadic(const ASTNode *params) {
+   if (!params || is_empty(params)) {
+      return false;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      if (parameter_is_ellipsis(params->children[i])) {
+         return true;
+      }
+   }
+
+   return false;
+}
+
+static bool function_is_variadic(const ASTNode *fn) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   return parameter_list_is_variadic(declarator_parameter_list(declarator));
+}
+
+static int fixed_parameter_stack_bytes_from_params(const ASTNode *params) {
+   int total = 0;
+
+   if (!params || is_empty(params)) {
+      return 0;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      const ASTNode *parameter = params->children[i];
+      if (!parameter || parameter_is_void(parameter) || parameter_is_ellipsis(parameter) || parameter_has_symbol_storage(parameter)) {
+         continue;
+      }
+      total += parameter_storage_size(parameter);
+   }
+
+   return total;
+}
+
+static int function_fixed_parameter_stack_bytes(const ASTNode *fn) {
+   const ASTNode *declarator = function_declarator_node(fn);
+   return fixed_parameter_stack_bytes_from_params(declarator_parameter_list(declarator));
+}
+
 static int function_fixed_param_count(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -543,7 +598,7 @@ static int function_fixed_param_count(const ASTNode *fn) {
    if (params && !is_empty(params)) {
       for (int i = 0; i < params->count; i++) {
          const ASTNode *parameter = params->children[i];
-         if (!parameter || parameter_is_void(parameter)) {
+         if (!parameter || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
             continue;
          }
          if (parameter_type(parameter)) {
@@ -780,12 +835,14 @@ static int function_signature_match_cost(const ASTNode *fn, int arg_count, const
    const ASTNode *params = declarator_parameter_list(declarator);
    int seen = 0;
    int cost = 0;
+   bool variadic = parameter_list_is_variadic(params);
 
    if (!declarator) {
       return -1;
    }
 
-   if (function_fixed_param_count(fn) != arg_count) {
+   if ((!variadic && function_fixed_param_count(fn) != arg_count) ||
+       (variadic && arg_count < function_fixed_param_count(fn))) {
       return -1;
    }
 
@@ -797,7 +854,7 @@ static int function_signature_match_cost(const ASTNode *fn, int arg_count, const
          bool pref;
          int param_cost;
 
-         if (!parameter || parameter_is_void(parameter)) {
+         if (!parameter || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
             continue;
          }
 
@@ -820,12 +877,19 @@ static int function_signature_match_cost(const ASTNode *fn, int arg_count, const
       }
    }
 
-   return seen == arg_count ? cost : -1;
+   if (variadic) {
+      cost += 1024 + (arg_count - seen);
+   }
+
+   return (!variadic && seen == arg_count) || (variadic && seen <= arg_count) ? cost : -1;
 }
 
 
 static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
    if (!a || !b) {
+      return false;
+   }
+   if (function_is_variadic(a) != function_is_variadic(b)) {
       return false;
    }
    if (function_fixed_param_count(a) != function_fixed_param_count(b)) {
@@ -846,14 +910,14 @@ static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
          const ASTNode *bparam = NULL;
          while (aparams && !is_empty(aparams) && ai < aparams->count) {
             aparam = aparams->children[ai++];
-            if (aparam && !parameter_is_void(aparam) && parameter_type(aparam)) {
+            if (aparam && !parameter_is_void(aparam) && !parameter_is_ellipsis(aparam) && parameter_type(aparam)) {
                break;
             }
             aparam = NULL;
          }
          while (bparams && !is_empty(bparams) && bi < bparams->count) {
             bparam = bparams->children[bi++];
-            if (bparam && !parameter_is_void(bparam) && parameter_type(bparam)) {
+            if (bparam && !parameter_is_void(bparam) && !parameter_is_ellipsis(bparam) && parameter_type(bparam)) {
                break;
             }
             bparam = NULL;
@@ -943,6 +1007,7 @@ static void append_mangled_text(char *buf, size_t bufsize, const char *text) {
 
 static void append_callable_signature_mangle(char *buf, size_t bufsize, const ASTNode *declarator) {
    const ASTNode *params = declarator_parameter_list(declarator);
+   bool saw_param = false;
 
    if (params && !is_empty(params)) {
       for (int i = 0; i < params->count; i++) {
@@ -950,9 +1015,10 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
          const ASTNode *ptype;
          const ASTNode *pdecl;
          char tmp[64];
-         if (!parameter || parameter_is_void(parameter)) {
+         if (!parameter || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
             continue;
          }
+         saw_param = true;
          ptype = parameter_type(parameter);
          pdecl = parameter_declarator(parameter);
          strncat(buf, "__", bufsize - strlen(buf) - 1);
@@ -963,8 +1029,12 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
          snprintf(tmp, sizeof(tmp), "_p%d_a%d", declarator_pointer_depth(pdecl), declarator_array_count(pdecl));
          strncat(buf, tmp, bufsize - strlen(buf) - 1);
       }
+      if (parameter_list_is_variadic(params)) {
+         saw_param = true;
+         strncat(buf, "__var", bufsize - strlen(buf) - 1);
+      }
    }
-   else {
+   if (!saw_param) {
       strncat(buf, "__void", bufsize - strlen(buf) - 1);
    }
 }
@@ -1576,6 +1646,10 @@ static bool parameter_lists_same_signature(const ASTNode *lhs_params, const ASTN
    int li = 0;
    int ri = 0;
 
+   if (parameter_list_is_variadic(lhs_params) != parameter_list_is_variadic(rhs_params)) {
+      return false;
+   }
+
    while ((lhs_params && !is_empty(lhs_params) && li < lhs_params->count) ||
           (rhs_params && !is_empty(rhs_params) && ri < rhs_params->count)) {
       const ASTNode *lparam = NULL;
@@ -1585,14 +1659,14 @@ static bool parameter_lists_same_signature(const ASTNode *lhs_params, const ASTN
 
       while (lhs_params && !is_empty(lhs_params) && li < lhs_params->count) {
          lparam = lhs_params->children[li++];
-         if (lparam && !parameter_is_void(lparam) && parameter_type(lparam)) {
+         if (lparam && !parameter_is_void(lparam) && !parameter_is_ellipsis(lparam) && parameter_type(lparam)) {
             break;
          }
          lparam = NULL;
       }
       while (rhs_params && !is_empty(rhs_params) && ri < rhs_params->count) {
          rparam = rhs_params->children[ri++];
-         if (rparam && !parameter_is_void(rparam) && parameter_type(rparam)) {
+         if (rparam && !parameter_is_void(rparam) && !parameter_is_ellipsis(rparam) && parameter_type(rparam)) {
             break;
          }
          rparam = NULL;
@@ -3273,6 +3347,16 @@ static const char *missing_argname(int i) {
    return ret;
 }
 
+static ASTNode *make_named_pointer_declarator(const char *name) {
+   ASTNode *ret;
+
+   ret = make_node("declarator", NULL);
+   ret = append_child(ret, make_integer_leaf(strdup("1")));
+   ret->children[0]->name = "pointer";
+   ret = append_child(ret, name ? make_identifier_leaf(strdup(name)) : make_empty_leaf());
+   return ret;
+}
+
 static const ASTNode *parameter_decl_specifiers(const ASTNode *parameter) {
    return parameter->count > 0 ? parameter->children[0] : NULL;
 }
@@ -3356,6 +3440,25 @@ static bool parameter_is_void(const ASTNode *parameter) {
    return true;
 }
 
+static void add_variadic_hidden_locals(Context *ctx) {
+   ContextEntry *entry;
+   ASTNode *ptr_decl;
+
+   if (!ctx) {
+      return;
+   }
+
+   ctx_push(ctx, required_typename_node("char"), VARIADIC_HIDDEN_ARGS_NAME);
+   entry = (ContextEntry *) set_get(ctx->vars, VARIADIC_HIDDEN_ARGS_NAME);
+   ptr_decl = make_named_pointer_declarator(VARIADIC_HIDDEN_ARGS_NAME);
+   if (entry) {
+      entry->declarator = ptr_decl;
+      ctx_resize_last_push(ctx, required_typename_node("char"), ptr_decl, VARIADIC_HIDDEN_ARGS_NAME);
+   }
+
+   ctx_push(ctx, required_typename_node("*"), VARIADIC_HIDDEN_BYTES_NAME);
+}
+
 static void build_function_context(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -3406,8 +3509,16 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
       }
    }
 
+   if (parameter_list_is_variadic(params)) {
+      ctx->params -= get_size("*") + get_size("*");
+   }
+
    ctx_shove(ctx, node->children[0]->children[1], "$$");
    ctx_resize_last_shove(ctx, node->children[0]->children[1], declarator, "$$");
+
+   if (parameter_list_is_variadic(params)) {
+      add_variadic_hidden_locals(ctx);
+   }
 }
 
 static void emit_prepare_fp_ptr(int ptrno, int offset) {
@@ -5569,6 +5680,37 @@ static void emit_function_parameter_exports(const ASTNode *node) {
    }
 }
 
+static void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx) {
+   ContextEntry *args_entry;
+   ContextEntry *bytes_entry;
+   int ptr_size;
+   int len_size;
+   int fixed_stack_bytes;
+   int hidden_ptr_offset;
+   int hidden_len_offset;
+
+   if (!node || !ctx || !function_is_variadic(node)) {
+      return;
+   }
+
+   args_entry = (ContextEntry *) set_get(ctx->vars, VARIADIC_HIDDEN_ARGS_NAME);
+   bytes_entry = (ContextEntry *) set_get(ctx->vars, VARIADIC_HIDDEN_BYTES_NAME);
+   if (!args_entry || !bytes_entry) {
+      return;
+   }
+
+   ptr_size = get_size("*");
+   len_size = get_size("*");
+   fixed_stack_bytes = function_fixed_parameter_stack_bytes(node);
+   hidden_len_offset = -(fixed_stack_bytes + len_size);
+   hidden_ptr_offset = -(fixed_stack_bytes + len_size + ptr_size);
+
+   emit_load_ptr_from_fpvar(0, hidden_ptr_offset);
+   emit_store_ptr_to_fp(args_entry->offset, 0, args_entry->size);
+   emit_copy_fp_to_fp_convert(bytes_entry->offset, bytes_entry->size, bytes_entry->type,
+                              hidden_len_offset, len_size, required_typename_node("*"));
+}
+
 static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst,
                                                ASTNode *callee, ASTNode *args,
                                                const ASTNode *ret_type,
@@ -5579,9 +5721,14 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    int ret_size = dst ? dst->size : 0;
    int arg_total = 0;
    int ptr_size = get_size("*");
+   int len_size = get_size("*");
    int base_locals = ctx ? ctx->locals : 0;
    int callee_tmp_offset;
    int call_size;
+   int fixed_params = 0;
+   int fixed_stack_total = 0;
+   int variadic_total = 0;
+   bool variadic = parameter_list_is_variadic(params);
    ContextEntry callee_tmp;
 
    if (ret_type && dst) {
@@ -5592,7 +5739,6 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (params && !is_empty(params)) {
-      int fixed_params = 0;
       for (int i = 0; i < params->count; i++) {
          const ASTNode *parameter = params->children[i];
          const ASTNode *ptype = parameter_type(parameter);
@@ -5603,11 +5749,26 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
             error_user("[%s:%d.%d] indirect call target type cannot use symbol-backed parameters", expr->file, expr->line, expr->column);
          }
          fixed_params++;
-         arg_total += parameter_storage_size(parameter);
+         fixed_stack_total += parameter_storage_size(parameter);
       }
-      if (fixed_params != arg_count) {
+      if ((!variadic && fixed_params != arg_count) || (variadic && arg_count < fixed_params)) {
          warning("[%s:%d.%d] indirect call argument count mismatch (%d vs %d)", expr->file, expr->line, expr->column, arg_count, fixed_params);
       }
+   }
+
+    if (variadic && args && !is_empty(args)) {
+      for (int i = fixed_params; i < arg_count; i++) {
+         int actual_size = expr_value_size(args->children[i], ctx);
+         if (actual_size <= 0) {
+            error_user("[%s:%d.%d] variadic argument %d has no runtime storage", args->children[i]->file, args->children[i]->line, args->children[i]->column, i - fixed_params + 1);
+         }
+         variadic_total += actual_size;
+      }
+    }
+
+   arg_total = fixed_stack_total;
+   if (variadic) {
+      arg_total += variadic_total + ptr_size + len_size;
    }
 
    callee_tmp_offset = 0;
@@ -5624,8 +5785,47 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (params && !is_empty(params)) {
-      int arg_offset = ptr_size + ret_size + arg_total;
+      int arg_offset = ptr_size + ret_size + (variadic ? variadic_total + ptr_size + len_size + fixed_stack_total : fixed_stack_total);
       int actual_index = 0;
+
+      if (variadic && args && !is_empty(args)) {
+         int extra_offset = ptr_size;
+
+         for (int i = fixed_params; i < arg_count; i++) {
+            ContextEntry tmp;
+            int actual_size = expr_value_size(args->children[i], ctx);
+            const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
+            const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
+
+            tmp.name = "$vararg";
+            tmp.type = actual_type ? actual_type : required_typename_node("int");
+            tmp.declarator = actual_decl;
+            tmp.is_static = false;
+            tmp.is_zeropage = false;
+            tmp.is_global = false;
+            tmp.is_ref = false;
+            tmp.is_absolute_ref = false;
+            tmp.read_expr = NULL;
+            tmp.write_expr = NULL;
+            tmp.offset = base_locals + extra_offset;
+            tmp.size = actual_size;
+            if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
+               goto fail;
+            }
+            extra_offset += actual_size;
+         }
+
+         emit_prepare_fp_ptr(0, base_locals + ptr_size);
+         emit_store_ptr_to_fp(base_locals + ptr_size + variadic_total + ret_size, 0, ptr_size);
+         {
+            unsigned char bytes[sizeof(long long)] = {0};
+            char len_buf[32];
+            snprintf(len_buf, sizeof(len_buf), "%d", variadic_total);
+            make_le_int(len_buf, bytes, len_size);
+            emit_store_immediate_to_fp(base_locals + ptr_size + variadic_total + ret_size + ptr_size, bytes, len_size);
+         }
+      }
+
       for (int i = 0; i < params->count && actual_index < arg_count; i++) {
          const ASTNode *parameter = params->children[i];
          const ASTNode *ptype = parameter_type(parameter);
@@ -5633,7 +5833,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
          ContextEntry tmp;
          int psz;
 
-         if (!ptype || parameter_is_void(parameter)) {
+         if (!ptype || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
             continue;
          }
 
@@ -5698,7 +5898,9 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
    }
 
    if (dst && ret_size > 0) {
-      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals + ptr_size, ret_size, ret_type);
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type,
+                                 base_locals + ptr_size + variadic_total,
+                                 ret_size, ret_type);
    }
 
    if (call_size > 0) {
@@ -5737,6 +5939,12 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
    int ret_size = dst ? dst->size : 0;
    int arg_total = 0;
    int arg_count = (args && !is_empty(args)) ? args->count : 0;
+   int ptr_size = get_size("*");
+   int len_size = get_size("*");
+   int fixed_params = 0;
+   int fixed_stack_total = 0;
+   int variadic_total = 0;
+   bool variadic = false;
    int base_locals = ctx ? ctx->locals : 0;
 
    {
@@ -5774,27 +5982,42 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
          ret_size = declarator_value_size(ret_type, ret_decl);
       }
       params = declarator_parameter_list(declarator);
+      variadic = parameter_list_is_variadic(params);
       if (params && !is_empty(params)) {
-         int fixed_params = 0;
          for (int i = 0; i < params->count; i++) {
             const ASTNode *parameter = params->children[i];
             const ASTNode *ptype = parameter_type(parameter);
             int psz;
-            if (!ptype || parameter_is_void(parameter)) {
+            if (!ptype || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
                continue;
             }
             fixed_params++;
             psz = parameter_storage_size(parameter);
             if (!parameter_has_symbol_storage(parameter)) {
-               arg_total += psz;
+               fixed_stack_total += psz;
             }
          }
-         if (fixed_params != arg_count) {
+         if ((!variadic && fixed_params != arg_count) || (variadic && arg_count < fixed_params)) {
             warning("[%s:%d.%d] call to '%s' argument count mismatch (%d vs %d)",
                     expr->file, expr->line, expr->column,
                     callee->strval, arg_count, fixed_params);
          }
       }
+
+      if (variadic && args && !is_empty(args)) {
+         for (int i = fixed_params; i < arg_count; i++) {
+            int actual_size = expr_value_size(args->children[i], ctx);
+            if (actual_size <= 0) {
+               error_user("[%s:%d.%d] variadic argument %d has no runtime storage", args->children[i]->file, args->children[i]->line, args->children[i]->column, i - fixed_params + 1);
+            }
+            variadic_total += actual_size;
+         }
+      }
+   }
+
+   arg_total = fixed_stack_total;
+   if (variadic) {
+      arg_total += variadic_total + ptr_size + len_size;
    }
 
    if (ret_size < 0) ret_size = 0;
@@ -5812,11 +6035,49 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
 
    if (fn && declarator) {
       const ASTNode *params = declarator_parameter_list(declarator);
-      int arg_offset = ret_size + arg_total;
+      int arg_offset = ret_size + (variadic ? variadic_total + ptr_size + len_size + fixed_stack_total : fixed_stack_total);
       int actual_index = 0;
       char callee_sym[256];
       if (!function_symbol_name(fn, callee->strval, callee_sym, sizeof(callee_sym))) {
          goto fail;
+      }
+
+      if (variadic && args && !is_empty(args)) {
+         int extra_offset = 0;
+
+         for (int i = fixed_params; i < arg_count; i++) {
+            ContextEntry tmp;
+            int actual_size = expr_value_size(args->children[i], ctx);
+            const ASTNode *actual_type = expr_value_type(args->children[i], ctx);
+            const ASTNode *actual_decl = expr_value_declarator(args->children[i], ctx);
+
+            tmp.name = "$vararg";
+            tmp.type = actual_type ? actual_type : required_typename_node("int");
+            tmp.declarator = actual_decl;
+            tmp.is_static = false;
+            tmp.is_zeropage = false;
+            tmp.is_global = false;
+            tmp.is_ref = false;
+            tmp.is_absolute_ref = false;
+            tmp.read_expr = NULL;
+            tmp.write_expr = NULL;
+            tmp.offset = base_locals + extra_offset;
+            tmp.size = actual_size;
+            if (!compile_expr_to_slot(args->children[i], ctx, &tmp)) {
+               goto fail;
+            }
+            extra_offset += actual_size;
+         }
+
+         emit_prepare_fp_ptr(0, base_locals);
+         emit_store_ptr_to_fp(base_locals + variadic_total + ret_size, 0, ptr_size);
+         {
+            unsigned char bytes[sizeof(long long)] = {0};
+            char len_buf[32];
+            snprintf(len_buf, sizeof(len_buf), "%d", variadic_total);
+            make_le_int(len_buf, bytes, len_size);
+            emit_store_immediate_to_fp(base_locals + variadic_total + ret_size + ptr_size, bytes, len_size);
+         }
       }
 
       if (params && !is_empty(params)) {
@@ -5827,7 +6088,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
             ContextEntry tmp;
             int psz;
 
-            if (!ptype || parameter_is_void(parameter)) {
+            if (!ptype || parameter_is_void(parameter) || parameter_is_ellipsis(parameter)) {
                continue;
             }
 
@@ -5899,7 +6160,9 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
    }
 
    if (dst && ret_size > 0) {
-      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, base_locals, ret_size, ret_type);
+      emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type,
+                                 base_locals + (variadic ? variadic_total : 0),
+                                 ret_size, ret_type);
    }
 
    if (call_size > 0) {
@@ -10403,6 +10666,8 @@ static void compile_function_decl(ASTNode *node) {
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _pushN\n");
    }
+
+   emit_variadic_hidden_local_setup(node, &ctx);
 
    if (!is_empty(body)) {
       if (!strcmp(body->name, "statement_list")) {
