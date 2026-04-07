@@ -136,6 +136,55 @@ Indirect calls through function pointers are implemented. The compiler lowers th
 
 Functions that use `static` parameters are **not** allowed to have pointers formed to them. That prohibition applies both to bare decay and explicit `&name`, because the static-parameter calling convention needs caller knowledge that a plain function pointer does not carry.
 
+
+### Variadic functions and `stdarg.n`
+
+Parser and AST support exist for `...`, and the current backend implements variadic calls as a raw byte blob rather than C's promotion-heavy ABI.
+
+There is no textual preprocessor yet, so the user-facing layer is a small builtin-style wrapper in `libraries/nlib/stdarg.n` rather than literal macros. Include it and use these compiler-recognized forms:
+
+```n
+include "stdarg.n"
+
+int sum(int count, ...) {
+   va_list ap;
+   int x;
+   int total := 0;
+
+   va_start(ap);
+   while (count) {
+      va_arg(ap, x);
+      total += x;
+      count--;
+   }
+   va_end(ap);
+   return total;
+}
+```
+
+`stdarg.n` defines:
+
+```n
+struct va_list {
+   char *args;
+   char *bytes;
+   char *offset;
+};
+```
+
+Behavior of the current variadic ABI:
+
+- variadic arguments are packed left-to-right in source order
+- there is no alignment padding between variadic arguments
+- there are no C-style default promotions for variadic arguments
+- each argument is copied using its actual runtime storage size and byte order
+- `va_arg(ap, out)` copies `sizeof(out)` bytes into the destination lvalue and advances `ap.offset`
+- `va_end(ap)` zeroes the `va_list` state
+
+That means a call like `f(1`char, 2`int, 3`long)` is packed as 1 byte, then 2 bytes, then 4 bytes... not as promoted `int, int, long`.
+
+The implementation names `__va_args` and `__va_arg_bytes` are reserved for compiler-generated variadic metadata and may not be declared by user code.
+
 ## Expressions
 
 ### Truthiness
