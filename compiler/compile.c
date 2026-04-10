@@ -2238,6 +2238,41 @@ static bool absolute_ref_supports_direct_access(const LValueRef *lv) {
    return lv && lv->is_absolute_ref && !lv->is_bitfield && !lv->indirect && !lv->needs_runtime_address;
 }
 
+
+static bool emit_copy_lvalue_to_symbol(Context *ctx, const char *symbol, int symbol_offset, const LValueRef *src, int size) {
+   int copy_size = size < src->size ? size : src->size;
+
+   if (src && src->is_bitfield) {
+      return false;
+   }
+   if (absolute_ref_supports_direct_access(src)) {
+      const char *read_expr = src->read_expr;
+
+      if (!read_expr || !*read_expr) {
+         return false;
+      }
+      for (int i = 0; i < copy_size; i++) {
+         emit_load_a_from_expr_address(read_expr, src->offset + i);
+         emit(&es_code, "    ldy #%d\n", symbol_offset + i);
+         emit(&es_code, "    sta %s,y\n", symbol);
+      }
+      return true;
+   }
+   if (copy_size <= 0) {
+      return true;
+   }
+   if (!emit_prepare_lvalue_ptr(ctx, src, LVALUE_ACCESS_READ)) {
+      return false;
+   }
+   for (int i = 0; i < copy_size; i++) {
+      emit(&es_code, "    ldy #%d\n", i);
+      emit(&es_code, "    lda (ptr0),y\n");
+      emit(&es_code, "    ldy #%d\n", symbol_offset + i);
+      emit(&es_code, "    sta %s,y\n", symbol);
+   }
+   return true;
+}
+
 static const char *remember_string_literal(const char *text) {
    const char *existing;
    char *label;
@@ -5288,7 +5323,6 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
    bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
    int saved_locals = ctx ? ctx->locals : 0;
    int protected_locals = saved_locals;
-   int ptr_save_offset;
 
    if (src && src->is_bitfield) {
       return emit_copy_bitfield_lvalue_to_fp(ctx, dst_offset, src, size);
@@ -5315,7 +5349,6 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
    if (dst_offset + copy_size > protected_locals) {
       protected_locals = dst_offset + copy_size;
    }
-   ptr_save_offset = protected_locals;
    if (ctx) {
       ctx->locals = protected_locals;
    }
@@ -5326,31 +5359,13 @@ static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef
       return false;
    }
    if (!dst_direct) {
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
-      if (ctx) {
-         ctx->locals = protected_locals + get_size("*");
-      }
       emit_prepare_fp_ptr(1, dst_offset);
-      emit_load_ptr_from_fpvar(0, ptr_save_offset);
-      if (ctx) {
-         ctx->locals = protected_locals;
-      }
    }
    for (int i = 0; i < copy_size; i++) {
       emit(&es_code, "    ldy #%d\n", i);
       emit(&es_code, "    lda (ptr0),y\n");
       emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
       emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-   }
-   if (!dst_direct) {
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
    }
    if (ctx) {
       ctx->locals = saved_locals;
@@ -5363,7 +5378,6 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
    bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
    int saved_locals = ctx ? ctx->locals : 0;
    int protected_locals = saved_locals;
-   int ptr_save_offset;
 
    if (dst && dst->is_bitfield) {
       return emit_copy_fp_to_bitfield_lvalue(ctx, dst, src_offset, size);
@@ -5390,7 +5404,6 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
    if (src_offset + copy_size > protected_locals) {
       protected_locals = src_offset + copy_size;
    }
-   ptr_save_offset = protected_locals;
    if (ctx) {
       ctx->locals = protected_locals;
    }
@@ -5401,31 +5414,13 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
       return false;
    }
    if (!src_direct) {
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
-      if (ctx) {
-         ctx->locals = protected_locals + get_size("*");
-      }
       emit_prepare_fp_ptr(1, src_offset);
-      emit_load_ptr_from_fpvar(0, ptr_save_offset);
-      if (ctx) {
-         ctx->locals = protected_locals;
-      }
    }
    for (int i = 0; i < copy_size; i++) {
       emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
       emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
       emit(&es_code, "    ldy #%d\n", i);
       emit(&es_code, "    sta (ptr0),y\n");
-   }
-   if (!src_direct) {
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
    }
    if (ctx) {
       ctx->locals = saved_locals;
@@ -7174,6 +7169,11 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       LValueRef lv;
       if (resolve_lvalue(ctx, expr, &lv)) {
          int load_size = lv.size < dst->size ? lv.size : dst->size;
+         if (lv.size == dst->size && !strcmp(type_name_from_node(lv.type), type_name_from_node(dst->type)) &&
+             declarator_pointer_depth(lv.declarator) == declarator_pointer_depth(dst->declarator) &&
+             declarator_array_count(lv.declarator) == declarator_array_count(dst->declarator)) {
+            return emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, lv.size);
+         }
          if (!emit_copy_lvalue_to_fp(ctx, dst->offset, &lv, load_size)) {
             return false;
          }
@@ -10520,8 +10520,15 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    if (!op || !strcmp(op, ":=")) {
       if (!lv.is_bitfield && !lv.is_absolute_ref && !lv.indirect && !lv.needs_runtime_address && (dst->is_static || dst->is_zeropage || dst->is_global)) {
          char sym[256];
+         LValueRef rhs_lv;
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
             error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            return;
+         }
+         if (resolve_ref_argument_lvalue(ctx, rhs, &rhs_lv) && rhs_lv.size == dst->size && !strcmp(type_name_from_node(rhs_lv.type), type_name_from_node(dst->type)) && !rhs_lv.is_bitfield) {
+            if (!emit_copy_lvalue_to_symbol(ctx, sym, lv.offset, &rhs_lv, dst->size)) {
+               error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            }
             return;
          }
          if (!compile_expr_to_slot(rhs, ctx, &(ContextEntry){ .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = dst->size })) {
