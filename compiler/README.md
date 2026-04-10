@@ -505,14 +505,14 @@ The compiler supports:
 switch (x) {
    case 1:
       break;
-   case 2 .. 5:
+   case 2 to 5:
       break;
    default:
       break;
 }
 ```
 
-Range bounds are inclusive on both ends. If the programmer writes a reversed range such as `case 9 .. 3:`, the compiler emits a warning and compiles it as `case 3 .. 9:`.
+Range bounds are inclusive on both ends. If the programmer writes a reversed range such as `case 9 to 3:`, the compiler emits a warning and compiles it as `case 3 to 9:`.
 
 `default` remains optional and may appear anywhere inside the switch body.
 
