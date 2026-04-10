@@ -1,11 +1,18 @@
 // n65cc -I .
-// expectasm: jsr operatorx2B__s4_p0_a0__s4_p0_a0
-// expectasm: jsr operatorx2A__s4_p0_a0__s4_p0_a0
-// expectasm: jsr operatorx3Cx3D__s4_p0_a0__s4_p0_a0
-// expectasm: jsr operatorx3Cx3C__u4_p0_a0__u4_p0_a0
-// expectasm: jsr operatorx3Dx3D__float_p0_a0__float_p0_a0
-// expectasm: jsr operatorx2B__float_p0_a0__float_p0_a0
-// expectasm: jsr operatorx2A__float_p0_a0__float_p0_a0
+// expectasm: jsr _leNs
+// expectasm: jsr _add32
+// expectasm: jsr _mulN
+// expectasm: jsr _lslN
+// expectasm: jsr _fcmp
+// expectasm: jsr _faddN
+// expectasm: jsr _fmulN
+// forbidasm: operatorx2B__s4_p0_a0__s4_p0_a0
+// forbidasm: operatorx2A__s4_p0_a0__s4_p0_a0
+// forbidasm: operatorx3Cx3D__s4_p0_a0__s4_p0_a0
+// forbidasm: operatorx3Cx3C__u4_p0_a0__u4_p0_a0
+// forbidasm: operatorx3Dx3D__float_p0_a0__float_p0_a0
+// forbidasm: operatorx2B__float_p0_a0__float_p0_a0
+// forbidasm: operatorx2A__float_p0_a0__float_p0_a0
 
 include "machine_6502.n"
 

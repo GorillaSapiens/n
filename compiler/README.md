@@ -47,6 +47,7 @@ Recognized flags include:
 - `$size:N`
 - `$signed`
 - `$unsigned`
+- `$exactops` ... same-type operators on this type must resolve through visible exact-name `operator...` overloads; the compiler does not fall back to generic helpers for that type
 - `$float:ieee754` ... IEEE 754 packing for `$size:2`, `$size:4`, and `$size:8`
 - `$float:simple` ... generic `SExMy` packing where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits
 
@@ -330,6 +331,19 @@ The left-hand side is still treated as an lvalue target for the final store, so 
 ### Overload matching limits
 
 Operator overload matching now prefers exact matches first and then considers safe integer promotions for plain value parameters. Smaller integers may widen, and mixed signed/unsigned operands may promote to a signed type that can represent the full range of the actual argument. `ref` parameters remain strict and still require an lvalue of the exact declared type.
+
+By default, same-type operators behave pragmatically:
+
+- if a visible exact overload exists, the compiler uses it
+- otherwise the compiler falls back to the builtin/generic lowering for that representation
+
+`$exactops` changes that contract for the marked type. When both operands already have that exact declared type name, or when that type is used for unary operators, truthiness, or `++`/`--`, the compiler requires a visible exact-name overload and does **not** fall back to generic helpers. That means a type such as:
+
+```n
+type wideint { $size:4 $signed $endian:little $exactops };
+```
+
+must provide the overloads it actually uses, for example `operator+`, `operator==`, `operator{}`, or `operator++`. If one is used without a visible declaration or definition, compilation fails immediately instead of emitting a symbolic call and hoping the linker finds something later.
 
 This is not a full C++-style overload system. There is still no arbitrary narrowing conversion search and no user-defined conversion machinery. Ordinary function overloading now uses the same general best-viable-match style as operators for exact matches plus safe integer promotions.
 

@@ -1,15 +1,11 @@
 // n65cc -I .
-// expectasm: jsr operatorx2B__s3_p0_a0__s3_p0_a0
-// expectasm: jsr operatorx2D__s3_p0_a0__s3_p0_a0
-// expectasm: jsr operatorx2B__s5_p0_a0__s5_p0_a0
-// expectasm: jsr operatorx2D__s5_p0_a0__s5_p0_a0
 // expectasm: jsr _add24
+// expectasm: jsr _sub24
+// expectasm: jsr _addN
 // expectasm: jsr _subN
-// expectasm: .import operatorx2B__s3_p0_a0__s3_p0_a0
-// expectasm: .import operatorx2D__s3_p0_a0__s3_p0_a0
-// expectasm: .import operatorx2B__s5_p0_a0__s5_p0_a0
-// expectasm: .import operatorx2D__s5_p0_a0__s5_p0_a0
 // expectasm: .import _add24
+// expectasm: .import _sub24
+// expectasm: .import _addN
 // expectasm: .import _subN
 
 type void      { $size:0 };
@@ -34,10 +30,10 @@ s5 sub5(s5 a, s5 b) {
    return a - b;
 }
 
-void add_assign3(ref s3 a, s3 b) {
-   a += b;
+s3 add3_wide(s3 a, s3 b) {
+   return (a + b) + a;
 }
 
-void sub_assign5(ref s5 a, s5 b) {
-   a -= b;
+s5 sub5_wide(s5 a, s5 b) {
+   return (a - b) - a;
 }

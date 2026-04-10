@@ -16,7 +16,7 @@
 // expectasmordered: lda #$05
 // expectasmordered: sta arg1
 // expectasmordered: jsr _copyzxN
-// expectasm: jsr operatorx3C__s5_p0_a0__s5_p0_a0
+// expectasm: jsr _ltNs
 // forbidasm: and #$80
 
 type void      { $size:0 };

@@ -1,0 +1,33 @@
+// n65cc -I .
+// expectasm: jsr operatorx2B__s4x_p0_a0__s4x_p0_a0
+// expectasm: jsr operatorx3Dx3D__s4x_p0_a0__s4x_p0_a0
+// expectasm: jsr operatorx7Bx7D__s4x_p0_a0
+// expectasm: jsr operatorx2Bx2B__s4x_r1_p0_a0
+
+include "machine_6502.n"
+
+type s4x { $size:4 $signed $endian:little $exactops };
+
+s4x operator+(s4x, s4x);
+bool operator==(s4x, s4x);
+bool operator{}(s4x);
+s4x operator++(ref s4x);
+
+s4x add(s4x a, s4x b) {
+   return a + b;
+}
+
+bool eq(s4x a, s4x b) {
+   return a == b;
+}
+
+bool truthy(s4x a) {
+   if (a) {
+      return true;
+   }
+   return false;
+}
+
+s4x bump(ref s4x a) {
+   return a++;
+}

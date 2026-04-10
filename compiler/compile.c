@@ -217,6 +217,12 @@ static bool type_is_bool(const ASTNode *type);
 static bool type_is_signed_integer(const ASTNode *type);
 static bool type_is_unsigned_integer(const ASTNode *type);
 static bool type_is_promotable_integer(const ASTNode *type);
+static bool type_has_exactops(const ASTNode *type);
+static bool same_named_value_type(const ASTNode *lhs_type, const ASTNode *lhs_decl,
+                                  const ASTNode *rhs_type, const ASTNode *rhs_decl);
+static const ASTNode *expr_same_type_exactops_type(ASTNode *expr, Context *ctx);
+static void require_exactops_operator_expr(ASTNode *expr, Context *ctx);
+static void require_exactops_truthiness_expr(ASTNode *expr, Context *ctx);
 static const char *type_endian_name(const ASTNode *type);
 static bool type_is_big_endian(const ASTNode *type);
 static int endian_mem_index_for_significance(int size, bool big_endian, int significance_index);
@@ -1156,35 +1162,6 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
 
 
 
-static bool is_named_weak_builtin_operator_type(const ASTNode *type) {
-   const char *name;
-   int size;
-   if (!type) {
-      return false;
-   }
-   name = type_name_from_node(type);
-   if (!name || !*name) {
-      return false;
-   }
-   size = type_size_from_node(type);
-   if (size <= 0) {
-      return false;
-   }
-   if (!strcmp(name, "char") || !strcmp(name, "bool") || !strcmp(name, "int") ||
-       !strcmp(name, "long") || !strcmp(name, "longlong") ||
-       !strcmp(name, "half") || !strcmp(name, "float") || !strcmp(name, "double")) {
-      return !has_flag(name, "$endian:big");
-   }
-   if ((name[0] == 's' || name[0] == 'u') && name[1] >= '1' && name[1] <= '9') {
-      char *end = NULL;
-      long n = strtol(name + 1, &end, 10);
-      if (end && !*end && n >= 1 && n <= 16 && size == (int) n && !has_flag(name, "$endian:big")) {
-         return true;
-      }
-   }
-   return false;
-}
-
 static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
                                                     const char **opname_out,
                                                     const ASTNode **ret_type_out,
@@ -1194,134 +1171,20 @@ static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
                                                     ASTNode **arg_exprs_out,
                                                     const ASTNode **arg_types_out,
                                                     const ASTNode **arg_decls_out) {
-   const ASTNode *lhs_type;
-   const ASTNode *rhs_type;
-   const ASTNode *lhs_decl = NULL;
-   const ASTNode *rhs_decl = NULL;
-   const ASTNode *work_type;
-   const ASTNode *bool_type;
-   int ret_size;
-   expr = (ASTNode *) unwrap_expr_node(expr);
-   if (!expr || is_empty(expr)) {
-      return false;
-   }
+   (void) expr;
+   (void) ctx;
+   (void) opname_out;
+   (void) ret_type_out;
+   (void) ret_decl_out;
+   (void) ret_size_out;
+   (void) arg_count_out;
+   (void) arg_exprs_out;
+   (void) arg_types_out;
+   (void) arg_decls_out;
 
-   if (expr->count == 1 && !strcmp(expr->name, "-")) {
-      work_type = expr_value_type(expr->children[0], ctx);
-      if (!work_type || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr->children[0], ctx)) {
-         return false;
-      }
-      if (opname_out) *opname_out = "operator-";
-      if (ret_type_out) *ret_type_out = work_type;
-      if (ret_decl_out) *ret_decl_out = NULL;
-      ret_size = type_size_from_node(work_type);
-      if (ret_size_out) *ret_size_out = ret_size;
-      if (arg_count_out) *arg_count_out = 1;
-      if (arg_exprs_out) arg_exprs_out[0] = expr->children[0];
-      if (arg_types_out) arg_types_out[0] = work_type;
-      if (arg_decls_out) arg_decls_out[0] = NULL;
-      return ret_size > 0;
-   }
-   if (expr->count == 1 && !strcmp(expr->name, "~")) {
-      work_type = expr_value_type(expr->children[0], ctx);
-      if (!work_type || type_is_float_like(work_type) || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr->children[0], ctx)) {
-         return false;
-      }
-      if (opname_out) *opname_out = "operator~";
-      if (ret_type_out) *ret_type_out = work_type;
-      if (ret_decl_out) *ret_decl_out = NULL;
-      ret_size = type_size_from_node(work_type);
-      if (ret_size_out) *ret_size_out = ret_size;
-      if (arg_count_out) *arg_count_out = 1;
-      if (arg_exprs_out) arg_exprs_out[0] = expr->children[0];
-      if (arg_types_out) arg_types_out[0] = work_type;
-      if (arg_decls_out) arg_decls_out[0] = NULL;
-      return ret_size > 0;
-   }
-
-   if (expr->count != 2) {
-      return false;
-   }
-
-   expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
-   expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
-
-   if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") ||
-       !strcmp(expr->name, "*") || !strcmp(expr->name, "/") ||
-       !strcmp(expr->name, "%") || !strcmp(expr->name, "&") ||
-       !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
-       !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>") ||
-       !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
-       !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
-       !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
-      if ((lhs_type && type_is_float_like(lhs_type)) || (rhs_type && type_is_float_like(rhs_type))) {
-         int lhs_size = lhs_type ? type_size_from_node(lhs_type) : 0;
-         int rhs_size = rhs_type ? type_size_from_node(rhs_type) : 0;
-         if (!strcmp(expr->name, "%") || !strcmp(expr->name, "&") || !strcmp(expr->name, "|") ||
-             !strcmp(expr->name, "^") || !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>")) {
-            return false;
-         }
-         work_type = (lhs_type && type_is_float_like(lhs_type) && (!rhs_type || !type_is_float_like(rhs_type) || lhs_size >= rhs_size)) ? lhs_type : rhs_type;
-      }
-      else {
-         if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-")) {
-            if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) || (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
-               return false;
-            }
-         }
-         if (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
-             !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
-             !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
-            work_type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
-         }
-         else {
-            work_type = expr_value_type(expr, ctx);
-         }
-         if (!work_type) {
-            work_type = promoted_integer_type_for_binary(lhs_type, rhs_type, expr);
-         }
-      }
-      if (!work_type || !is_named_weak_builtin_operator_type(work_type) || expr_value_declarator(expr, ctx)) {
-         return false;
-      }
-      if (opname_out) {
-         static char opname_buf[32];
-         snprintf(opname_buf, sizeof(opname_buf), "operator%s", expr->name);
-         *opname_out = opname_buf;
-      }
-      if (!strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
-          !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
-          !strcmp(expr->name, "<=") || !strcmp(expr->name, ">=")) {
-         bool_type = required_typename_node("bool");
-         if (!bool_type) {
-            return false;
-         }
-         if (ret_type_out) *ret_type_out = bool_type;
-         if (ret_decl_out) *ret_decl_out = NULL;
-         if (ret_size_out) *ret_size_out = type_size_from_node(bool_type);
-      }
-      else {
-         ret_size = type_size_from_node(work_type);
-         if (ret_type_out) *ret_type_out = work_type;
-         if (ret_decl_out) *ret_decl_out = NULL;
-         if (ret_size_out) *ret_size_out = ret_size;
-      }
-      if (arg_count_out) *arg_count_out = 2;
-      if (arg_exprs_out) {
-         arg_exprs_out[0] = expr->children[0];
-         arg_exprs_out[1] = expr->children[1];
-      }
-      if (arg_types_out) {
-         arg_types_out[0] = work_type;
-         arg_types_out[1] = work_type;
-      }
-      if (arg_decls_out) {
-         arg_decls_out[0] = NULL;
-         arg_decls_out[1] = NULL;
-      }
-      return true;
-   }
-
+   /* Exact visible overloads still resolve first. Otherwise same-type operators
+    * now fall back to generic lowering unless the type opted into $exactops,
+    * which is enforced separately at the call site. */
    return false;
 }
 
@@ -2914,6 +2777,118 @@ static bool type_is_unsigned_integer(const ASTNode *type) {
 
 static bool type_is_promotable_integer(const ASTNode *type) {
    return type_is_signed_integer(type) || type_is_unsigned_integer(type);
+}
+
+static bool type_has_exactops(const ASTNode *type) {
+   const char *name = type_name_from_node(type);
+   return name && has_flag(name, "$exactops");
+}
+
+static bool same_named_value_type(const ASTNode *lhs_type, const ASTNode *lhs_decl,
+                                  const ASTNode *rhs_type, const ASTNode *rhs_decl) {
+   const char *lhs_name = type_name_from_node(lhs_type);
+   const char *rhs_name = type_name_from_node(rhs_type);
+
+   if (!lhs_name || !rhs_name || strcmp(lhs_name, rhs_name)) {
+      return false;
+   }
+   if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) ||
+       (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+      return false;
+   }
+   return true;
+}
+
+static const ASTNode *expr_same_type_exactops_type(ASTNode *expr, Context *ctx) {
+   const ASTNode *lhs_type = NULL;
+   const ASTNode *lhs_decl = NULL;
+   const ASTNode *rhs_type = NULL;
+   const ASTNode *rhs_decl = NULL;
+   const ASTNode *arg_type = NULL;
+   const ASTNode *arg_decl = NULL;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+
+   if (expr->count == 1 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") || !strcmp(expr->name, "~"))) {
+      expr_match_signature(expr->children[0], ctx, &arg_type, &arg_decl);
+      if (arg_type && !(arg_decl && declarator_pointer_depth(arg_decl) > 0) && type_has_exactops(arg_type)) {
+         return arg_type;
+      }
+      return NULL;
+   }
+
+   if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") ||
+                            !strcmp(expr->name, "*") || !strcmp(expr->name, "/") ||
+                            !strcmp(expr->name, "%") || !strcmp(expr->name, "&") ||
+                            !strcmp(expr->name, "|") || !strcmp(expr->name, "^") ||
+                            !strcmp(expr->name, "<<") || !strcmp(expr->name, ">>") ||
+                            !strcmp(expr->name, "==") || !strcmp(expr->name, "!=") ||
+                            !strcmp(expr->name, "<") || !strcmp(expr->name, ">") ||
+                            !strcmp(expr->name, "<=") || !strcmp(expr->name, ">="))) {
+      expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
+      expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
+      if (same_named_value_type(lhs_type, lhs_decl, rhs_type, rhs_decl) && type_has_exactops(lhs_type)) {
+         return lhs_type;
+      }
+   }
+
+   return NULL;
+}
+
+static void require_exactops_operator_expr(ASTNode *expr, Context *ctx) {
+   const ASTNode *type = NULL;
+   const char *name;
+   char opname[32];
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return;
+   }
+
+   type = expr_same_type_exactops_type(expr, ctx);
+   if (!type) {
+      return;
+   }
+
+   name = type_name_from_node(type);
+   if (!name || !*name) {
+      return;
+   }
+
+   snprintf(opname, sizeof(opname), "operator%s", expr->name);
+   error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload '%s' for same-type operands",
+              expr->file, expr->line, expr->column, name, opname);
+}
+
+static void require_exactops_truthiness_expr(ASTNode *expr, Context *ctx) {
+   const ASTNode *type;
+   const ASTNode *decl;
+   const char *name;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return;
+   }
+
+   type = expr_value_type(expr, ctx);
+   decl = expr_value_declarator(expr, ctx);
+   if (!type || !type_has_exactops(type)) {
+      return;
+   }
+   if (decl && declarator_pointer_depth(decl) > 0) {
+      return;
+   }
+
+   name = type_name_from_node(type);
+   if (!name || !*name) {
+      return;
+   }
+
+   error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload 'operator{}' for truthiness",
+              expr->file, expr->line, expr->column, name);
 }
 
 static const char *type_endian_name(const ASTNode *type) {
@@ -7032,6 +7007,11 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       }
       classify_incdec_lvalue_expr(expr, &inc, &pre);
       ofn = resolve_incdec_overload_expr(expr, ctx);
+      if (!ofn && type_has_exactops(lv.type)) {
+         error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload '%s'",
+                    expr->file, expr->line, expr->column,
+                    type_name_from_node(lv.type), inc ? "operator++" : "operator--");
+      }
       if (ofn) {
          const ASTNode *rtype = function_return_type(ofn);
          const ASTNode *rdecl = function_declarator_node(ofn);
@@ -7227,6 +7207,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          call = make_synthetic_call_expr(expr, declarator_name(function_declarator_node(ofn)), argv, expr->count);
          return call ? compile_call_expr_to_slot(call, ctx, dst) : false;
       }
+      require_exactops_operator_expr(expr, ctx);
    }
 
    {
@@ -8355,6 +8336,8 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          }
          return compile_truthy_expr_branch_false(call, ctx, rtype, rdecl, rsize, false_label);
       }
+      require_exactops_operator_expr(expr, ctx);
+      require_exactops_truthiness_expr(expr, ctx);
    }
 
    {
@@ -10642,6 +10625,11 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             snprintf(opname, sizeof(opname), "operator%s", base_op);
             ofn = lookup_operator_overload(opname, 2, arg_types, arg_decls, arg_lvalues);
          }
+      }
+
+      if (!ofn && base_op && same_named_value_type(dst->type, dst->declarator, arg_types[1], arg_decls[1]) && type_has_exactops(dst->type)) {
+         error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload '%s' for same-type operands",
+                    node->file, node->line, node->column, type_name_from_node(dst->type), opname);
       }
 
       if (ofn) {

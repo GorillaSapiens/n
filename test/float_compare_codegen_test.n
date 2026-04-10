@@ -1,7 +1,6 @@
 // n65cc -I .
-// expectasm: jsr operatorx3C__float_p0_a0__float_p0_a0
-// expectasm: .import operatorx3C__float_p0_a0__float_p0_a0
-
+// expectasm: jsr _fcmp
+// expectasm: .import _fcmp
 
 include "machine_6502.n"
 

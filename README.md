@@ -84,3 +84,5 @@ type f3     { $size:3 $endian:little $float:simple  }; // generic simple SExMy f
 `$float:simple` supports any positive size and always uses an `SExMy` layout where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits. For `$size:2`, `$size:4`, and `$size:8`, that yields the same exponent widths as IEEE 754 binary16/binary32/binary64.
 
 `libraries/float/gen.pl` can generate real `operator+`, `operator-`, and comparison overloads for a float-like type using union/bitfield SExMy arithmetic instead of the old nlib float helpers. Run `perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n`, then `include "mytype_ops.n"` next to the matching `type` declaration.
+
+If a type should use exact declared-type operator names only, add `$exactops` to the `type` declaration. Without `$exactops`, same-type operators fall back to the generic builtin lowering when no visible exact overload is available. With `$exactops`, the compiler requires visible exact overloads for the operators you actually use.
