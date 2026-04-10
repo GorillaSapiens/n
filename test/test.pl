@@ -3,20 +3,26 @@
 use strict;
 use warnings;
 use File::Spec;
+use File::Basename qw(basename dirname);
 use File::Temp qw(tempdir tempfile);
-use Cwd qw(abs_path);
+use Cwd qw(abs_path getcwd);
 use Getopt::Long qw(GetOptions);
+use Text::ParseWords qw(shellwords);
 
 my $FAIL = "\e[31mFAIL\e[0m";
 my $PASS = "\e[32mpass\e[0m";
+my $SKIP = "\e[33mskip\e[0m";
 
 my $compile_only = 0;
 my $e2e_only = 0;
+my $help = 0;
 GetOptions(
    'compile-only' => \$compile_only,
    'e2e-only' => \$e2e_only,
-) or die "usage: $0 [--compile-only] [--e2e-only]\n";
-die "usage: $0 [--compile-only] [--e2e-only]\n" if $compile_only && $e2e_only;
+   'help' => \$help,
+) or die usage();
+die usage() if $help;
+die usage() if $compile_only && $e2e_only;
 
 my $test_root = abs_path('.');
 my $repo_root = abs_path(File::Spec->catdir($test_root, '..'));
@@ -29,6 +35,18 @@ my $n65sim = File::Spec->catfile($repo_root, 'simulator', 'n65sim');
 my $nlib = File::Spec->catfile($repo_root, 'libraries', 'nlib', 'nlib.a65');
 my $nlib_inc = File::Spec->catdir($repo_root, 'libraries', 'nlib');
 
+my %tool_alias = (
+   n65cc  => $n65cc,
+   n65asm => $n65asm,
+   n65ld  => $n65ld,
+   n65ar  => $n65ar,
+   n65sim => $n65sim,
+);
+
+sub usage {
+   return "usage: $0 [--compile-only] [--e2e-only] [test-file ...]\n";
+}
+
 sub slurp_file {
    my ($path) = @_;
    open(my $fh, '<', $path) or die "[$FAIL] could not open $path: $!\n";
@@ -38,32 +56,63 @@ sub slurp_file {
    return $data;
 }
 
-sub first_line {
-   my ($path) = @_;
-   open(my $fh, '<', $path) or die "[$FAIL] could not open $path: $!\n";
-   my $line = <$fh>;
+sub write_text_file {
+   my ($path, $text) = @_;
+   open(my $fh, '>', $path) or die "[$FAIL] could not write $path: $!\n";
+   print $fh $text;
    close($fh);
-   $line = '' if !defined $line;
-   $line =~ s/[\x0a\x0d]//g;
-   return $line;
 }
 
-sub parse_runner {
-   my ($file, $runner_line) = @_;
-   if (!($runner_line =~ m{^//\s*n65cc\b})) {
-      return undef;
+sub read_header_lines {
+   my ($path) = @_;
+   open(my $fh, '<', $path) or die "[$FAIL] could not open $path: $!\n";
+   my @lines;
+   while (my $line = <$fh>) {
+      $line =~ s/[\x0a\x0d]//g;
+      if ($line =~ /^\s*$/) {
+         push @lines, $line;
+         next;
+      }
+      last if $line !~ /^\s*(?:(?:\/\/)|#|;)/;
+      push @lines, $line;
    }
-   if ($runner_line =~ /[;`]/) {
+   close($fh);
+   return \@lines;
+}
+
+sub strip_comment_body {
+   my ($line) = @_;
+   return undef if $line !~ /^\s*(?:(?:\/\/)|#|;)\s?(.*)$/;
+   return $1;
+}
+
+sub parse_words_safe {
+   my ($file, $text) = @_;
+   if ($text =~ /[;`]/) {
       die "[$FAIL] $file :: hey! no sneaky shell shenanigans !!!\n";
    }
-   $runner_line =~ s{^//\s*n65cc\b}{ };
-   $runner_line =~ s/^\s+//;
-   $runner_line =~ s/\s+$//;
-   return grep { length($_) } split(/\s+/, $runner_line);
+   return grep { length($_) } shellwords($text);
+}
+
+sub parse_runner_from_header {
+   my ($file, $header_lines) = @_;
+   for my $line (@$header_lines) {
+      my $body = strip_comment_body($line);
+      next if !defined $body;
+      if ($body =~ /^runner:\s*(.*?)\s*$/) {
+         my @words = parse_words_safe($file, $1);
+         return \@words if @words;
+      }
+      if ($body =~ /^(n65cc|n65asm|n65ld|n65ar|n65sim|perl|make|stdbuf)\b(.*)$/) {
+         my @words = parse_words_safe($file, $body);
+         return \@words if @words;
+      }
+   }
+   return undef;
 }
 
 sub parse_directives {
-   my ($path) = @_;
+   my ($path, $header_lines) = @_;
    my %meta = (
       expectasm => [],
       expectasmordered => [],
@@ -85,85 +134,122 @@ sub parse_directives {
       expectfail => 0,
       expectlinkfail => 0,
       expectexit => undef,
+      phase => undef,
+      timeout => 2,
+      expectstdout => [],
+      expectstdoutordered => [],
+      forbidstdout => [],
+      expectstderr => [],
+      expectstderrordered => [],
+      forbidstderr => [],
+      expectstdoutexact => undef,
+      expectstderrexact => undef,
    );
 
-   open(my $fh, '<', $path) or die "[$FAIL] could not open $path: $!\n";
-   while (my $line = <$fh>) {
-      $line =~ s/[\x0a\x0d]//g;
-      if ($line =~ /^\/\/ expectasm:\s*(.*?)\s*$/) {
+   for my $line (@$header_lines) {
+      my $body = strip_comment_body($line);
+      next if !defined $body;
+      if ($body =~ /^expectasm:\s*(.*?)\s*$/) {
          push @{$meta{expectasm}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectasmordered:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expectasmordered:\s*(.*?)\s*$/) {
          push @{$meta{expectasmordered}}, $1;
       }
-      elsif ($line =~ /^\/\/ forbidasm:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^forbidasm:\s*(.*?)\s*$/) {
          push @{$meta{forbidasm}}, $1;
       }
-      elsif ($line =~ /^\/\/ expecterr:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expecterr:\s*(.*?)\s*$/) {
          push @{$meta{expecterr}}, $1;
       }
-      elsif ($line =~ /^\/\/ forbiderr:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^forbiderr:\s*(.*?)\s*$/) {
          push @{$meta{forbiderr}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectsim:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expectsim:\s*(.*?)\s*$/) {
          push @{$meta{expectsim}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectsimerr:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expectsimerr:\s*(.*?)\s*$/) {
          push @{$meta{expectsimerr}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectlinkerr:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expectlinkerr:\s*(.*?)\s*$/) {
          push @{$meta{expectlinkerr}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectmap:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^expectmap:\s*(.*?)\s*$/) {
          push @{$meta{expectmap}}, $1;
       }
-      elsif ($line =~ /^\/\/ expectfile:\s*(\S+)\s+(.*?)\s*$/) {
+      elsif ($body =~ /^expectfile:\s*(\S+)\s+(.*?)\s*$/) {
          push @{$meta{expectfile}}, [$1, $2];
       }
-      elsif ($line =~ /^\/\/ forbidfile:\s*(\S+)\s+(.*?)\s*$/) {
+      elsif ($body =~ /^forbidfile:\s*(\S+)\s+(.*?)\s*$/) {
          push @{$meta{forbidfile}}, [$1, $2];
       }
-      elsif ($line =~ /^\/\/ archive:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^archive:\s*(.*?)\s*$/) {
          push @{$meta{archive}}, $1;
       }
-      elsif ($line =~ /^\/\/ archivegroup:\s*(\S+)\s+(.*?)\s*$/) {
+      elsif ($body =~ /^archivegroup:\s*(\S+)\s+(.*?)\s*$/) {
          my ($group, $rest) = ($1, $2);
          my @members = grep { length($_) } split(/\s+/, $rest);
          push @{$meta{archivegroup}}, [$group, @members];
       }
-      elsif ($line =~ /^\/\/ object:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^object:\s*(.*?)\s*$/) {
          push @{$meta{object}}, $1;
       }
-      elsif ($line =~ /^\/\/ linkcfg:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^linkcfg:\s*(.*?)\s*$/) {
          $meta{linkcfg} = $1;
       }
-      elsif ($line =~ /^\/\/ simcfg:\s*(.*?)\s*$/) {
+      elsif ($body =~ /^simcfg:\s*(.*?)\s*$/) {
          $meta{simcfg} = $1;
       }
-      elsif ($line =~ /^\/\/ simargs:\s*(.*?)\s*$/) {
-         my $args = $1;
-         if ($args =~ /[;`]/) {
-            die "[$FAIL] $path :: hey! no sneaky shell shenanigans !!!\n";
-         }
-         push @{$meta{simargs}}, grep { length($_) } split(/\s+/, $args);
+      elsif ($body =~ /^simargs:\s*(.*?)\s*$/) {
+         push @{$meta{simargs}}, parse_words_safe($path, $1);
       }
-      elsif ($line =~ /^\/\/ expectfail\s*$/) {
+      elsif ($body =~ /^expectfail\s*$/) {
          $meta{expectfail} = 1;
       }
-      elsif ($line =~ /^\/\/ expectlinkfail\s*$/) {
+      elsif ($body =~ /^expectlinkfail\s*$/) {
          $meta{expectlinkfail} = 1;
       }
-      elsif ($line =~ /^\/\/ expectexit:\s*(0x[0-9A-Fa-f]+|[0-9]+)\s*$/) {
+      elsif ($body =~ /^expectexit:\s*(0x[0-9A-Fa-f]+|[0-9]+)\s*$/) {
          my $value = $1;
          $meta{expectexit} = ($value =~ /^0x/i) ? hex($value) : int($value);
       }
+      elsif ($body =~ /^phase:\s*(compile|e2e|any)\s*$/) {
+         $meta{phase} = $1;
+      }
+      elsif ($body =~ /^timeout:\s*([0-9]+)\s*$/) {
+         $meta{timeout} = int($1);
+      }
+      elsif ($body =~ /^expectstdout:\s*(.*?)\s*$/) {
+         push @{$meta{expectstdout}}, $1;
+      }
+      elsif ($body =~ /^expectstdoutordered:\s*(.*?)\s*$/) {
+         push @{$meta{expectstdoutordered}}, $1;
+      }
+      elsif ($body =~ /^forbidstdout:\s*(.*?)\s*$/) {
+         push @{$meta{forbidstdout}}, $1;
+      }
+      elsif ($body =~ /^expectstderr:\s*(.*?)\s*$/) {
+         push @{$meta{expectstderr}}, $1;
+      }
+      elsif ($body =~ /^expectstderrordered:\s*(.*?)\s*$/) {
+         push @{$meta{expectstderrordered}}, $1;
+      }
+      elsif ($body =~ /^forbidstderr:\s*(.*?)\s*$/) {
+         push @{$meta{forbidstderr}}, $1;
+      }
+      elsif ($body =~ /^expectstdoutexact:\s*(.*?)\s*$/) {
+         $meta{expectstdoutexact} = $1;
+      }
+      elsif ($body =~ /^expectstderrexact:\s*(.*?)\s*$/) {
+         $meta{expectstderrexact} = $1;
+      }
    }
-   close($fh);
    return \%meta;
 }
 
 sub is_e2e_case {
    my ($meta) = @_;
+   return 1 if defined($meta->{phase}) && $meta->{phase} eq 'e2e';
+   return 0 if defined($meta->{phase}) && $meta->{phase} eq 'compile';
    return scalar(@{$meta->{expectsim}})
       || scalar(@{$meta->{expectlinkerr}})
       || scalar(@{$meta->{expectmap}})
@@ -178,37 +264,25 @@ sub is_e2e_case {
       || defined($meta->{expectexit});
 }
 
-sub require_substrings {
-   my ($haystack, $needles, $label, $case_name, $log_path) = @_;
-   for my $needle (@$needles) {
-      if (index($haystack, $needle) < 0) {
-         print "[$FAIL] $case_name missing $label fragment: $needle\n";
-         print "$log_path\n";
-         exit(-1);
-      }
+sub expand_placeholders {
+   my ($text, $ctx) = @_;
+   my $expanded = $text;
+   for my $key (keys %$ctx) {
+      my $value = defined($ctx->{$key}) ? $ctx->{$key} : '';
+      $expanded =~ s/\Q$key\E/$value/g;
    }
+   return $expanded;
 }
 
-sub require_file_expectations {
-   my ($meta, $case_name) = @_;
-   for my $entry (@{$meta->{expectfile}}) {
-      my ($relpath, $needle) = @$entry;
-      my $path = File::Spec->catfile($test_root, $relpath);
-      my $text = slurp_file($path);
-      if (index($text, $needle) < 0) {
-         print "[$FAIL] $case_name missing file fragment in $relpath: $needle\n";
-         exit(-1);
-      }
+sub expand_tokens {
+   my ($tokens, $ctx) = @_;
+   my @expanded;
+   for my $token (@$tokens) {
+      my $value = expand_placeholders($token, $ctx);
+      $value = $tool_alias{$value} if exists $tool_alias{$value};
+      push @expanded, $value;
    }
-   for my $entry (@{$meta->{forbidfile}}) {
-      my ($relpath, $needle) = @$entry;
-      my $path = File::Spec->catfile($test_root, $relpath);
-      my $text = slurp_file($path);
-      if (index($text, $needle) >= 0) {
-         print "[$FAIL] $case_name unexpected file fragment in $relpath: $needle\n";
-         exit(-1);
-      }
-   }
+   return @expanded;
 }
 
 sub run_cmd {
@@ -267,6 +341,77 @@ sub run_cmd_with_timeout {
    return ($timed_out, $exit_code, $signal);
 }
 
+sub fail_result {
+   my ($message) = @_;
+   return { ok => 0, message => $message };
+}
+
+sub pass_result {
+   return { ok => 1 };
+}
+
+sub require_substrings_result {
+   my ($haystack, $needles, $label) = @_;
+   for my $needle (@$needles) {
+      if (index($haystack, $needle) < 0) {
+         return "$label missing fragment: $needle";
+      }
+   }
+   return undef;
+}
+
+sub require_ordered_substrings_result {
+   my ($haystack, $needles, $label) = @_;
+   my $start = 0;
+   for my $needle (@$needles) {
+      my $pos = index($haystack, $needle, $start);
+      if ($pos < 0) {
+         return "$label missing ordered fragment: $needle";
+      }
+      $start = $pos + length($needle);
+   }
+   return undef;
+}
+
+sub require_absent_substrings_result {
+   my ($haystack, $needles, $label) = @_;
+   for my $needle (@$needles) {
+      if (index($haystack, $needle) >= 0) {
+         return "$label unexpected fragment: $needle";
+      }
+   }
+   return undef;
+}
+
+sub check_exact_result {
+   my ($got, $want, $label) = @_;
+   return undef if !defined $want;
+   return undef if $got eq $want;
+   return "$label exact mismatch";
+}
+
+sub require_file_expectations_result {
+   my ($meta, $ctx) = @_;
+   for my $entry (@{$meta->{expectfile}}) {
+      my ($relpath, $needle) = @$entry;
+      my $path = expand_placeholders($relpath, $ctx);
+      $path = File::Spec->catfile($test_root, $path) if !File::Spec->file_name_is_absolute($path);
+      my $text = slurp_file($path);
+      if (index($text, expand_placeholders($needle, $ctx)) < 0) {
+         return "missing file fragment in $relpath: $needle";
+      }
+   }
+   for my $entry (@{$meta->{forbidfile}}) {
+      my ($relpath, $needle) = @$entry;
+      my $path = expand_placeholders($relpath, $ctx);
+      $path = File::Spec->catfile($test_root, $path) if !File::Spec->file_name_is_absolute($path);
+      my $text = slurp_file($path);
+      if (index($text, expand_placeholders($needle, $ctx)) >= 0) {
+         return "unexpected file fragment in $relpath: $needle";
+      }
+   }
+   return undef;
+}
 
 sub ensure_generated_float_archive_fixtures {
    my ($outfh, $outfile) = tempfile('fixture_make_out_XXXX', UNLINK => 1);
@@ -276,75 +421,8 @@ sub ensure_generated_float_archive_fixtures {
    my @cmd = ('make', '-C', $repo_root, 'generated_float_archive_fixtures');
    my ($exit_code) = run_cmd(\@cmd, $outfile, $errfile);
    if ($exit_code != 0) {
-      print "[$FAIL] could not generate float archive test fixtures\n";
-      print join(' ', @cmd), "\n";
-      print slurp_file($errfile);
-      exit(-1);
+      die "[$FAIL] could not generate float archive test fixtures\n" . join(' ', @cmd) . "\n" . slurp_file($errfile);
    }
-}
-
-sub run_compile_case {
-   my ($file, $runner_args, $meta) = @_;
-
-   my ($outfh, $outfile) = tempfile('test_output_XXXX', UNLINK => 1);
-   my ($errfh, $errfile) = tempfile('test_error_XXXX', UNLINK => 1);
-   close($outfh);
-   close($errfh);
-
-   my @cmd = ($n65cc, '-quiet', @$runner_args, $file);
-   my ($exit_code) = run_cmd(\@cmd, $outfile, $errfile);
-
-   if ($meta->{expectfail}) {
-      if ($exit_code == 0) {
-         print "[$FAIL] $file expected failure but exited 0\n";
-         print join(' ', @cmd), "\n";
-         exit(-1);
-      }
-   }
-   elsif ($exit_code != 0) {
-      print "[$FAIL] $file exit code $exit_code\n";
-      print join(' ', @cmd), "\n";
-      exit(-1);
-   }
-
-   if (@{$meta->{expectasm}} || @{$meta->{expectasmordered}} || @{$meta->{forbidasm}}) {
-      my $asm = slurp_file($outfile);
-      require_substrings($asm, $meta->{expectasm}, 'assembly', $file, $outfile);
-      my $start = 0;
-      for my $needle (@{$meta->{expectasmordered}}) {
-         my $pos = index($asm, $needle, $start);
-         if ($pos < 0) {
-            print "[$FAIL] $file missing ordered assembly fragment: $needle\n";
-            print "$outfile\n";
-            exit(-1);
-         }
-         $start = $pos + length($needle);
-      }
-      for my $needle (@{$meta->{forbidasm}}) {
-         if (index($asm, $needle) >= 0) {
-            print "[$FAIL] $file unexpected assembly fragment: $needle\n";
-            print "$outfile\n";
-            exit(-1);
-         }
-      }
-   }
-
-   my $stderr = slurp_file($errfile);
-
-   if (@{$meta->{expecterr}}) {
-      require_substrings($stderr, $meta->{expecterr}, 'stderr', $file, $errfile);
-   }
-
-   for my $needle (@{$meta->{forbiderr}}) {
-      if (index($stderr, $needle) >= 0) {
-         print "[$FAIL] $file unexpected stderr fragment: $needle\n";
-         print "$errfile\n";
-         exit(-1);
-      }
-   }
-
-   require_file_expectations($meta, $file);
-   print "[$PASS] $file\n";
 }
 
 sub compile_n_to_object {
@@ -358,35 +436,82 @@ sub compile_n_to_object {
    my @cmd = ($n65cc, '-quiet', @$runner_args, $src_path, '-o', $s_path, '-dumpbase', $src_name, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
    my ($exit_code) = run_cmd(\@cmd, $out_path, $err_path);
    if ($exit_code != 0) {
-      print "[$FAIL] $test_name extra compile exit code $exit_code\n";
-      print join(' ', @cmd), "\n";
-      print slurp_file($err_path);
-      exit(-1);
+      return (undef, "$test_name extra compile exit code $exit_code\n" . join(' ', @cmd) . "\n" . slurp_file($err_path));
    }
    my @asm_cmd = ($n65asm, '-I', $nlib_inc, '-o', $o_path, $s_path);
    my ($asm_exit) = run_cmd(\@asm_cmd, File::Spec->catfile($tmp, "$stem.asm.out"), File::Spec->catfile($tmp, "$stem.asm.err"));
    if ($asm_exit != 0) {
-      print "[$FAIL] $test_name extra assemble exit code $asm_exit\n";
-      print join(' ', @asm_cmd), "\n";
-      print slurp_file(File::Spec->catfile($tmp, "$stem.asm.err"));
-      exit(-1);
+      return (undef, "$test_name extra assemble exit code $asm_exit\n" . join(' ', @asm_cmd) . "\n" . slurp_file(File::Spec->catfile($tmp, "$stem.asm.err")));
    }
-   return $o_path;
+   return ($o_path, undef);
+}
+
+sub run_compile_case {
+   my ($case) = @_;
+   my $file = $case->{name};
+   my $runner_args = $case->{runner_args};
+   my $meta = $case->{meta};
+
+   my ($outfh, $outfile) = tempfile('test_output_XXXX', UNLINK => 1);
+   my ($errfh, $errfile) = tempfile('test_error_XXXX', UNLINK => 1);
+   close($outfh);
+   close($errfh);
+
+   my @cmd = ($n65cc, '-quiet', @$runner_args, $case->{path});
+   my ($exit_code) = run_cmd(\@cmd, $outfile, $errfile);
+
+   if ($meta->{expectfail}) {
+      if ($exit_code == 0) {
+         return fail_result("expected compiler failure but exited 0\n" . join(' ', @cmd));
+      }
+   }
+   elsif ($exit_code != 0) {
+      return fail_result("compiler exit code $exit_code\n" . join(' ', @cmd) . "\n" . slurp_file($errfile));
+   }
+
+   if (@{$meta->{expectasm}} || @{$meta->{expectasmordered}} || @{$meta->{forbidasm}}) {
+      my $asm = slurp_file($outfile);
+      my $err = require_substrings_result($asm, $meta->{expectasm}, 'assembly');
+      return fail_result($err) if defined $err;
+      $err = require_ordered_substrings_result($asm, $meta->{expectasmordered}, 'assembly');
+      return fail_result($err) if defined $err;
+      $err = require_absent_substrings_result($asm, $meta->{forbidasm}, 'assembly');
+      return fail_result($err) if defined $err;
+   }
+
+   my $stderr = slurp_file($errfile);
+   my $ctx = { '@REPO@' => $repo_root, '@TEST_ROOT@' => $test_root, '@FILE@' => $case->{path}, '@FILEDIR@' => dirname($case->{path}), '@TMP@' => dirname($outfile), '@NLIB@' => $nlib, '@NLIB_INC@' => $nlib_inc };
+   my $err = require_substrings_result($stderr, $meta->{expecterr}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = require_absent_substrings_result($stderr, $meta->{forbiderr}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = require_file_expectations_result($meta, $ctx);
+   return fail_result($err) if defined $err;
+   return pass_result();
 }
 
 sub run_e2e_case {
-   my ($file, $runner_args, $meta) = @_;
+   my ($case) = @_;
+   my $file = $case->{name};
+   my $runner_args = $case->{runner_args};
+   my $meta = $case->{meta};
    for my $tool ($n65cc, $n65asm, $n65ld, $n65ar, $n65sim, $nlib) {
-      if (!-e $tool) {
-         die "[$FAIL] missing required file: $tool\n";
-      }
+      return fail_result("missing required file: $tool") if !-e $tool;
    }
 
    my $tmp = tempdir("n_e2e_${file}_XXXX", TMPDIR => 1, CLEANUP => 1);
+   my $ctx = {
+      '@REPO@' => $repo_root,
+      '@TEST_ROOT@' => $test_root,
+      '@FILE@' => $case->{path},
+      '@FILEDIR@' => dirname($case->{path}),
+      '@TMP@' => $tmp,
+      '@NLIB@' => $nlib,
+      '@NLIB_INC@' => $nlib_inc,
+   };
    my @compiled_objects;
    my @archives;
 
-   my $src_path = File::Spec->catfile($test_root, $file);
    my ($stem) = $file =~ /^(.*)\.n$/;
    my $main_s   = File::Spec->catfile($tmp, "$stem.s");
    my $main_o65 = File::Spec->catfile($tmp, "$stem.o65");
@@ -395,53 +520,45 @@ sub run_e2e_case {
 
    my $compile_out = File::Spec->catfile($tmp, 'compile.out');
    my $compile_err = File::Spec->catfile($tmp, 'compile.err');
-   my @compile_cmd = ($n65cc, '-quiet', @$runner_args, $src_path, '-o', $main_s, '-dumpbase', $file, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
+   my @compile_cmd = ($n65cc, '-quiet', @$runner_args, $case->{path}, '-o', $main_s, '-dumpbase', $file, '-dumpbase-ext', '.n', '-dumpdir', $tmp);
    my ($compile_exit) = run_cmd(\@compile_cmd, $compile_out, $compile_err);
    my $compile_stderr = slurp_file($compile_err);
 
    if ($meta->{expectfail}) {
       if ($compile_exit == 0) {
-         print "[$FAIL] $file expected failure but compiler exited 0\n";
-         print join(' ', @compile_cmd), "\n";
-         exit(-1);
+         return fail_result("expected compiler failure but exited 0\n" . join(' ', @compile_cmd));
       }
-      require_substrings($compile_stderr, $meta->{expecterr}, 'stderr', $file, $compile_err);
-      print "[$PASS] $file\n";
-      return;
+      my $err = require_substrings_result($compile_stderr, $meta->{expecterr}, 'stderr');
+      return fail_result($err) if defined $err;
+      return pass_result();
    }
 
    if ($compile_exit != 0) {
-      print "[$FAIL] $file compiler exit code $compile_exit\n";
-      print join(' ', @compile_cmd), "\n";
-      print $compile_stderr;
-      exit(-1);
+      return fail_result("compiler exit code $compile_exit\n" . join(' ', @compile_cmd) . "\n" . $compile_stderr);
    }
 
    my @asm_cmd = ($n65asm, '-I', $nlib_inc, '-o', $main_o65, $main_s);
    my ($asm_exit) = run_cmd(\@asm_cmd, File::Spec->catfile($tmp, 'main_asm.out'), File::Spec->catfile($tmp, 'main_asm.err'));
    if ($asm_exit != 0) {
-      print "[$FAIL] $file assembler exit code $asm_exit\n";
-      print join(' ', @asm_cmd), "\n";
-      print slurp_file(File::Spec->catfile($tmp, 'main_asm.err'));
-      exit(-1);
+      return fail_result("assembler exit code $asm_exit\n" . join(' ', @asm_cmd) . "\n" . slurp_file(File::Spec->catfile($tmp, 'main_asm.err')));
    }
    push @compiled_objects, $main_o65;
 
    for my $obj_src_name (@{$meta->{object}}) {
-      push @compiled_objects, compile_n_to_object($obj_src_name, $runner_args, $tmp, $file);
+      my ($obj, $obj_err) = compile_n_to_object($obj_src_name, $runner_args, $tmp, $file);
+      return fail_result($obj_err) if defined $obj_err;
+      push @compiled_objects, $obj;
    }
 
    for my $arc_src_name (@{$meta->{archive}}) {
       my ($stem2) = $arc_src_name =~ /^(.*)\.n$/;
-      my $o_path = compile_n_to_object($arc_src_name, $runner_args, $tmp, $file);
+      my ($o_path, $obj_err) = compile_n_to_object($arc_src_name, $runner_args, $tmp, $file);
+      return fail_result($obj_err) if defined $obj_err;
       my $a_path = File::Spec->catfile($tmp, "$stem2.a65");
       my @ncmd = ($n65ar, 'rcs', $a_path, $o_path);
       my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$stem2.n65ar.out"), File::Spec->catfile($tmp, "$stem2.n65ar.err"));
       if ($nexit != 0) {
-         print "[$FAIL] $file archive creation exit code $nexit\n";
-         print join(' ', @ncmd), "\n";
-         print slurp_file(File::Spec->catfile($tmp, "$stem2.n65ar.err"));
-         exit(-1);
+         return fail_result("archive creation exit code $nexit\n" . join(' ', @ncmd) . "\n" . slurp_file(File::Spec->catfile($tmp, "$stem2.n65ar.err")));
       }
       push @archives, $a_path;
    }
@@ -455,7 +572,9 @@ sub run_e2e_case {
       for my $group (sort keys %groups) {
          my @group_objects;
          for my $src_name (@{$groups{$group}}) {
-            push @group_objects, compile_n_to_object($src_name, $runner_args, $tmp, $file);
+            my ($obj, $obj_err) = compile_n_to_object($src_name, $runner_args, $tmp, $file);
+            return fail_result($obj_err) if defined $obj_err;
+            push @group_objects, $obj;
          }
          my $archive_name = $group;
          $archive_name .= '.a65' if $archive_name !~ /\.a65$/;
@@ -463,12 +582,7 @@ sub run_e2e_case {
          my @ncmd = ($n65ar, 'rcs', $a_path, @group_objects);
          my ($nexit) = run_cmd(\@ncmd, File::Spec->catfile($tmp, "$group.n65ar.out"), File::Spec->catfile($tmp, "$group.n65ar.err"));
          if ($nexit != 0) {
-            print "[$FAIL] $file archivegroup creation exit code $nexit
-";
-            print join(' ', @ncmd), "
-";
-            print slurp_file(File::Spec->catfile($tmp, "$group.n65ar.err"));
-            exit(-1);
+            return fail_result("archivegroup creation exit code $nexit\n" . join(' ', @ncmd) . "\n" . slurp_file(File::Spec->catfile($tmp, "$group.n65ar.err")));
          }
          push @archives, $a_path;
       }
@@ -485,24 +599,20 @@ sub run_e2e_case {
    my $link_stderr = slurp_file($link_err);
    if ($meta->{expectlinkfail}) {
       if ($link_exit == 0) {
-         print "[$FAIL] $file expected link failure but linker exited 0\n";
-         print join(' ', @link_cmd), "\n";
-         exit(-1);
+         return fail_result("expected link failure but linker exited 0\n" . join(' ', @link_cmd));
       }
-      require_substrings($link_stderr, $meta->{expectlinkerr}, 'link stderr', $file, $link_err);
-      print "[$PASS] $file\n";
-      return;
+      my $err = require_substrings_result($link_stderr, $meta->{expectlinkerr}, 'link stderr');
+      return fail_result($err) if defined $err;
+      return pass_result();
    }
    if ($link_exit != 0) {
-      print "[$FAIL] $file linker exit code $link_exit\n";
-      print join(' ', @link_cmd), "\n";
-      print $link_stderr;
-      exit(-1);
+      return fail_result("linker exit code $link_exit\n" . join(' ', @link_cmd) . "\n" . $link_stderr);
    }
 
    if (@{$meta->{expectmap}}) {
       my $map_text = slurp_file($map_path);
-      require_substrings($map_text, $meta->{expectmap}, 'map', $file, $map_path);
+      my $err = require_substrings_result($map_text, $meta->{expectmap}, 'map');
+      return fail_result($err) if defined $err;
    }
 
    my $sim_out = File::Spec->catfile($tmp, 'sim.out');
@@ -511,333 +621,217 @@ sub run_e2e_case {
    if (defined $meta->{simcfg}) {
       push @sim_cmd, '-T', File::Spec->catfile($test_root, $meta->{simcfg});
    }
-   my ($timed_out, $sim_exit, $sim_sig) = run_cmd_with_timeout(\@sim_cmd, $sim_out, $sim_err, 2);
+   my ($timed_out, $sim_exit, $sim_sig) = run_cmd_with_timeout(\@sim_cmd, $sim_out, $sim_err, $meta->{timeout});
    my $sim_stdout = slurp_file($sim_out);
    my $sim_stderr = slurp_file($sim_err);
 
    if (defined $meta->{expectexit}) {
       if ($timed_out) {
-         print "[$FAIL] $file simulator timed out before expected exit $meta->{expectexit}\n";
-         print join(' ', @sim_cmd), "\n";
-         print $sim_stderr;
-         exit(-1);
+         return fail_result("simulator timed out before expected exit $meta->{expectexit}\n" . join(' ', @sim_cmd) . "\n" . $sim_stderr);
       }
       if ($sim_exit != $meta->{expectexit}) {
-         print "[$FAIL] $file simulator exit code $sim_exit signal $sim_sig expected $meta->{expectexit}\n";
-         print join(' ', @sim_cmd), "\n";
-         print $sim_stderr;
-         exit(-1);
+         return fail_result("simulator exit code $sim_exit signal $sim_sig expected $meta->{expectexit}\n" . join(' ', @sim_cmd) . "\n" . $sim_stderr);
       }
    }
    elsif ($sim_exit != 0) {
-      print "[$FAIL] $file simulator exit code $sim_exit signal $sim_sig\n";
-      print join(' ', @sim_cmd), "\n";
-      print $sim_stderr;
-      exit(-1);
+      return fail_result("simulator exit code $sim_exit signal $sim_sig\n" . join(' ', @sim_cmd) . "\n" . $sim_stderr);
    }
 
-   require_substrings($sim_stdout, $meta->{expectsim}, 'simulator output', $file, $sim_out);
-   require_substrings($sim_stderr, $meta->{expectsimerr}, 'simulator stderr', $file, $sim_err);
-   require_file_expectations($meta, $file);
-   print "[$PASS] $file\n";
+   my $err = require_substrings_result($sim_stdout, $meta->{expectsim}, 'simulator output');
+   return fail_result($err) if defined $err;
+   $err = require_substrings_result($sim_stderr, $meta->{expectsimerr}, 'simulator stderr');
+   return fail_result($err) if defined $err;
+   $err = require_file_expectations_result($meta, $ctx);
+   return fail_result($err) if defined $err;
+   return pass_result();
 }
 
-sub ihex_record {
-   my ($addr, $type, @bytes) = @_;
-   my $count = scalar(@bytes);
-   my $sum = $count + (($addr >> 8) & 0xFF) + ($addr & 0xFF) + $type;
-   my $text = sprintf(':%02X%04X%02X', $count, $addr, $type);
-   for my $byte (@bytes) {
-      $sum += $byte;
-      $text .= sprintf('%02X', $byte);
+sub run_generic_case {
+   my ($case) = @_;
+   my $meta = $case->{meta};
+   my $tmp = tempdir("n_generic_XXXX", TMPDIR => 1, CLEANUP => 1);
+   my $ctx = {
+      '@REPO@' => $repo_root,
+      '@TEST_ROOT@' => $test_root,
+      '@FILE@' => $case->{path},
+      '@FILEDIR@' => dirname($case->{path}),
+      '@TMP@' => $tmp,
+      '@NLIB@' => $nlib,
+      '@NLIB_INC@' => $nlib_inc,
+      '@N65CC@' => $n65cc,
+      '@N65ASM@' => $n65asm,
+      '@N65LD@' => $n65ld,
+      '@N65AR@' => $n65ar,
+      '@N65SIM@' => $n65sim,
+   };
+   my @cmd = expand_tokens($case->{runner_words}, $ctx);
+   my $out_path = File::Spec->catfile($tmp, 'stdout.txt');
+   my $err_path = File::Spec->catfile($tmp, 'stderr.txt');
+   my ($timed_out, $exit_code, $signal) = run_cmd_with_timeout(\@cmd, $out_path, $err_path, $meta->{timeout});
+   my $stdout = slurp_file($out_path);
+   my $stderr = slurp_file($err_path);
+
+   if ($timed_out) {
+      return fail_result("command timed out\n" . join(' ', @cmd));
    }
-   my $checksum = ((-$sum) & 0xFF);
-   return sprintf('%s%02X\n', $text, $checksum);
+
+   my $expected_exit = defined($meta->{expectexit}) ? $meta->{expectexit} : 0;
+   if ($exit_code != $expected_exit) {
+      return fail_result("command exit code $exit_code signal $signal expected $expected_exit\n" . join(' ', @cmd) . "\n" . $stderr);
+   }
+
+   my $err = require_substrings_result($stdout, $meta->{expectstdout}, 'stdout');
+   return fail_result($err) if defined $err;
+   $err = require_ordered_substrings_result($stdout, $meta->{expectstdoutordered}, 'stdout');
+   return fail_result($err) if defined $err;
+   $err = require_absent_substrings_result($stdout, $meta->{forbidstdout}, 'stdout');
+   return fail_result($err) if defined $err;
+   $err = check_exact_result($stdout, $meta->{expectstdoutexact}, 'stdout');
+   return fail_result($err) if defined $err;
+   $err = require_substrings_result($stderr, $meta->{expectstderr}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = require_ordered_substrings_result($stderr, $meta->{expectstderrordered}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = require_absent_substrings_result($stderr, $meta->{forbidstderr}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = check_exact_result($stderr, $meta->{expectstderrexact}, 'stderr');
+   return fail_result($err) if defined $err;
+   $err = require_file_expectations_result($meta, $ctx);
+   return fail_result($err) if defined $err;
+   return pass_result();
 }
 
-sub write_ihex_file {
-   my ($path, @records) = @_;
-   open(my $fh, '>', $path) or die "[$FAIL] could not write $path: $!\n";
-   print $fh @records;
-   print $fh ":00000001FF\n";
-   close($fh);
+sub load_case {
+   my ($path) = @_;
+   my $header_lines = read_header_lines($path);
+   my $runner_words = parse_runner_from_header($path, $header_lines);
+   return undef if !defined $runner_words;
+   my $meta = parse_directives($path, $header_lines);
+   my $name = File::Spec->abs2rel($path, $test_root);
+   my $is_n_source = ($path =~ /\.n$/);
+   my $kind = $is_n_source ? (is_e2e_case($meta) ? 'n-e2e' : 'n-compile') : 'generic';
+   my @runner_words_copy = @$runner_words;
+   my @runner_args = @runner_words_copy;
+   if ($is_n_source && @runner_args && $runner_args[0] eq 'n65cc') {
+      shift @runner_args;
+   }
+   return {
+      path => $path,
+      name => $name,
+      runner_words => $runner_words,
+      runner_args => \@runner_args,
+      meta => $meta,
+      kind => $kind,
+   };
 }
 
-sub write_text_file {
-   my ($path, $text) = @_;
-   open(my $fh, '>', $path) or die "[$FAIL] could not write $path: $!\n";
-   print $fh $text;
-   close($fh);
+sub should_include_case {
+   my ($case) = @_;
+   my $phase = $case->{meta}->{phase};
+   my $is_e2e = ($case->{kind} eq 'n-e2e') || ($case->{kind} eq 'generic' && (!defined($phase) || $phase eq 'e2e'));
+   $is_e2e = 0 if defined($phase) && $phase eq 'compile';
+   return 0 if $compile_only && $is_e2e;
+   return 0 if $e2e_only && !$is_e2e;
+   return 1;
 }
 
-sub run_simulator_smoke_tests {
-   return if $compile_only;
-
-   my $sim_tmp = tempdir("n_sim_smoke_XXXX", TMPDIR => 1, CLEANUP => 1);
-   my $exit_hex = File::Spec->catfile($sim_tmp, 'exit.hex');
-   my $ro_hex = File::Spec->catfile($sim_tmp, 'ro_write.hex');
-   my $cfg_path = File::Spec->catfile($sim_tmp, 'sim.cfg');
-
-   write_text_file($exit_hex, <<'EOF_EXIT_HEX');
-:09200000A9FFA207A00020FFFFC8
-:02FFFC000020E3
-:00000001FF
-EOF_EXIT_HEX
-
-   write_text_file($ro_hex, <<'EOF_RO_HEX');
-:0E200000A9428D0020A9FFA200A00020FFFF32
-:02FFFC000020E3
-:00000001FF
-EOF_RO_HEX
-
-   write_text_file($cfg_path, <<'EOF_SIMCFG');
-MEMORY {
-    ZP:       start = $0000, size = $0100, type = rw, define = yes;
-    CPUSTACK: start = $0100, size = $0100, type = rw, define = yes;
-    RAM:      start = $0200, size = $1E00, type = rw, define = yes;
-    ROM:      start = $2000, size = $E000, type = ro, define = yes;
+sub supported_test_filename {
+   my ($name) = @_;
+   return ($name =~ /\.(?:n|test)$/);
 }
 
-SEGMENTS {
-    ZEROPAGE: load = ROM, run=ZP,  type = zp,   define = yes;
-    CODE:     load = ROM,          type = ro,   define = yes;
-    RODATA:   load = ROM,          type = ro,   define = yes;
-    BSS:      load = RAM,          type = bss,  define = yes;
-    DATA:     load = ROM, run=RAM, type = data, define = yes;
-}
-EOF_SIMCFG
-
-   my $trace_out = File::Spec->catfile($sim_tmp, 'trace.out');
-   my $trace_err = File::Spec->catfile($sim_tmp, 'trace.err');
-   my @trace_cmd = ('stdbuf', '-o0', $n65sim, '--trace', '0x20', $exit_hex, '-T', $cfg_path);
-   my ($trace_timed_out, $trace_exit, $trace_sig) = run_cmd_with_timeout(\@trace_cmd, $trace_out, $trace_err, 2);
-   if ($trace_timed_out) {
-      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke timed out\n";
-      print join(' ', @trace_cmd), "\n";
-      exit(-1);
+sub resolve_requested_paths {
+   my (@args) = @_;
+   return () if !@args;
+   my @resolved;
+   for my $arg (@args) {
+      my @candidates;
+      push @candidates, abs_path($arg) if -e $arg;
+      my $under_test = File::Spec->catfile($test_root, $arg);
+      push @candidates, abs_path($under_test) if -e $under_test;
+      my %seen;
+      @candidates = grep { defined($_) && !$seen{$_}++ } @candidates;
+      die "[$FAIL] could not find requested test path: $arg\n" if !@candidates;
+      for my $candidate (@candidates) {
+         if (-d $candidate) {
+            opendir(my $dh, $candidate) or die "[$FAIL] could not open $candidate: $!\n";
+            my @names = sort grep { supported_test_filename($_) && -f File::Spec->catfile($candidate, $_) } readdir($dh);
+            closedir($dh);
+            push @resolved, map { File::Spec->catfile($candidate, $_) } @names;
+         }
+         else {
+            push @resolved, $candidate;
+         }
+      }
    }
-   if ($trace_exit != 7) {
-      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke exit code $trace_exit signal $trace_sig expected 7\n";
-      print join(' ', @trace_cmd), "\n";
-      print slurp_file($trace_err);
-      exit(-1);
-   }
-   my $trace_stdout = slurp_file($trace_out);
-   if (index($trace_stdout, 'dispatch ff 0007') < 0) {
-      print "[$FAIL] simulator_cli_reordered_trace_cfg_smoke missing dispatch trace\n";
-      print $trace_out, "\n";
-      exit(-1);
-   }
-   print "[$PASS] simulator_cli_reordered_trace_cfg_smoke\n";
-
-   my $ro_out = File::Spec->catfile($sim_tmp, 'ro.out');
-   my $ro_err = File::Spec->catfile($sim_tmp, 'ro.err');
-   my @ro_cmd = ('stdbuf', '-o0', $n65sim, '-T', $cfg_path, $ro_hex);
-   my ($ro_timed_out, $ro_exit, $ro_sig) = run_cmd_with_timeout(\@ro_cmd, $ro_out, $ro_err, 2);
-   if ($ro_timed_out) {
-      print "[$FAIL] simulator_ro_cfg_smoke timed out\n";
-      print join(' ', @ro_cmd), "\n";
-      exit(-1);
-   }
-   if ($ro_exit != 1) {
-      print "[$FAIL] simulator_ro_cfg_smoke exit code $ro_exit signal $ro_sig expected 1\n";
-      print join(' ', @ro_cmd), "\n";
-      print slurp_file($ro_err);
-      exit(-1);
-   }
-   my $ro_stderr = slurp_file($ro_err);
-   if (index($ro_stderr, 'write to read-only memory at $2000') < 0) {
-      print "[$FAIL] simulator_ro_cfg_smoke missing protection diagnostic\n";
-      print $ro_err, "\n";
-      exit(-1);
-   }
-   print "[$PASS] simulator_ro_cfg_smoke\n";
+   my %seen;
+   return grep { !$seen{$_}++ } @resolved;
 }
 
-sub run_assembler_smoke_tests {
-   return if $compile_only;
-
-   my $asm_smoke_tmp = tempdir("n_e2e_asm_smoke_XXXX", TMPDIR => 1, CLEANUP => 1);
-   my $asm_src = File::Spec->catfile($asm_smoke_tmp, 'rich.s');
-   my $asm_hex = File::Spec->catfile($asm_smoke_tmp, 'rich.hex');
-   my $asm_out = File::Spec->catfile($asm_smoke_tmp, 'rich.out');
-   my $asm_err = File::Spec->catfile($asm_smoke_tmp, 'rich.err');
-   open(my $asmfh, '>', $asm_src) or die "[$FAIL] could not write $asm_src: $!\n";
-   print $asmfh <<'EOF_ASM';
-.segmentdef "CODE", $8000, $0100
-.segment "CODE"
-.def XYZ LDA
-.proc demo
-   XYZ #$12
-   LAX #$34
-   op8D.a $1234
-   opF0 target
-   opEA
-target:
-   opEA
-.endproc
-EOF_ASM
-   close($asmfh);
-   my @asm_smoke_cmd = ($n65asm, '--illegals', '--hex=' . $asm_hex, $asm_src);
-   my ($asm_smoke_exit) = run_cmd(\@asm_smoke_cmd, $asm_out, $asm_err);
-   if ($asm_smoke_exit != 0) {
-      print "[$FAIL] assembler rich-opcode smoke exit code $asm_smoke_exit\n";
-      print join(' ', @asm_smoke_cmd), "\n";
-      print slurp_file($asm_err);
-      exit(-1);
-   }
-   my $asm_hex_text = slurp_file($asm_hex);
-   my $asm_stdout = slurp_file($asm_out);
-   if (index($asm_hex_text, 'A912AB348D3412F001EAEA') < 0) {
-      print "[$FAIL] assembler rich-opcode smoke missing expected bytes\n";
-      print "$asm_hex\n";
-      exit(-1);
-   }
-   if ($asm_stdout ne '') {
-      print "[$FAIL] assembler rich-opcode smoke unexpectedly wrote debug output without -X passes\n";
-      print "$asm_out\n";
-      exit(-1);
-   }
-   print "[$PASS] assembler_rich_opcode_smoke\n";
-
-   my $asm_xray_out = File::Spec->catfile($asm_smoke_tmp, 'rich_xray.out');
-   my $asm_xray_err = File::Spec->catfile($asm_smoke_tmp, 'rich_xray.err');
-   my @asm_xray_cmd = ($n65asm, '-X', 'passes', '--illegals', '--hex=' . $asm_hex, $asm_src);
-   my ($asm_xray_exit) = run_cmd(\@asm_xray_cmd, $asm_xray_out, $asm_xray_err);
-   if ($asm_xray_exit != 0) {
-      print "[$FAIL] assembler xray-pass smoke exit code $asm_xray_exit\n";
-      print join(' ', @asm_xray_cmd), "\n";
-      print slurp_file($asm_xray_err);
-      exit(-1);
-   }
-   my $asm_xray_stdout = slurp_file($asm_xray_out);
-   require_substrings($asm_xray_stdout,
-      [
-         'pass 001: begin',
-         '   bytes: 11',
-         '   instructions: 6',
-         '   directives: 4',
-         '   labels: 1',
-         '   constants: 0',
-         '   zero-page encodings: 0',
-         '   absolute encodings: 1',
-         '   long branches: 0',
-         '   still relaxable: 0',
-         '   errors: 0',
-         'pass 002: begin',
-         'pass 002: stable',
-      ],
-      'assembler stdout', 'assembler_xray_passes_smoke', $asm_xray_out);
-   print "[$PASS] assembler_xray_passes_smoke\n";
-
-   my $asm_relax_hex = File::Spec->catfile($asm_smoke_tmp, 'good.hex');
-   my $asm_relax_out = File::Spec->catfile($asm_smoke_tmp, 'good.out');
-   my $asm_relax_err = File::Spec->catfile($asm_smoke_tmp, 'good.err');
-   my $asm_relax_src = File::Spec->catfile($repo_root, 'assembler', 'tests', 'good.s');
-   my @asm_relax_cmd = ($n65asm, '--hex=' . $asm_relax_hex, $asm_relax_src);
-   my ($asm_relax_exit) = run_cmd(\@asm_relax_cmd, $asm_relax_out, $asm_relax_err);
-   if ($asm_relax_exit != 0) {
-      print "[$FAIL] assembler relaxation-summary smoke exit code $asm_relax_exit\n";
-      print join(' ', @asm_relax_cmd), "\n";
-      print slurp_file($asm_relax_err);
-      exit(-1);
-   }
-   my $asm_relax_stdout = slurp_file($asm_relax_out);
-   if ($asm_relax_stdout ne '') {
-      print "[$FAIL] assembler relaxation-summary smoke unexpectedly wrote debug output without -X passes\n";
-      print "$asm_relax_out\n";
-      exit(-1);
-   }
-
-   my $asm_relax_xray_out = File::Spec->catfile($asm_smoke_tmp, 'good_xray.out');
-   my $asm_relax_xray_err = File::Spec->catfile($asm_smoke_tmp, 'good_xray.err');
-   my @asm_relax_xray_cmd = ($n65asm, '-X', 'passes', '--hex=' . $asm_relax_hex, $asm_relax_src);
-   my ($asm_relax_xray_exit) = run_cmd(\@asm_relax_xray_cmd, $asm_relax_xray_out, $asm_relax_xray_err);
-   if ($asm_relax_xray_exit != 0) {
-      print "[$FAIL] assembler relaxation-summary xray smoke exit code $asm_relax_xray_exit\n";
-      print join(' ', @asm_relax_xray_cmd), "\n";
-      print slurp_file($asm_relax_xray_err);
-      exit(-1);
-   }
-   my $asm_relax_xray_stdout = slurp_file($asm_relax_xray_out);
-   require_substrings($asm_relax_xray_stdout,
-      [
-         'pass 001: begin',
-         '   bytes: 258',
-         '   instructions: 115',
-         '   directives: 7',
-         '   labels: 12',
-         '   zero-page encodings: 2',
-         '   absolute encodings: 37',
-         '   long branches: 8',
-         '   still relaxable: 8',
-         '   bytes: 258 -> 219 (-39)',
-         '   zero-page encodings: 2 -> 17 (+15)',
-         '   absolute encodings: 37 -> 22 (-15)',
-         '   long branches: 8 -> 0 (-8)',
-         '   still relaxable: 8 -> 0 (-8)',
-         'pass 002: begin',
-         'pass 003: begin',
-         'pass 003: stable',
-         '   bytes: 219',
-         '   zero-page encodings: 17',
-         '   absolute encodings: 22',
-         '   long branches: 0',
-         '   still relaxable: 0',
-      ],
-      'assembler stdout', 'assembler_relaxation_summary_smoke', $asm_relax_xray_out);
-   print "[$PASS] assembler_relaxation_summary_smoke\n";
-
-   my $asm_bad_src = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.s');
-   my $asm_bad_hex = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.hex');
-   my $asm_bad_out = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.out');
-   my $asm_bad_err = File::Spec->catfile($asm_smoke_tmp, 'rich_bad.err');
-   open(my $badfh, '>', $asm_bad_src) or die "[$FAIL] could not write $asm_bad_src: $!\n";
-   print $badfh <<'EOF_BAD';
-.segmentdef "CODE", $8000, $0100
-.segment "CODE"
-.proc demo
-   LAX ($44)
-.endproc
-EOF_BAD
-   close($badfh);
-   my @asm_bad_cmd = ($n65asm, '--illegals', '--hex=' . $asm_bad_hex, $asm_bad_src);
-   my ($asm_bad_exit) = run_cmd(\@asm_bad_cmd, $asm_bad_out, $asm_bad_err);
-   if ($asm_bad_exit == 0) {
-      print "[$FAIL] assembler rich-opcode illegal-mode smoke unexpectedly succeeded\n";
-      print join(' ', @asm_bad_cmd), "\n";
-      exit(-1);
-   }
-   my $asm_bad_text = slurp_file($asm_bad_err);
-   if (index($asm_bad_text, 'illegal addressing mode for LAX') < 0) {
-      print "[$FAIL] assembler rich-opcode illegal-mode smoke missing expected diagnostic\n";
-      print "$asm_bad_err\n";
-      exit(-1);
-   }
-   print "[$PASS] assembler_rich_opcode_illegal_mode_smoke\n";
+sub discover_default_paths {
+   opendir(my $dh, $test_root) or die "[$FAIL] could not open $test_root: $!\n";
+   my @paths = sort map { File::Spec->catfile($test_root, $_) }
+      grep { supported_test_filename($_) && -f File::Spec->catfile($test_root, $_) }
+      readdir($dh);
+   closedir($dh);
+   return @paths;
 }
-
-opendir(my $dh, $test_root) or die "[$FAIL] could not open $test_root: $!\n";
-my @files = sort grep { /\.n$/ && -f File::Spec->catfile($test_root, $_) } readdir($dh);
 
 ensure_generated_float_archive_fixtures();
-closedir($dh);
 
-for my $file (@files) {
-   my $runner_line = first_line($file);
-   next if !defined parse_runner($file, $runner_line);
-   my @runner_args = parse_runner($file, $runner_line);
-   my $meta = parse_directives($file);
-   my $e2e = is_e2e_case($meta);
-   next if $compile_only && $e2e;
-   next if $e2e_only && !$e2e;
-   if ($e2e) {
-      run_e2e_case($file, \@runner_args, $meta);
+my @requested_paths = @ARGV ? resolve_requested_paths(@ARGV) : discover_default_paths();
+my @cases;
+for my $path (@requested_paths) {
+   my $case = load_case($path);
+   if (!defined $case) {
+      die "[$FAIL] requested file is not a runnable test: " . File::Spec->abs2rel($path, $test_root) . "\n" if @ARGV;
+      next;
+   }
+   next if !should_include_case($case);
+   push @cases, $case;
+}
+
+die "[$FAIL] no tests selected\n" if !@cases;
+
+my @failures;
+my $total = scalar(@cases);
+my $index = 0;
+my $passed = 0;
+for my $case (@cases) {
+   $index++;
+   my $result;
+   if ($case->{kind} eq 'n-compile') {
+      $result = run_compile_case($case);
+   }
+   elsif ($case->{kind} eq 'n-e2e') {
+      $result = run_e2e_case($case);
    }
    else {
-      run_compile_case($file, \@runner_args, $meta);
+      $result = run_generic_case($case);
+   }
+
+   if ($result->{ok}) {
+      $passed++;
+      print sprintf("[%d/%d] [%s] %s\n", $index, $total, $PASS, $case->{name});
+   }
+   else {
+      push @failures, { name => $case->{name}, message => $result->{message} };
+      my $first = $result->{message};
+      $first =~ s/\n.*//s;
+      print sprintf("[%d/%d] [%s] %s :: %s\n", $index, $total, $FAIL, $case->{name}, $first);
    }
 }
 
-run_assembler_smoke_tests();
-run_simulator_smoke_tests();
+print "\nSummary: $passed passed, " . scalar(@failures) . " failed, $total total\n";
+if (@failures) {
+   print "Failures:\n";
+   for my $failure (@failures) {
+      print "- $failure->{name}\n";
+      my $msg = $failure->{message};
+      $msg =~ s/^/    /mg;
+      print "$msg\n";
+   }
+   exit 1;
+}
+
+exit 0;
