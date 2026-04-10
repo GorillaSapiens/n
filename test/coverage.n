@@ -226,10 +226,10 @@ int function2(int i @ 12, int j @ 13) {
          i &= j;
          j |= i;
          break;
-      case 1 + 1 .. 1 << 1 | 1:
+      case 1 + 1 to 1 << 1 | 1:
          i ^= j;
          break;
-      case 8 >> 1 .. 2 * 3:
+      case 8 >> 1 to 2 * 3:
          break;
       default:
          break;

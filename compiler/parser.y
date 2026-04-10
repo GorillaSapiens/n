@@ -82,7 +82,6 @@ static ASTNode *make_ellipsis_marker(void) {
 %token DEFAULT
 %token DIV_ASSIGN
 %token DO
-%token DOTDOT
 %token ELLIPSIS
 %token ELSE
 %token ENUM
@@ -112,6 +111,7 @@ static ASTNode *make_ellipsis_marker(void) {
 %token SIZEOF
 %token SUB_ASSIGN
 %token SWITCH
+%token TO
 %token TYPE
 %token UNION
 %token WHILE
@@ -715,24 +715,24 @@ case_block:
   ;
 
 case_choice:
-    case_term                                              { COVER; $$ = MAKE_NODE($1); }
-  | case_term DOTDOT case_term                             { COVER; $$ = MAKE_NODE($1, $3); }
+    case_term                                { COVER; $$ = MAKE_NODE($1); }
+  | case_term TO case_term                   { COVER; $$ = MAKE_NODE($1, $3); }
   ;
 
 case_term:
-    case_conditional_expr                                  { COVER; $$ = $1; }
-  | case_enum_primary_expr                                 { COVER; $$ = $1; }
+    case_conditional_expr                    { COVER; $$ = $1; }
+  | case_enum_primary_expr                   { COVER; $$ = $1; }
   ;
 
 case_enum_primary_expr:
-    ENUMNAME                                               { COVER; $$ = make_enumname_expr($1); }
-  | ENUMNAME '`' TYPENAME                                  { COVER; $$ = make_enumname_expr_with_type($1, make_typename_leaf($3)); }
+    ENUMNAME                                 { COVER; $$ = make_enumname_expr($1); }
+  | ENUMNAME '`' TYPENAME                    { COVER; $$ = make_enumname_expr_with_type($1, make_typename_leaf($3)); }
   ;
 
 case_conditional_expr:
-    case_logical_or_expr                                   { COVER; $$ = $1; }
+    case_logical_or_expr                     { COVER; $$ = $1; }
   | case_logical_or_expr '?' case_conditional_expr ':' case_conditional_expr
-                                                           { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
+                                             { COVER; $$ = MAKE_NAMED_NODE("?:", $1, $3, $5); }
   ;
 
 case_logical_or_expr:

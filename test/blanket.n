@@ -200,7 +200,7 @@ label2:
       default:
       case (0 ? 9 : 1):
          break;
-      case 1 + 1 .. 1 << 1 | 1:
+      case 1 + 1 to 1 << 1 | 1:
          break;
    }
 

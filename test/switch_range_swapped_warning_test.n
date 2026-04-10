@@ -14,7 +14,7 @@ type uint      { $size:4 $unsigned $endian:little };
 int main(void) {
    int x := 3;
    switch (x) {
-      case 5 .. 2:
+      case 5 to 2:
          return 1;
       default:
          return 0;

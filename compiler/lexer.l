@@ -167,6 +167,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 "static"        return STATIC;
 "struct"        return STRUCT;
 "switch"        return SWITCH;
+"to"            return TO;
 "type"          return TYPE;
 "union"         return UNION;
 "while"         return WHILE;
@@ -200,7 +201,6 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 "-="            return SUB_ASSIGN;
 "^="            return XOR_ASSIGN;
 "..."           return ELLIPSIS;
-".."            return DOTDOT;
 
 {FLAG} {
    yylval.str = strdup(yytext);
@@ -218,11 +218,6 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    // we do not process backslash escapes here.
    // that along with character set translation in xform.c
    return STRING;
-}
-
-{INT}/\.\. { // this rule prevents the float rule from swollowing our dots!
-   yylval.str = strip_underscores(yytext);
-   return INTEGER;
 }
 
 {INT} {
