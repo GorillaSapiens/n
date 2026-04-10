@@ -248,6 +248,9 @@ static bool declarator_is_plain_value(const ASTNode *declarator);
 static bool integer_type_can_represent_type(const ASTNode *formal_type, const ASTNode *actual_type);
 static int integer_promotion_conversion_cost(const ASTNode *actual_type, const ASTNode *actual_decl,
                                              const ASTNode *formal_type, const ASTNode *formal_decl);
+static const ASTNode *declarator_value_declarator(const ASTNode *declarator);
+static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int new_ptr_depth, int first_array_child);
+static void expr_match_signature(ASTNode *expr, Context *ctx, const ASTNode **type_out, const ASTNode **decl_out);
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
                                               const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue);
 
@@ -757,12 +760,98 @@ static int integer_promotion_conversion_cost(const ASTNode *actual_type, const A
    return cost;
 }
 
+static const ASTNode *make_synthetic_pointer_declarator(int ptr_depth) {
+   ASTNode *decl;
+   char depth_buf[32];
+
+   if (ptr_depth < 0) {
+      return NULL;
+   }
+
+   decl = make_node("declarator", NULL);
+   if (!decl) {
+      return NULL;
+   }
+
+   snprintf(depth_buf, sizeof(depth_buf), "%d", ptr_depth);
+   decl = append_child(decl, make_integer_leaf(strdup(depth_buf)));
+   decl->children[0]->name = "pointer";
+   decl = append_child(decl, make_empty_leaf());
+   return decl;
+}
+
+static const ASTNode *decayed_array_declarator(const ASTNode *declarator) {
+   const ASTNode *value_decl;
+   int start;
+
+   if (!declarator || declarator_pointer_depth(declarator) > 0 || declarator_array_count(declarator) <= 0) {
+      return declarator;
+   }
+
+   value_decl = declarator_value_declarator(declarator);
+   start = declarator_suffix_start_index(value_decl ? value_decl : declarator);
+   return clone_declarator_variant(value_decl ? value_decl : declarator, 1, start + 1);
+}
+
+static const ASTNode *call_adjusted_parameter_declarator(const ASTNode *declarator, bool is_ref) {
+   if (!is_ref && declarator && declarator_pointer_depth(declarator) == 0 && declarator_array_count(declarator) > 0) {
+      return decayed_array_declarator(declarator);
+   }
+   return declarator;
+}
+
+static void expr_match_signature(ASTNode *expr, Context *ctx, const ASTNode **type_out, const ASTNode **decl_out) {
+   const ASTNode *type;
+   const ASTNode *decl;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      if (type_out) *type_out = NULL;
+      if (decl_out) *decl_out = NULL;
+      return;
+   }
+
+   type = expr_value_type(expr, ctx);
+   decl = expr_value_declarator(expr, ctx);
+
+   if (expr->kind == AST_STRING && !string_literal_is_char_constant(expr->strval)) {
+      type = required_typename_node("char");
+      decl = make_synthetic_pointer_declarator(1);
+   }
+   else if (decl && declarator_pointer_depth(decl) == 0 && declarator_array_count(decl) > 0) {
+      decl = decayed_array_declarator(decl);
+   }
+   else if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
+      const ASTNode *lhs_type = NULL;
+      const ASTNode *lhs_decl = NULL;
+      const ASTNode *rhs_type = NULL;
+      const ASTNode *rhs_decl = NULL;
+
+      expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
+      expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
+
+      if (lhs_decl && declarator_pointer_depth(lhs_decl) > 0 && !(rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+         type = lhs_type;
+         decl = lhs_decl;
+      }
+      else if (!strcmp(expr->name, "+") && rhs_decl && declarator_pointer_depth(rhs_decl) > 0 && !(lhs_decl && declarator_pointer_depth(lhs_decl) > 0)) {
+         type = rhs_type;
+         decl = rhs_decl;
+      }
+   }
+
+   if (type_out) *type_out = type;
+   if (decl_out) *decl_out = decl;
+}
+
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
                                               const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue) {
    const char *pname;
    const char *aname;
    bool decl_match = false;
    int promo_cost;
+
+   pdecl = call_adjusted_parameter_declarator(pdecl, pref);
 
    if (!ptype || !atype) {
       return -1;
@@ -1107,6 +1196,8 @@ static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
                                                     const ASTNode **arg_decls_out) {
    const ASTNode *lhs_type;
    const ASTNode *rhs_type;
+   const ASTNode *lhs_decl = NULL;
+   const ASTNode *rhs_decl = NULL;
    const ASTNode *work_type;
    const ASTNode *bool_type;
    int ret_size;
@@ -1152,8 +1243,8 @@ static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
       return false;
    }
 
-   lhs_type = expr_value_type(expr->children[0], ctx);
-   rhs_type = expr_value_type(expr->children[1], ctx);
+   expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
+   expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
 
    if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-") ||
        !strcmp(expr->name, "*") || !strcmp(expr->name, "/") ||
@@ -1174,8 +1265,6 @@ static bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
       }
       else {
          if (!strcmp(expr->name, "+") || !strcmp(expr->name, "-")) {
-            const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
-            const ASTNode *rhs_decl = expr_value_declarator(expr->children[1], ctx);
             if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) || (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
                return false;
             }
@@ -1830,7 +1919,7 @@ static const ASTNode *resolve_function_designator_target(const char *name, const
       if (total == 1) {
          return first;
       }
-      error_user("ambiguous reference to overloaded function '%s'", name);
+      return NULL;
    }
 
    if (matches > 1) {
@@ -1849,24 +1938,39 @@ static const ASTNode *resolve_function_designator_target(const char *name, const
 
 static const ASTNode *resolve_function_call_target(const char *name, ASTNode *args, Context *ctx) {
    int arg_count = (args && !is_empty(args)) ? args->count : 0;
-   const ASTNode *arg_types[8];
-   const ASTNode *arg_decls[8];
-   bool arg_lvalues[8];
+   const ASTNode **arg_types = NULL;
+   const ASTNode **arg_decls = NULL;
+   bool *arg_lvalues = NULL;
+   const ASTNode *ret = NULL;
 
-   if (arg_count > (int) (sizeof(arg_types) / sizeof(arg_types[0]))) {
-      return NULL;
+   if (arg_count > 0) {
+      arg_types = calloc((size_t) arg_count, sizeof(*arg_types));
+      arg_decls = calloc((size_t) arg_count, sizeof(*arg_decls));
+      arg_lvalues = calloc((size_t) arg_count, sizeof(*arg_lvalues));
+      if (!arg_types || !arg_decls || !arg_lvalues) {
+         free((void *) arg_types);
+         free((void *) arg_decls);
+         free(arg_lvalues);
+         return NULL;
+      }
    }
+
    for (int i = 0; i < arg_count; i++) {
-      arg_types[i] = expr_value_type(args->children[i], ctx);
-      arg_decls[i] = expr_value_declarator(args->children[i], ctx);
+      expr_match_signature(args->children[i], ctx, &arg_types[i], &arg_decls[i]);
       arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, args->children[i], NULL);
    }
 
    if (is_operator_function_name(name)) {
-      return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
+      ret = lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
+   }
+   else {
+      ret = lookup_ordinary_function_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
    }
 
-   return lookup_ordinary_function_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
+   free((void *) arg_types);
+   free((void *) arg_decls);
+   free(arg_lvalues);
+   return ret;
 }
 
 static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx) {
@@ -1902,8 +2006,7 @@ static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx
    name = buf;
    arg_count = expr->count;
    for (int i = 0; i < arg_count; i++) {
-      arg_types[i] = expr_value_type(expr->children[i], ctx);
-      arg_decls[i] = expr_value_declarator(expr->children[i], ctx);
+      expr_match_signature(expr->children[i], ctx, &arg_types[i], &arg_decls[i]);
       arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, expr->children[i], NULL);
       if (!arg_types[i]) {
          return NULL;
@@ -1923,11 +2026,10 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) 
       return NULL;
    }
 
-   arg_type = expr_value_type(expr, ctx);
+   expr_match_signature(expr, ctx, &arg_type, &arg_decl);
    if (!arg_type) {
       return NULL;
    }
-   arg_decl = expr_value_declarator(expr, ctx);
    arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
    return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl, &arg_lvalue);
 }
@@ -1940,11 +2042,10 @@ static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
    if (!expr || is_empty(expr)) {
       return NULL;
    }
-   arg_type = expr_value_type(expr, ctx);
+   expr_match_signature(expr, ctx, &arg_type, &arg_decl);
    if (!arg_type) {
       return NULL;
    }
-   arg_decl = expr_value_declarator(expr, ctx);
    arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
    return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl, &arg_lvalue);
 }
@@ -2754,7 +2855,21 @@ static bool type_is_bool(const ASTNode *type) {
 
 static bool type_is_signed_integer(const ASTNode *type) {
    const char *name = type_name_from_node(type);
-   return name && strcmp(name, "*") && has_flag(name, "$signed");
+   const ASTNode *node;
+   if (!name || !strcmp(name, "*") || type_is_bool(type) || type_is_float_like(type)) {
+      return false;
+   }
+   if (has_flag(name, "$unsigned")) {
+      return false;
+   }
+   if (has_flag(name, "$signed")) {
+      return true;
+   }
+   node = get_typename_node(name);
+   if (node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"))) {
+      return false;
+   }
+   return type_size_from_node(type) > 0;
 }
 
 static bool type_is_unsigned_integer(const ASTNode *type) {
@@ -2808,6 +2923,14 @@ static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, 
 
    if (!type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type)) {
       return NULL;
+   }
+
+   {
+      const char *lhs_name = type_name_from_node(lhs_type);
+      const char *rhs_name = type_name_from_node(rhs_type);
+      if (lhs_name && rhs_name && !strcmp(lhs_name, rhs_name)) {
+         return lhs_type;
+      }
    }
 
    lhs_signed = type_is_signed_integer(lhs_type);
@@ -3415,7 +3538,7 @@ static bool parameter_has_symbol_storage(const ASTNode *parameter) {
 
 static int parameter_storage_size(const ASTNode *parameter) {
    const ASTNode *ptype = parameter_type(parameter);
-   const ASTNode *pdecl = parameter_declarator(parameter);
+   const ASTNode *pdecl = call_adjusted_parameter_declarator(parameter_declarator(parameter), parameter_is_ref(parameter));
    if (parameter_is_ref(parameter)) {
       return get_size("*");
    }
@@ -3590,7 +3713,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
          const char *name = parameter_name(parameter, i);
          const ASTNode *decl_specs = parameter_decl_specifiers(parameter);
          const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
-         const ASTNode *param_decl = parameter_declarator(parameter);
+         const ASTNode *param_decl = call_adjusted_parameter_declarator(parameter_declarator(parameter), parameter_is_ref(parameter));
          int size;
          int slot_size;
          ContextEntry *entry;
@@ -4958,6 +5081,11 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
    int protected_locals = saved_locals;
    int ptr_save_offset;
    bool is_signed;
+   int src_byte_offset;
+   int shift_bits;
+   int raw_copy_size;
+   int field_last_byte;
+   int field_rem;
 
    if (copy_size <= 0) {
       return true;
@@ -4993,47 +5121,80 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
    if (dst_direct) {
       emit_prepare_fp_ptr(1, dst_offset);
    }
+
    emit_runtime_fill_ptr1(copy_size, 0x00);
-   for (int bit = 0; bit < src->bit_width; bit++) {
-      int src_byte = (src->bit_offset + bit) / 8;
-      int src_mask = 1 << ((src->bit_offset + bit) % 8);
-      int dst_byte = bit / 8;
-      int dst_mask = 1 << (bit % 8);
-      const char *skip_label = next_label("bitfield_load_skip");
-      emit(&es_code, "    ldy #%d\n", src_byte);
-      emit(&es_code, "    lda (ptr0),y\n");
-      emit(&es_code, "    and #$%02x\n", src_mask & 0xff);
-      emit(&es_code, "    beq %s\n", skip_label);
-      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + dst_byte) : dst_byte);
-      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-      emit(&es_code, "    ora #$%02x\n", dst_mask & 0xff);
-      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-      emit(&es_code, "%s:\n", skip_label);
-}
+
+   src_byte_offset = src->bit_offset / 8;
+   shift_bits = src->bit_offset % 8;
+   raw_copy_size = src->size - src_byte_offset;
+   if (raw_copy_size > copy_size) {
+      raw_copy_size = copy_size;
+   }
+   if (raw_copy_size > 0) {
+      if (src_byte_offset > 0) {
+         emit_add_immediate_to_ptr(0, src_byte_offset);
+      }
+      emit_runtime_copy_ptr0_to_ptr1("cpyN", raw_copy_size, raw_copy_size);
+   }
+
+   if (shift_bits > 0) {
+      const char *outer_label = next_label("bitfield_load_shift_outer");
+      const char *inner_label = next_label("bitfield_load_shift_inner");
+      const char *done_label = next_label("bitfield_load_shift_done");
+
+      emit(&es_code, "    ldx #$%02x\n", shift_bits & 0xff);
+      emit(&es_code, "%s:\n", outer_label);
+      emit(&es_code, "    cpx #0\n");
+      emit(&es_code, "    beq %s\n", done_label);
+      emit(&es_code, "    clc\n");
+      emit(&es_code, "    ldy #$%02x\n", (copy_size - 1) & 0xff);
+      emit(&es_code, "%s:\n", inner_label);
+      emit(&es_code, "    lda (ptr1),y\n");
+      emit(&es_code, "    ror a\n");
+      emit(&es_code, "    sta (ptr1),y\n");
+      emit(&es_code, "    dey\n");
+      emit(&es_code, "    bpl %s\n", inner_label);
+      emit(&es_code, "    dex\n");
+      emit(&es_code, "    bne %s\n", outer_label);
+      emit(&es_code, "%s:\n", done_label);
+   }
+
+   field_last_byte = (src->bit_width - 1) / 8;
+   field_rem = src->bit_width % 8;
+   if (src->bit_width > 0 && src->bit_width < copy_size * 8) {
+      if (field_rem != 0) {
+         emit(&es_code, "    ldy #%d\n", field_last_byte);
+         emit(&es_code, "    lda (ptr1),y\n");
+         emit(&es_code, "    and #$%02x\n", ((1 << field_rem) - 1) & 0xff);
+         emit(&es_code, "    sta (ptr1),y\n");
+      }
+      if (copy_size - (field_last_byte + 1) > 0) {
+         emit_add_immediate_to_ptr(1, field_last_byte + 1);
+         emit_runtime_fill_ptr1(copy_size - (field_last_byte + 1), 0x00);
+         emit_prepare_fp_ptr(1, dst_offset);
+      }
+   }
+
    is_signed = src->type && has_flag(type_name_from_node(src->type), "$signed");
    if (is_signed && src->bit_width > 0 && src->bit_width < copy_size * 8) {
       int sign_byte = (src->bit_width - 1) / 8;
       int sign_mask = 1 << ((src->bit_width - 1) % 8);
       int rem = src->bit_width % 8;
       const char *skip_label = next_label("bitfield_signext_skip");
-      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + sign_byte) : sign_byte);
-      emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+      emit(&es_code, "    ldy #%d\n", sign_byte);
+      emit(&es_code, "    lda (ptr1),y\n");
       emit(&es_code, "    and #$%02x\n", sign_mask & 0xff);
       emit(&es_code, "    beq %s\n", skip_label);
       if (rem != 0) {
-         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + sign_byte) : sign_byte);
-         emit(&es_code, "    lda %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+         emit(&es_code, "    ldy #%d\n", sign_byte);
+         emit(&es_code, "    lda (ptr1),y\n");
          emit(&es_code, "    ora #$%02x\n", ((0xff << rem) & 0xff));
-         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
+         emit(&es_code, "    sta (ptr1),y\n");
       }
       if (copy_size - (sign_byte + 1) > 0) {
-         if (dst_direct) {
-            emit_prepare_fp_ptr(1, dst_offset + sign_byte + 1);
-         }
-         else {
-            emit_add_immediate_to_ptr(1, sign_byte + 1);
-         }
+         emit_add_immediate_to_ptr(1, sign_byte + 1);
          emit_runtime_fill_ptr1(copy_size - (sign_byte + 1), 0xff);
+         emit_prepare_fp_ptr(1, dst_offset);
       }
       emit(&es_code, "%s:\n", skip_label);
    }
@@ -6120,7 +6281,7 @@ static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, Cont
 
          psz = parameter_storage_size(parameter);
          tmp.type = parameter_is_ref(parameter) ? required_typename_node("*") : ptype;
-         tmp.declarator = parameter_is_ref(parameter) ? NULL : pdecl;
+         tmp.declarator = parameter_is_ref(parameter) ? NULL : call_adjusted_parameter_declarator(pdecl, false);
          tmp.is_static = false;
          tmp.is_zeropage = false;
          tmp.is_global = false;
@@ -6393,7 +6554,7 @@ static bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry 
 
             psz = parameter_storage_size(parameter);
             tmp.type = parameter_is_ref(parameter) ? required_typename_node("*") : ptype;
-            tmp.declarator = parameter_is_ref(parameter) ? NULL : pdecl;
+            tmp.declarator = parameter_is_ref(parameter) ? NULL : call_adjusted_parameter_declarator(pdecl, false);
             tmp.is_static = false;
             tmp.is_zeropage = false;
             tmp.is_global = false;
@@ -6533,6 +6694,20 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
    if (!expr || is_empty(expr)) {
       return true;
+   }
+
+   if (dst && dst->declarator && declarator_pointer_depth(dst->declarator) > 0) {
+      const ASTNode *src_decl = expr_value_declarator(expr, ctx);
+      if (src_decl && declarator_pointer_depth(src_decl) == 0 && declarator_array_count(src_decl) > 0) {
+         LValueRef lv;
+         if (resolve_ref_argument_lvalue(ctx, expr, &lv)) {
+            if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
+               return false;
+            }
+            emit_store_ptr_to_fp(dst->offset, 0, dst->size);
+            return true;
+         }
+      }
    }
 
    if (!strcmp(expr->name, "assign_expr") && expr->count == 3) {
@@ -7260,11 +7435,17 @@ unary_not_done:
 
    if (expr->count == 2 && (!strcmp(expr->name, "+") || !strcmp(expr->name, "-"))) {
       const ASTNode *rhs = unwrap_expr_node(expr->children[1]);
-      const ASTNode *lhs_type = expr_value_type(expr->children[0], ctx);
-      const ASTNode *lhs_decl = expr_value_declarator(expr->children[0], ctx);
+      const ASTNode *lhs_type = NULL;
+      const ASTNode *lhs_decl = NULL;
+      const ASTNode *rhs_type = NULL;
+      const ASTNode *rhs_decl = NULL;
       const ASTNode *work_type = expr_value_type(expr, ctx);
       int work_size = expr_value_size(expr, ctx);
       int pointer_scale = 1;
+
+      expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
+      expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
+
       bool scaled_pointer_arith = lhs_decl && declarator_pointer_depth(lhs_decl) > 0;
 
       if (scaled_pointer_arith) {
@@ -7289,7 +7470,7 @@ unary_not_done:
          }
       }
 
-      if (!strcmp(expr->name, "-") && lhs_decl && rhs && expr_value_declarator((ASTNode *) rhs, ctx) && declarator_pointer_depth(expr_value_declarator((ASTNode *) rhs, ctx)) > 0) {
+      if (!strcmp(expr->name, "-") && lhs_decl && declarator_pointer_depth(lhs_decl) > 0 && rhs_decl && declarator_pointer_depth(rhs_decl) > 0) {
          int ptr_size = declarator_storage_size(lhs_type, lhs_decl);
          int elem_size = pointer_scale > 0 ? pointer_scale : 1;
          int tmp_total = ptr_size * 3;
@@ -7359,7 +7540,7 @@ unary_not_done:
          int scaled_offset = 0;
          int value_offset = rhs_offset;
          int tmp_total = work_size * 2;
-         const ASTNode *rhs_slot_type = scaled_pointer_arith ? expr_value_type((ASTNode *) rhs, ctx) : work_type;
+         const ASTNode *rhs_slot_type = scaled_pointer_arith ? rhs_type : work_type;
          ContextEntry lhs_tmp = { .name = "$lhs", .type = work_type, .declarator = lhs_decl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = lhs_offset, .size = work_size };
          ContextEntry rhs_tmp = { .name = "$rhs", .type = rhs_slot_type ? rhs_slot_type : work_type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = rhs_offset, .size = work_size };
 
@@ -10448,8 +10629,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          arg_types[0] = dst->type;
          arg_decls[0] = dst->declarator;
          arg_lvalues[0] = true;
-         arg_types[1] = expr_value_type(rhs, ctx);
-         arg_decls[1] = expr_value_declarator(rhs, ctx);
+         expr_match_signature(rhs, ctx, &arg_types[1], &arg_decls[1]);
          arg_lvalues[1] = resolve_ref_argument_lvalue(ctx, rhs, NULL);
          if (arg_types[0] && arg_types[1]) {
             snprintf(opname, sizeof(opname), "operator%s", base_op);

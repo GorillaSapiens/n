@@ -224,7 +224,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _lsrN
+    jsr _asrN
     rts
 .endproc
 
@@ -281,7 +281,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -301,7 +301,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -321,7 +321,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -341,7 +341,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -602,7 +602,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _lsrN
+    jsr _asrN
     rts
 .endproc
 
@@ -659,7 +659,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -679,7 +679,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -699,7 +699,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -719,7 +719,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -980,7 +980,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _lsrN
+    jsr _asrN
     rts
 .endproc
 
@@ -1037,7 +1037,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1057,7 +1057,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1077,7 +1077,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNu
+    jsr _ltNs
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1097,7 +1097,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNu
+    jsr _leNs
     lda #$11
     sta arg0
     jsr _sp2ptr2m

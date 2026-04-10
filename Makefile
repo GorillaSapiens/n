@@ -87,7 +87,10 @@ installcheck: tools
 tarball:
 	-git clean -fdx
 	make
-	rm -f n_*.gz
+	make ctar
+
+ctar:
+	rm -f n.*.gz
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 unit:

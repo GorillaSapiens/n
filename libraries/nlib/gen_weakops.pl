@@ -72,7 +72,7 @@ sub emit_zero_ret {
 }
 
 my @types;
-push @types, ['int', 2, 0], ['long', 4, 0], ['longlong', 8, 0], ['char', 1, 0], ['bool', 1, 0];
+push @types, ['int', 2, 1], ['long', 4, 1], ['longlong', 8, 1], ['char', 1, 0], ['bool', 1, 0];
 for my $n (1..16) {
    push @types, ["s$n", $n, 1], ["u$n", $n, 0];
 }
