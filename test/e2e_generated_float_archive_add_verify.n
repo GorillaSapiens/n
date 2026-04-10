@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectexit: 0
-// archivegroup: gf32_add_archive generated_float_archive_gf32_operator_add.n generated_float_archive_gf32_operator_sub.n generated_float_archive_gf32_add_impl.n generated_float_archive_gf32_core.n
+// archivegroup: gf32_add_archive generated_float_archive_gf32_operator_add.n generated_float_archive_gf32_operator_neg.n generated_float_archive_gf32_operator_sub.n generated_float_archive_gf32_add_impl.n generated_float_archive_gf32_core.n
 include "machine_6502.n"
 include "generated_float_archive_gf32_decls.n"
 

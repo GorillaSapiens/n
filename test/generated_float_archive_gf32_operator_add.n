@@ -12,7 +12,7 @@ type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
 type longlong { $size:8 $endian:little };
-type gf32 { $size:4 $endian:little $float:ieee754 };
+type gf32 { $size:4 $endian:little $float:ieee754 $exactops };
 
 type nlf_gf32_u { $size:4 $unsigned $endian:little };
 struct nlf_gf32_bits {

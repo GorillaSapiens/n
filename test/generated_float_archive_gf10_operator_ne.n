@@ -12,7 +12,7 @@ type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
 type longlong { $size:8 $endian:little };
-type gf10 { $size:10 $endian:little $float:simple };
+type gf10 { $size:10 $endian:little $float:simple $exactops };
 
 type nlf_gf10_u8 { $size:1 $unsigned };
 type nlf_gf10_u { $size:10 $unsigned $endian:little };
@@ -38,19 +38,10 @@ union nlf_gf10_u_overlay {
    nlf_gf10_u8 bytes[10];
 };
 
-extern nlf_gf10_overlay nlf_gf10_a;
-extern nlf_gf10_overlay nlf_gf10_b;
-extern int nlf_gf10_cmp;
-extern bool nlf_gf10_unordered;
 
-extern void nlf_gf10_cmp_impl(void);
+extern bool operator==(gf10 lhs, gf10 rhs);
 
 bool operator!=(gf10 lhs, gf10 rhs) {
-   nlf_gf10_a.value := lhs;
-   nlf_gf10_b.value := rhs;
-   nlf_gf10_cmp_impl();
-   if (nlf_gf10_unordered) { return true; }
-   if (nlf_gf10_cmp != 0) { return true; }
-   return false;
+   return !(lhs == rhs);
 }
 

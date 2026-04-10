@@ -5,10 +5,12 @@
 // expbits: 12
 // implementation: manual SExMy arithmetic using bitfields and unions
 
-type gf10 { $size:10 $endian:little $float:simple };
+type gf10 { $size:10 $endian:little $float:simple $exactops };
 
 extern gf10 operator+(gf10 lhs, gf10 rhs);
+extern gf10 operator+(gf10 v);
 extern gf10 operator-(gf10 lhs, gf10 rhs);
+extern gf10 operator-(gf10 v);
 extern gf10 operator*(gf10 lhs, gf10 rhs);
 extern gf10 operator/(gf10 lhs, gf10 rhs);
 extern bool operator==(gf10 lhs, gf10 rhs);
@@ -17,3 +19,6 @@ extern bool operator<(gf10 lhs, gf10 rhs);
 extern bool operator>(gf10 lhs, gf10 rhs);
 extern bool operator<=(gf10 lhs, gf10 rhs);
 extern bool operator>=(gf10 lhs, gf10 rhs);
+extern bool operator{}(gf10 v);
+extern gf10 operator++(ref gf10 v);
+extern gf10 operator--(ref gf10 v);

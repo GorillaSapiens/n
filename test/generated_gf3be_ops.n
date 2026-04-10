@@ -427,33 +427,32 @@ gf3be operator+(gf3be lhs, gf3be rhs) {
    return rv.value;
 }
 
-gf3be operator-(gf3be lhs, gf3be rhs) {
+gf3be operator+(gf3be v) {
+   return v;
+}
+
+gf3be operator-(gf3be v) {
    nlf_gf3be_value_overlay av;
    int nlf_gf3be_a_i;
-   av.value := lhs;
+   av.value := v;
    nlf_gf3be_a_i := 0;
    while (nlf_gf3be_a_i < 3) {
       nlf_gf3be_a.bytes[nlf_gf3be_a_i] := av.bytes[2 - nlf_gf3be_a_i];
       nlf_gf3be_a_i++;
    }
-   nlf_gf3be_value_overlay bv;
-   int nlf_gf3be_b_i;
-   bv.value := rhs;
-   nlf_gf3be_b_i := 0;
-   while (nlf_gf3be_b_i < 3) {
-      nlf_gf3be_b.bytes[nlf_gf3be_b_i] := bv.bytes[2 - nlf_gf3be_b_i];
-      nlf_gf3be_b_i++;
-   }
-   nlf_gf3be_b.bits.sign ^= 1`nlf_gf3be_u;
-   nlf_gf3be_add_impl();
+   nlf_gf3be_a.bits.sign ^= 1`nlf_gf3be_u;
    nlf_gf3be_value_overlay rv;
-   int nlf_gf3be_r_o;
-   nlf_gf3be_r_o := 0;
-   while (nlf_gf3be_r_o < 3) {
-      rv.bytes[nlf_gf3be_r_o] := nlf_gf3be_r.bytes[2 - nlf_gf3be_r_o];
-      nlf_gf3be_r_o++;
+   int nlf_gf3be_a_o;
+   nlf_gf3be_a_o := 0;
+   while (nlf_gf3be_a_o < 3) {
+      rv.bytes[nlf_gf3be_a_o] := nlf_gf3be_a.bytes[2 - nlf_gf3be_a_o];
+      nlf_gf3be_a_o++;
    }
    return rv.value;
+}
+
+gf3be operator-(gf3be lhs, gf3be rhs) {
+   return lhs + (-rhs);
 }
 
 gf3be operator*(gf3be lhs, gf3be rhs) {
@@ -536,26 +535,7 @@ bool operator==(gf3be lhs, gf3be rhs) {
 }
 
 bool operator!=(gf3be lhs, gf3be rhs) {
-   nlf_gf3be_value_overlay av;
-   int nlf_gf3be_a_i;
-   av.value := lhs;
-   nlf_gf3be_a_i := 0;
-   while (nlf_gf3be_a_i < 3) {
-      nlf_gf3be_a.bytes[nlf_gf3be_a_i] := av.bytes[2 - nlf_gf3be_a_i];
-      nlf_gf3be_a_i++;
-   }
-   nlf_gf3be_value_overlay bv;
-   int nlf_gf3be_b_i;
-   bv.value := rhs;
-   nlf_gf3be_b_i := 0;
-   while (nlf_gf3be_b_i < 3) {
-      nlf_gf3be_b.bytes[nlf_gf3be_b_i] := bv.bytes[2 - nlf_gf3be_b_i];
-      nlf_gf3be_b_i++;
-   }
-   nlf_gf3be_cmp_impl();
-   if (nlf_gf3be_unordered) { return true; }
-   if (nlf_gf3be_cmp != 0) { return true; }
-   return false;
+   return !(lhs == rhs);
 }
 
 bool operator<(gf3be lhs, gf3be rhs) {
@@ -582,70 +562,44 @@ bool operator<(gf3be lhs, gf3be rhs) {
 }
 
 bool operator>(gf3be lhs, gf3be rhs) {
-   nlf_gf3be_value_overlay av;
-   int nlf_gf3be_a_i;
-   av.value := lhs;
-   nlf_gf3be_a_i := 0;
-   while (nlf_gf3be_a_i < 3) {
-      nlf_gf3be_a.bytes[nlf_gf3be_a_i] := av.bytes[2 - nlf_gf3be_a_i];
-      nlf_gf3be_a_i++;
-   }
-   nlf_gf3be_value_overlay bv;
-   int nlf_gf3be_b_i;
-   bv.value := rhs;
-   nlf_gf3be_b_i := 0;
-   while (nlf_gf3be_b_i < 3) {
-      nlf_gf3be_b.bytes[nlf_gf3be_b_i] := bv.bytes[2 - nlf_gf3be_b_i];
-      nlf_gf3be_b_i++;
-   }
-   nlf_gf3be_cmp_impl();
-   if (nlf_gf3be_unordered) { return false; }
-   if (nlf_gf3be_cmp == 2) { return true; }
-   return false;
+   return rhs < lhs;
 }
 
 bool operator<=(gf3be lhs, gf3be rhs) {
-   nlf_gf3be_value_overlay av;
-   int nlf_gf3be_a_i;
-   av.value := lhs;
-   nlf_gf3be_a_i := 0;
-   while (nlf_gf3be_a_i < 3) {
-      nlf_gf3be_a.bytes[nlf_gf3be_a_i] := av.bytes[2 - nlf_gf3be_a_i];
-      nlf_gf3be_a_i++;
-   }
-   nlf_gf3be_value_overlay bv;
-   int nlf_gf3be_b_i;
-   bv.value := rhs;
-   nlf_gf3be_b_i := 0;
-   while (nlf_gf3be_b_i < 3) {
-      nlf_gf3be_b.bytes[nlf_gf3be_b_i] := bv.bytes[2 - nlf_gf3be_b_i];
-      nlf_gf3be_b_i++;
-   }
-   nlf_gf3be_cmp_impl();
-   if (nlf_gf3be_unordered) { return false; }
-   if (nlf_gf3be_cmp != 2) { return true; }
-   return false;
+   if (lhs < rhs) { return true; }
+   return lhs == rhs;
 }
 
 bool operator>=(gf3be lhs, gf3be rhs) {
+   if (rhs < lhs) { return true; }
+   return lhs == rhs;
+}
+
+bool operator{}(gf3be v) {
    nlf_gf3be_value_overlay av;
    int nlf_gf3be_a_i;
-   av.value := lhs;
+   av.value := v;
    nlf_gf3be_a_i := 0;
    while (nlf_gf3be_a_i < 3) {
       nlf_gf3be_a.bytes[nlf_gf3be_a_i] := av.bytes[2 - nlf_gf3be_a_i];
       nlf_gf3be_a_i++;
    }
-   nlf_gf3be_value_overlay bv;
-   int nlf_gf3be_b_i;
-   bv.value := rhs;
-   nlf_gf3be_b_i := 0;
-   while (nlf_gf3be_b_i < 3) {
-      nlf_gf3be_b.bytes[nlf_gf3be_b_i] := bv.bytes[2 - nlf_gf3be_b_i];
-      nlf_gf3be_b_i++;
-   }
-   nlf_gf3be_cmp_impl();
-   if (nlf_gf3be_unordered) { return false; }
-   if (nlf_gf3be_cmp != 1) { return true; }
+   if (nlf_gf3be_a.bits.exponent != 0`nlf_gf3be_u) { return true; }
+   if (nlf_gf3be_a.bits.mantissa != 0`nlf_gf3be_u) { return true; }
    return false;
 }
+
+gf3be operator++(ref gf3be v) {
+   gf3be one;
+   one := 1.0;
+   v := v + one;
+   return v;
+}
+
+gf3be operator--(ref gf3be v) {
+   gf3be one;
+   one := 1.0;
+   v := v - one;
+   return v;
+}
+

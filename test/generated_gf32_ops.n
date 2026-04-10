@@ -410,12 +410,18 @@ gf32 operator+(gf32 lhs, gf32 rhs) {
    return nlf_gf32_r.value;
 }
 
+gf32 operator+(gf32 v) {
+   return v;
+}
+
+gf32 operator-(gf32 v) {
+   nlf_gf32_a.value := v;
+   nlf_gf32_a.bits.sign ^= 1`nlf_gf32_u;
+   return nlf_gf32_a.value;
+}
+
 gf32 operator-(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_b.bits.sign ^= 1`nlf_gf32_u;
-   nlf_gf32_add_impl();
-   return nlf_gf32_r.value;
+   return lhs + (-rhs);
 }
 
 gf32 operator*(gf32 lhs, gf32 rhs) {
@@ -442,12 +448,7 @@ bool operator==(gf32 lhs, gf32 rhs) {
 }
 
 bool operator!=(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return true; }
-   if (nlf_gf32_cmp != 0) { return true; }
-   return false;
+   return !(lhs == rhs);
 }
 
 bool operator<(gf32 lhs, gf32 rhs) {
@@ -460,28 +461,37 @@ bool operator<(gf32 lhs, gf32 rhs) {
 }
 
 bool operator>(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return false; }
-   if (nlf_gf32_cmp == 2) { return true; }
-   return false;
+   return rhs < lhs;
 }
 
 bool operator<=(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return false; }
-   if (nlf_gf32_cmp != 2) { return true; }
-   return false;
+   if (lhs < rhs) { return true; }
+   return lhs == rhs;
 }
 
 bool operator>=(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_cmp_impl();
-   if (nlf_gf32_unordered) { return false; }
-   if (nlf_gf32_cmp != 1) { return true; }
+   if (rhs < lhs) { return true; }
+   return lhs == rhs;
+}
+
+bool operator{}(gf32 v) {
+   nlf_gf32_a.value := v;
+   if (nlf_gf32_a.bits.exponent != 0`nlf_gf32_u) { return true; }
+   if (nlf_gf32_a.bits.mantissa != 0`nlf_gf32_u) { return true; }
    return false;
 }
+
+gf32 operator++(ref gf32 v) {
+   gf32 one;
+   one := 1.0;
+   v := v + one;
+   return v;
+}
+
+gf32 operator--(ref gf32 v) {
+   gf32 one;
+   one := 1.0;
+   v := v - one;
+   return v;
+}
+

@@ -12,31 +12,15 @@ type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
 type longlong { $size:8 $endian:little };
-type gf32 { $size:4 $endian:little $float:ieee754 };
+type gf32 { $size:4 $endian:little $float:ieee754 $exactops };
 
 type nlf_gf32_u { $size:4 $unsigned $endian:little };
-struct nlf_gf32_bits {
-   nlf_gf32_u mantissa:23;
-   nlf_gf32_u exponent:8;
-   nlf_gf32_u sign:1;
-};
-union nlf_gf32_overlay {
-   gf32 value;
-   nlf_gf32_u raw;
-   char bytes[4];
-   nlf_gf32_bits bits;
-};
-extern nlf_gf32_overlay nlf_gf32_a;
-extern nlf_gf32_overlay nlf_gf32_b;
-extern nlf_gf32_overlay nlf_gf32_r;
 
-extern void nlf_gf32_add_impl(void);
+extern gf32 operator+(gf32 lhs, gf32 rhs);
+
+extern gf32 operator-(gf32 v);
 
 gf32 operator-(gf32 lhs, gf32 rhs) {
-   nlf_gf32_a.value := lhs;
-   nlf_gf32_b.value := rhs;
-   nlf_gf32_b.bits.sign ^= 1`nlf_gf32_u;
-   nlf_gf32_add_impl();
-   return nlf_gf32_r.value;
+   return lhs + (-rhs);
 }
 

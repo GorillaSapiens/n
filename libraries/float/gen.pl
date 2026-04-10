@@ -672,6 +672,27 @@ sub proc_decl_text {
 ";
 }
 
+sub operator_binary_decl_text {
+   my ($ret, $op) = @_;
+   return "extern $ret $op($typename lhs, $typename rhs);
+
+";
+}
+
+sub operator_unary_decl_text {
+   my ($ret, $op) = @_;
+   return "extern $ret $op($typename v);
+
+";
+}
+
+sub operator_incdec_decl_text {
+   my ($op) = @_;
+   return "extern $typename $op(ref $typename v);
+
+";
+}
+
 sub build_unit_text {
    my ($storage_prefix, $vars, $decls, $body) = @_;
    return comment_header()
@@ -1068,90 +1089,207 @@ sub div_impl_text {
 }
 
 sub operator_add_text {
-   my $s = "$typename operator+($typename lhs, $typename rhs) {\n";
+   my $s = "$typename operator+($typename lhs, $typename rhs) {
+";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $add_impl();\n";
+   $s .= "   $add_impl();
+";
    $s .= store_code($gr, 'rv');
-   $s .= "}\n\n";
+   $s .= "}
+
+";
+   return $s;
+}
+
+sub operator_pos_text {
+   my $s = "$typename operator+($typename v) {
+";
+   $s .= "   return v;
+";
+   $s .= "}
+
+";
+   return $s;
+}
+
+sub operator_neg_text {
+   my $s = "$typename operator-($typename v) {
+";
+   $s .= load_code($ga, 'v', 'av');
+   $s .= "   $ga.bits.sign ^= $ONE;
+";
+   $s .= store_code($ga, 'rv');
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_sub_text {
-   my $s = "$typename operator-($typename lhs, $typename rhs) {\n";
-   $s .= load_code($ga, 'lhs', 'av');
-   $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $gb.bits.sign ^= $ONE;\n   $add_impl();\n";
-   $s .= store_code($gr, 'rv');
-   $s .= "}\n\n";
+   my $s = "$typename operator-($typename lhs, $typename rhs) {
+";
+   $s .= "   return lhs + (-rhs);
+";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_mul_text {
-   my $s = "$typename operator*($typename lhs, $typename rhs) {\n";
+   my $s = "$typename operator*($typename lhs, $typename rhs) {
+";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $mul_impl();\n";
+   $s .= "   $mul_impl();
+";
    $s .= store_code($gr, 'rv');
-   $s .= "}\n\n";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_div_text {
-   my $s = "$typename operator/($typename lhs, $typename rhs) {\n";
+   my $s = "$typename operator/($typename lhs, $typename rhs) {
+";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $div_impl();\n";
+   $s .= "   $div_impl();
+";
    $s .= store_code($gr, 'rv');
-   $s .= "}\n\n";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_eq_text {
-   my $s = "bool operator==($typename lhs, $typename rhs) {\n";
+   my $s = "bool operator==($typename lhs, $typename rhs) {
+";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_EQ) { return true; }\n   return false;\n}\n\n";
+   $s .= "   $cmp_impl();
+   if ($gunordered) { return false; }
+   if ($gcmp == $CMP_EQ) { return true; }
+   return false;
+}
+
+";
    return $s;
 }
 
 sub operator_ne_text {
-   my $s = "bool operator!=($typename lhs, $typename rhs) {\n";
-   $s .= load_code($ga, 'lhs', 'av');
-   $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return true; }\n   if ($gcmp != $CMP_EQ) { return true; }\n   return false;\n}\n\n";
+   my $s = "bool operator!=($typename lhs, $typename rhs) {
+";
+   $s .= "   return !(lhs == rhs);
+";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_lt_text {
-   my $s = "bool operator<($typename lhs, $typename rhs) {\n";
+   my $s = "bool operator<($typename lhs, $typename rhs) {
+";
    $s .= load_code($ga, 'lhs', 'av');
    $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_LT) { return true; }\n   return false;\n}\n\n";
+   $s .= "   $cmp_impl();
+   if ($gunordered) { return false; }
+   if ($gcmp == $CMP_LT) { return true; }
+   return false;
+}
+
+";
    return $s;
 }
 
 sub operator_gt_text {
-   my $s = "bool operator>($typename lhs, $typename rhs) {\n";
-   $s .= load_code($ga, 'lhs', 'av');
-   $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp == $CMP_GT) { return true; }\n   return false;\n}\n\n";
+   my $s = "bool operator>($typename lhs, $typename rhs) {
+";
+   $s .= "   return rhs < lhs;
+";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_le_text {
-   my $s = "bool operator<=($typename lhs, $typename rhs) {\n";
-   $s .= load_code($ga, 'lhs', 'av');
-   $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp != $CMP_GT) { return true; }\n   return false;\n}\n\n";
+   my $s = "bool operator<=($typename lhs, $typename rhs) {
+";
+   $s .= "   if (lhs < rhs) { return true; }
+";
+   $s .= "   return lhs == rhs;
+";
+   $s .= "}
+
+";
    return $s;
 }
 
 sub operator_ge_text {
-   my $s = "bool operator>=($typename lhs, $typename rhs) {\n";
-   $s .= load_code($ga, 'lhs', 'av');
-   $s .= load_code($gb, 'rhs', 'bv');
-   $s .= "   $cmp_impl();\n   if ($gunordered) { return false; }\n   if ($gcmp != $CMP_LT) { return true; }\n   return false;\n}\n";
+   my $s = "bool operator>=($typename lhs, $typename rhs) {
+";
+   $s .= "   if (rhs < lhs) { return true; }
+";
+   $s .= "   return lhs == rhs;
+";
+   $s .= "}
+
+";
+   return $s;
+}
+
+sub operator_truth_text {
+   my $s = "bool operator{}($typename v) {
+";
+   $s .= load_code($ga, 'v', 'av');
+   $s .= "   if ($ga.bits.exponent != $ZERO) { return true; }
+";
+   $s .= "   if ($ga.bits.mantissa != $ZERO) { return true; }
+";
+   $s .= "   return false;
+";
+   $s .= "}
+
+";
+   return $s;
+}
+
+sub operator_inc_text {
+   my $s = "$typename operator++(ref $typename v) {
+";
+   $s .= "   $typename one;
+";
+   $s .= "   one := 1.0;
+";
+   $s .= "   v := v + one;
+";
+   $s .= "   return v;
+";
+   $s .= "}
+
+";
+   return $s;
+}
+
+sub operator_dec_text {
+   my $s = "$typename operator--(ref $typename v) {
+";
+   $s .= "   $typename one;
+";
+   $s .= "   one := 1.0;
+";
+   $s .= "   v := v - one;
+";
+   $s .= "   return v;
+";
+   $s .= "}
+
+";
    return $s;
 }
 
@@ -1168,6 +1306,8 @@ sub monolith_text {
       . mul_impl_text('')
       . div_impl_text('')
       . operator_add_text()
+      . operator_pos_text()
+      . operator_neg_text()
       . operator_sub_text()
       . operator_mul_text()
       . operator_div_text()
@@ -1176,7 +1316,10 @@ sub monolith_text {
       . operator_lt_text()
       . operator_gt_text()
       . operator_le_text()
-      . operator_ge_text();
+      . operator_ge_text()
+      . operator_truth_text()
+      . operator_inc_text()
+      . operator_dec_text();
 }
 
 sub ieee754_expbits_for_size {
@@ -1208,14 +1351,16 @@ sub decls_text {
    my $style = inferred_float_style();
    my $s = comment_header();
    if ($style) {
-      $s .= "type $typename { \$size:$size \$endian:$endian \$float:$style };\n\n";
+      $s .= "type $typename { \$size:$size \$endian:$endian \$float:$style \$exactops };\n\n";
    }
    else {
       $s .= "// note: could not infer a built-in \$float: style for expbits=$expbits; the generated declaration uses only size/endian\n";
-      $s .= "type $typename { \$size:$size \$endian:$endian };\n\n";
+      $s .= "type $typename { \$size:$size \$endian:$endian \$exactops };\n\n";
    }
    $s .= "extern $typename operator+($typename lhs, $typename rhs);\n";
+   $s .= "extern $typename operator+($typename v);\n";
    $s .= "extern $typename operator-($typename lhs, $typename rhs);\n";
+   $s .= "extern $typename operator-($typename v);\n";
    $s .= "extern $typename operator*($typename lhs, $typename rhs);\n";
    $s .= "extern $typename operator/($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator==($typename lhs, $typename rhs);\n";
@@ -1224,6 +1369,9 @@ sub decls_text {
    $s .= "extern bool operator>($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator<=($typename lhs, $typename rhs);\n";
    $s .= "extern bool operator>=($typename lhs, $typename rhs);\n";
+   $s .= "extern bool operator{}($typename v);\n";
+   $s .= "extern $typename operator++(ref $typename v);\n";
+   $s .= "extern $typename operator--(ref $typename v);\n";
    return $s;
 }
 
@@ -1239,11 +1387,11 @@ type long     { \$size:4 \$endian:little };
 type longlong { \$size:8 \$endian:little };
 PRELUDE
    if ($style) {
-      $s .= "type $typename { \$size:$size \$endian:$endian \$float:$style };
+      $s .= "type $typename { \$size:$size \$endian:$endian \$float:$style \$exactops };
 ";
    }
    else {
-      $s .= "type $typename { \$size:$size \$endian:$endian };
+      $s .= "type $typename { \$size:$size \$endian:$endian \$exactops };
 ";
    }
    $s .= "
@@ -1297,9 +1445,17 @@ my %build_units = (
       source_name => "${typename}_operator_add.n",
       source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($add_impl), operator_add_text()); },
    },
+   pos => {
+      source_name => "${typename}_operator_pos.n",
+      source_text => sub { return build_unit_text('extern ', {}, '', operator_pos_text()); },
+   },
+   neg => {
+      source_name => "${typename}_operator_neg.n",
+      source_text => sub { return build_unit_text('extern ', { ga => 1 }, '', operator_neg_text()); },
+   },
    sub => {
       source_name => "${typename}_operator_sub.n",
-      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gr => 1 }, proc_decl_text($add_impl), operator_sub_text()); },
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text($typename, 'operator+') . operator_unary_decl_text($typename, 'operator-'), operator_sub_text()); },
    },
    mul => {
       source_name => "${typename}_operator_mul.n",
@@ -1315,7 +1471,7 @@ my %build_units = (
    },
    ne => {
       source_name => "${typename}_operator_ne.n",
-      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_ne_text()); },
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text('bool', 'operator=='), operator_ne_text()); },
    },
    lt => {
       source_name => "${typename}_operator_lt.n",
@@ -1323,20 +1479,32 @@ my %build_units = (
    },
    gt => {
       source_name => "${typename}_operator_gt.n",
-      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_gt_text()); },
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text('bool', 'operator<'), operator_gt_text()); },
    },
    le => {
       source_name => "${typename}_operator_le.n",
-      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_le_text()); },
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text('bool', 'operator<') . operator_binary_decl_text('bool', 'operator=='), operator_le_text()); },
    },
    ge => {
       source_name => "${typename}_operator_ge.n",
-      source_text => sub { return build_unit_text('extern ', { ga => 1, gb => 1, gcmp => 1, gunordered => 1 }, proc_decl_text($cmp_impl), operator_ge_text()); },
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text('bool', 'operator<') . operator_binary_decl_text('bool', 'operator=='), operator_ge_text()); },
+   },
+   truth => {
+      source_name => "${typename}_operator_truth.n",
+      source_text => sub { return build_unit_text('extern ', { ga => 1 }, '', operator_truth_text()); },
+   },
+   inc => {
+      source_name => "${typename}_operator_inc.n",
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text($typename, 'operator+'), operator_inc_text()); },
+   },
+   dec => {
+      source_name => "${typename}_operator_dec.n",
+      source_text => sub { return build_unit_text('extern ', {}, operator_binary_decl_text($typename, 'operator-'), operator_dec_text()); },
    },
 );
 
 my @build_order = qw(
-   add sub mul div eq ne lt gt le ge
+   add pos neg sub mul div eq ne lt gt le ge truth inc dec
    add_impl cmp_impl mul_impl div_impl
    core
 );
@@ -1442,27 +1610,34 @@ sub build_mode {
          mul_impl => { ga => 1, gb => 1, gr => 1, gwide_p => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 },
          div_impl => { ga => 1, gb => 1, gr => 1, gexp_a => 1, gexp_b => 1, gsign_out => 1, gsig_a => 1, gsig_b => 1, gsig_out => 1 },
          add => { ga => 1, gb => 1, gr => 1 },
-         sub => { ga => 1, gb => 1, gr => 1 },
+         pos => {},
+         neg => { ga => 1 },
+         sub => {},
          mul => { ga => 1, gb => 1, gr => 1 },
          div => { ga => 1, gb => 1, gr => 1 },
          eq => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
-         ne => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         ne => {},
          lt => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
-         gt => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
-         le => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
-         ge => { ga => 1, gb => 1, gcmp => 1, gunordered => 1 },
+         gt => {},
+         le => {},
+         ge => {},
+         truth => { ga => 1 },
+         inc => {},
+         dec => {},
       );
       my %unit_decl = (
          add => proc_decl_text($add_impl),
-         sub => proc_decl_text($add_impl),
+         sub => operator_binary_decl_text($typename, 'operator+') . operator_unary_decl_text($typename, 'operator-'),
          mul => proc_decl_text($mul_impl),
          div => proc_decl_text($div_impl),
          eq => proc_decl_text($cmp_impl),
-         ne => proc_decl_text($cmp_impl),
+         ne => operator_binary_decl_text('bool', 'operator=='),
          lt => proc_decl_text($cmp_impl),
-         gt => proc_decl_text($cmp_impl),
-         le => proc_decl_text($cmp_impl),
-         ge => proc_decl_text($cmp_impl),
+         gt => operator_binary_decl_text('bool', 'operator<'),
+         le => operator_binary_decl_text('bool', 'operator<') . operator_binary_decl_text('bool', 'operator=='),
+         ge => operator_binary_decl_text('bool', 'operator<') . operator_binary_decl_text('bool', 'operator=='),
+         inc => operator_binary_decl_text($typename, 'operator+'),
+         dec => operator_binary_decl_text($typename, 'operator-'),
       );
       my %unit_body = (
          add_impl => add_impl_text(''),
@@ -1470,6 +1645,8 @@ sub build_mode {
          mul_impl => mul_impl_text(''),
          div_impl => div_impl_text(''),
          add => operator_add_text(),
+         pos => operator_pos_text(),
+         neg => operator_neg_text(),
          sub => operator_sub_text(),
          mul => operator_mul_text(),
          div => operator_div_text(),
@@ -1479,6 +1656,9 @@ sub build_mode {
          gt => operator_gt_text(),
          le => operator_le_text(),
          ge => operator_ge_text(),
+         truth => operator_truth_text(),
+         inc => operator_inc_text(),
+         dec => operator_dec_text(),
       );
       my @wide_units;
       push @wide_units, ["${typename}_core.n", comment_header() . standalone_prelude() . wide_runtime_block('', \%allvars, 0, [], undef)];

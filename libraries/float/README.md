@@ -1,6 +1,6 @@
 # float code generator
 
-`gen.pl` writes `.n` source for float-like operator overloads.
+`gen.pl` writes `.n` source for float-like exact operator overloads.
 
 Classic single-file mode still writes one monolithic implementation to stdout:
 
@@ -8,10 +8,12 @@ Classic single-file mode still writes one monolithic implementation to stdout:
 perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n
 ```
 
-That output expects a matching `type typename { ... };` declaration to already exist in the including translation unit. It emits:
+That output expects a matching `type typename { ... $exactops };` declaration to already exist in the including translation unit. It emits:
 
-- `typename operator+(typename, typename)`
-- `typename operator-(typename, typename)`
+- binary `typename operator+(typename, typename)`
+- unary `typename operator+(typename)`
+- binary `typename operator-(typename, typename)`
+- unary `typename operator-(typename)`
 - `typename operator*(typename, typename)`
 - `typename operator/(typename, typename)`
 - `bool operator==(typename, typename)`
@@ -20,6 +22,9 @@ That output expects a matching `type typename { ... };` declaration to already e
 - `bool operator>(typename, typename)`
 - `bool operator<=(typename, typename)`
 - `bool operator>=(typename, typename)`
+- `bool operator{}(typename)`
+- `typename operator++(ref typename)`
+- `typename operator--(ref typename)`
 
 Build mode writes archive-friendly generated sources and immediately compiles them:
 
@@ -29,14 +34,14 @@ perl libraries/float/gen.pl --build outdir typename little-or-big size-bytes exp
 
 That produces:
 
-- `outdir/<typename>_decls.n` ... type declaration plus `extern operator...` prototypes
+- `outdir/<typename>_decls.n` ... type declaration with `$exactops` plus `extern operator...` prototypes
 - `outdir/<typename>_operator_<name>.n` ... one self-contained source per operator member
 - matching `.s` and `.o65` files for each operator source
 - `outdir/<typename>.a65` ... archive containing all generated operator members
 
 The per-operator build-mode units are self-contained and mark their scratch globals and helper routines `static`, so multiple generated members can coexist inside one archive without symbol collisions.
 
-The generator now also tries to keep emitted code and member-local state tight: it uses direct typed assignments where the compiler already handles widening/narrowing correctly, and build-mode members only declare the scratch globals they actually use. In practice that trims both generated source size and linked archive-member size, especially for compare-only members and single-op archives on 64K targets.
+The generator now also tries to keep emitted code and member-local state tight: it uses direct typed assignments where the compiler already handles widening/narrowing correctly, build-mode members only declare the scratch globals they actually use, and several operators are emitted as thin derived wrappers instead of separate heavy implementations. In practice that trims both generated source size and linked archive-member size, especially for compare-only members and single-op archives on 64K targets.
 
 The implementation is pure `.n` code. It uses a union overlay plus a bitfield struct to expose sign, exponent, and mantissa, then performs manual `SExMy` arithmetic/comparison in generated helpers. It does not call `_faddN`, `_fsubN`, `_fmulN`, or `_fcmp` from `nlib`.
 
@@ -53,7 +58,7 @@ Current limits:
 Example:
 
 ```n
-type gf32 { $size:4 $endian:little $float:ieee754 };
+type gf32 { $size:4 $endian:little $float:ieee754 $exactops };
 include "generated_gf32_ops.n"
 
 union bits {

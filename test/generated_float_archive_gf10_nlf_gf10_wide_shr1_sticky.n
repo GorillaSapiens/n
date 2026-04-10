@@ -12,7 +12,7 @@ type *        { $size:2 $endian:little };
 type int      { $size:2 $endian:little };
 type long     { $size:4 $endian:little };
 type longlong { $size:8 $endian:little };
-type gf10 { $size:10 $endian:little $float:simple };
+type gf10 { $size:10 $endian:little $float:simple $exactops };
 
 type nlf_gf10_u8 { $size:1 $unsigned };
 type nlf_gf10_u { $size:10 $unsigned $endian:little };
