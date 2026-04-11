@@ -232,6 +232,7 @@ static const ASTNode *binary_integer_work_type(ASTNode *lhs_expr, ASTNode *rhs_e
 static const ASTNode *compound_integer_work_type(const ASTNode *lhs_type, const ASTNode *lhs_decl, ASTNode *rhs_expr, Context *ctx, ASTNode *origin);
 static void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *ctx);
 static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx);
+static void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode *idx_expr, Context *ctx, const char *op);
 static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx);
 static const ASTNode *flag_cast_target_declarator(ASTNode *expr, Context *ctx);
 static int flag_cast_target_size(ASTNode *expr, Context *ctx);
@@ -3183,6 +3184,11 @@ static const ASTNode *binary_integer_work_type(ASTNode *lhs_expr, ASTNode *rhs_e
    lhs_decl = expr_value_declarator(lhs_expr, ctx);
    rhs_decl = expr_value_declarator(rhs_expr, ctx);
 
+   if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) ||
+       (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+      return NULL;
+   }
+
    if (!lhs_type || !rhs_type || !type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type) ||
        type_has_exactops(lhs_type) || type_has_exactops(rhs_type) ||
        type_is_bool(lhs_type) || type_is_bool(rhs_type) ||
@@ -3252,6 +3258,11 @@ static void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *
    lhs_decl = expr_value_declarator(lhs_expr, ctx);
    rhs_decl = expr_value_declarator(rhs_expr, ctx);
 
+   if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) ||
+       (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+      return;
+   }
+
    if (!lhs_type || !rhs_type || !type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type) ||
        type_has_exactops(lhs_type) || type_has_exactops(rhs_type) ||
        type_is_bool(lhs_type) || type_is_bool(rhs_type) ||
@@ -3298,6 +3309,11 @@ static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *
    lhs_decl = expr_value_declarator(lhs_expr, ctx);
    rhs_decl = expr_value_declarator(rhs_expr, ctx);
 
+   if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) ||
+       (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+      return;
+   }
+
    if (!lhs_type || !rhs_type || !type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type) ||
        type_has_exactops(lhs_type) || type_has_exactops(rhs_type) ||
        type_is_bool(lhs_type) || type_is_bool(rhs_type) ||
@@ -3315,6 +3331,36 @@ static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *
       error_user("[%s:%d.%d] mixed-endian ordinary integer operator '%s' is not supported; use an explicit cast or matching endianness",
                  expr->file, expr->line, expr->column, expr->name);
    }
+}
+
+static void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode *idx_expr, Context *ctx, const char *op) {
+   const ASTNode *idx_type;
+   const ASTNode *ptr_type;
+   const char *idx_endian;
+   const char *ptr_endian;
+
+   origin = (ASTNode *) unwrap_expr_node(origin);
+   idx_expr = (ASTNode *) unwrap_expr_node(idx_expr);
+   if (!origin || !idx_expr || expr_is_literal_node(idx_expr)) {
+      return;
+   }
+
+   idx_type = expr_value_type(idx_expr, ctx);
+   ptr_type = required_typename_node("*");
+   if (!ptr_type || !idx_type || !type_is_promotable_integer(idx_type) ||
+       type_has_exactops(idx_type) || type_is_bool(idx_type) || type_is_float_like(idx_type) ||
+       type_size_from_node(idx_type) <= 1 || type_size_from_node(ptr_type) <= 1) {
+      return;
+   }
+
+   idx_endian = type_endian_name(idx_type);
+   ptr_endian = type_endian_name(ptr_type);
+   if (!idx_endian || !ptr_endian || !strcmp(idx_endian, ptr_endian)) {
+      return;
+   }
+
+   error_user("[%s:%d.%d] pointer operator '%s' does not support %s-endian index with %s-endian pointers; use an explicit cast",
+              origin->file, origin->line, origin->column, op ? op : "?", idx_endian, ptr_endian);
 }
 
 static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx) {
@@ -5305,6 +5351,7 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
       else {
          const ASTNode *idx_type = expr_value_type((ASTNode *) idx, ctx);
          int ptr_size = get_size("*");
+         require_no_mixed_endian_pointer_index_expr((ASTNode *) idx, (ASTNode *) idx, ctx, "[]");
          int saved_locals = ctx ? ctx->locals : 0;
          int idx_offset = saved_locals;
          int factor_offset = idx_offset + ptr_size;
@@ -7866,10 +7913,14 @@ unary_not_done:
       bool scaled_pointer_arith = lhs_decl && declarator_pointer_depth(lhs_decl) > 0;
 
       if (scaled_pointer_arith) {
+         require_no_mixed_endian_pointer_index_expr(expr, (ASTNode *) rhs, ctx, expr->name);
          work_size = declarator_storage_size(lhs_type, lhs_decl);
          if (work_size <= 0) {
             work_size = dst->size;
          }
+      }
+      else if (!strcmp(expr->name, "+") && rhs_decl && declarator_pointer_depth(rhs_decl) > 0) {
+         require_no_mixed_endian_pointer_index_expr(expr, expr->children[0], ctx, expr->name);
       }
       if (work_size <= 0) {
          work_size = dst->size;
@@ -11241,6 +11292,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       }
 
       if (scaled_pointer_assign) {
+         require_no_mixed_endian_pointer_index_expr(node, rhs, ctx, op);
          work_type = dst->type;
          rhs_slot_type = expr_is_literal_node(rhs) ? work_type : (rhs_type ? rhs_type : work_type);
          work_size = dst->size;

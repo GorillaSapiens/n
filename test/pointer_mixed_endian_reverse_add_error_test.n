@@ -1,0 +1,12 @@
+// n65cc
+// expectfail
+// expecterr: pointer operator '+' does not support big-endian index with little-endian pointers; use an explicit cast
+
+type void { $size:0 };
+type bool { $size:1 };
+type *    { $size:2 $unsigned $endian:little };
+type u2be { $size:2 $unsigned $endian:big };
+
+u2be *bad(u2be i, u2be *p) {
+   return i + p;
+}
