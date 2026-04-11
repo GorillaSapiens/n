@@ -210,31 +210,52 @@ The compiler uses this hook for:
 
 `!`, `&&`, and `||` are builtin operators and are **not** overloadable. They short-circuit and use `operator{}` under the hood.
 
-### Promotions
+### Literal typing, casts, and mixed integer expressions
 
-Builtin integer expressions use C-like widening rules:
+The intended language model for integer expressions is deliberately simpler than C. The current compiler still has older behavior in some places, but the target rule set is:
 
-- the smaller operand is widened to the larger width
-- signed values are sign-extended
-- unsigned values are zero-extended
-- when signed and unsigned are mixed, the compiler chooses the smallest declared **signed** integer type that can represent the full range of both operands
+- a literal used only with other literals is folded on the host at compile time, and the result remains a literal
+- a literal interacting with a typed nonliteral operand adopts that operand's type for the operation
+- a literal consumed by a typed sink such as assignment, return, or argument passing adopts the sink type at that boundary
+- two operands of the same type produce that same type
+- for ordinary non-`$exactops` integers of different widths, the narrower operand widens to the wider width first
+- widening sign-extends signed integers and zero-extends unsigned integers
+- narrowing truncates bitwise; there is no saturation or range check by default
+- if width adjustment still leaves one operand signed and the other unsigned, the expression is rejected unless the user writes an explicit cast
+- `$exactops` values do not participate in mixed-type promotions; an `$exactops` value may only interact with another type after an explicit cast
 
-This promotion logic is used for:
+This is intentionally less C-like than the usual arithmetic conversions. The compiler should widen by width automatically, but it should not guess signedness automatically.
 
-- ordinary binary arithmetic
-- comparisons
-- compound assignment, including overload-aware sugar for builtin compound operators
+### Cast forms
+
+The language uses two cast families:
+
+- backtick casts such as ``123`u2`` are literal-only and always happen immediately on the host
+- parenthesized casts such as `(u2)expr` are ordinary expression casts; when applied to a literal they may also fold on the host at compile time
+
+There are also two planned signedness-only shortcut casts:
+
+- ``($signed)expr``
+- ``($unsigned)expr``
+
+These are intended to preserve width while changing signedness, but only for already-typed ordinary fixed-width integers. They are never legal on literals, `$exactops` types, floats, or pointers.
 
 ### Shifts
 
-Shifts are more C-like than earlier versions:
+The intended shift rules are:
 
-- the result type is based on the promoted **left** operand
-- the right operand supplies the shift count
+- the result type is the type of the left operand after ordinary literal typing and any explicit casts have been applied
+- if the right operand is a literal, it adopts the type needed by the surrounding operation just like any other literal
+- a literal-only shift is folded on the host and remains a literal until consumed by a typed sink
 - signed right shift uses arithmetic shift
 - unsigned right shift uses logical shift
+- negative constant shift counts are hard errors
+- oversized constant shift counts are hard errors
+- runtime negative shift counts are not a supported language feature; codegen should not reinterpret `x << -n` as `x >> n`
 
-The compiler now diagnoses constant negative shift counts and constant oversized shift counts.
+### Current implementation note
+
+As of this snapshot, parts of the compiler still implement older C-like promotion behavior in some paths. The rules above are the intended language contract and should be treated as the direction for ongoing cleanup work.
 
 ### Endianness in expressions and assignment
 
