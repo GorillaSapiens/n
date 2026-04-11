@@ -8,10 +8,19 @@ use File::Temp qw(tempdir tempfile);
 use Cwd qw(abs_path getcwd);
 use Getopt::Long qw(GetOptions);
 use Text::ParseWords qw(shellwords);
+use Time::HiRes qw(sleep);
+
+$| = 1; # turns on autoflush
+binmode STDOUT, ':encoding(UTF-8)';
 
 my $FAIL = "\e[31mFAIL\e[0m";
 my $PASS = "\e[32mpass\e[0m";
-my $SKIP = "\e[33mskip\e[0m";
+my $CLEAR = "\e[K";
+
+my $GRAY = "\e[90m";
+my $NOCOLOR = "\e[0m";
+my $LINE = "\x{2501}";
+my $HALFLINE = "\x{2578}";
 
 my $compile_only = 0;
 my $e2e_only = 0;
@@ -777,6 +786,34 @@ sub discover_default_paths {
    return @paths;
 }
 
+sub progress {
+   my ($num, $den) = @_;
+   my $nubs = int($num * 30 / $den);
+   my $terms = 0;
+   my $ret = $GRAY;
+
+   while ($nubs >= 2) {
+      $ret .= $LINE;
+      $nubs -= 2;
+      $terms += 2;
+   }
+
+   if ($nubs) {
+      $ret .= $HALFLINE;
+      $nubs--;
+      $terms += 2;
+   }
+
+   while ($terms < 30) {
+      $ret .= " ";
+      $terms += 2;
+   }
+
+   $ret .= $NOCOLOR;
+
+   return $ret;
+}
+
 ensure_generated_float_archive_fixtures();
 
 my @requested_paths = @ARGV ? resolve_requested_paths(@ARGV) : discover_default_paths();
@@ -810,16 +847,19 @@ for my $case (@cases) {
       $result = run_generic_case($case);
    }
 
+   my $progress = progress($index, $total);
+
    if ($result->{ok}) {
       $passed++;
-      print sprintf("[%d/%d] [%s] %s\n", $index, $total, $PASS, $case->{name});
+      printf("\r[%s] [%*d/%d] [%s] %s%s", $progress, length($total), $index, $total, $PASS, $case->{name}, $CLEAR);
    }
    else {
       push @failures, { name => $case->{name}, message => $result->{message} };
       my $first = $result->{message};
       $first =~ s/\n.*//s;
-      print sprintf("[%d/%d] [%s] %s :: %s\n", $index, $total, $FAIL, $case->{name}, $first);
+      printf("\r[%s] [%*d/%d] [%s] %s :: %s\n", $progress, length($total), $index, $total, $FAIL, $case->{name}, $first);
    }
+   sleep 0.1;
 }
 
 print "\nSummary: $passed passed, " . scalar(@failures) . " failed, $total total\n";
