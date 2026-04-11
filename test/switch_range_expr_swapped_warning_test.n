@@ -1,9 +1,9 @@
 // n65cc -I .
 // expecterr: case range bounds were reversed; compiling as the inclusive range in ascending order
 // expectasmordered: lda #$02
-// expectasmordered: jsr _leNs
+// expectasmordered: jsr _leNsle
 // expectasmordered: lda #$05
-// expectasmordered: jsr _leNs
+// expectasmordered: jsr _leNsle
 // expectasmordered: bne @case_
 
 include "machine_6502.n"

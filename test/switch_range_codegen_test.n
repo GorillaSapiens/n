@@ -1,5 +1,5 @@
 // n65cc
-// expectasm: jsr _leNs
+// expectasm: jsr _leNsle
 // expectasm: bne @case_
 
 type void      { $size:0 };

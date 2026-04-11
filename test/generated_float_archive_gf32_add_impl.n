@@ -126,20 +126,20 @@ void nlf_gf32_add_impl(void) {
    }
    nlf_gf32_cmp := 0;
    if (nlf_gf32_cmp == 0) {
-      if ((((int)(nlf_gf32_a.bytes[3] & 255)) & 127) < (((int)(nlf_gf32_b.bytes[3] & 255)) & 127)) { nlf_gf32_cmp := 1; }
-      else { if ((((int)(nlf_gf32_a.bytes[3] & 255)) & 127) > (((int)(nlf_gf32_b.bytes[3] & 255)) & 127)) { nlf_gf32_cmp := 2; } }
+      if ((((((int)nlf_gf32_a.bytes[3]) & 255)) & 127) < (((((int)nlf_gf32_b.bytes[3]) & 255)) & 127)) { nlf_gf32_cmp := 1; }
+      else { if ((((((int)nlf_gf32_a.bytes[3]) & 255)) & 127) > (((((int)nlf_gf32_b.bytes[3]) & 255)) & 127)) { nlf_gf32_cmp := 2; } }
    }
    if (nlf_gf32_cmp == 0) {
-      if (((int)(nlf_gf32_a.bytes[2] & 255)) < ((int)(nlf_gf32_b.bytes[2] & 255))) { nlf_gf32_cmp := 1; }
-      else { if (((int)(nlf_gf32_a.bytes[2] & 255)) > ((int)(nlf_gf32_b.bytes[2] & 255))) { nlf_gf32_cmp := 2; } }
+      if (((((int)nlf_gf32_a.bytes[2]) & 255)) < ((((int)nlf_gf32_b.bytes[2]) & 255))) { nlf_gf32_cmp := 1; }
+      else { if (((((int)nlf_gf32_a.bytes[2]) & 255)) > ((((int)nlf_gf32_b.bytes[2]) & 255))) { nlf_gf32_cmp := 2; } }
    }
    if (nlf_gf32_cmp == 0) {
-      if (((int)(nlf_gf32_a.bytes[1] & 255)) < ((int)(nlf_gf32_b.bytes[1] & 255))) { nlf_gf32_cmp := 1; }
-      else { if (((int)(nlf_gf32_a.bytes[1] & 255)) > ((int)(nlf_gf32_b.bytes[1] & 255))) { nlf_gf32_cmp := 2; } }
+      if (((((int)nlf_gf32_a.bytes[1]) & 255)) < ((((int)nlf_gf32_b.bytes[1]) & 255))) { nlf_gf32_cmp := 1; }
+      else { if (((((int)nlf_gf32_a.bytes[1]) & 255)) > ((((int)nlf_gf32_b.bytes[1]) & 255))) { nlf_gf32_cmp := 2; } }
    }
    if (nlf_gf32_cmp == 0) {
-      if (((int)(nlf_gf32_a.bytes[0] & 255)) < ((int)(nlf_gf32_b.bytes[0] & 255))) { nlf_gf32_cmp := 1; }
-      else { if (((int)(nlf_gf32_a.bytes[0] & 255)) > ((int)(nlf_gf32_b.bytes[0] & 255))) { nlf_gf32_cmp := 2; } }
+      if (((((int)nlf_gf32_a.bytes[0]) & 255)) < ((((int)nlf_gf32_b.bytes[0]) & 255))) { nlf_gf32_cmp := 1; }
+      else { if (((((int)nlf_gf32_a.bytes[0]) & 255)) > ((((int)nlf_gf32_b.bytes[0]) & 255))) { nlf_gf32_cmp := 2; } }
    }
    if (nlf_gf32_cmp == 0) { nlf_gf32_r.raw := 0`nlf_gf32_u; return; }
    if (nlf_gf32_cmp == 1) {

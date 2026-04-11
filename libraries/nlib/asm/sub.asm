@@ -1,23 +1,21 @@
 ; sub.asm - Arbitrary-length and fixed-width subtraction routines (unsigned/signed)
 ;
-; Subtracts ptr1 from ptr0 and stores in ptr2, X bytes.
-; Result = ptr0 - ptr1 (little-endian)
+; Little-endian helpers use the *le suffix.
+; Big-endian helpers use the *be suffix.
 ;
 ; Inputs:
 ;   ptr0 - minuend
 ;   ptr1 - subtrahend
 ;   ptr2 - destination
-;   arg0 - byte count (in register X)
-; Assumes:
-;   ptr0, ptr1, ptr2 are 2-byte pointers in zero page
+;   arg0 - byte count for *N helpers
 ; Clobbers: A, X, Y, status flags
 
 .include "nlib.inc"
 
-.proc _subN
+.proc _subNle
     ldx arg0
-    ldy #0            ; Start at byte 0
-    sec               ; Set carry before SBC
+    ldy #0
+    sec
 @loop:
     lda (ptr0), y
     sbc (ptr1), y
@@ -28,11 +26,20 @@
     rts
 .endproc
 
-; Fixed-width versions
+.proc _subNbe
+    ldy arg0
+    dey
+    sec
+@loop:
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    bpl @loop
+    rts
+.endproc
 
-.proc _sub8
-    ; setup here is long, so the compiler just does it
-    ; and this is never used
+.proc _sub8le
     ldy #0
     sec
     lda (ptr0), y
@@ -41,28 +48,13 @@
     rts
 .endproc
 
-.proc _sub16
-    ; setup here is long, so the compiler just does it
-    ; and this is never used
-    ldy #0
-    sec
-    lda (ptr0), y
-    sbc (ptr1), y
-    sta (ptr2), y
-    iny
-    lda (ptr0), y
-    sbc (ptr1), y
-    sta (ptr2), y
-    rts
+.proc _sub8be
+    jmp _sub8le
 .endproc
 
-.proc _sub24
+.proc _sub16le
     ldy #0
     sec
-    lda (ptr0), y
-    sbc (ptr1), y
-    sta (ptr2), y
-    iny
     lda (ptr0), y
     sbc (ptr1), y
     sta (ptr2), y
@@ -73,7 +65,54 @@
     rts
 .endproc
 
-.proc _sub32
+.proc _sub16be
+    ldy #1
+    sec
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    rts
+.endproc
+
+.proc _sub24le
+    ldy #0
+    sec
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    iny
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    iny
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    rts
+.endproc
+
+.proc _sub24be
+    ldy #2
+    sec
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    rts
+.endproc
+
+.proc _sub32le
     ldy #0
     sec
     lda (ptr0), y
@@ -88,6 +127,27 @@
     sbc (ptr1), y
     sta (ptr2), y
     iny
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    rts
+.endproc
+
+.proc _sub32be
+    ldy #3
+    sec
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
+    lda (ptr0), y
+    sbc (ptr1), y
+    sta (ptr2), y
+    dey
     lda (ptr0), y
     sbc (ptr1), y
     sta (ptr2), y

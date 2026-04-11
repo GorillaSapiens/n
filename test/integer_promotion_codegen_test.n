@@ -1,17 +1,17 @@
 // n65cc
-// expectasm: .import _copysxN
-// expectasm: .import _copyzxN
+// expectasm: .import _copysxNle
+// expectasm: .import _copyzxNle
 // expectasmordered: lda #$02
 // expectasmordered: sta arg0
 // expectasmordered: lda #$04
 // expectasmordered: sta arg1
-// expectasmordered: jsr _copysxN
+// expectasmordered: jsr _copysxNle
 // expectasmordered: lda #$04
 // expectasmordered: sta arg0
 // expectasmordered: lda #$05
 // expectasmordered: sta arg1
-// expectasmordered: jsr _copyzxN
-// expectasm: jsr _ltNs
+// expectasmordered: jsr _copyzxNle
+// expectasm: jsr _ltNsle
 // forbidasm: and #$80
 
 type void      { $size:0 };

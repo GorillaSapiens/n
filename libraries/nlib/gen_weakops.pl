@@ -94,7 +94,7 @@ for my $t (@types) {
    my $cmp_lhs = $size;
    my $cmp_rhs = $size * 2;
    my @bin_same = (
-      ['+', 'addN'], ['-', 'subN'], ['&', 'bit_andN'], ['|', 'bit_orN'], ['^', 'bit_xorN']
+      ['+', 'addNle'], ['-', 'subNle'], ['&', 'bit_andN'], ['|', 'bit_orN'], ['^', 'bit_xorN']
    );
    for my $pair (@bin_same) {
       my ($op, $helper) = @$pair;
@@ -123,7 +123,7 @@ for my $t (@types) {
       emit_ptrp(2, sprintf('%02x', 0), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
-      print "    jsr _mulN\n";
+      print "    jsr _mulNle\n";
       emit_ptrp(0, sprintf('%02x', 0), $scratch);
       emit_ptr(1, sprintf('%02x', $ret), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
@@ -152,7 +152,7 @@ for my $t (@types) {
       emit_ptrp(3, sprintf('%02x', $rem), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
       print "    sta arg0\n";
-      print "    jsr _divN\n";
+      print "    jsr _divNle\n";
       emit_ptrp(0, sprintf('%02x', $want_rem ? $rem : $quo), $scratch);
       emit_ptr(1, sprintf('%02x', $ret), $scratch);
       print "    lda #\$" . sprintf('%02x', $size) . "\n";
@@ -164,7 +164,7 @@ for my $t (@types) {
       emit_rts();
       print ".endproc\n\n";
    }
-   for my $pair (['<<', 'lslN'], ['>>', $signed ? 'asrN' : 'lsrN']) {
+   for my $pair (['<<', 'lslNle'], ['>>', $signed ? 'asrNle' : 'lsrNle']) {
       my ($op, $helper) = @$pair;
       my $sym = sym($op, $name, $name);
       print ".weak $sym\n.proc $sym\n";
@@ -183,10 +183,10 @@ for my $t (@types) {
    }
    for my $pair (
       ['==', 'eqN', 0], ['!=', 'eqN', 1],
-      ['<',  $signed ? 'ltNs' : 'ltNu', 0],
-      ['<=', $signed ? 'leNs' : 'leNu', 0],
-      ['>',  $signed ? 'ltNs' : 'ltNu', 2],
-      ['>=', $signed ? 'leNs' : 'leNu', 2]
+      ['<',  $signed ? 'ltNsle' : 'ltNule', 0],
+      ['<=', $signed ? 'leNsle' : 'leNule', 0],
+      ['>',  $signed ? 'ltNsle' : 'ltNule', 2],
+      ['>=', $signed ? 'leNsle' : 'leNule', 2]
    ) {
       my ($op, $helper, $mode) = @$pair;
       my $sym = sym($op, $name, $name);
@@ -222,7 +222,7 @@ for my $t (@types) {
    emit_ptr(1, sprintf('%02x', $uret));
    print "    lda #\$" . sprintf('%02x', $size) . "\n";
    print "    sta arg0\n";
-   print "    jsr _comp2N\n";
+   print "    jsr _comp2Nle\n";
    emit_rts();
    print ".endproc\n\n";
 

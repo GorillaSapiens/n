@@ -231,6 +231,7 @@ static bool expr_is_literal_node(const ASTNode *expr);
 static const ASTNode *binary_integer_work_type(ASTNode *lhs_expr, ASTNode *rhs_expr, Context *ctx, ASTNode *origin);
 static const ASTNode *compound_integer_work_type(const ASTNode *lhs_type, const ASTNode *lhs_decl, ASTNode *rhs_expr, Context *ctx, ASTNode *origin);
 static void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *ctx);
+static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx);
 static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx);
 static const ASTNode *flag_cast_target_declarator(ASTNode *expr, Context *ctx);
 static int flag_cast_target_size(ASTNode *expr, Context *ctx);
@@ -2437,12 +2438,13 @@ static void emit_runtime_fill_ptr1(int count, unsigned char value) {
 static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
-   bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
+   bool is_signed = type_is_signed_integer(src_type);
 
-   if (dst_size <= 0 || src_size <= 0 || dst_size == src_size || src_big_endian != dst_big_endian || src_big_endian) {
+   if (dst_size <= 0 || src_size <= 0 || dst_size == src_size || src_big_endian != dst_big_endian) {
       return NULL;
    }
-   return is_signed ? "copysxN" : "copyzxN";
+   return is_signed ? (src_big_endian ? "copysxNbe" : "copysxNle")
+                    : (src_big_endian ? "copyzxNbe" : "copyzxNle");
 }
 
 static void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size) {
@@ -2486,7 +2488,7 @@ static void emit_sign_fill_from_masked_a(void) {
 static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
-   bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
+   bool is_signed = type_is_signed_integer(src_type);
    bool dst_direct;
    bool src_direct;
    int sign_src_mem;
@@ -2566,7 +2568,7 @@ static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNo
 static void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
-   bool is_signed = src_type && has_flag(type_name_from_node(src_type), "$signed");
+   bool is_signed = type_is_signed_integer(src_type);
    bool dst_direct;
    int sign_src_mem;
    const char *helper;
@@ -3028,6 +3030,30 @@ static bool expr_is_literal_node(const ASTNode *expr) {
    return false;
 }
 
+static bool ordinary_integer_endian_conflict(const ASTNode *lhs_type, const ASTNode *rhs_type) {
+   int lhs_size;
+   int rhs_size;
+   const char *lhs_endian;
+   const char *rhs_endian;
+
+   if (!lhs_type || !rhs_type || !type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type) ||
+       type_has_exactops(lhs_type) || type_has_exactops(rhs_type) ||
+       type_is_bool(lhs_type) || type_is_bool(rhs_type) ||
+       type_is_float_like(lhs_type) || type_is_float_like(rhs_type)) {
+      return false;
+   }
+
+   lhs_size = type_size_from_node(lhs_type);
+   rhs_size = type_size_from_node(rhs_type);
+   if (lhs_size <= 1 || rhs_size <= 1) {
+      return false;
+   }
+
+   lhs_endian = type_endian_name(lhs_type);
+   rhs_endian = type_endian_name(rhs_type);
+   return lhs_endian && rhs_endian && strcmp(lhs_endian, rhs_endian);
+}
+
 static const ASTNode *select_integer_type_by_shape(int required_size, bool require_signed,
                                                    const char *preferred_endian,
                                                    const ASTNode *prefer_a,
@@ -3111,7 +3137,7 @@ static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, 
    if (lhs_size <= 0 || rhs_size <= 0) {
       return NULL;
    }
-   if (lhs_signed != rhs_signed) {
+   if (lhs_signed != rhs_signed || ordinary_integer_endian_conflict(lhs_type, rhs_type)) {
       return NULL;
    }
 
@@ -3120,10 +3146,7 @@ static const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, 
    {
       const char *lhs_endian = type_endian_name(lhs_type);
       const char *rhs_endian = type_endian_name(rhs_type);
-      if (lhs_endian && rhs_endian && strcmp(lhs_endian, rhs_endian)) {
-         preferred_endian = "little";
-      }
-      else if (lhs_size >= rhs_size) {
+      if (lhs_size >= rhs_size) {
          preferred_endian = lhs_endian;
       }
       else {
@@ -3244,6 +3267,52 @@ static void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *
 
    if (type_is_signed_integer(lhs_type) != type_is_signed_integer(rhs_type)) {
       error_user("[%s:%d.%d] mixed signed/unsigned ordinary integer operator '%s' requires an explicit cast",
+                 expr->file, expr->line, expr->column, expr->name);
+   }
+}
+
+static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx) {
+   const ASTNode *lhs_type;
+   const ASTNode *rhs_type;
+   const ASTNode *lhs_decl;
+   const ASTNode *rhs_decl;
+   ASTNode *lhs_expr;
+   ASTNode *rhs_expr;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || expr->count != 2) {
+      return;
+   }
+   if (strcmp(expr->name, "+") && strcmp(expr->name, "-") && strcmp(expr->name, "*") && strcmp(expr->name, "/") &&
+       strcmp(expr->name, "%") && strcmp(expr->name, "&") && strcmp(expr->name, "|") && strcmp(expr->name, "^") &&
+       strcmp(expr->name, "<<") && strcmp(expr->name, ">>") &&
+       strcmp(expr->name, "==") && strcmp(expr->name, "!=") && strcmp(expr->name, "<") && strcmp(expr->name, ">") &&
+       strcmp(expr->name, "<=") && strcmp(expr->name, ">=")) {
+      return;
+   }
+
+   lhs_expr = (ASTNode *) unwrap_expr_node(expr->children[0]);
+   rhs_expr = (ASTNode *) unwrap_expr_node(expr->children[1]);
+   lhs_type = expr_value_type(lhs_expr, ctx);
+   rhs_type = expr_value_type(rhs_expr, ctx);
+   lhs_decl = expr_value_declarator(lhs_expr, ctx);
+   rhs_decl = expr_value_declarator(rhs_expr, ctx);
+
+   if (!lhs_type || !rhs_type || !type_is_promotable_integer(lhs_type) || !type_is_promotable_integer(rhs_type) ||
+       type_has_exactops(lhs_type) || type_has_exactops(rhs_type) ||
+       type_is_bool(lhs_type) || type_is_bool(rhs_type) ||
+       type_is_float_like(lhs_type) || type_is_float_like(rhs_type)) {
+      return;
+   }
+
+   if ((expr_is_literal_node(lhs_expr) && !expr_is_literal_node(rhs_expr)) ||
+       (expr_is_literal_node(rhs_expr) && !expr_is_literal_node(lhs_expr)) ||
+       same_named_value_type(lhs_type, lhs_decl, rhs_type, rhs_decl)) {
+      return;
+   }
+
+   if (ordinary_integer_endian_conflict(lhs_type, rhs_type)) {
+      error_user("[%s:%d.%d] mixed-endian ordinary integer operator '%s' is not supported; use an explicit cast or matching endianness",
                  expr->file, expr->line, expr->column, expr->name);
    }
 }
@@ -5072,15 +5141,22 @@ static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_of
    return true;
 }
 
-static void emit_load_lowbyte_fp_to_arg1(int src_offset) {
-   bool direct = src_offset >= 0 && src_offset + 1 <= 256;
+static void emit_load_count_lowbyte_fp_to_arg1(int src_offset, const ASTNode *src_type, int src_size) {
+   bool direct;
+   int mem_index;
+
+   if (src_size <= 0) {
+      src_size = 1;
+   }
+   mem_index = endian_mem_index_for_significance(src_size, type_is_big_endian(src_type), 0);
+   direct = src_offset >= 0 && src_offset + src_size <= 256;
    if (!direct) {
       emit_prepare_fp_ptr(0, src_offset);
-      emit(&es_code, "    ldy #0\n");
+      emit(&es_code, "    ldy #%d\n", mem_index);
       emit(&es_code, "    lda (ptr0),y\n");
    }
    else {
-      emit(&es_code, "    ldy #%d\n", src_offset);
+      emit(&es_code, "    ldy #%d\n", src_offset + mem_index);
       emit(&es_code, "    lda (fp),y\n");
    }
    emit(&es_code, "    sta arg1\n");
@@ -5105,21 +5181,66 @@ static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, 
 }
 
 static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out) {
+   bool big_endian = type_is_big_endian(type);
+
    if (is_generic_out) {
       *is_generic_out = false;
    }
-   if (size < 3 || !type || has_flag(type_name_from_node(type), "$endian:big")) {
+   if (size < 3 || !type) {
       return NULL;
    }
    switch (size) {
-      case 3: return subtract ? "sub24" : "add24";
-      case 4: return subtract ? "sub32" : "add32";
+      case 3: return subtract ? (big_endian ? "sub24be" : "sub24le") : (big_endian ? "add24be" : "add24le");
+      case 4: return subtract ? (big_endian ? "sub32be" : "sub32le") : (big_endian ? "add32be" : "add32le");
       default:
          if (is_generic_out) {
             *is_generic_out = true;
          }
-         return subtract ? "subN" : "addN";
+         return subtract ? (big_endian ? "subNbe" : "subNle") : (big_endian ? "addNbe" : "addNle");
    }
+}
+
+static const char *int_mul_helper_name(const ASTNode *type) {
+   return type_is_big_endian(type) ? "mulNbe" : "mulNle";
+}
+
+static int int_mul_result_offset(const ASTNode *type, int product_offset, int size) {
+   return type_is_big_endian(type) ? (product_offset + size) : product_offset;
+}
+
+static const char *int_div_helper_name(const ASTNode *type) {
+   return type_is_big_endian(type) ? "divNbe" : "divNle";
+}
+
+static const char *int_shift_helper_name(const ASTNode *type, bool left_shift) {
+   if (left_shift) {
+      return type_is_big_endian(type) ? "lslNbe" : "lslNle";
+   }
+   return type_is_signed_integer(type)
+      ? (type_is_big_endian(type) ? "asrNbe" : "asrNle")
+      : (type_is_big_endian(type) ? "lsrNbe" : "lsrNle");
+}
+
+static const char *int_comp2_helper_name(const ASTNode *type) {
+   return type_is_big_endian(type) ? "comp2Nbe" : "comp2Nle";
+}
+
+static const char *int_compare_helper_name(const ASTNode *type, const char *op) {
+   bool big_endian = type_is_big_endian(type);
+   bool is_signed = type_is_signed_integer(type);
+
+   if (!strcmp(op, "==") || !strcmp(op, "!=")) {
+      return "eqN";
+   }
+   if (!strcmp(op, "<") || !strcmp(op, ">")) {
+      return is_signed ? (big_endian ? "ltNsbe" : "ltNsle")
+                       : (big_endian ? "ltNube" : "ltNule");
+   }
+   if (!strcmp(op, "<=") || !strcmp(op, ">=")) {
+      return is_signed ? (big_endian ? "leNsbe" : "leNsle")
+                       : (big_endian ? "leNube" : "leNule");
+   }
+   return NULL;
 }
 
 static void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size, int expbits) {
@@ -5145,10 +5266,11 @@ static void emit_runtime_float_compare(int lhs_offset, int rhs_offset, int size,
    emit(&es_code, "    jsr _fcmp\n");
 }
 
-static void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset, int size) {
+static void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset,
+                                  const ASTNode *count_type, int count_size, int size) {
    emit_prepare_fp_ptr(0, value_offset);
    emit_prepare_fp_ptr(1, scratch_offset);
-   emit_load_lowbyte_fp_to_arg1(count_offset);
+   emit_load_count_lowbyte_fp_to_arg1(count_offset, count_type, count_size);
    emit(&es_code, "    lda #$%02x\n", size & 0xff);
    emit(&es_code, "    sta arg0\n");
    remember_runtime_import(helper);
@@ -5232,8 +5354,8 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
             }
             emit_store_immediate_to_fp(factor_offset, factor_bytes, ptr_size);
             free(factor_bytes);
-            emit_runtime_binary_fp_fp("mulN", scaled_offset, idx_offset, factor_offset, ptr_size);
-            emit_add_fp_to_ptr(0, scaled_offset, ptr_size);
+            emit_runtime_binary_fp_fp(int_mul_helper_name(idx_type ? idx_type : required_typename_node("int")), scaled_offset, idx_offset, factor_offset, ptr_size);
+            emit_add_fp_to_ptr(0, int_mul_result_offset(idx_type ? idx_type : required_typename_node("int"), scaled_offset, ptr_size), ptr_size);
          }
          else {
             emit_add_fp_to_ptr(0, idx_offset, ptr_size);
@@ -7511,6 +7633,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
 
    {
       require_no_mixed_signed_integer_binary_expr(expr, ctx);
+      require_no_mixed_endian_integer_binary_expr(expr, ctx);
       require_no_mixed_exactops_operator_expr(expr, ctx);
       const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
       if (ofn) {
@@ -7591,22 +7714,19 @@ unary_not_done:
    }
 
    if (expr->count == 1 && !strcmp(expr->name, "-")) {
+      const ASTNode *neg_type = expr_value_type(expr, ctx);
       if (!compile_expr_to_slot(expr->children[0], ctx, dst)) {
          return false;
       }
-      for (int i = 0; i < dst->size; i++) {
-         emit(&es_code, "    ldy #%d\n", dst->offset + i);
-         emit(&es_code, "    lda (fp),y\n");
-         emit(&es_code, "    eor #$ff\n");
-         emit(&es_code, "    sta (fp),y\n");
+      if (!neg_type) {
+         neg_type = dst->type;
       }
-      emit(&es_code, "    clc\n");
-      for (int i = 0; i < dst->size; i++) {
-         emit(&es_code, "    ldy #%d\n", dst->offset + i);
-         emit(&es_code, "    lda (fp),y\n");
-         emit(&es_code, "    adc #%d\n", i == 0 ? 1 : 0);
-         emit(&es_code, "    sta (fp),y\n");
-      }
+      emit_prepare_fp_ptr(0, dst->offset);
+      emit_prepare_fp_ptr(1, dst->offset);
+      emit(&es_code, "    lda #$%02x\n", dst->size & 0xff);
+      emit(&es_code, "    sta arg0\n");
+      remember_runtime_import(int_comp2_helper_name(neg_type));
+      emit(&es_code, "    jsr _%s\n", int_comp2_helper_name(neg_type));
       return true;
    }
 
@@ -7819,8 +7939,8 @@ unary_not_done:
          emit_prepare_fp_ptr(3, rhs_off);
          emit(&es_code, "    lda #$%02x\n", ptr_size & 0xff);
          emit(&es_code, "    sta arg0\n");
-         remember_runtime_import("divN");
-         emit(&es_code, "    jsr _divN\n");
+         remember_runtime_import(int_div_helper_name(lhs_type));
+         emit(&es_code, "    jsr _%s\n", int_div_helper_name(lhs_type));
          emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, quo_off, ptr_size, dst->type ? dst->type : lhs_type);
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
@@ -7884,7 +8004,8 @@ unary_not_done:
             }
             emit_store_immediate_to_fp(factor_offset, factor_bytes, work_size);
             free(factor_bytes);
-            emit_runtime_binary_fp_fp("mulN", scaled_offset, rhs_offset, factor_offset, work_size);
+            emit_runtime_binary_fp_fp(int_mul_helper_name(factor_type ? factor_type : work_type), scaled_offset, rhs_offset, factor_offset, work_size);
+            value_offset = int_mul_result_offset(factor_type ? factor_type : work_type, scaled_offset, work_size);
          }
 
          if (work_type && type_is_float_like(work_type)) {
@@ -7981,8 +8102,8 @@ unary_not_done:
          ctx->locals = saved_locals;
       }
 
-      helper = !strcmp(op, "<<") ? "lslN" : (op_type && has_flag(type_name_from_node(op_type), "$signed") ? "asrN" : "lsrN");
-      emit_runtime_shift_fp(helper, lhs_offset, aux_offset, rhs_offset, lhs_size);
+      helper = int_shift_helper_name(op_type, !strcmp(op, "<<"));
+      emit_runtime_shift_fp(helper, lhs_offset, aux_offset, rhs_offset, rhs_type, rhs_size, lhs_size);
 
       emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, aux_offset, lhs_size, op_type);
       remember_runtime_import("popN");
@@ -8077,9 +8198,9 @@ unary_not_done:
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_offset, rhs_offset, op_size, expbits);
          }
          else {
-            emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_offset, rhs_offset, op_size);
+            emit_runtime_binary_fp_fp(int_mul_helper_name(op_type), aux_offset, lhs_offset, rhs_offset, op_size);
          }
-         emit_copy_fp_to_fp(lhs_offset, aux_offset, op_size);
+         emit_copy_fp_to_fp(lhs_offset, int_mul_result_offset(op_type, aux_offset, op_size), op_size);
       }
       else if (!strcmp(op, "/") || !strcmp(op, "%")) {
          if (!strcmp(op, "/") && op_type && type_is_float_like(op_type)) {
@@ -8106,8 +8227,8 @@ unary_not_done:
             emit_prepare_fp_ptr(3, rem_offset);
             emit(&es_code, "    lda #$%02x\n", op_size & 0xff);
             emit(&es_code, "    sta arg0\n");
-            remember_runtime_import("divN");
-            emit(&es_code, "    jsr _divN\n");
+            remember_runtime_import(int_div_helper_name(op_type));
+            emit(&es_code, "    jsr _%s\n", int_div_helper_name(op_type));
             emit_copy_fp_to_fp(lhs_offset, !strcmp(op, "/") ? aux_offset : rem_offset, op_size);
          }
       }
@@ -8617,6 +8738,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
 
    {
       require_no_mixed_signed_integer_binary_expr(expr, ctx);
+      require_no_mixed_endian_integer_binary_expr(expr, ctx);
       require_no_mixed_exactops_operator_expr(expr, ctx);
       const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
       if (ofn) {
@@ -8696,7 +8818,6 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       ContextEntry rhs;
       const char *helper = NULL;
       bool invert = false;
-      bool is_signed;
       bool is_float_compare;
       int expbits = -1;
 
@@ -8730,7 +8851,6 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
       int saved_locals = ctx ? ctx->locals : 0;
       lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = size };
       rhs = (ContextEntry){ .name = "$rhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals + size, .size = size };
-      is_signed = type_is_signed_integer(type);
       is_float_compare = type_is_float_like(type);
       if (is_float_compare) {
          expbits = type_float_expbits(type);
@@ -8803,17 +8923,17 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
          invert = true;
       }
       else if (!strcmp(expr->name, "<")) {
-         helper = is_signed ? "ltNs" : "ltNu";
+         helper = int_compare_helper_name(type, expr->name);
       }
       else if (!strcmp(expr->name, ">")) {
-         helper = is_signed ? "ltNs" : "ltNu";
+         helper = int_compare_helper_name(type, expr->name);
          ContextEntry t = lhs; lhs = rhs; rhs = t;
       }
       else if (!strcmp(expr->name, "<=")) {
-         helper = is_signed ? "leNs" : "leNu";
+         helper = int_compare_helper_name(type, expr->name);
       }
       else if (!strcmp(expr->name, ">=")) {
-         helper = is_signed ? "leNs" : "leNu";
+         helper = int_compare_helper_name(type, expr->name);
          ContextEntry t = lhs; lhs = rhs; rhs = t;
       }
 
@@ -9260,7 +9380,7 @@ static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out) {
    target_is_pointer = (target_decl && declarator_pointer_depth(target_decl) > 0) ||
       !strcmp(type_name_from_node(target_type), "*");
    target_is_float = type_is_float_like(target_type);
-   target_is_signed = has_flag(type_name_from_node(target_type), "$signed");
+   target_is_signed = type_is_signed_integer(target_type);
 
    if (target_is_float) {
       if (inner.kind == INIT_CONST_FLOAT) {
@@ -10605,7 +10725,8 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
             ASTNode *ordered_low = low;
             ASTNode *ordered_high = high;
             const char *skip_label = next_label("case_skip");
-            const char *le_helper = is_signed ? "leNs" : "leNu";
+            const char *le_helper = is_signed ? (type_is_big_endian(type) ? "leNsbe" : "leNsle")
+                                               : (type_is_big_endian(type) ? "leNube" : "leNule");
 
             if (!skip_label) {
                warning("[%s:%d.%d] switch case label generation failed", section->file, section->line, section->column);
@@ -11114,6 +11235,11 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       ContextEntry rhs_tmp;
       const char *helper = NULL;
 
+      if (dst->type && rhs_type && !expr_is_literal_node(rhs) && ordinary_integer_endian_conflict(dst->type, rhs_type)) {
+         error_user("[%s:%d.%d] mixed-endian ordinary integer operator '%c' is not supported; use an explicit cast or matching endianness",
+                    node->file, node->line, node->column, op ? op[0] : '?');
+      }
+
       if (scaled_pointer_assign) {
          work_type = dst->type;
          rhs_slot_type = expr_is_literal_node(rhs) ? work_type : (rhs_type ? rhs_type : work_type);
@@ -11136,6 +11262,10 @@ static void compile_expr(ASTNode *node, Context *ctx) {
              !type_is_float_like(dst->type) && !type_is_float_like(rhs_type) &&
              !expr_is_literal_node(rhs) && type_is_signed_integer(dst->type) != type_is_signed_integer(rhs_type)) {
             error_user("[%s:%d.%d] mixed signed/unsigned ordinary integer operator '%c' requires an explicit cast",
+                       node->file, node->line, node->column, op ? op[0] : '?');
+         }
+         if (dst->type && rhs_type && !expr_is_literal_node(rhs) && ordinary_integer_endian_conflict(dst->type, rhs_type)) {
+            error_user("[%s:%d.%d] mixed-endian ordinary integer operator '%c' is not supported; use an explicit cast or matching endianness",
                        node->file, node->line, node->column, op ? op[0] : '?');
          }
          work_type = compound_integer_work_type(dst->type, dst->declarator, rhs, ctx, node);
@@ -11259,7 +11389,8 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          }
          emit_store_immediate_to_fp(factor_offset, factor_bytes, work_size);
          free(factor_bytes);
-         emit_runtime_binary_fp_fp("mulN", scaled_rhs_offset, rhs_tmp_offset, factor_offset, work_size);
+         emit_runtime_binary_fp_fp(int_mul_helper_name(factor_type ? factor_type : work_type), scaled_rhs_offset, rhs_tmp_offset, factor_offset, work_size);
+         rhs_value_offset = int_mul_result_offset(factor_type ? factor_type : work_type, scaled_rhs_offset, work_size);
       }
 
       if ((!strcmp(op, "+=") || !strcmp(op, "-=")) && work_type && type_is_float_like(work_type)) {
@@ -11303,9 +11434,9 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit_runtime_float_binary_fp_fp("fmulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size, expbits);
          }
          else {
-            emit_runtime_binary_fp_fp("mulN", aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size);
+            emit_runtime_binary_fp_fp(int_mul_helper_name(work_type), aux_offset, lhs_tmp_offset, rhs_tmp_offset, work_size);
          }
-         emit_copy_fp_to_fp(lhs_tmp_offset, aux_offset, work_size);
+         emit_copy_fp_to_fp(lhs_tmp_offset, int_mul_result_offset(work_type, aux_offset, work_size), work_size);
       }
       else if (!strcmp(op, "/=") || !strcmp(op, "%=")) {
          if (!strcmp(op, "/=") && work_type && type_is_float_like(work_type)) {
@@ -11330,14 +11461,14 @@ static void compile_expr(ASTNode *node, Context *ctx) {
             emit_prepare_fp_ptr(3, rem_offset);
             emit(&es_code, "    lda #$%02x\n", work_size & 0xff);
             emit(&es_code, "    sta arg0\n");
-            remember_runtime_import("divN");
-            emit(&es_code, "    jsr _divN\n");
+            remember_runtime_import(int_div_helper_name(work_type));
+            emit(&es_code, "    jsr _%s\n", int_div_helper_name(work_type));
             emit_copy_fp_to_fp(lhs_tmp_offset, !strcmp(op, "/=") ? quo_offset : rem_offset, work_size);
          }
       }
       else if (!strcmp(op, "<<=") || !strcmp(op, ">>=")) {
-         helper = !strcmp(op, "<<=") ? "lslN" : (work_type && has_flag(type_name_from_node(work_type), "$signed") ? "asrN" : "lsrN");
-         emit_runtime_shift_fp(helper, lhs_tmp_offset, aux_offset, rhs_tmp_offset, work_size);
+         helper = int_shift_helper_name(work_type, !strcmp(op, "<<="));
+         emit_runtime_shift_fp(helper, lhs_tmp_offset, aux_offset, rhs_tmp_offset, rhs_slot_type, rhs_work_size, work_size);
          emit_copy_fp_to_fp(lhs_tmp_offset, aux_offset, work_size);
       }
       else {
@@ -11672,7 +11803,7 @@ static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_val
 
    bits = size * 8;
    is_unsigned = has_flag(type_name_from_node(node), "$unsigned");
-   is_signed = has_flag(type_name_from_node(node), "$signed");
+   is_signed = type_is_signed_integer(node);
 
    if (bits >= 64) {
       signed_max = LLONG_MAX;

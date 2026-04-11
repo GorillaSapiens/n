@@ -12,10 +12,6 @@ s2le assignmix(s2be a) {
    return b;
 }
 
-s2le addmix(s2be a, s2le b) {
-   return a + b;
-}
-
-bool cmpmix(s2be a, s2le b) {
-   return a < b;
+s2le castmix(s2be a) {
+   return (s2le)a;
 }

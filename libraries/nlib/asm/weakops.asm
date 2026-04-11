@@ -14,7 +14,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -31,7 +31,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -102,7 +102,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -137,7 +137,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -172,7 +172,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -204,7 +204,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -224,7 +224,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -281,7 +281,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -301,7 +301,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -321,7 +321,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -341,7 +341,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -361,7 +361,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -392,7 +392,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -409,7 +409,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -480,7 +480,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -515,7 +515,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -550,7 +550,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -582,7 +582,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -602,7 +602,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -659,7 +659,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -679,7 +679,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -699,7 +699,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -719,7 +719,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -739,7 +739,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -770,7 +770,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -787,7 +787,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -858,7 +858,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -893,7 +893,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -928,7 +928,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -960,7 +960,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -980,7 +980,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -1037,7 +1037,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1057,7 +1057,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1077,7 +1077,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1097,7 +1097,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -1117,7 +1117,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -1148,7 +1148,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -1165,7 +1165,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -1236,7 +1236,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -1271,7 +1271,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -1306,7 +1306,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$01
     sta arg0
     jsr _sp2ptr0m
@@ -1338,7 +1338,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -1358,7 +1358,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -1415,7 +1415,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1435,7 +1435,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1455,7 +1455,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1475,7 +1475,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1495,7 +1495,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -1526,7 +1526,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -1543,7 +1543,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -1614,7 +1614,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -1649,7 +1649,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -1684,7 +1684,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$01
     sta arg0
     jsr _sp2ptr0m
@@ -1716,7 +1716,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -1736,7 +1736,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -1793,7 +1793,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1813,7 +1813,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1833,7 +1833,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1853,7 +1853,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -1873,7 +1873,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -1904,7 +1904,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -1921,7 +1921,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -1992,7 +1992,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -2027,7 +2027,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -2062,7 +2062,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$01
     sta arg0
     jsr _sp2ptr0m
@@ -2094,7 +2094,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -2114,7 +2114,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -2171,7 +2171,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2191,7 +2191,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2211,7 +2211,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2231,7 +2231,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2251,7 +2251,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -2282,7 +2282,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -2299,7 +2299,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -2370,7 +2370,7 @@
     jsr _sp2ptr2m
     lda #$01
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -2405,7 +2405,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -2440,7 +2440,7 @@
     jsr _sp2ptr3m
     lda #$01
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$01
     sta arg0
     jsr _sp2ptr0m
@@ -2472,7 +2472,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -2492,7 +2492,7 @@
     sta arg1
     lda #$01
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -2549,7 +2549,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2569,7 +2569,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2589,7 +2589,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2609,7 +2609,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$03
     sta arg0
     jsr _sp2ptr2m
@@ -2629,7 +2629,7 @@
     jsr _sp2ptr1m
     lda #$01
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -2660,7 +2660,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -2677,7 +2677,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -2748,7 +2748,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -2783,7 +2783,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -2818,7 +2818,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -2850,7 +2850,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -2870,7 +2870,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -2927,7 +2927,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -2947,7 +2947,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -2967,7 +2967,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -2987,7 +2987,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -3007,7 +3007,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -3038,7 +3038,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -3055,7 +3055,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -3126,7 +3126,7 @@
     jsr _sp2ptr2m
     lda #$02
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -3161,7 +3161,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -3196,7 +3196,7 @@
     jsr _sp2ptr3m
     lda #$02
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$02
     sta arg0
     jsr _sp2ptr0m
@@ -3228,7 +3228,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -3248,7 +3248,7 @@
     sta arg1
     lda #$02
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -3305,7 +3305,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -3325,7 +3325,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -3345,7 +3345,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -3365,7 +3365,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$05
     sta arg0
     jsr _sp2ptr2m
@@ -3385,7 +3385,7 @@
     jsr _sp2ptr1m
     lda #$02
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -3416,7 +3416,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -3433,7 +3433,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -3504,7 +3504,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -3539,7 +3539,7 @@
     jsr _sp2ptr3m
     lda #$03
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -3574,7 +3574,7 @@
     jsr _sp2ptr3m
     lda #$03
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$03
     sta arg0
     jsr _sp2ptr0m
@@ -3606,7 +3606,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -3626,7 +3626,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -3683,7 +3683,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -3703,7 +3703,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -3723,7 +3723,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -3743,7 +3743,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -3763,7 +3763,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -3794,7 +3794,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -3811,7 +3811,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -3882,7 +3882,7 @@
     jsr _sp2ptr2m
     lda #$03
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -3917,7 +3917,7 @@
     jsr _sp2ptr3m
     lda #$03
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -3952,7 +3952,7 @@
     jsr _sp2ptr3m
     lda #$03
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$03
     sta arg0
     jsr _sp2ptr0m
@@ -3984,7 +3984,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -4004,7 +4004,7 @@
     sta arg1
     lda #$03
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -4061,7 +4061,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -4081,7 +4081,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -4101,7 +4101,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -4121,7 +4121,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$07
     sta arg0
     jsr _sp2ptr2m
@@ -4141,7 +4141,7 @@
     jsr _sp2ptr1m
     lda #$03
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -4172,7 +4172,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -4189,7 +4189,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -4260,7 +4260,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -4295,7 +4295,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -4330,7 +4330,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -4362,7 +4362,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -4382,7 +4382,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -4439,7 +4439,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4459,7 +4459,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4479,7 +4479,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4499,7 +4499,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4519,7 +4519,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -4550,7 +4550,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -4567,7 +4567,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -4638,7 +4638,7 @@
     jsr _sp2ptr2m
     lda #$04
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -4673,7 +4673,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -4708,7 +4708,7 @@
     jsr _sp2ptr3m
     lda #$04
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$04
     sta arg0
     jsr _sp2ptr0m
@@ -4740,7 +4740,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -4760,7 +4760,7 @@
     sta arg1
     lda #$04
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -4817,7 +4817,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4837,7 +4837,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4857,7 +4857,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4877,7 +4877,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$09
     sta arg0
     jsr _sp2ptr2m
@@ -4897,7 +4897,7 @@
     jsr _sp2ptr1m
     lda #$04
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -4928,7 +4928,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -4945,7 +4945,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -5016,7 +5016,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -5051,7 +5051,7 @@
     jsr _sp2ptr3m
     lda #$05
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -5086,7 +5086,7 @@
     jsr _sp2ptr3m
     lda #$05
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$05
     sta arg0
     jsr _sp2ptr0m
@@ -5118,7 +5118,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -5138,7 +5138,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -5195,7 +5195,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5215,7 +5215,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5235,7 +5235,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5255,7 +5255,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5275,7 +5275,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -5306,7 +5306,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -5323,7 +5323,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -5394,7 +5394,7 @@
     jsr _sp2ptr2m
     lda #$05
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -5429,7 +5429,7 @@
     jsr _sp2ptr3m
     lda #$05
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -5464,7 +5464,7 @@
     jsr _sp2ptr3m
     lda #$05
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$05
     sta arg0
     jsr _sp2ptr0m
@@ -5496,7 +5496,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -5516,7 +5516,7 @@
     sta arg1
     lda #$05
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -5573,7 +5573,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5593,7 +5593,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5613,7 +5613,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5633,7 +5633,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0b
     sta arg0
     jsr _sp2ptr2m
@@ -5653,7 +5653,7 @@
     jsr _sp2ptr1m
     lda #$05
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -5684,7 +5684,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -5701,7 +5701,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -5772,7 +5772,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -5807,7 +5807,7 @@
     jsr _sp2ptr3m
     lda #$06
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -5842,7 +5842,7 @@
     jsr _sp2ptr3m
     lda #$06
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -5874,7 +5874,7 @@
     sta arg1
     lda #$06
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -5894,7 +5894,7 @@
     sta arg1
     lda #$06
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -5951,7 +5951,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -5971,7 +5971,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -5991,7 +5991,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6011,7 +6011,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6031,7 +6031,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -6062,7 +6062,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -6079,7 +6079,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -6150,7 +6150,7 @@
     jsr _sp2ptr2m
     lda #$06
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -6185,7 +6185,7 @@
     jsr _sp2ptr3m
     lda #$06
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -6220,7 +6220,7 @@
     jsr _sp2ptr3m
     lda #$06
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$06
     sta arg0
     jsr _sp2ptr0m
@@ -6252,7 +6252,7 @@
     sta arg1
     lda #$06
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -6272,7 +6272,7 @@
     sta arg1
     lda #$06
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -6329,7 +6329,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6349,7 +6349,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6369,7 +6369,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6389,7 +6389,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0d
     sta arg0
     jsr _sp2ptr2m
@@ -6409,7 +6409,7 @@
     jsr _sp2ptr1m
     lda #$06
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -6440,7 +6440,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -6457,7 +6457,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -6528,7 +6528,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -6563,7 +6563,7 @@
     jsr _sp2ptr3m
     lda #$07
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -6598,7 +6598,7 @@
     jsr _sp2ptr3m
     lda #$07
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$07
     sta arg0
     jsr _sp2ptr0m
@@ -6630,7 +6630,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -6650,7 +6650,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -6707,7 +6707,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -6727,7 +6727,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -6747,7 +6747,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -6767,7 +6767,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -6787,7 +6787,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -6818,7 +6818,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -6835,7 +6835,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -6906,7 +6906,7 @@
     jsr _sp2ptr2m
     lda #$07
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -6941,7 +6941,7 @@
     jsr _sp2ptr3m
     lda #$07
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -6976,7 +6976,7 @@
     jsr _sp2ptr3m
     lda #$07
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$07
     sta arg0
     jsr _sp2ptr0m
@@ -7008,7 +7008,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -7028,7 +7028,7 @@
     sta arg1
     lda #$07
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -7085,7 +7085,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -7105,7 +7105,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -7125,7 +7125,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -7145,7 +7145,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$0f
     sta arg0
     jsr _sp2ptr2m
@@ -7165,7 +7165,7 @@
     jsr _sp2ptr1m
     lda #$07
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -7196,7 +7196,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -7213,7 +7213,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -7284,7 +7284,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -7319,7 +7319,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -7354,7 +7354,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -7386,7 +7386,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -7406,7 +7406,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -7463,7 +7463,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7483,7 +7483,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7503,7 +7503,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7523,7 +7523,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7543,7 +7543,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -7574,7 +7574,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -7591,7 +7591,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -7662,7 +7662,7 @@
     jsr _sp2ptr2m
     lda #$08
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -7697,7 +7697,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -7732,7 +7732,7 @@
     jsr _sp2ptr3m
     lda #$08
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$08
     sta arg0
     jsr _sp2ptr0m
@@ -7764,7 +7764,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -7784,7 +7784,7 @@
     sta arg1
     lda #$08
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -7841,7 +7841,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7861,7 +7861,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7881,7 +7881,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7901,7 +7901,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$11
     sta arg0
     jsr _sp2ptr2m
@@ -7921,7 +7921,7 @@
     jsr _sp2ptr1m
     lda #$08
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -7952,7 +7952,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -7969,7 +7969,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -8040,7 +8040,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$12
     sta arg0
     jsr _sp2ptr0m
@@ -8075,7 +8075,7 @@
     jsr _sp2ptr3m
     lda #$09
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$12
     sta arg0
     jsr _sp2ptr0m
@@ -8110,7 +8110,7 @@
     jsr _sp2ptr3m
     lda #$09
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$09
     sta arg0
     jsr _sp2ptr0m
@@ -8142,7 +8142,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -8162,7 +8162,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -8219,7 +8219,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8239,7 +8239,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8259,7 +8259,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8279,7 +8279,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8299,7 +8299,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -8330,7 +8330,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -8347,7 +8347,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -8418,7 +8418,7 @@
     jsr _sp2ptr2m
     lda #$09
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$12
     sta arg0
     jsr _sp2ptr0m
@@ -8453,7 +8453,7 @@
     jsr _sp2ptr3m
     lda #$09
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$12
     sta arg0
     jsr _sp2ptr0m
@@ -8488,7 +8488,7 @@
     jsr _sp2ptr3m
     lda #$09
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$09
     sta arg0
     jsr _sp2ptr0m
@@ -8520,7 +8520,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -8540,7 +8540,7 @@
     sta arg1
     lda #$09
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -8597,7 +8597,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8617,7 +8617,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8637,7 +8637,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8657,7 +8657,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$13
     sta arg0
     jsr _sp2ptr2m
@@ -8677,7 +8677,7 @@
     jsr _sp2ptr1m
     lda #$09
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -8708,7 +8708,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -8725,7 +8725,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -8796,7 +8796,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$14
     sta arg0
     jsr _sp2ptr0m
@@ -8831,7 +8831,7 @@
     jsr _sp2ptr3m
     lda #$0a
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$14
     sta arg0
     jsr _sp2ptr0m
@@ -8866,7 +8866,7 @@
     jsr _sp2ptr3m
     lda #$0a
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -8898,7 +8898,7 @@
     sta arg1
     lda #$0a
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -8918,7 +8918,7 @@
     sta arg1
     lda #$0a
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -8975,7 +8975,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -8995,7 +8995,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9015,7 +9015,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9035,7 +9035,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9055,7 +9055,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -9086,7 +9086,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -9103,7 +9103,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -9174,7 +9174,7 @@
     jsr _sp2ptr2m
     lda #$0a
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$14
     sta arg0
     jsr _sp2ptr0m
@@ -9209,7 +9209,7 @@
     jsr _sp2ptr3m
     lda #$0a
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$14
     sta arg0
     jsr _sp2ptr0m
@@ -9244,7 +9244,7 @@
     jsr _sp2ptr3m
     lda #$0a
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0a
     sta arg0
     jsr _sp2ptr0m
@@ -9276,7 +9276,7 @@
     sta arg1
     lda #$0a
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -9296,7 +9296,7 @@
     sta arg1
     lda #$0a
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -9353,7 +9353,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9373,7 +9373,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9393,7 +9393,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9413,7 +9413,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$15
     sta arg0
     jsr _sp2ptr2m
@@ -9433,7 +9433,7 @@
     jsr _sp2ptr1m
     lda #$0a
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -9464,7 +9464,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -9481,7 +9481,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -9552,7 +9552,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$16
     sta arg0
     jsr _sp2ptr0m
@@ -9587,7 +9587,7 @@
     jsr _sp2ptr3m
     lda #$0b
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$16
     sta arg0
     jsr _sp2ptr0m
@@ -9622,7 +9622,7 @@
     jsr _sp2ptr3m
     lda #$0b
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0b
     sta arg0
     jsr _sp2ptr0m
@@ -9654,7 +9654,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -9674,7 +9674,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -9731,7 +9731,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -9751,7 +9751,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -9771,7 +9771,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -9791,7 +9791,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -9811,7 +9811,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -9842,7 +9842,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -9859,7 +9859,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -9930,7 +9930,7 @@
     jsr _sp2ptr2m
     lda #$0b
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$16
     sta arg0
     jsr _sp2ptr0m
@@ -9965,7 +9965,7 @@
     jsr _sp2ptr3m
     lda #$0b
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$16
     sta arg0
     jsr _sp2ptr0m
@@ -10000,7 +10000,7 @@
     jsr _sp2ptr3m
     lda #$0b
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0b
     sta arg0
     jsr _sp2ptr0m
@@ -10032,7 +10032,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -10052,7 +10052,7 @@
     sta arg1
     lda #$0b
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -10109,7 +10109,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -10129,7 +10129,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -10149,7 +10149,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -10169,7 +10169,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$17
     sta arg0
     jsr _sp2ptr2m
@@ -10189,7 +10189,7 @@
     jsr _sp2ptr1m
     lda #$0b
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -10220,7 +10220,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -10237,7 +10237,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -10308,7 +10308,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$18
     sta arg0
     jsr _sp2ptr0m
@@ -10343,7 +10343,7 @@
     jsr _sp2ptr3m
     lda #$0c
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$18
     sta arg0
     jsr _sp2ptr0m
@@ -10378,7 +10378,7 @@
     jsr _sp2ptr3m
     lda #$0c
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -10410,7 +10410,7 @@
     sta arg1
     lda #$0c
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -10430,7 +10430,7 @@
     sta arg1
     lda #$0c
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -10487,7 +10487,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10507,7 +10507,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10527,7 +10527,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10547,7 +10547,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10567,7 +10567,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -10598,7 +10598,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -10615,7 +10615,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -10686,7 +10686,7 @@
     jsr _sp2ptr2m
     lda #$0c
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$18
     sta arg0
     jsr _sp2ptr0m
@@ -10721,7 +10721,7 @@
     jsr _sp2ptr3m
     lda #$0c
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$18
     sta arg0
     jsr _sp2ptr0m
@@ -10756,7 +10756,7 @@
     jsr _sp2ptr3m
     lda #$0c
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0c
     sta arg0
     jsr _sp2ptr0m
@@ -10788,7 +10788,7 @@
     sta arg1
     lda #$0c
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -10808,7 +10808,7 @@
     sta arg1
     lda #$0c
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -10865,7 +10865,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10885,7 +10885,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10905,7 +10905,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10925,7 +10925,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$19
     sta arg0
     jsr _sp2ptr2m
@@ -10945,7 +10945,7 @@
     jsr _sp2ptr1m
     lda #$0c
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -10976,7 +10976,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -10993,7 +10993,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -11064,7 +11064,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1a
     sta arg0
     jsr _sp2ptr0m
@@ -11099,7 +11099,7 @@
     jsr _sp2ptr3m
     lda #$0d
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1a
     sta arg0
     jsr _sp2ptr0m
@@ -11134,7 +11134,7 @@
     jsr _sp2ptr3m
     lda #$0d
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0d
     sta arg0
     jsr _sp2ptr0m
@@ -11166,7 +11166,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -11186,7 +11186,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -11243,7 +11243,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11263,7 +11263,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11283,7 +11283,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11303,7 +11303,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11323,7 +11323,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -11354,7 +11354,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -11371,7 +11371,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -11442,7 +11442,7 @@
     jsr _sp2ptr2m
     lda #$0d
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1a
     sta arg0
     jsr _sp2ptr0m
@@ -11477,7 +11477,7 @@
     jsr _sp2ptr3m
     lda #$0d
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1a
     sta arg0
     jsr _sp2ptr0m
@@ -11512,7 +11512,7 @@
     jsr _sp2ptr3m
     lda #$0d
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0d
     sta arg0
     jsr _sp2ptr0m
@@ -11544,7 +11544,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -11564,7 +11564,7 @@
     sta arg1
     lda #$0d
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -11621,7 +11621,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11641,7 +11641,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11661,7 +11661,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11681,7 +11681,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1b
     sta arg0
     jsr _sp2ptr2m
@@ -11701,7 +11701,7 @@
     jsr _sp2ptr1m
     lda #$0d
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -11732,7 +11732,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -11749,7 +11749,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -11820,7 +11820,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1c
     sta arg0
     jsr _sp2ptr0m
@@ -11855,7 +11855,7 @@
     jsr _sp2ptr3m
     lda #$0e
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1c
     sta arg0
     jsr _sp2ptr0m
@@ -11890,7 +11890,7 @@
     jsr _sp2ptr3m
     lda #$0e
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -11922,7 +11922,7 @@
     sta arg1
     lda #$0e
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -11942,7 +11942,7 @@
     sta arg1
     lda #$0e
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -11999,7 +11999,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12019,7 +12019,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12039,7 +12039,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12059,7 +12059,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12079,7 +12079,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -12110,7 +12110,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -12127,7 +12127,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -12198,7 +12198,7 @@
     jsr _sp2ptr2m
     lda #$0e
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1c
     sta arg0
     jsr _sp2ptr0m
@@ -12233,7 +12233,7 @@
     jsr _sp2ptr3m
     lda #$0e
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1c
     sta arg0
     jsr _sp2ptr0m
@@ -12268,7 +12268,7 @@
     jsr _sp2ptr3m
     lda #$0e
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0e
     sta arg0
     jsr _sp2ptr0m
@@ -12300,7 +12300,7 @@
     sta arg1
     lda #$0e
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -12320,7 +12320,7 @@
     sta arg1
     lda #$0e
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -12377,7 +12377,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12397,7 +12397,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12417,7 +12417,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12437,7 +12437,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1d
     sta arg0
     jsr _sp2ptr2m
@@ -12457,7 +12457,7 @@
     jsr _sp2ptr1m
     lda #$0e
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -12488,7 +12488,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -12505,7 +12505,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -12576,7 +12576,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1e
     sta arg0
     jsr _sp2ptr0m
@@ -12611,7 +12611,7 @@
     jsr _sp2ptr3m
     lda #$0f
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1e
     sta arg0
     jsr _sp2ptr0m
@@ -12646,7 +12646,7 @@
     jsr _sp2ptr3m
     lda #$0f
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0f
     sta arg0
     jsr _sp2ptr0m
@@ -12678,7 +12678,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -12698,7 +12698,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -12755,7 +12755,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -12775,7 +12775,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -12795,7 +12795,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -12815,7 +12815,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -12835,7 +12835,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -12866,7 +12866,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -12883,7 +12883,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -12954,7 +12954,7 @@
     jsr _sp2ptr2m
     lda #$0f
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$1e
     sta arg0
     jsr _sp2ptr0m
@@ -12989,7 +12989,7 @@
     jsr _sp2ptr3m
     lda #$0f
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$1e
     sta arg0
     jsr _sp2ptr0m
@@ -13024,7 +13024,7 @@
     jsr _sp2ptr3m
     lda #$0f
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$0f
     sta arg0
     jsr _sp2ptr0m
@@ -13056,7 +13056,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -13076,7 +13076,7 @@
     sta arg1
     lda #$0f
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -13133,7 +13133,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -13153,7 +13153,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -13173,7 +13173,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -13193,7 +13193,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$1f
     sta arg0
     jsr _sp2ptr2m
@@ -13213,7 +13213,7 @@
     jsr _sp2ptr1m
     lda #$0f
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -13244,7 +13244,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -13261,7 +13261,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -13332,7 +13332,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$20
     sta arg0
     jsr _sp2ptr0m
@@ -13367,7 +13367,7 @@
     jsr _sp2ptr3m
     lda #$10
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$20
     sta arg0
     jsr _sp2ptr0m
@@ -13402,7 +13402,7 @@
     jsr _sp2ptr3m
     lda #$10
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -13434,7 +13434,7 @@
     sta arg1
     lda #$10
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -13454,7 +13454,7 @@
     sta arg1
     lda #$10
     sta arg0
-    jsr _asrN
+    jsr _asrNle
     rts
 .endproc
 
@@ -13511,7 +13511,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13531,7 +13531,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13551,7 +13551,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _ltNs
+    jsr _ltNsle
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13571,7 +13571,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _leNs
+    jsr _leNsle
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13591,7 +13591,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 
@@ -13622,7 +13622,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _addN
+    jsr _addNle
     rts
 .endproc
 
@@ -13639,7 +13639,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _subN
+    jsr _subNle
     rts
 .endproc
 
@@ -13710,7 +13710,7 @@
     jsr _sp2ptr2m
     lda #$10
     sta arg0
-    jsr _mulN
+    jsr _mulNle
     lda #$20
     sta arg0
     jsr _sp2ptr0m
@@ -13745,7 +13745,7 @@
     jsr _sp2ptr3m
     lda #$10
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$20
     sta arg0
     jsr _sp2ptr0m
@@ -13780,7 +13780,7 @@
     jsr _sp2ptr3m
     lda #$10
     sta arg0
-    jsr _divN
+    jsr _divNle
     lda #$10
     sta arg0
     jsr _sp2ptr0m
@@ -13812,7 +13812,7 @@
     sta arg1
     lda #$10
     sta arg0
-    jsr _lslN
+    jsr _lslNle
     rts
 .endproc
 
@@ -13832,7 +13832,7 @@
     sta arg1
     lda #$10
     sta arg0
-    jsr _lsrN
+    jsr _lsrNle
     rts
 .endproc
 
@@ -13889,7 +13889,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13909,7 +13909,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13929,7 +13929,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _ltNu
+    jsr _ltNule
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13949,7 +13949,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _leNu
+    jsr _leNule
     lda #$21
     sta arg0
     jsr _sp2ptr2m
@@ -13969,7 +13969,7 @@
     jsr _sp2ptr1m
     lda #$10
     sta arg0
-    jsr _comp2N
+    jsr _comp2Nle
     rts
 .endproc
 

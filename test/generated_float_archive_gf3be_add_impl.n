@@ -130,16 +130,16 @@ void nlf_gf3be_add_impl(void) {
    }
    nlf_gf3be_cmp := 0;
    if (nlf_gf3be_cmp == 0) {
-      if ((((int)(nlf_gf3be_a.bytes[2] & 255)) & 127) < (((int)(nlf_gf3be_b.bytes[2] & 255)) & 127)) { nlf_gf3be_cmp := 1; }
-      else { if ((((int)(nlf_gf3be_a.bytes[2] & 255)) & 127) > (((int)(nlf_gf3be_b.bytes[2] & 255)) & 127)) { nlf_gf3be_cmp := 2; } }
+      if ((((((int)nlf_gf3be_a.bytes[2]) & 255)) & 127) < (((((int)nlf_gf3be_b.bytes[2]) & 255)) & 127)) { nlf_gf3be_cmp := 1; }
+      else { if ((((((int)nlf_gf3be_a.bytes[2]) & 255)) & 127) > (((((int)nlf_gf3be_b.bytes[2]) & 255)) & 127)) { nlf_gf3be_cmp := 2; } }
    }
    if (nlf_gf3be_cmp == 0) {
-      if (((int)(nlf_gf3be_a.bytes[1] & 255)) < ((int)(nlf_gf3be_b.bytes[1] & 255))) { nlf_gf3be_cmp := 1; }
-      else { if (((int)(nlf_gf3be_a.bytes[1] & 255)) > ((int)(nlf_gf3be_b.bytes[1] & 255))) { nlf_gf3be_cmp := 2; } }
+      if (((((int)nlf_gf3be_a.bytes[1]) & 255)) < ((((int)nlf_gf3be_b.bytes[1]) & 255))) { nlf_gf3be_cmp := 1; }
+      else { if (((((int)nlf_gf3be_a.bytes[1]) & 255)) > ((((int)nlf_gf3be_b.bytes[1]) & 255))) { nlf_gf3be_cmp := 2; } }
    }
    if (nlf_gf3be_cmp == 0) {
-      if (((int)(nlf_gf3be_a.bytes[0] & 255)) < ((int)(nlf_gf3be_b.bytes[0] & 255))) { nlf_gf3be_cmp := 1; }
-      else { if (((int)(nlf_gf3be_a.bytes[0] & 255)) > ((int)(nlf_gf3be_b.bytes[0] & 255))) { nlf_gf3be_cmp := 2; } }
+      if (((((int)nlf_gf3be_a.bytes[0]) & 255)) < ((((int)nlf_gf3be_b.bytes[0]) & 255))) { nlf_gf3be_cmp := 1; }
+      else { if (((((int)nlf_gf3be_a.bytes[0]) & 255)) > ((((int)nlf_gf3be_b.bytes[0]) & 255))) { nlf_gf3be_cmp := 2; } }
    }
    if (nlf_gf3be_cmp == 0) { nlf_gf3be_r.raw := 0`nlf_gf3be_u; return; }
    if (nlf_gf3be_cmp == 1) {

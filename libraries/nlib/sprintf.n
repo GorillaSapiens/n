@@ -31,7 +31,7 @@ void __nfmt_twos_complement_in_place(char *bytes, int size) {
    int tmp;
 
    while (i < size) {
-      tmp := 255 - (int)(bytes[i] & 255) + carry;
+      tmp := 255 - (((int)bytes[i]) & 255) + carry;
       if (tmp >= 256) {
          bytes[i] := tmp - 256;
          carry := 1;
@@ -52,7 +52,7 @@ int __nfmt_append_hex_bytes(char *dst, char *bytes, int size) {
    int nibble;
 
    while (i >= 0) {
-      bytev := bytes[i] & 255;
+      bytev := (((int)bytes[i]) & 255);
       nibble := bytev / 16;
       if (started != 0 || nibble != 0 || i == 0) {
          dst[out] := __nfmt_hex_digit(nibble);
@@ -82,10 +82,10 @@ int __nfmt_append_udec_bytes(char *dst, char *bytes, int size) {
 
    digits[0] := 0;
    while (i >= 0) {
-      carry := bytes[i] & 255;
+      carry := (((int)bytes[i]) & 255);
       j := 0;
       while (j < ndigits) {
-         tmp := (int)(digits[j] & 255) * 256 + carry;
+         tmp := ((((int)digits[j]) & 255) * 256) + carry;
          digits[j] := tmp % 10;
          carry := tmp / 10;
          j := j + 1;
@@ -100,7 +100,7 @@ int __nfmt_append_udec_bytes(char *dst, char *bytes, int size) {
 
    i := ndigits - 1;
    while (i >= 0) {
-      dst[out] := '0' + (digits[i] & 255);
+      dst[out] := '0' + ((((int)digits[i]) & 255));
       out := out + 1;
       i := i - 1;
    }

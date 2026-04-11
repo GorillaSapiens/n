@@ -1,23 +1,18 @@
 ; div.asm - Arbitrary-length unsigned division
 ;
-; Divides ptr0 (dividend) by ptr1 (divisor), X bytes each.
-; Stores quotient in ptr2, remainder in ptr3.
+; Little-endian helper: _divNle
+; Big-endian helper:    _divNbe
 ;
-; Inputs:
-;   ptr0 - dividend (X bytes)
-;   ptr1 - divisor (X bytes)
-;   ptr2 - quotient (X bytes), must be writable!
-;   ptr3 - remainder (X bytes), must be writable!
-;   arg0 - byte count
+; Divides ptr0 (dividend) by ptr1 (divisor), arg0 bytes each.
+; Stores quotient in ptr2, remainder in ptr3.
 ; Clobbers: A, X, Y, and zero page temps
-; NB: ALSO WRITES TO THE STACK!!!
+; NB: also writes to the stack.
 
 .include "nlib.inc"
 .def tmpX  _nl_tmp0
 .def carry _nl_tmp1
 
-.proc _divN
-    ; copy dividend to the stack
+.proc _divNle
     ldx arg0
     ldy #0
 @cpy_loop:
@@ -27,7 +22,6 @@
     dex
     bne @cpy_loop
 
-    ; Clear quotient and remainder
     ldy #0
 @clear_loop:
     lda #0
@@ -37,60 +31,54 @@
     cpy arg0
     bne @clear_loop
 
-    ; Perform arg0 * 8 division steps
     ldx #0
     lda arg0
     asl
     asl
     asl
-    sta tmpX         ; tmpX = bit count = arg0 * 8
+    sta tmpX
 
 @bit_loop:
-    ; Shift dividend left by 1
     clc
     ldx arg0
     dex
     ldy #0
-@arg1_div:
+@shift_div:
     lda (sp), y
     rol a
     sta (sp), y
     iny
     dex
-    bpl @arg1_div
+    bpl @shift_div
 
-    ; save that carry bit so we can restore div
-    bcs @onward
+    bcs @have_carry
     ldx #0
-@onward:
+@have_carry:
     stx carry
 
-    ; Shift next bit from dividend into remainder
     ldx arg0
     dex
     ldy #0
-@arg1_rem:
+@shift_rem:
     lda (ptr3), y
     rol a
     sta (ptr3), y
     iny
     dex
-    bpl @arg1_rem
+    bpl @shift_rem
 
-    ; use carry to set the low bit of dividend
     ldy #0
     lda carry
     and #1
-    ora (sp),y
-    sta (sp),y
+    ora (sp), y
+    sta (sp), y
 
-    ; Compare remainder with divisor
-    jsr @cmp_rev_div
+    jsr @cmp_rem_div
     bcc @skip_subtract
 
-    jsr @sub_div_from_rem ; remainder -= divisor
-    sec                  ; Set quotient bit
-   
+    jsr @sub_div_from_rem
+    sec
+
 @skip_subtract:
     ldx arg0
     dex
@@ -106,11 +94,9 @@
     dec tmpX
     lda tmpX
     bne @bit_loop
-
     rts
 
-; Compare remainder with divisor
-@cmp_rev_div:
+@cmp_rem_div:
     ldy arg0
     dey
 @cmp_loop:
@@ -121,7 +107,6 @@
     bpl @cmp_loop
     sec
     rts
-
 @finish_cmp:
     bcc @lt
     sec
@@ -130,7 +115,6 @@
     clc
     rts
 
-; Subtract divisor from remainder: ptr3 -= ptr1
 @sub_div_from_rem:
     ldx arg0
     dex
@@ -144,5 +128,115 @@
     dex
     bpl @sub_loop
     rts
+.endproc
 
+.proc _divNbe
+    ldx arg0
+    ldy #0
+@cpy_loop:
+    lda (ptr0), y
+    sta (sp), y
+    iny
+    dex
+    bne @cpy_loop
+
+    ldy #0
+@clear_loop:
+    lda #0
+    sta (ptr2), y
+    sta (ptr3), y
+    iny
+    cpy arg0
+    bne @clear_loop
+
+    lda arg0
+    asl
+    asl
+    asl
+    sta tmpX
+
+@bit_loop:
+    clc
+    ldy arg0
+    dey
+@shift_div:
+    lda (sp), y
+    rol a
+    sta (sp), y
+    dey
+    bpl @shift_div
+
+    lda #0
+    bcc @carry_saved
+    lda #1
+@carry_saved:
+    sta carry
+
+    ldy arg0
+    dey
+@shift_rem:
+    lda (ptr3), y
+    rol a
+    sta (ptr3), y
+    dey
+    bpl @shift_rem
+
+    ldy arg0
+    dey
+    lda carry
+    and #1
+    ora (sp), y
+    sta (sp), y
+
+    jsr @cmp_rem_div
+    bcc @skip_subtract
+
+    jsr @sub_div_from_rem
+    sec
+
+@skip_subtract:
+    ldy arg0
+    dey
+@store_qbit:
+    lda (ptr2), y
+    rol a
+    sta (ptr2), y
+    dey
+    bpl @store_qbit
+
+    dec tmpX
+    lda tmpX
+    bne @bit_loop
+    rts
+
+@cmp_rem_div:
+    ldy #0
+@cmp_loop:
+    lda (ptr3), y
+    cmp (ptr1), y
+    bne @finish_cmp
+    iny
+    cpy arg0
+    bcc @cmp_loop
+    sec
+    rts
+@finish_cmp:
+    bcc @lt
+    sec
+    rts
+@lt:
+    clc
+    rts
+
+@sub_div_from_rem:
+    ldy arg0
+    dey
+    sec
+@sub_loop:
+    lda (ptr3), y
+    sbc (ptr1), y
+    sta (ptr3), y
+    dey
+    bpl @sub_loop
+    rts
 .endproc

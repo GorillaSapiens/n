@@ -1,6 +1,6 @@
 // n65cc -I .
 // expectasm: jsr operatorx2B__s4v_p0_a0__s4v_p0_a0
-// forbidasm: jsr _add32
+// forbidasm: jsr _add32le
 
 include "machine_6502.n"
 

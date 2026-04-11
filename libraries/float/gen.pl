@@ -230,8 +230,8 @@ sub mag_cmp_snippet {
    $indent //= '   ';
    my $s = "${indent}$dst := $CMP_EQ;\n";
    for (my $i = $last; $i >= 0; --$i) {
-      my $l = "((int)($lhs.bytes[$i] & 255))";
-      my $r = "((int)($rhs.bytes[$i] & 255))";
+      my $l = "((((int)$lhs.bytes[$i]) & 255))";
+      my $r = "((((int)$rhs.bytes[$i]) & 255))";
       if ($i == $last) {
          $l = "($l & 127)";
          $r = "($r & 127)";

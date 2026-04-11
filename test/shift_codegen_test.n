@@ -1,8 +1,8 @@
 // n65cc
-// expectasm: jsr _asrN
+// expectasm: jsr _asrNle
 // expectasm: lda #$02
 // expectasm: sta arg0
-// expectasm: jsr _lsrN
+// expectasm: jsr _lsrNle
 
 type void      { $size:0 };
 type bool      { $size:1 };

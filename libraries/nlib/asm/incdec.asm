@@ -1,17 +1,16 @@
-
 ; incdec.asm - Increment and decrement
 ;
-; Operates in-place on ptr0
+; Little-endian helpers use the *le suffix.
+; Big-endian helpers use the *be suffix.
 ;
 ; Inputs:
-;   ptr0 - buffer to modify
-;   arg0 - byte count
-; Clobbers: A, Y
+;   ptr0 - buffer to modify in place
+;   arg0 - byte count for *N helpers
+; Clobbers: A, X, Y, status flags
 
-; Zero page location
 .include "nlib.inc"
 
-.proc _incN
+.proc _incNle
     ldx arg0
     ldy #0
 @loop:
@@ -19,7 +18,7 @@
     clc
     adc #1
     sta (ptr0), y
-    bne @done      ; No carry -> done
+    bne @done
     iny
     dex
     bne @loop
@@ -27,7 +26,22 @@
     rts
 .endproc
 
-.proc _decN
+.proc _incNbe
+    ldy arg0
+    dey
+@loop:
+    lda (ptr0), y
+    clc
+    adc #1
+    sta (ptr0), y
+    bne @done
+    dey
+    bpl @loop
+@done:
+    rts
+.endproc
+
+.proc _decNle
     ldx arg0
     ldy #0
     sec
@@ -41,7 +55,6 @@
     lda (ptr0), y
     sbc #0
     sta (ptr0), y
-    ;bne @done      ; No borrow -> done
     iny
     dex
     bne @loop
@@ -49,9 +62,31 @@
     rts
 .endproc
 
-; Fixed width versions
+.proc _decNbe
+    ldy arg0
+    dey
+    sec
+    lda (ptr0), y
+    sbc #1
+    sta (ptr0), y
+    beq @borrow
+    rts
+@borrow:
+    cpy #0
+    beq @done
+@loop:
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    bcs @done
+    cpy #0
+    bne @loop
+@done:
+    rts
+.endproc
 
-.proc _inc8
+.proc _inc8le
     ldy #0
     clc
     lda (ptr0), y
@@ -60,7 +95,11 @@
     rts
 .endproc
 
-.proc _inc16
+.proc _inc8be
+    jmp _inc8le
+.endproc
+
+.proc _inc16le
     ldy #0
     clc
     lda (ptr0), y
@@ -73,7 +112,20 @@
     rts
 .endproc
 
-.proc _inc24
+.proc _inc16be
+    ldy #1
+    clc
+    lda (ptr0), y
+    adc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _inc24le
     ldy #0
     clc
     lda (ptr0), y
@@ -90,7 +142,24 @@
     rts
 .endproc
 
-.proc _inc32
+.proc _inc24be
+    ldy #2
+    clc
+    lda (ptr0), y
+    adc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _inc32le
     ldy #0
     clc
     lda (ptr0), y
@@ -111,7 +180,28 @@
     rts
 .endproc
 
-.proc _dec8
+.proc _inc32be
+    ldy #3
+    clc
+    lda (ptr0), y
+    adc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    adc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _dec8le
     ldy #0
     sec
     lda (ptr0), y
@@ -120,7 +210,11 @@
     rts
 .endproc
 
-.proc _dec16
+.proc _dec8be
+    jmp _dec8le
+.endproc
+
+.proc _dec16le
     ldy #0
     sec
     lda (ptr0), y
@@ -133,7 +227,20 @@
     rts
 .endproc
 
-.proc _dec24
+.proc _dec16be
+    ldy #1
+    sec
+    lda (ptr0), y
+    sbc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _dec24le
     ldy #0
     sec
     lda (ptr0), y
@@ -150,7 +257,24 @@
     rts
 .endproc
 
-.proc _dec32
+.proc _dec24be
+    ldy #2
+    sec
+    lda (ptr0), y
+    sbc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _dec32le
     ldy #0
     sec
     lda (ptr0), y
@@ -165,6 +289,27 @@
     sbc #0
     sta (ptr0), y
     iny
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    rts
+.endproc
+
+.proc _dec32be
+    ldy #3
+    sec
+    lda (ptr0), y
+    sbc #1
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    dey
+    lda (ptr0), y
+    sbc #0
+    sta (ptr0), y
+    dey
     lda (ptr0), y
     sbc #0
     sta (ptr0), y

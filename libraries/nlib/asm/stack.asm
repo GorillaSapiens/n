@@ -1,10 +1,11 @@
-; stack.asm - Arbitrary-length stack operations
+; stack.asm - Arbitrary-length stack and buffer helpers
 
 .include "nlib.inc"
+.def src_idx _nl_tmp0
+.def dst_idx _nl_tmp1
+.def fillval _nl_tmp2
 
 .proc _pushN
-    ; increment sp by arg0
-    ; stack grows up!
     clc
     lda sp
     adc arg0
@@ -16,7 +17,6 @@
 .endproc
 
 .proc _popN
-    ; decrement sp by arg0
     sec
     lda sp
     sbc arg0
@@ -28,7 +28,6 @@
 .endproc
 
 .proc _cpyN
-    ; copy arg0 bytes from ptr0 to ptr1
     ldx arg0
     ldy #0
 @loop:
@@ -41,7 +40,6 @@
 .endproc
 
 .proc _setN
-    ; set arg0 bytes at ptr1 to arg1
     ldx arg0
     beq @done
     ldy #0
@@ -56,15 +54,12 @@
 .endproc
 
 .proc _zeroN
-    ; zero arg0 bytes at ptr1
     lda #0
     sta arg1
     jmp _setN
 .endproc
 
-.proc _copyzxN
-    ; little-endian copy from ptr0 to ptr1 with zero extension/truncation
-    ; arg0 = source size, arg1 = destination size
+.proc _copyzxNle
     ldy #0
     lda arg0
     cmp arg1
@@ -96,9 +91,53 @@
     rts
 .endproc
 
-.proc _copysxN
-    ; little-endian copy from ptr0 to ptr1 with sign extension/truncation
-    ; arg0 = source size, arg1 = destination size
+.proc _copyzxNbe
+    lda arg0
+    cmp arg1
+    bcc @extend
+
+    sec
+    sbc arg1
+    sta src_idx
+    lda #0
+    sta dst_idx
+    ldx arg1
+    jmp @copy
+
+@extend:
+    lda arg1
+    sec
+    sbc arg0
+    sta dst_idx
+    lda #0
+    sta src_idx
+    tay
+    lda #0
+@fill_loop:
+    cpy #0
+    beq @prep_copy
+    sta (ptr1), y
+    dey
+    bne @fill_loop
+    sta (ptr1), y
+@prep_copy:
+    ldx arg0
+@copy:
+    beq @done
+@copy_loop:
+    ldy src_idx
+    lda (ptr0), y
+    ldy dst_idx
+    sta (ptr1), y
+    inc src_idx
+    inc dst_idx
+    dex
+    bne @copy_loop
+@done:
+    rts
+.endproc
+
+.proc _copysxNle
     ldy #0
     lda arg0
     cmp arg1
@@ -142,15 +181,71 @@
     rts
 .endproc
 
-.proc _comp2N
-    ; arg0 bytes ptr1 = 2's complement of ptr0
+.proc _copysxNbe
+    ldy #0
+    lda (ptr0), y
+    and #$80
+    beq @zero_fill
+    lda #$ff
+    bne @got_fill
+@zero_fill:
+    lda #$00
+@got_fill:
+    sta fillval
+
+    lda arg0
+    cmp arg1
+    bcc @extend
+
+    sec
+    sbc arg1
+    sta src_idx
+    lda #0
+    sta dst_idx
+    ldx arg1
+    jmp @copy
+
+@extend:
+    lda arg1
+    sec
+    sbc arg0
+    sta dst_idx
+    lda #0
+    sta src_idx
+    tay
+    lda fillval
+@fill_loop:
+    cpy #0
+    beq @prep_copy
+    sta (ptr1), y
+    dey
+    bne @fill_loop
+    sta (ptr1), y
+@prep_copy:
+    ldx arg0
+@copy:
+    beq @done
+@copy_loop:
+    ldy src_idx
+    lda (ptr0), y
+    ldy dst_idx
+    sta (ptr1), y
+    inc src_idx
+    inc dst_idx
+    dex
+    bne @copy_loop
+@done:
+    rts
+.endproc
+
+.proc _comp2Nle
     ldx arg0
     ldy #0
     sec
 @loop:
     lda (ptr0), y
     eor #$FF
-    adc #$0
+    adc #$00
     sta (ptr1), y
     iny
     dex
@@ -158,8 +253,21 @@
     rts
 .endproc
 
+.proc _comp2Nbe
+    ldy arg0
+    dey
+    sec
+@loop:
+    lda (ptr0), y
+    eor #$FF
+    adc #$00
+    sta (ptr1), y
+    dey
+    bpl @loop
+    rts
+.endproc
+
 .proc _swapN
-    ; swap arg0 bytes between ptr0 and ptr1
     ldx arg0
     ldy #0
 @loop:
@@ -176,18 +284,6 @@
 .endproc
 
 .proc _callptr0
-    ; indirect call through ptr0
-    ; pushes (target - 1) so RTS transfers control to ptr0
-    ;
-    ; Indirect call trampoline for the 6502. The CPU has no JSR (addr) instruction,
-    ; so this routine fakes one by taking the target address in ptr0, subtracting 1,
-    ; pushing that adjusted address onto the hardware stack in the order RTS expects,
-    ; and then executing RTS. Since RTS pulls the stacked address, adds 1, and jumps
-    ; to it, control transfers to ptr0. This preserves normal call/return behavior
-    ; only because _callptr0 itself was entered by JSR, so the caller's real return
-    ; address is already sitting underneath the fake one on the stack; when the
-    ; target later executes RTS, it returns to the original caller as usual.
-    ;
     sec
     lda ptr0
     sbc #1

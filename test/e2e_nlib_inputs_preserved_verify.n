@@ -46,7 +46,7 @@ void pass(void) {
 }
 
 void main(void) {
-   asm .import _mulN;
+   asm .import _mulNle;
    asm .import _faddN;
    asm .import _fsubN;
    asm .importzp _nl_ptr0;
@@ -73,7 +73,7 @@ void main(void) {
    asm sta _nl_ptr2+1;
    asm lda #2;
    asm sta _nl_arg0;
-   asm jsr _mulN;
+   asm jsr _mulNle;
 
    if (mul_a0 != 0x34) { asm lda #$ff; asm ldx #1;  asm ldy #0; asm jsr $ffff; }
    if (mul_a1 != 0x12) { asm lda #$ff; asm ldx #2;  asm ldy #0; asm jsr $ffff; }

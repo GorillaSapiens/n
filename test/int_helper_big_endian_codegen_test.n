@@ -1,0 +1,31 @@
+// n65cc -I .
+// expectasm: jsr _add24be
+// expectasm: jsr _sub24be
+// expectasm: jsr _addNbe
+// expectasm: jsr _subNbe
+// expectasm: .import _add24be
+// expectasm: .import _sub24be
+// expectasm: .import _addNbe
+// expectasm: .import _subNbe
+
+type void      { $size:0 };
+type bool      { $size:1 };
+type s3be      { $size:3 $signed $endian:big };
+type s5be      { $size:5 $signed $endian:big };
+type *         { $size:2 $unsigned $endian:little };
+
+s3be add3(s3be a, s3be b) {
+   return a + b;
+}
+
+s3be sub3(s3be a, s3be b) {
+   return a - b;
+}
+
+s5be add5(s5be a, s5be b) {
+   return a + b;
+}
+
+s5be sub5(s5be a, s5be b) {
+   return a - b;
+}

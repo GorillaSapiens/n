@@ -63,12 +63,12 @@ void pass(void) {
 }
 
 void main(void) {
-   asm .import _lslN;
-   asm .import _lsrN;
-   asm .import _asrN;
-   asm .import _lsl1;
-   asm .import _lsr1;
-   asm .import _asr1;
+   asm .import _lslNle;
+   asm .import _lsrNle;
+   asm .import _asrNle;
+   asm .import _lsl1le;
+   asm .import _lsr1le;
+   asm .import _asr1le;
    asm .importzp _nl_ptr0;
    asm .importzp _nl_ptr1;
    asm .importzp _nl_arg0;
@@ -89,7 +89,7 @@ void main(void) {
    asm sta _nl_arg0;
    asm lda #9;
    asm sta _nl_arg1;
-   asm jsr _lslN;
+   asm jsr _lslNle;
 
    if (lsl_s0 != 0x01) { asm lda #$ff; asm ldx #1;  asm ldy #0; asm jsr $ffff; }
    if (lsl_s1 != 0x02) { asm lda #$ff; asm ldx #2;  asm ldy #0; asm jsr $ffff; }
@@ -113,7 +113,7 @@ void main(void) {
    asm sta _nl_arg0;
    asm lda #8;
    asm sta _nl_arg1;
-   asm jsr _lsrN;
+   asm jsr _lsrNle;
 
    if (lsr_s0 != 0x89) { asm lda #$ff; asm ldx #7;  asm ldy #0; asm jsr $ffff; }
    if (lsr_s1 != 0x67) { asm lda #$ff; asm ldx #8;  asm ldy #0; asm jsr $ffff; }
@@ -137,7 +137,7 @@ void main(void) {
    asm sta _nl_arg0;
    asm lda #9;
    asm sta _nl_arg1;
-   asm jsr _asrN;
+   asm jsr _asrNle;
 
    if (asr_s0 != 0x02) { asm lda #$ff; asm ldx #13; asm ldy #0; asm jsr $ffff; }
    if (asr_s1 != 0x00) { asm lda #$ff; asm ldx #14; asm ldy #0; asm jsr $ffff; }
@@ -162,7 +162,7 @@ void main(void) {
    asm sta _nl_arg0;
    asm lda #17;
    asm sta _nl_arg1;
-   asm jsr _lslN;
+   asm jsr _lslNle;
 
    if (lsl17_s0 != 0x01) { asm lda #$ff; asm ldx #19; asm ldy #0; asm jsr $ffff; }
    if (lsl17_s1 != 0x02) { asm lda #$ff; asm ldx #20; asm ldy #0; asm jsr $ffff; }
@@ -187,7 +187,7 @@ void main(void) {
    asm sta _nl_ptr1+1;
    asm lda #3;
    asm sta _nl_arg0;
-   asm jsr _lsl1;
+   asm jsr _lsl1le;
 
    if (lsl1_s0 != 0x11) { asm lda #$ff; asm ldx #27; asm ldy #0; asm jsr $ffff; }
    if (lsl1_s1 != 0x22) { asm lda #$ff; asm ldx #28; asm ldy #0; asm jsr $ffff; }
@@ -209,7 +209,7 @@ void main(void) {
    asm sta _nl_ptr1+1;
    asm lda #3;
    asm sta _nl_arg0;
-   asm jsr _lsr1;
+   asm jsr _lsr1le;
 
    if (lsr1_s0 != 0x44) { asm lda #$ff; asm ldx #33; asm ldy #0; asm jsr $ffff; }
    if (lsr1_s1 != 0x55) { asm lda #$ff; asm ldx #34; asm ldy #0; asm jsr $ffff; }
@@ -231,7 +231,7 @@ void main(void) {
    asm sta _nl_ptr1+1;
    asm lda #3;
    asm sta _nl_arg0;
-   asm jsr _asr1;
+   asm jsr _asr1le;
 
    if (asr1_s0 != 0x77) { asm lda #$ff; asm ldx #39; asm ldy #0; asm jsr $ffff; }
    if (asr1_s1 != 0x88) { asm lda #$ff; asm ldx #40; asm ldy #0; asm jsr $ffff; }

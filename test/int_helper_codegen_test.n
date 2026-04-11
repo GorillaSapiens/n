@@ -1,12 +1,12 @@
 // n65cc -I .
-// expectasm: jsr _add24
-// expectasm: jsr _sub24
-// expectasm: jsr _addN
-// expectasm: jsr _subN
-// expectasm: .import _add24
-// expectasm: .import _sub24
-// expectasm: .import _addN
-// expectasm: .import _subN
+// expectasm: jsr _add24le
+// expectasm: jsr _sub24le
+// expectasm: jsr _addNle
+// expectasm: jsr _subNle
+// expectasm: .import _add24le
+// expectasm: .import _sub24le
+// expectasm: .import _addNle
+// expectasm: .import _subNle
 
 type void      { $size:0 };
 type bool      { $size:1 };
