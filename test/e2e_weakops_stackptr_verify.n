@@ -3,8 +3,8 @@
 
 include "machine_6502.n"
 
-type s5 { $size:5 $signed $endian:little };
-type u5 { $size:5 $unsigned $endian:little };
+type s5 { $size:5 $integer:signed $endian:little };
+type u5 { $size:5 $integer:unsigned $endian:little };
 
 void pass(void) {
    asm lda #$ff;

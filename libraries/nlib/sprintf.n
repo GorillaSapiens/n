@@ -1,13 +1,13 @@
 include "stdarg.n"
 
-type fmt_u1 { $size:1 $unsigned $endian:little };
-type fmt_u2 { $size:2 $unsigned $endian:little };
-type fmt_u4 { $size:4 $unsigned $endian:little };
-type fmt_u8 { $size:8 $unsigned $endian:little };
-type fmt_s1 { $size:1 $signed $endian:little };
-type fmt_s2 { $size:2 $signed $endian:little };
-type fmt_s4 { $size:4 $signed $endian:little };
-type fmt_s8 { $size:8 $signed $endian:little };
+type fmt_u1 { $size:1 $integer:unsigned $endian:little };
+type fmt_u2 { $size:2 $integer:unsigned $endian:little };
+type fmt_u4 { $size:4 $integer:unsigned $endian:little };
+type fmt_u8 { $size:8 $integer:unsigned $endian:little };
+type fmt_s1 { $size:1 $integer:signed $endian:little };
+type fmt_s2 { $size:2 $integer:signed $endian:little };
+type fmt_s4 { $size:4 $integer:signed $endian:little };
+type fmt_s8 { $size:8 $integer:signed $endian:little };
 
 union fmt_u1_bits { fmt_u1 value; char bytes[1]; };
 union fmt_u2_bits { fmt_u2 value; char bytes[2]; };

@@ -3,7 +3,7 @@
 
 include "machine_6502.n"
 
-type u8    { $size:1 $unsigned };
+type u8    { $size:1 $integer:unsigned };
 type f10le { $size:10 $float:simple $endian:little };
 
 union f10le_bits {

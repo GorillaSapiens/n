@@ -10,9 +10,9 @@
 // expectasm:     sta fp+1
 
 type void { $size:0 };
-type bool { $size:1 };
-type *    { $size:2 $unsigned $endian:little };
-type int  { $size:2 $signed $endian:little };
+type bool { $size:1 $integer:unsigned };
+type *    { $size:2 $integer:unsigned $endian:little };
+type int  { $size:2 $integer:signed $endian:little };
 
 int id(int x) {
    return x;

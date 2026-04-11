@@ -6,10 +6,10 @@
 // expectasm: ternary:
 // expectasm: 	.byte $07, $00, $00
 
-type bool     { $size:1 };
+type bool     { $size:1 $integer:unsigned };
 type void     { $size:0 };
-type *        { $size:2 $unsigned $endian:little };
-type uint24_t { $size:3 $unsigned $endian:little };
+type *        { $size:2 $integer:unsigned $endian:little };
+type uint24_t { $size:3 $integer:unsigned $endian:little };
 
 bool and_short := 0 && (1 / 0);
 bool or_short := 1 || (1 / 0);

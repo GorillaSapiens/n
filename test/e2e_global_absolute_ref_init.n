@@ -2,9 +2,9 @@
 // expectexit: 0
 include "machine_6502.n"
 
-type u8  { $size:1 $unsigned };
+type u8  { $size:1 $integer:unsigned };
 
-type intlit { $size:2 $signed $endian:little };
+type intlit { $size:2 $integer:signed $endian:little };
 
 int twice(int x) {
    return x + x;

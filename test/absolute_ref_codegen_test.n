@@ -6,8 +6,8 @@
 
 include "machine_6502.n"
 
-type u8  { $size:1 $unsigned };
-type u16 { $size:2 $unsigned $endian:little };
+type u8  { $size:1 $integer:unsigned };
+type u16 { $size:2 $integer:unsigned $endian:little };
 
 ref u8 ro@[0x00/none];
 ref u8 wo@[none/0x80];

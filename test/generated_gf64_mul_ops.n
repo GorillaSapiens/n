@@ -5,8 +5,8 @@
 // expbits: 11
 // implementation: manual SExMy arithmetic using bitfields and unions
 
-type nlf_gf64_u { $size:8 $unsigned $endian:little };
-type nlf_gf64_wide_u { $size:16 $unsigned $endian:little };
+type nlf_gf64_u { $size:8 $integer:unsigned $endian:little };
+type nlf_gf64_wide_u { $size:16 $integer:unsigned $endian:little };
 
 struct nlf_gf64_bits {
    nlf_gf64_u mantissa:52;

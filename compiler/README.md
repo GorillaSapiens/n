@@ -23,10 +23,10 @@ Example:
 
 ```n
 type void   { $size:0 };
-type bool   { $size:1 };
-type *      { $size:2 $unsigned $endian:little };
-type s2     { $size:2 $signed   $endian:little };
-type u4     { $size:4 $unsigned $endian:little };
+type bool   { $size:1 $integer:unsigned };
+type *      { $size:2 $integer:unsigned $endian:little };
+type s2     { $size:2 $integer:signed   $endian:little };
+type u4     { $size:4 $integer:unsigned $endian:little };
 type f4     { $size:4 $float:ieee754 $endian:little }; // IEEE 754 binary32
 ```
 
@@ -40,13 +40,17 @@ The compiler requires these declarations to exist in the program or its includes
 
 `int` and `float` are **not** required and are not hard-coded semantic fallback types anymore.
 
+Non-float scalar type declarations now have to say whether they are integer-like with `$integer:signed` or `$integer:unsigned`. The required `bool` type must use `$integer:unsigned`, while `void` remains flagless.
+
+Bitfield reads follow the declared integer style of the field type: signed integer types sign-extend, unsigned integer types zero-extend.
+
 ### Type flags
 
 Recognized flags include:
 
 - `$size:N`
-- `$signed`
-- `$unsigned`
+- `$integer:signed`
+- `$integer:unsigned`
 - `$exactops` ... same-type operators on this type must resolve through visible exact-name `operator...` overloads; the compiler does not fall back to generic helpers for that type
 - `$float:ieee754` ... IEEE 754 packing for `$size:2`, `$size:4`, and `$size:8`
 - `$float:simple` ... generic `SExMy` packing where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits
@@ -361,7 +365,7 @@ By default, same-type operators behave pragmatically:
 `$exactops` changes that contract for the marked type. When both operands already have that exact declared type name, or when that type is used for unary operators, truthiness, or `++`/`--`, the compiler requires a visible exact-name overload and does **not** fall back to generic helpers. That means a type such as:
 
 ```n
-type wideint { $size:4 $signed $endian:little $exactops };
+type wideint { $size:4 $integer:signed $endian:little $exactops };
 ```
 
 must provide the overloads it actually uses, for example `operator+`, `operator==`, `operator{}`, or `operator++`. If one is used without a visible declaration or definition, compilation fails immediately instead of emitting a symbolic call and hoping the linker finds something later.
@@ -578,9 +582,9 @@ This tree is much further along than the original state, but a few sharp edges r
 
 ```n
 type void { $size:0 };
-type bool { $size:1 };
-type *    { $size:2 $unsigned $endian:little };
-type s2   { $size:2 $signed   $endian:little };
+type bool { $size:1 $integer:unsigned };
+type *    { $size:2 $integer:unsigned $endian:little };
+type s2   { $size:2 $integer:signed   $endian:little };
 
 bool operator{}(s2 v) {
    return v != 0;

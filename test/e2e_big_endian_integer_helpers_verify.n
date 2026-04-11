@@ -3,8 +3,8 @@
 
 include "machine_6502.n"
 
-type u2be { $size:2 $unsigned $endian:big };
-type s2be { $size:2 $signed $endian:big };
+type u2be { $size:2 $integer:unsigned $endian:big };
+type s2be { $size:2 $integer:signed $endian:big };
 
 u2be add_be(u2be a, u2be b) {
    return a + b;

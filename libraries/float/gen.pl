@@ -506,9 +506,9 @@ sub wide_runtime_block {
    my ($static_prefix, $vars, $with_helpers, $helper_names, $extra_decls) = @_;
    $vars //= {};
    my $s = '';
-   $s .= "type $u8 { \$size:1 \$unsigned };\n";
-   $s .= "type $u { \$size:$size \$unsigned \$endian:little };\n";
-   $s .= "type $et { \$size:$ebytes \$endian:little };\n" if !$et_is_builtin;
+   $s .= "type $u8 { \$size:1 \$integer:unsigned };\n";
+   $s .= "type $u { \$size:$size \$integer:unsigned \$endian:little };\n";
+   $s .= "type $et { \$size:$ebytes \$integer:signed \$endian:little };\n" if !$et_is_builtin;
    $s .= "struct $sig {\n   $u8 bytes[$sig_bytes];\n};\n";
    $s .= "struct $wide {\n   $u8 bytes[$wide_sig_bytes];\n};\n";
    $s .= "struct $bits {\n";
@@ -574,9 +574,9 @@ sub base_runtime_block {
    }
 
    my $s = '';
-   $s .= "type $u { \$size:$size \$unsigned \$endian:little };
+   $s .= "type $u { \$size:$size \$integer:unsigned \$endian:little };
 ";
-   $s .= "type $wu { \$size:$wide_bytes \$unsigned \$endian:little };
+   $s .= "type $wu { \$size:$wide_bytes \$integer:unsigned \$endian:little };
 
 " if $need_wide;
    if ($need_ov) {
@@ -1379,12 +1379,12 @@ sub standalone_prelude {
    my $style = inferred_float_style();
    my $s = <<"PRELUDE";
 type void     { \$size:0 };
-type char     { \$size:1 };
-type bool     { \$size:1 };
-type *        { \$size:2 \$endian:little };
-type int      { \$size:2 \$endian:little };
-type long     { \$size:4 \$endian:little };
-type longlong { \$size:8 \$endian:little };
+type char     { \$size:1 \$integer:signed };
+type bool     { \$size:1 \$integer:unsigned };
+type *        { \$size:2 \$integer:unsigned \$endian:little };
+type int      { \$size:2 \$integer:signed \$endian:little };
+type long     { \$size:4 \$integer:signed \$endian:little };
+type longlong { \$size:8 \$integer:signed \$endian:little };
 PRELUDE
    if ($style) {
       $s .= "type $typename { \$size:$size \$endian:$endian \$float:$style \$exactops };

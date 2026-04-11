@@ -10,10 +10,10 @@
 // expectasm: ptr:
 // expectasm: 	.byte <(base+1), >(base+1)
 
-type bool     { $size:1 };
+type bool     { $size:1 $integer:unsigned };
 type void     { $size:0 };
-type *        { $size:2 $unsigned $endian:little };
-type uint24_t { $size:3 $unsigned $endian:little };
+type *        { $size:2 $integer:unsigned $endian:little };
+type uint24_t { $size:3 $integer:unsigned $endian:little };
 type float_t  { $size:4 $float:ieee754 $endian:little }; // IEEE 754 binary32
 
 uint24_t sum := (2 + 3) * 4;

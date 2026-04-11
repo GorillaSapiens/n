@@ -2,8 +2,8 @@
 // expectexit: 0
 include "machine_6502.n"
 
-type s3 { $size:3 $signed $endian:little };
-type s5 { $size:5 $signed $endian:little };
+type s3 { $size:3 $integer:signed $endian:little };
+type s5 { $size:5 $integer:signed $endian:little };
 
 union i24bits {
    s3 v;

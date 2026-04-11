@@ -8,12 +8,12 @@ mem ram      { $start:0x0200 $size:0x7e00 $rw $priority:2 };
 mem rom      { $start:0x8000 $size:0x8000 $ro $priority:1 };
 
 type void     { $size:0 };
-type char     { $size:1 };
-type bool     { $size:1 };
-type *        { $size:2 $endian:little };
-type int      { $size:2 $endian:little };
-type long     { $size:4 $endian:little };
-type longlong { $size:8 $endian:little };
+type char     { $size:1 $integer:signed };
+type bool     { $size:1 $integer:unsigned };
+type * { $size:2 $integer:unsigned $endian:little };
+type int      { $size:2 $integer:signed $endian:little };
+type long     { $size:4 $integer:signed $endian:little };
+type longlong { $size:8 $integer:signed $endian:little };
 type half     { $size:2 $endian:little $float:ieee754 };  // IEEE 754 binary16
 type float    { $size:4 $endian:little $float:ieee754 };  // IEEE 754 binary32
 type double   { $size:8 $endian:little $float:ieee754 }; // IEEE 754 binary64

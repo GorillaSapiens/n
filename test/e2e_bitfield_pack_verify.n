@@ -2,16 +2,18 @@
 // expectexit: 0
 include "machine_6502.n"
 
+type u1 { $size:1 $integer:unsigned };
+
 struct PackedBits {
-   char lo:4;
-   char hi:4;
-   char tag:1;
-   char code:7;
+   u1 lo:4;
+   u1 hi:4;
+   u1 tag:1;
+   u1 code:7;
 };
 
 union PackUnion {
    PackedBits bits;
-   char b[2];
+   u1 b[2];
 };
 
 PackUnion pu;

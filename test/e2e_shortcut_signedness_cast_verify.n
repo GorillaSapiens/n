@@ -3,10 +3,10 @@
 
 include "machine_6502.n"
 
-type s1x { $size:1 $signed $endian:little };
-type u1x { $size:1 $unsigned $endian:little };
-type s2x { $size:2 $signed $endian:little };
-type u2x { $size:2 $unsigned $endian:little };
+type s1x { $size:1 $integer:signed $endian:little };
+type u1x { $size:1 $integer:unsigned $endian:little };
+type s2x { $size:2 $integer:signed $endian:little };
+type u2x { $size:2 $integer:unsigned $endian:little };
 
 u1x as_unsigned_byte(s1x x) {
    return ($unsigned)x;

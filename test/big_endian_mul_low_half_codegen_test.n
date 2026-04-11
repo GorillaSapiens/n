@@ -11,9 +11,9 @@
 // expectasmordered: sta (fp),y
 
 type void      { $size:0 };
-type bool      { $size:1 };
-type u2be      { $size:2 $unsigned $endian:big };
-type *         { $size:2 $unsigned $endian:little };
+type bool      { $size:1 $integer:unsigned };
+type u2be      { $size:2 $integer:unsigned $endian:big };
+type *         { $size:2 $integer:unsigned $endian:little };
 
 u2be mulbe(u2be a, u2be b) {
    return a * b;

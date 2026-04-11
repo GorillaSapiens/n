@@ -1,7 +1,7 @@
 // n65cc -X dumpast -X parseonly
 
-type bool  { $size:1 };
-type int   { $size:2 $signed $endian:little };
+type bool  { $size:1 $integer:unsigned };
+type int   { $size:2 $integer:signed $endian:little };
 bool operator{}(int);     // used by && || !, may be skipped if all 0x00 is false
 int  operator|(int,int);  // bitwise |, may be skipped if true bitwise or is ok
 int  operator^(int,int);  // bitwise ^, may be skipped if true bitwise xor is ok

@@ -2761,28 +2761,51 @@ static bool type_is_bool(const ASTNode *type) {
    return name && !strcmp(name, "bool");
 }
 
+static const char *parse_integer_style_flag_text(const char *text) {
+   if (!text || strncmp(text, "$integer:", 9) || !text[9]) {
+      return NULL;
+   }
+   return text + 9;
+}
+
+static bool type_has_integer_style(const ASTNode *type, const char *style) {
+   const char *name = type_name_from_node(type);
+   char buf[64];
+
+   if (!name || !style) {
+      return false;
+   }
+
+   snprintf(buf, sizeof(buf), "$integer:%s", style);
+   return has_flag(name, buf);
+}
+
 static bool type_is_signed_integer(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    const ASTNode *node;
+
    if (!name || !strcmp(name, "*") || type_is_bool(type) || type_is_float_like(type)) {
       return false;
    }
-   if (has_flag(name, "$unsigned")) {
+
+   if (type_has_integer_style(type, "unsigned")) {
       return false;
    }
-   if (has_flag(name, "$signed")) {
+   if (type_has_integer_style(type, "signed")) {
       return true;
    }
+
    node = get_typename_node(name);
    if (node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"))) {
       return false;
    }
-   return type_size_from_node(type) > 0;
+
+   return false;
 }
 
 static bool type_is_unsigned_integer(const ASTNode *type) {
    const char *name = type_name_from_node(type);
-   return name && strcmp(name, "*") && (has_flag(name, "$unsigned") || type_is_bool(type));
+   return name && strcmp(name, "*") && type_has_integer_style(type, "unsigned");
 }
 
 static bool type_is_promotable_integer(const ASTNode *type) {
@@ -5654,7 +5677,7 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
       }
    }
 
-   is_signed = src->type && has_flag(type_name_from_node(src->type), "$signed");
+   is_signed = src->type && type_is_signed_integer(src->type);
    if (is_signed && src->bit_width > 0 && src->bit_width < copy_size * 8) {
       int sign_byte = (src->bit_width - 1) / 8;
       int sign_mask = 1 << ((src->bit_width - 1) % 8);
@@ -11724,6 +11747,11 @@ static void compile_type_decl_stmt(ASTNode *node) {
    const char *endian = NULL;
    bool haveFloat = false;
    const char *float_style = NULL;
+   bool haveInteger = false;
+   const char *integer_style = NULL;
+   bool integer_required;
+
+   integer_required = key && strcmp(key, "void");
 
    // we need to guarantee a "size" and "endian"
    if (strcmp(node->children[1]->name, "empty")) {
@@ -11767,7 +11795,12 @@ static void compile_type_decl_stmt(ASTNode *node) {
             haveEndian = true;
          }
 
-         if (!strcmp(item->strval, "$float")) {
+         if (!strcmp(item->strval, "$signed") || !strcmp(item->strval, "$unsigned")) {
+            error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$integer:signed' or '$integer:unsigned' instead of '%s'",
+                  node->file, node->line, node->column,
+                  node->children[0]->strval, item->strval);
+         }
+         else if (!strcmp(item->strval, "$float")) {
             error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$float:ieee754' or '$float:simple'",
                   node->file, node->line, node->column,
                   node->children[0]->strval);
@@ -11787,6 +11820,21 @@ static void compile_type_decl_stmt(ASTNode *node) {
             haveFloat = true;
             float_style = style;
          }
+         else if (!strncmp(item->strval, "$integer:", 9)) {
+            const char *style = parse_integer_style_flag_text(item->strval);
+            if (haveInteger) {
+               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$integer' flags",
+                     node->file, node->line, node->column,
+                     node->children[0]->strval);
+            }
+            if (!style || (strcmp(style, "signed") && strcmp(style, "unsigned"))) {
+               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
+                     node->file, node->line, node->column,
+                     node->children[0]->strval, item->strval);
+            }
+            haveInteger = true;
+            integer_style = style;
+         }
       }
    }
 
@@ -11797,6 +11845,23 @@ static void compile_type_decl_stmt(ASTNode *node) {
 
    if (!haveEndian && size > 1) {
       error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
+            node->file, node->line, node->column, node->children[0]->strval);
+   }
+
+   if (haveFloat && haveInteger) {
+      error_user("[%s:%d.%d] type_decl_stmt '%s' cannot combine '$float:*' with '$integer:%s'",
+            node->file, node->line, node->column,
+            node->children[0]->strval,
+            integer_style ? integer_style : "?");
+   }
+
+   if (!haveFloat && integer_required && !haveInteger) {
+      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$integer:signed' or '$integer:unsigned' flag",
+            node->file, node->line, node->column, node->children[0]->strval);
+   }
+
+   if (key && !strcmp(key, "bool") && haveInteger && (!integer_style || strcmp(integer_style, "unsigned"))) {
+      error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$integer:unsigned'",
             node->file, node->line, node->column, node->children[0]->strval);
    }
 
@@ -11817,22 +11882,11 @@ static void compile_type_decl_stmt(ASTNode *node) {
 }
 
 static bool enum_candidate_is_integer_type(const ASTNode *node) {
-   const char *name;
-
    if (!node || strcmp(node->name, "type_decl_stmt")) {
       return false;
    }
 
-   name = node->children[0]->strval;
-   if (!name || !strcmp(name, "void") || !strcmp(name, "*") || !strcmp(name, "bool")) {
-      return false;
-   }
-
-   if (has_flag_prefix(name, "$float:")) {
-      return false;
-   }
-
-   return get_size(name) > 0;
+   return type_is_promotable_integer(node) && !type_is_bool(node);
 }
 
 static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_value, unsigned long long max_value, bool have_negative) {
@@ -11854,7 +11908,7 @@ static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_val
    }
 
    bits = size * 8;
-   is_unsigned = has_flag(type_name_from_node(node), "$unsigned");
+   is_unsigned = type_is_unsigned_integer(node);
    is_signed = type_is_signed_integer(node);
 
    if (bits >= 64) {

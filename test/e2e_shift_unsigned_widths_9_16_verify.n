@@ -30,16 +30,16 @@
 
 include "machine_6502.n"
 
-type ub { $size:1 $unsigned $endian:little };
+type ub { $size:1 $integer:unsigned $endian:little };
 
-type u9 { $size:9 $unsigned $endian:little };
-type u10 { $size:10 $unsigned $endian:little };
-type u11 { $size:11 $unsigned $endian:little };
-type u12 { $size:12 $unsigned $endian:little };
-type u13 { $size:13 $unsigned $endian:little };
-type u14 { $size:14 $unsigned $endian:little };
-type u15 { $size:15 $unsigned $endian:little };
-type u16 { $size:16 $unsigned $endian:little };
+type u9 { $size:9 $integer:unsigned $endian:little };
+type u10 { $size:10 $integer:unsigned $endian:little };
+type u11 { $size:11 $integer:unsigned $endian:little };
+type u12 { $size:12 $integer:unsigned $endian:little };
+type u13 { $size:13 $integer:unsigned $endian:little };
+type u14 { $size:14 $integer:unsigned $endian:little };
+type u15 { $size:15 $integer:unsigned $endian:little };
+type u16 { $size:16 $integer:unsigned $endian:little };
 
 union bits_u9 {
    u9 v;

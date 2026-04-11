@@ -2,15 +2,17 @@
 // expectexit: 0
 include "machine_6502.n"
 
+type u4 { $size:4 $integer:unsigned $endian:little };
+
 struct FloatBits {
-   long mantissa:23;
-   long exponent:8;
-   long sign:1;
+   u4 mantissa:23;
+   u4 exponent:8;
+   u4 sign:1;
 };
 
 union FloatOverlay {
    float f;
-   long word;
+   u4 word;
    char b[4];
    FloatBits bits;
 };

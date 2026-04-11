@@ -4,7 +4,7 @@
 
 include "machine_6502.n"
 
-type uint_cov { $size:2 $unsigned $endian:little };
+type uint_cov { $size:2 $integer:unsigned $endian:little };
 include "map_ascii.n"
 include "map_cp437.n"
 

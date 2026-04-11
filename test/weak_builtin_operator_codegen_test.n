@@ -16,8 +16,8 @@
 
 include "machine_6502.n"
 
-type s4 { $size:4 $signed $endian:little };
-type u4 { $size:4 $unsigned $endian:little };
+type s4 { $size:4 $integer:signed $endian:little };
+type u4 { $size:4 $integer:unsigned $endian:little };
 
 s4 addmulcmp(s4 a, s4 b) {
    if (a <= b) {

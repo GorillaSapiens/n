@@ -4,7 +4,7 @@
 
 include "machine_6502.n"
 
-type ex { $size:4 $signed $endian:little $exactops };
+type ex { $size:4 $integer:signed $endian:little $exactops };
 
 void bump(ref ex a, int b) {
    a += b;

@@ -6,15 +6,15 @@
 // implementation: manual SExMy arithmetic using bitfields and unions
 
 type void     { $size:0 };
-type char     { $size:1 };
-type bool     { $size:1 };
-type *        { $size:2 $endian:little };
-type int      { $size:2 $endian:little };
-type long     { $size:4 $endian:little };
-type longlong { $size:8 $endian:little };
+type char     { $size:1 $integer:signed };
+type bool     { $size:1 $integer:unsigned };
+type *        { $size:2 $integer:unsigned $endian:little };
+type int      { $size:2 $integer:signed $endian:little };
+type long     { $size:4 $integer:signed $endian:little };
+type longlong { $size:8 $integer:signed $endian:little };
 type gf32 { $size:4 $endian:little $float:ieee754 $exactops };
 
-type nlf_gf32_u { $size:4 $unsigned $endian:little };
+type nlf_gf32_u { $size:4 $integer:unsigned $endian:little };
 struct nlf_gf32_bits {
    nlf_gf32_u mantissa:23;
    nlf_gf32_u exponent:8;

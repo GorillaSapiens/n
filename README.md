@@ -78,6 +78,23 @@ Unless a subdirectory says otherwise, the toolchain sources and top-level build/
 The runtime libraries in `libraries/nlib/` and `libraries/nint/` are licensed under BSD-2-Clause so code linked into user binaries stays permissive.
 The exact license texts live in the repository root `LICENSE`/`COPYING` files and in the per-library `LICENSE` files.
 
+## Integer style flags
+
+Integer-like scalar types now use an explicit style flag: `$integer:signed` or `$integer:unsigned`.
+
+Examples:
+
+```n
+type char   { $size:1 $integer:signed };
+type *      { $size:2 $integer:unsigned $endian:little };
+type int    { $size:4 $integer:signed $endian:little };
+type uint   { $size:4 $integer:unsigned $endian:little };
+```
+
+The old `$signed` and `$unsigned` type flags are no longer accepted in `type` declarations.
+
+Bitfields now follow the integer style of their declared type. Use an unsigned integer type for raw packed/overlay fields, and a signed integer type when you want sign extension on bitfield reads.
+
 ## Floating-point style flags
 
 Float types now use a style-based flag: `$float:ieee754` or `$float:simple`.

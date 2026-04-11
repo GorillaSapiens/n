@@ -3,8 +3,8 @@
 
 include "machine_6502.n"
 
-type u2be { $size:2 $unsigned $endian:big };
-type u2le { $size:2 $unsigned $endian:little };
+type u2be { $size:2 $integer:unsigned $endian:big };
+type u2le { $size:2 $integer:unsigned $endian:little };
 
 void main(void) {
    u2le a[4];

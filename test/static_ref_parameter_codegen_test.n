@@ -4,10 +4,10 @@
 // expectasm: sta bump$x,y
 
 type void { $size:0 };
-type bool { $size:1 };
-type *    { $size:2 $unsigned $endian:little };
-type u1   { $size:1 $unsigned $endian:little };
-type int  { $size:2 $signed $endian:little };
+type bool { $size:1 $integer:unsigned };
+type *    { $size:2 $integer:unsigned $endian:little };
+type u1   { $size:1 $integer:unsigned $endian:little };
+type int  { $size:2 $integer:signed $endian:little };
 
 int bump(static ref u1 x, u1 y) {
    x += y;

@@ -3,9 +3,9 @@
 // expectasm: ldy #7
 
 type void { $size:0 };
-type bool { $size:1 $unsigned };
-type u1   { $size:1 $unsigned };
-type *    { $size:2 $unsigned $endian:little };
+type bool { $size:1 $integer:unsigned };
+type u1   { $size:1 $integer:unsigned };
+type *    { $size:2 $integer:unsigned $endian:little };
 
 u1 f(void)[4] {
    u1 a[4] := { 9, 10, 11, 12 };

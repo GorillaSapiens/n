@@ -8,8 +8,8 @@
 // expectasmordered: @for_start_
 include "machine_6502.n"
 
-type u8 { $size:1 $unsigned };
-type intlit { $size:2 $signed $endian:little };
+type u8 { $size:1 $integer:unsigned };
+type intlit { $size:2 $integer:signed $endian:little };
 
 int main(void) {
    u8 sum := 0;
