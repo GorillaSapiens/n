@@ -1,0 +1,13 @@
+// n65cc -I .
+// expectasm: jsr operatorx2B__s4v_p0_a0__s4v_p0_a0
+// forbidasm: jsr _add32
+
+include "machine_6502.n"
+
+type s4v { $size:4 $signed $endian:little };
+
+s4v operator+(s4v, s4v);
+
+s4v add(s4v a, s4v b) {
+   return a + b;
+}

@@ -2838,6 +2838,97 @@ static const ASTNode *expr_same_type_exactops_type(ASTNode *expr, Context *ctx) 
    return NULL;
 }
 
+static bool mixed_exactops_value_types(const ASTNode *lhs_type, const ASTNode *lhs_decl,
+                                       const ASTNode *rhs_type, const ASTNode *rhs_decl,
+                                       const ASTNode **exact_type_out, const ASTNode **other_type_out) {
+   bool lhs_exact;
+   bool rhs_exact;
+
+   if (exact_type_out) {
+      *exact_type_out = NULL;
+   }
+   if (other_type_out) {
+      *other_type_out = NULL;
+   }
+
+   if (!lhs_type || !rhs_type) {
+      return false;
+   }
+   if ((lhs_decl && declarator_pointer_depth(lhs_decl) > 0) ||
+       (rhs_decl && declarator_pointer_depth(rhs_decl) > 0)) {
+      return false;
+   }
+   if (same_named_value_type(lhs_type, lhs_decl, rhs_type, rhs_decl)) {
+      return false;
+   }
+
+   lhs_exact = type_has_exactops(lhs_type);
+   rhs_exact = type_has_exactops(rhs_type);
+   if (!lhs_exact && !rhs_exact) {
+      return false;
+   }
+
+   if (exact_type_out) {
+      *exact_type_out = lhs_exact ? lhs_type : rhs_type;
+   }
+   if (other_type_out) {
+      *other_type_out = lhs_exact ? rhs_type : lhs_type;
+   }
+   return true;
+}
+
+static bool expr_mixed_exactops_type(ASTNode *expr, Context *ctx,
+                                     const ASTNode **exact_type_out,
+                                     const ASTNode **other_type_out) {
+   const ASTNode *lhs_type = NULL;
+   const ASTNode *lhs_decl = NULL;
+   const ASTNode *rhs_type = NULL;
+   const ASTNode *rhs_decl = NULL;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr) || expr->count != 2) {
+      return false;
+   }
+
+   if (strcmp(expr->name, "+") && strcmp(expr->name, "-") &&
+       strcmp(expr->name, "*") && strcmp(expr->name, "/") &&
+       strcmp(expr->name, "%") && strcmp(expr->name, "&") &&
+       strcmp(expr->name, "|") && strcmp(expr->name, "^") &&
+       strcmp(expr->name, "<<") && strcmp(expr->name, ">>") &&
+       strcmp(expr->name, "==") && strcmp(expr->name, "!=") &&
+       strcmp(expr->name, "<") && strcmp(expr->name, ">") &&
+       strcmp(expr->name, "<=") && strcmp(expr->name, ">=")) {
+      return false;
+   }
+
+   expr_match_signature(expr->children[0], ctx, &lhs_type, &lhs_decl);
+   expr_match_signature(expr->children[1], ctx, &rhs_type, &rhs_decl);
+   return mixed_exactops_value_types(lhs_type, lhs_decl, rhs_type, rhs_decl, exact_type_out, other_type_out);
+}
+
+static void require_no_mixed_exactops_operator_expr(ASTNode *expr, Context *ctx) {
+   const ASTNode *exact_type = NULL;
+   const ASTNode *other_type = NULL;
+   const char *exact_name;
+   const char *other_name;
+
+   if (!expr_mixed_exactops_type(expr, ctx, &exact_type, &other_type)) {
+      return;
+   }
+
+   exact_name = type_name_from_node(exact_type);
+   other_name = type_name_from_node(other_type);
+   if (!exact_name || !*exact_name) {
+      exact_name = "<unnamed>";
+   }
+   if (!other_name || !*other_name) {
+      other_name = "<unnamed>";
+   }
+
+   error_user("[%s:%d.%d] type '%s' uses '$exactops' and cannot participate in mixed-type operator '%s' with type '%s'",
+              expr->file, expr->line, expr->column, exact_name, expr->name, other_name);
+}
+
 static void require_exactops_operator_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *type = NULL;
    const char *name;
@@ -7018,10 +7109,12 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          int old_size = lv.size > 0 ? lv.size : dst->size;
          int result_size = declarator_storage_size(rtype, rdecl);
          int store_size = lv.size > 0 ? lv.size : old_size;
+         int saved_locals = ctx ? ctx->locals : 0;
          int result_offset;
          int store_offset;
          int tmp_total;
          ContextEntry result_tmp;
+         LValueRef store_lv = lv;
          ASTNode *operand;
          ASTNode *argv[1] = { NULL };
          ASTNode *call;
@@ -7032,10 +7125,13 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          if (result_size <= 0) {
             error_user("[%s:%d.%d] overloaded %s has unknown return size", expr->file, expr->line, expr->column, inc ? "operator++" : "operator--");
          }
-         result_offset = ctx->locals + old_size;
+         result_offset = saved_locals + old_size;
          store_offset = result_offset + result_size;
          tmp_total = old_size + result_size + store_size;
          result_tmp = (ContextEntry){ .name = "$incdec_result", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = result_offset, .size = result_size };
+         if (!store_lv.is_static && !store_lv.is_global && !store_lv.is_absolute_ref) {
+            store_lv.offset += tmp_total;
+         }
          operand = make_synthetic_incdec_operand(expr);
          if (!operand) {
             return false;
@@ -7050,7 +7146,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _pushN\n");
-         if (!emit_copy_lvalue_to_fp(ctx, ctx->locals, &lv, old_size)) {
+         if (!emit_copy_lvalue_to_fp(ctx, saved_locals, &lv, old_size)) {
             remember_runtime_import("popN");
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
@@ -7058,17 +7154,26 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
             return false;
          }
          if (!pre) {
-            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, ctx->locals, old_size, lv.type);
+            emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, saved_locals, old_size, lv.type);
+         }
+         if (ctx) {
+            ctx->locals = saved_locals + tmp_total;
          }
          if (!compile_call_expr_to_slot(call, ctx, &result_tmp)) {
+            if (ctx) {
+               ctx->locals = saved_locals;
+            }
             remember_runtime_import("popN");
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
             return false;
          }
+         if (ctx) {
+            ctx->locals = saved_locals;
+         }
          emit_copy_fp_to_fp_convert(store_offset, store_size, lv.type, result_offset, result_size, rtype);
-         if (!emit_copy_fp_to_lvalue(ctx, &lv, store_offset, store_size)) {
+         if (!emit_copy_fp_to_lvalue(ctx, &store_lv, store_offset, store_size)) {
             remember_runtime_import("popN");
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
@@ -7196,6 +7301,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
    }
 
    {
+      require_no_mixed_exactops_operator_expr(expr, ctx);
       const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
       if (ofn) {
          ASTNode *argv[2] = { NULL, NULL };
@@ -8289,6 +8395,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
    }
 
    {
+      require_no_mixed_exactops_operator_expr(expr, ctx);
       const ASTNode *ofn = resolve_operator_overload_expr(expr, ctx);
       if (ofn) {
          const ASTNode *rtype = function_return_type(ofn);
@@ -10627,9 +10734,22 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          }
       }
 
-      if (!ofn && base_op && same_named_value_type(dst->type, dst->declarator, arg_types[1], arg_decls[1]) && type_has_exactops(dst->type)) {
-         error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload '%s' for same-type operands",
-                    node->file, node->line, node->column, type_name_from_node(dst->type), opname);
+      if (!ofn && base_op) {
+         const ASTNode *exact_type = NULL;
+         const ASTNode *other_type = NULL;
+         if (mixed_exactops_value_types(dst->type, dst->declarator, arg_types[1], arg_decls[1], &exact_type, &other_type)) {
+            const char *exact_name = type_name_from_node(exact_type);
+            const char *other_name = type_name_from_node(other_type);
+            error_user("[%s:%d.%d] type '%s' uses '$exactops' and cannot participate in mixed-type operator '%s' with type '%s'",
+                       node->file, node->line, node->column,
+                       exact_name && *exact_name ? exact_name : "<unnamed>",
+                       base_op,
+                       other_name && *other_name ? other_name : "<unnamed>");
+         }
+         if (same_named_value_type(dst->type, dst->declarator, arg_types[1], arg_decls[1]) && type_has_exactops(dst->type)) {
+            error_user("[%s:%d.%d] type '%s' uses '$exactops' and requires visible overload '%s' for same-type operands",
+                       node->file, node->line, node->column, type_name_from_node(dst->type), opname);
+         }
       }
 
       if (ofn) {
