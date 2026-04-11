@@ -1,7 +1,7 @@
 LEX = flex
 YACC = bison
 CC = g++
-CFLAGS = -Wall -Wextra -pedantic -MMD -MP
+CFLAGS = -Wall -Wextra -Werror -pedantic -MMD -MP
 
 # for debugging
 CFLAGS += -g

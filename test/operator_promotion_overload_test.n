@@ -1,6 +1,6 @@
 // n65cc
 // expectasm: jsr operatorx2B__s4_p0_a0__s4_p0_a0
-// expectasm: jsr operatorx2B__s5_p0_a0__s5_p0_a0
+// expectasm: jsr operatorx2B__u5_p0_a0__u5_p0_a0
 // expectasm: jsr operatorx2D__s4_p0_a0
 
 type void { $size:0 };
@@ -9,13 +9,13 @@ type *    { $size:2 $unsigned $endian:little };
 type s2   { $size:2 $signed $endian:little };
 type s4   { $size:4 $signed $endian:little };
 type u4   { $size:4 $unsigned $endian:little };
-type s5   { $size:5 $signed $endian:little };
+type u5   { $size:5 $unsigned $endian:little };
 
 s4 operator+(s4 a, s4 b) {
    return a;
 }
 
-s5 operator+(s5 a, s5 b) {
+u5 operator+(u5 a, u5 b) {
    return a;
 }
 
@@ -27,7 +27,7 @@ s4 addmix(s2 a, s4 b) {
    return a + b;
 }
 
-s5 mixsign(s2 a, u4 b) {
+u5 addumix(u4 a, u5 b) {
    return a + b;
 }
 

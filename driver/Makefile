@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c11 -Wall -Wextra -pedantic -O2
+CFLAGS = -std=c11 -Wall -Wextra -Werror -pedantic -O2
 
 BINDIR ?= /usr/local/bin
 DESTDIR ?=

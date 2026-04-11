@@ -9,12 +9,12 @@ type *    { $size:2 $unsigned $endian:little };
 type u1   { $size:1 $unsigned $endian:little };
 type int  { $size:2 $signed $endian:little };
 
-int bump(static ref u1 x, int y) {
+int bump(static ref u1 x, u1 y) {
    x += y;
    return x;
 }
 
 int main(void) {
    u1 a := 7;
-   return bump(a, 2);
+   return bump(a, 2`u1);
 }

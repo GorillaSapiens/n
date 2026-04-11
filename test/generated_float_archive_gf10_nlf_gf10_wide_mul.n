@@ -54,7 +54,7 @@ void nlf_gf10_wide_mul(nlf_gf10_wide *dst, nlf_gf10_sig *lhs, nlf_gf10_sig *rhs)
          int idx;
          long t;
          idx := i + j;
-         t := dst->bytes[idx] + lhs->bytes[i] * rhs->bytes[j] + carry;
+         t := (long)(int)dst->bytes[idx] + (long)(int)lhs->bytes[i] * (long)(int)rhs->bytes[j] + carry;
          dst->bytes[idx] := t & 255;
          carry := t / 256;
          j++;
@@ -63,7 +63,7 @@ void nlf_gf10_wide_mul(nlf_gf10_wide *dst, nlf_gf10_sig *lhs, nlf_gf10_sig *rhs)
          int idx2;
          long t2;
          idx2 := i + j;
-         t2 := dst->bytes[idx2] + carry;
+         t2 := (long)(int)dst->bytes[idx2] + carry;
          dst->bytes[idx2] := t2 & 255;
          carry := t2 / 256;
          j++;

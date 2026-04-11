@@ -31,7 +31,7 @@ void __nfmt_twos_complement_in_place(char *bytes, int size) {
    int tmp;
 
    while (i < size) {
-      tmp := 255 - (bytes[i] & 255) + carry;
+      tmp := 255 - (int)(bytes[i] & 255) + carry;
       if (tmp >= 256) {
          bytes[i] := tmp - 256;
          carry := 1;
@@ -85,7 +85,7 @@ int __nfmt_append_udec_bytes(char *dst, char *bytes, int size) {
       carry := bytes[i] & 255;
       j := 0;
       while (j < ndigits) {
-         tmp := (digits[j] & 255) * 256 + carry;
+         tmp := (int)(digits[j] & 255) * 256 + carry;
          digits[j] := tmp % 10;
          carry := tmp / 10;
          j := j + 1;

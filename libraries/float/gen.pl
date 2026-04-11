@@ -230,8 +230,8 @@ sub mag_cmp_snippet {
    $indent //= '   ';
    my $s = "${indent}$dst := $CMP_EQ;\n";
    for (my $i = $last; $i >= 0; --$i) {
-      my $l = "($lhs.bytes[$i] & 255)";
-      my $r = "($rhs.bytes[$i] & 255)";
+      my $l = "((int)($lhs.bytes[$i] & 255))";
+      my $r = "((int)($rhs.bytes[$i] & 255))";
       if ($i == $last) {
          $l = "($l & 127)";
          $r = "($r & 127)";
@@ -376,11 +376,11 @@ sub wide_helper_text {
    $s .= "void nlf_${san}_wide_shl_bits($wide *p, int count) {\n   while (count > 0) { nlf_${san}_wide_shl1(p); count--; }\n}\n\n";
    $s .= "void nlf_${san}_wide_shr_bits_sticky($wide *p, int count) {\n   while (count > 0) { nlf_${san}_wide_shr1_sticky(p); count--; }\n}\n\n";
    $s .= "void nlf_${san}_sig_add_inplace($sig *dst, $sig *src) {\n";
-   $s .= "   int i;\n   int carry;\n   i := 0;\n   carry := 0;\n   while (i < $sig_bytes) {\n      int t;\n      t := dst->bytes[i] + src->bytes[i] + carry;\n      if (t >= 256) { dst->bytes[i] := t - 256; carry := 1; }\n      else { dst->bytes[i] := t; carry := 0; }\n      i++;\n   }\n}\n\n";
+   $s .= "   int i;\n   int carry;\n   i := 0;\n   carry := 0;\n   while (i < $sig_bytes) {\n      int t;\n      t := (int)dst->bytes[i] + (int)src->bytes[i] + carry;\n      if (t >= 256) { dst->bytes[i] := t - 256; carry := 1; }\n      else { dst->bytes[i] := t; carry := 0; }\n      i++;\n   }\n}\n\n";
    $s .= "void nlf_${san}_sig_inc1($sig *dst) {\n";
    $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      if (dst->bytes[i] != 255) { dst->bytes[i]++; return; }\n      dst->bytes[i] := 0;\n      i++;\n   }\n}\n\n";
    $s .= "void nlf_${san}_sig_sub_inplace($sig *dst, $sig *src) {\n";
-   $s .= "   int i;\n   int borrow;\n   i := 0;\n   borrow := 0;\n   while (i < $sig_bytes) {\n      int lhs;\n      int rhs;\n      lhs := dst->bytes[i];\n      rhs := src->bytes[i] + borrow;\n      if (lhs < rhs) { dst->bytes[i] := lhs + 256 - rhs; borrow := 1; }\n      else { dst->bytes[i] := lhs - rhs; borrow := 0; }\n      i++;\n   }\n}\n\n";
+   $s .= "   int i;\n   int borrow;\n   i := 0;\n   borrow := 0;\n   while (i < $sig_bytes) {\n      int lhs;\n      int rhs;\n      lhs := (int)dst->bytes[i];\n      rhs := (int)src->bytes[i] + borrow;\n      if (lhs < rhs) { dst->bytes[i] := lhs + 256 - rhs; borrow := 1; }\n      else { dst->bytes[i] := lhs - rhs; borrow := 0; }\n      i++;\n   }\n}\n\n";
    $s .= "void nlf_${san}_sig_from_u($sig *dst, $u value) {\n";
    $s .= "   $uov tmp;\n   int i;\n   nlf_${san}_sig_zero(dst);\n   tmp.value := value;\n   i := 0;\n   while (i < $size && i < $sig_bytes) {\n      dst->bytes[i] := tmp.bytes[i];\n      i++;\n   }\n}\n\n";
    $s .= "void nlf_${san}_sig_to_u($sig *src, $uov *dst) {\n";
@@ -390,7 +390,7 @@ sub wide_helper_text {
    $s .= "void nlf_${san}_sig_from_wide_low($sig *dst, $wide *src) {\n";
    $s .= "   int i;\n   i := 0;\n   while (i < $sig_bytes) {\n      dst->bytes[i] := src->bytes[i];\n      i++;\n   }\n}\n\n";
    $s .= "void nlf_${san}_wide_mul($wide *dst, $sig *lhs, $sig *rhs) {\n";
-   $s .= "   int i;\n   nlf_${san}_wide_zero(dst);\n   i := 0;\n   while (i < $sig_bytes) {\n      int j;\n      long carry;\n      j := 0;\n      carry := 0;\n      while (j < $sig_bytes) {\n         int idx;\n         long t;\n         idx := i + j;\n         t := dst->bytes[idx] + lhs->bytes[i] * rhs->bytes[j] + carry;\n         dst->bytes[idx] := t & 255;\n         carry := t / 256;\n         j++;\n      }\n      while (carry != 0 && j + i < $wide_sig_bytes) {\n         int idx2;\n         long t2;\n         idx2 := i + j;\n         t2 := dst->bytes[idx2] + carry;\n         dst->bytes[idx2] := t2 & 255;\n         carry := t2 / 256;\n         j++;\n      }\n      i++;\n   }\n}\n\n";
+   $s .= "   int i;\n   nlf_${san}_wide_zero(dst);\n   i := 0;\n   while (i < $sig_bytes) {\n      int j;\n      long carry;\n      j := 0;\n      carry := 0;\n      while (j < $sig_bytes) {\n         int idx;\n         long t;\n         idx := i + j;\n         t := (long)(int)dst->bytes[idx] + (long)(int)lhs->bytes[i] * (long)(int)rhs->bytes[j] + carry;\n         dst->bytes[idx] := t & 255;\n         carry := t / 256;\n         j++;\n      }\n      while (carry != 0 && j + i < $wide_sig_bytes) {\n         int idx2;\n         long t2;\n         idx2 := i + j;\n         t2 := (long)(int)dst->bytes[idx2] + carry;\n         dst->bytes[idx2] := t2 & 255;\n         carry := t2 / 256;\n         j++;\n      }\n      i++;\n   }\n}\n\n";
    $s .= "int nlf_${san}_sig_high_bit($sig *p) {\n";
    $s .= "   int i;\n   i := $sig_last;\n   while (i >= 0) {\n      if (p->bytes[i] != 0) {\n         int b;\n         b := 7;\n         while (b >= 0) {\n            if ((p->bytes[i] & nlf_${san}_mask8(b)) != 0) { return i * 8 + b; }\n            b--;\n         }\n      }\n      i--;\n   }\n   return 0;\n}\n\n";
    $s .= "void nlf_${san}_sig_div_shifted($sig *quot, $sig *num, $sig *den, int shift, bool *sticky) {\n";

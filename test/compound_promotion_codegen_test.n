@@ -16,9 +16,9 @@
 type void      { $size:0 };
 type bool      { $size:1 };
 type s2        { $size:2 $signed $endian:little };
-type u4        { $size:4 $unsigned $endian:little };
 type s4        { $size:4 $signed $endian:little };
-type s5        { $size:5 $signed $endian:little };
+type u4        { $size:4 $unsigned $endian:little };
+type u5        { $size:5 $unsigned $endian:little };
 type *         { $size:2 $unsigned $endian:little };
 
 s4 addassign_signed(s4 a, s2 b) {
@@ -26,7 +26,7 @@ s4 addassign_signed(s4 a, s2 b) {
    return a;
 }
 
-s5 addassign_mixed(s5 a, u4 b) {
+u5 addassign_unsigned(u5 a, u4 b) {
    a += b;
    return a;
 }

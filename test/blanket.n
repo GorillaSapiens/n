@@ -3,6 +3,8 @@
 // for code coverage, some is nonsensical
 
 include "machine_6502.n"
+
+type uint_cov { $size:2 $unsigned $endian:little };
 include "map_ascii.n"
 include "map_cp437.n"
 
@@ -139,6 +141,10 @@ empty_label: ;
 
    ia := sizeof(ia);
    ia := sizeof(int *);
+
+   uint_cov ucov;
+   ucov := ($unsigned)ia;
+   ia := ($signed)ucov;
 
    ia := fa < fb;
    ia := fa > fb;

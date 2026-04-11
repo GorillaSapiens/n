@@ -656,6 +656,7 @@ unary_expr:
   | '-' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("-", $2); }
   | '+' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("+", $2); }
   | '&' unary_expr                           { COVER; $$ = MAKE_NAMED_NODE("&", $2); }
+  | '(' FLAG ')' unary_expr                  { COVER; $$ = MAKE_NAMED_NODE("flag_cast", make_identifier_leaf($2), $4); }
   | '(' cast_type ')' unary_expr             { COVER; $$ = MAKE_NAMED_NODE("cast", $2, $4); }
   ;
 

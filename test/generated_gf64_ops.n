@@ -129,36 +129,36 @@ void nlf_gf64_add_impl(void) {
    }
    nlf_gf64_cmp := 0;
    if (nlf_gf64_cmp == 0) {
-      if (((nlf_gf64_a.bytes[7] & 255) & 127) < ((nlf_gf64_b.bytes[7] & 255) & 127)) { nlf_gf64_cmp := 1; }
-      else { if (((nlf_gf64_a.bytes[7] & 255) & 127) > ((nlf_gf64_b.bytes[7] & 255) & 127)) { nlf_gf64_cmp := 2; } }
+      if ((((int)(nlf_gf64_a.bytes[7] & 255)) & 127) < (((int)(nlf_gf64_b.bytes[7] & 255)) & 127)) { nlf_gf64_cmp := 1; }
+      else { if ((((int)(nlf_gf64_a.bytes[7] & 255)) & 127) > (((int)(nlf_gf64_b.bytes[7] & 255)) & 127)) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[6] & 255) < (nlf_gf64_b.bytes[6] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[6] & 255) > (nlf_gf64_b.bytes[6] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[6] & 255)) < ((int)(nlf_gf64_b.bytes[6] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[6] & 255)) > ((int)(nlf_gf64_b.bytes[6] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[5] & 255) < (nlf_gf64_b.bytes[5] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[5] & 255) > (nlf_gf64_b.bytes[5] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[5] & 255)) < ((int)(nlf_gf64_b.bytes[5] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[5] & 255)) > ((int)(nlf_gf64_b.bytes[5] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[4] & 255) < (nlf_gf64_b.bytes[4] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[4] & 255) > (nlf_gf64_b.bytes[4] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[4] & 255)) < ((int)(nlf_gf64_b.bytes[4] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[4] & 255)) > ((int)(nlf_gf64_b.bytes[4] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[3] & 255) < (nlf_gf64_b.bytes[3] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[3] & 255) > (nlf_gf64_b.bytes[3] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[3] & 255)) < ((int)(nlf_gf64_b.bytes[3] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[3] & 255)) > ((int)(nlf_gf64_b.bytes[3] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[2] & 255) < (nlf_gf64_b.bytes[2] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[2] & 255) > (nlf_gf64_b.bytes[2] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[2] & 255)) < ((int)(nlf_gf64_b.bytes[2] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[2] & 255)) > ((int)(nlf_gf64_b.bytes[2] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[1] & 255) < (nlf_gf64_b.bytes[1] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[1] & 255) > (nlf_gf64_b.bytes[1] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[1] & 255)) < ((int)(nlf_gf64_b.bytes[1] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[1] & 255)) > ((int)(nlf_gf64_b.bytes[1] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[0] & 255) < (nlf_gf64_b.bytes[0] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[0] & 255) > (nlf_gf64_b.bytes[0] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[0] & 255)) < ((int)(nlf_gf64_b.bytes[0] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[0] & 255)) > ((int)(nlf_gf64_b.bytes[0] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) { nlf_gf64_r.raw := 0`nlf_gf64_u; return; }
    if (nlf_gf64_cmp == 1) {
@@ -223,36 +223,36 @@ void nlf_gf64_cmp_impl(void) {
    if (nlf_gf64_a.bits.sign != nlf_gf64_b.bits.sign) { if (nlf_gf64_a.bits.sign != 0`nlf_gf64_u) { nlf_gf64_cmp := 1; } else { nlf_gf64_cmp := 2; } return; }
    nlf_gf64_cmp := 0;
    if (nlf_gf64_cmp == 0) {
-      if (((nlf_gf64_a.bytes[7] & 255) & 127) < ((nlf_gf64_b.bytes[7] & 255) & 127)) { nlf_gf64_cmp := 1; }
-      else { if (((nlf_gf64_a.bytes[7] & 255) & 127) > ((nlf_gf64_b.bytes[7] & 255) & 127)) { nlf_gf64_cmp := 2; } }
+      if ((((int)(nlf_gf64_a.bytes[7] & 255)) & 127) < (((int)(nlf_gf64_b.bytes[7] & 255)) & 127)) { nlf_gf64_cmp := 1; }
+      else { if ((((int)(nlf_gf64_a.bytes[7] & 255)) & 127) > (((int)(nlf_gf64_b.bytes[7] & 255)) & 127)) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[6] & 255) < (nlf_gf64_b.bytes[6] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[6] & 255) > (nlf_gf64_b.bytes[6] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[6] & 255)) < ((int)(nlf_gf64_b.bytes[6] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[6] & 255)) > ((int)(nlf_gf64_b.bytes[6] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[5] & 255) < (nlf_gf64_b.bytes[5] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[5] & 255) > (nlf_gf64_b.bytes[5] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[5] & 255)) < ((int)(nlf_gf64_b.bytes[5] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[5] & 255)) > ((int)(nlf_gf64_b.bytes[5] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[4] & 255) < (nlf_gf64_b.bytes[4] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[4] & 255) > (nlf_gf64_b.bytes[4] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[4] & 255)) < ((int)(nlf_gf64_b.bytes[4] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[4] & 255)) > ((int)(nlf_gf64_b.bytes[4] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[3] & 255) < (nlf_gf64_b.bytes[3] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[3] & 255) > (nlf_gf64_b.bytes[3] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[3] & 255)) < ((int)(nlf_gf64_b.bytes[3] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[3] & 255)) > ((int)(nlf_gf64_b.bytes[3] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[2] & 255) < (nlf_gf64_b.bytes[2] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[2] & 255) > (nlf_gf64_b.bytes[2] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[2] & 255)) < ((int)(nlf_gf64_b.bytes[2] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[2] & 255)) > ((int)(nlf_gf64_b.bytes[2] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[1] & 255) < (nlf_gf64_b.bytes[1] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[1] & 255) > (nlf_gf64_b.bytes[1] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[1] & 255)) < ((int)(nlf_gf64_b.bytes[1] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[1] & 255)) > ((int)(nlf_gf64_b.bytes[1] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_cmp == 0) {
-      if ((nlf_gf64_a.bytes[0] & 255) < (nlf_gf64_b.bytes[0] & 255)) { nlf_gf64_cmp := 1; }
-      else { if ((nlf_gf64_a.bytes[0] & 255) > (nlf_gf64_b.bytes[0] & 255)) { nlf_gf64_cmp := 2; } }
+      if (((int)(nlf_gf64_a.bytes[0] & 255)) < ((int)(nlf_gf64_b.bytes[0] & 255))) { nlf_gf64_cmp := 1; }
+      else { if (((int)(nlf_gf64_a.bytes[0] & 255)) > ((int)(nlf_gf64_b.bytes[0] & 255))) { nlf_gf64_cmp := 2; } }
    }
    if (nlf_gf64_a.bits.sign != 0`nlf_gf64_u) { if (nlf_gf64_cmp == 1) { nlf_gf64_cmp := 2; } else { if (nlf_gf64_cmp == 2) { nlf_gf64_cmp := 1; } } }
 }

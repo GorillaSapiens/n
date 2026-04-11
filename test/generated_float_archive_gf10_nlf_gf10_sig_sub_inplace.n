@@ -47,8 +47,8 @@ void nlf_gf10_sig_sub_inplace(nlf_gf10_sig *dst, nlf_gf10_sig *src) {
    while (i < 9) {
       int lhs;
       int rhs;
-      lhs := dst->bytes[i];
-      rhs := src->bytes[i] + borrow;
+      lhs := (int)dst->bytes[i];
+      rhs := (int)src->bytes[i] + borrow;
       if (lhs < rhs) { dst->bytes[i] := lhs + 256 - rhs; borrow := 1; }
       else { dst->bytes[i] := lhs - rhs; borrow := 0; }
       i++;

@@ -46,7 +46,7 @@ void nlf_gf10_sig_add_inplace(nlf_gf10_sig *dst, nlf_gf10_sig *src) {
    carry := 0;
    while (i < 9) {
       int t;
-      t := dst->bytes[i] + src->bytes[i] + carry;
+      t := (int)dst->bytes[i] + (int)src->bytes[i] + carry;
       if (t >= 256) { dst->bytes[i] := t - 256; carry := 1; }
       else { dst->bytes[i] := t; carry := 0; }
       i++;
