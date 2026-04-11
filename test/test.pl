@@ -19,8 +19,15 @@ my $CLEAR = "\e[K";
 
 my $GRAY = "\e[90m";
 my $NOCOLOR = "\e[0m";
-my $LINE = "\x{2501}";
-my $HALFLINE = "\x{2578}";
+my @LINE = ( " ",
+             "\x{258F}",
+             "\x{258E}",
+             "\x{258D}",
+             "\x{258C}",
+             "\x{258B}",
+             "\x{258A}",
+             "\x{2589}",
+             "\x{2588}");
 
 my $compile_only = 0;
 my $e2e_only = 0;
@@ -788,28 +795,28 @@ sub discover_default_paths {
 
 sub progress {
    my ($num, $den) = @_;
-   my $nubs = int($num * 30 / $den);
+   my $nubs = int($num * 80 / $den);
    my $terms = 0;
-   my $ret = $GRAY;
+   my $ret = "\x{2595}$GRAY";
 
-   while ($nubs >= 2) {
-      $ret .= $LINE;
-      $nubs -= 2;
-      $terms += 2;
+   while ($nubs >= 8) {
+      $ret .= $LINE[8];
+      $nubs -= 8;
+      $terms += 8;
    }
 
    if ($nubs) {
-      $ret .= $HALFLINE;
-      $nubs--;
-      $terms += 2;
+      $ret .= $LINE[$nubs];
+      $nubs = 0;
+      $terms += 8;
    }
 
-   while ($terms < 30) {
-      $ret .= " ";
-      $terms += 2;
+   while ($terms < 80) {
+      $ret .= $LINE[0];
+      $terms += 8;
    }
 
-   $ret .= $NOCOLOR;
+   $ret .= "$NOCOLOR\x{258F}";
 
    return $ret;
 }
@@ -851,13 +858,13 @@ for my $case (@cases) {
 
    if ($result->{ok}) {
       $passed++;
-      printf("\r[%s] [%*d/%d] [%s] %s%s", $progress, length($total), $index, $total, $PASS, $case->{name}, $CLEAR);
+      printf("\r%s [%*d/%d] [%s] %s%s", $progress, length($total), $index, $total, $PASS, $case->{name}, $CLEAR);
    }
    else {
       push @failures, { name => $case->{name}, message => $result->{message} };
       my $first = $result->{message};
       $first =~ s/\n.*//s;
-      printf("\r[%s] [%*d/%d] [%s] %s :: %s\n", $progress, length($total), $index, $total, $FAIL, $case->{name}, $first);
+      printf("\r%s [%*d/%d] [%s] %s :: %s\n", $progress, length($total), $index, $total, $FAIL, $case->{name}, $first);
    }
    sleep 0.1;
 }
