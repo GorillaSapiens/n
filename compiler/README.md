@@ -51,7 +51,7 @@ Recognized flags include:
 - `$float:ieee754` ... IEEE 754 packing for `$size:2`, `$size:4`, and `$size:8`
 - `$float:simple` ... generic `SExMy` packing where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits
 
-For generated arithmetic/comparison overloads on custom float-like types, see `libraries/float/gen.pl`. It emits `.n` code that cracks the value through union+bitfield overlays and now generates an exact-operator surface for the float type: binary `+ - * /`, unary `+ -`, `== != < > <= >=`, `operator{}` truthiness, and `++ --`. Build-mode declarations mark the generated type `$exactops`, so same-type float operators resolve through the generated exact-name overloads instead of falling back to generic helpers.
+For generated arithmetic/comparison overloads on custom float-like types, see `libraries/float/gen.pl`. It emits `.n` code that cracks the value through union+bitfield overlays and now generates an exact-operator surface for the float type: binary `+ - * /`, unary `+ -`, `== != < > <= >=`, `operator{}` truthiness, and `++ --`. Build mode emits a `<typename>_decls.n` file that declares the type with `$exactops` plus the matching `extern operator...` prototypes. Classic single-file mode emits only the operator definitions, so the including translation unit must provide the matching `type ... $exactops` declaration itself.
 - `$endian:little`
 - `$endian:big`
 

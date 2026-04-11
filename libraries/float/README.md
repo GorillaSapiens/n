@@ -8,7 +8,7 @@ Classic single-file mode still writes one monolithic implementation to stdout:
 perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n
 ```
 
-That output expects a matching `type typename { ... $exactops };` declaration to already exist in the including translation unit. It emits:
+That output emits the operator definitions only. The including translation unit must already declare the matching type, and should mark it `$exactops` if you want the compiler to require the generated exact-name operators instead of falling back to generic helpers. It emits:
 
 - binary `typename operator+(typename, typename)`
 - unary `typename operator+(typename)`
@@ -38,6 +38,8 @@ That produces:
 - `outdir/<typename>_operator_<name>.n` ... one self-contained source per operator member
 - matching `.s` and `.o65` files for each operator source
 - `outdir/<typename>.a65` ... archive containing all generated operator members
+
+The generated operator surface is intentionally complete for same-type exactops use: binary `+ - * /`, unary `+ -`, `== != < > <= >=`, `operator{}` truthiness, and `++ --`. Several of those are emitted as thin wrappers around the smaller primitive set so the compiler sees the full exact-operator contract without paying full implementation cost for every member.
 
 The per-operator build-mode units are self-contained and mark their scratch globals and helper routines `static`, so multiple generated members can coexist inside one archive without symbol collisions.
 

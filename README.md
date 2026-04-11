@@ -57,6 +57,17 @@ The installed `n65driver` will first use the built source-tree layout when run f
 
 Run `make test` at the repository root to execute the unified `test/test.pl` harness across both compiler-side source tests and end-to-end `n65cc -> n65asm -> n65ld -> n65sim` regression tests. Use `make unit` for compile-only cases, `make e2e` for end-to-end cases, and `make sieve` for a quick `n65driver` smoke build.
 
+`test/test.pl` is now the one runner for both `.n` source tests and generic `.test` wrapper tests. It does not stop at the first failure, shows progress for every case, and prints a final summary of all failures. You can also run one file, a few files, or a whole subdirectory directly, for example:
+
+```sh
+cd test
+./test.pl weak_builtin_operator_codegen_test.n
+./test.pl --compile-only exactops_visible_operator_codegen_test.n
+./test.pl --e2e-only e2e_generated_float_archive_exactops_verify.n
+```
+
+See `test/README.md` for the header directives, placeholder tokens, and the generic `.test` file format.
+
 # Additional Details
 
 For additional details, see the README.md files in the various subdirectories.
@@ -83,6 +94,6 @@ type f3     { $size:3 $endian:little $float:simple  }; // generic simple SExMy f
 `$float:ieee754` supports only `$size:2`, `$size:4`, and `$size:8`.
 `$float:simple` supports any positive size and always uses an `SExMy` layout where `x = round(3 * log2(size) + 2)` and `y` is the remaining fraction bits. For `$size:2`, `$size:4`, and `$size:8`, that yields the same exponent widths as IEEE 754 binary16/binary32/binary64.
 
-`libraries/float/gen.pl` can generate a full exact-operator surface for a float-like type using union/bitfield `SExMy` arithmetic instead of the old nlib float helpers. In build mode it now emits a generated type declaration with `$exactops` plus exact overload declarations for binary `+ - * /`, unary `+ -`, `== != < > <= >=`, `operator{}` truthiness, and `++ --`. Run `perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n`, then `include "mytype_ops.n"` next to the matching `type` declaration and add `$exactops` to that declaration if you want the same compile-time contract in monolithic mode too.
+`libraries/float/gen.pl` can generate a full exact-operator surface for a float-like type using union/bitfield `SExMy` arithmetic instead of the old nlib float helpers. In classic single-file mode it emits the operator definitions only, so the including translation unit must declare the matching type and should mark it `$exactops` to get the same compile-time contract. In build mode it emits a generated type declaration with `$exactops` plus exact overload declarations for binary `+ - * /`, unary `+ -`, `== != < > <= >=`, `operator{}` truthiness, and `++ --`. Run `perl libraries/float/gen.pl typename little-or-big size-bytes exp-bits > mytype_ops.n` for monolithic output, or use `--build outdir ...` for archive-friendly split output.
 
 If a type should use exact declared-type operator names only, add `$exactops` to the `type` declaration. Without `$exactops`, same-type operators fall back to the generic builtin lowering when no visible exact overload is available. With `$exactops`, the compiler requires visible exact overloads for the operators you actually use.
