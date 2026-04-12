@@ -237,12 +237,16 @@ The language uses two cast families:
 - backtick casts such as ``123`u2`` are literal-only and always happen immediately on the host
 - parenthesized casts such as `(u2)expr` are ordinary expression casts; when applied to a literal they may also fold on the host at compile time
 
-There are also two planned signedness-only shortcut casts:
+There are also four shortcut casts:
 
 - ``($signed)expr``
 - ``($unsigned)expr``
+- ``($big)expr``
+- ``($little)expr``
 
-These are intended to preserve width while changing signedness, but only for already-typed ordinary fixed-width integers. They are never legal on literals, `$exactops` types, floats, or pointers.
+`($signed)` and `($unsigned)` preserve width and endianness while changing signedness, but only for already-typed ordinary fixed-width integers. They are never legal on literals, `$exactops` types, floats, or pointers.
+
+`($big)` and `($little)` preserve width and numeric family while changing endianness. They are legal on already-typed fixed-width integers and floats, including `$exactops` values, but they are never legal on literals, `bool`, or pointers.
 
 ### Shifts
 
@@ -263,18 +267,21 @@ As of this snapshot, parts of the compiler still implement older C-like promotio
 
 ### Endianness in expressions and assignment
 
-Mixed-endian assignments and mixed-endian integer promotions are supported.
+Mixed-endian assignments are supported.
 
-The compiler now performs endian-aware conversion when values move between slots or symbols. When source and destination integer endianness differ, bytes are reordered instead of blindly copied.
+The compiler performs endian-aware conversion when values move between slots or symbols. When source and destination integer or float endianness differ, bytes are reordered instead of blindly copied.
 
-For mixed-endian integer arithmetic, the promotion chooser prefers a little-endian work type when the operand endianness differs, because the current runtime helpers for multiply, divide, modulo, shifts, and ordered comparisons operate on little-endian buffers.
+Ordinary mixed-endian integer operators do **not** promote through a hidden work type anymore. They are rejected unless the user makes the endianness choice explicit with a cast, either a full type cast such as `(u2le)expr` or an endian shortcut cast such as `($little)expr`.
 
-That means these are now handled sensibly:
+That means these are handled sensibly:
 
 - big-endian to little-endian assignment of equal-sized integers
 - little-endian to big-endian assignment of equal-sized integers
-- mixed-endian integer arithmetic after promotion
-- mixed-endian comparisons after promotion
+- big-endian to little-endian assignment of equal-sized floats
+- little-endian to big-endian assignment of equal-sized floats
+- mixed-endian integer arithmetic after an explicit endian cast
+- mixed-endian comparisons after an explicit endian cast
+- mixed-endian pointer indexing after an explicit endian cast
 
 ## Inline assembly
 
@@ -574,7 +581,7 @@ This tree is much further along than the original state, but a few sharp edges r
 
 - operator overload resolution only considers exact matches plus safe integer promotions for plain value parameters
 - ordinary function overloading now supports exact matches plus safe integer promotions for plain value parameters, but there is still no user-defined conversion search or other C++-style ranking machinery
-- some runtime helpers are still little-endian-specific, which is why mixed-endian arithmetic normalizes through a little-endian promoted work type when needed
+- mixed-endian ordinary integer operators still require an explicit endian cast; there is no implicit BE/LE reconciliation
 - symbol-backed-parameter cycle checking now spans the selected object files at link time, but truly dynamic call targets still cannot be proven safe
 - shift-count diagnostics are still lax
 

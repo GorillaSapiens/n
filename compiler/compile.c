@@ -233,6 +233,7 @@ static const ASTNode *compound_integer_work_type(const ASTNode *lhs_type, const 
 static void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *ctx);
 static void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx);
 static void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode *idx_expr, Context *ctx, const char *op);
+static const ASTNode *select_endian_variant_type(const ASTNode *src_type, const char *target_endian);
 static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx);
 static const ASTNode *flag_cast_target_declarator(ASTNode *expr, Context *ctx);
 static int flag_cast_target_size(ASTNode *expr, Context *ctx);
@@ -3386,14 +3387,75 @@ static void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode 
               origin->file, origin->line, origin->column, op ? op : "?", idx_endian, ptr_endian);
 }
 
+static const ASTNode *select_endian_variant_type(const ASTNode *src_type, const char *target_endian) {
+   int src_size;
+   bool src_exactops;
+
+   if (!src_type) {
+      return NULL;
+   }
+
+   src_size = type_size_from_node(src_type);
+   if (src_size <= 1) {
+      return src_type;
+   }
+
+   src_exactops = type_has_exactops(src_type);
+
+   for (int i = 0; root && i < root->count; i++) {
+      ASTNode *node = root->children[i];
+      const char *cand_endian;
+
+      if (!node || strcmp(node->name, "type_decl_stmt")) {
+         continue;
+      }
+      if (type_size_from_node(node) != src_size) {
+         continue;
+      }
+      if (type_has_exactops(node) != src_exactops) {
+         continue;
+      }
+      cand_endian = type_endian_name(node);
+      if (target_endian && cand_endian && strcmp(target_endian, cand_endian)) {
+         continue;
+      }
+      if (type_is_float_like(src_type)) {
+         const char *src_style = type_float_style(src_type);
+         const char *cand_style;
+         if (!type_is_float_like(node)) {
+            continue;
+         }
+         cand_style = type_float_style(node);
+         if ((!src_style || !cand_style || strcmp(src_style, cand_style))) {
+            continue;
+         }
+         return node;
+      }
+      if (type_is_promotable_integer(src_type) && !type_is_bool(src_type) && !type_is_float_like(src_type)) {
+         if (!type_is_promotable_integer(node) || type_is_bool(node) || type_is_float_like(node)) {
+            continue;
+         }
+         if (type_is_signed_integer(node) != type_is_signed_integer(src_type)) {
+            continue;
+         }
+         return node;
+      }
+   }
+
+   return NULL;
+}
+
 static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx) {
    ASTNode *operand;
    ASTNode *flag;
    const ASTNode *src_type;
    const ASTNode *src_decl;
    const char *src_endian;
+   const char *target_endian;
    const char *flag_text;
    bool want_signed;
+   bool signedness_cast;
+   bool endian_cast;
    int src_size;
 
    expr = (ASTNode *) unwrap_expr_node(expr);
@@ -3404,41 +3466,75 @@ static const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx) {
    flag = expr->children[0];
    operand = (ASTNode *) unwrap_expr_node(expr->children[1]);
    flag_text = flag ? flag->strval : NULL;
-   if (!flag_text || (strcmp(flag_text, "$signed") && strcmp(flag_text, "$unsigned"))) {
+   signedness_cast = flag_text && (!strcmp(flag_text, "$signed") || !strcmp(flag_text, "$unsigned"));
+   endian_cast = flag_text && (!strcmp(flag_text, "$big") || !strcmp(flag_text, "$little"));
+   if (!flag_text || (!signedness_cast && !endian_cast)) {
       error_user("[%s:%d.%d] invalid shortcut cast flag", expr->file, expr->line, expr->column);
    }
    if (!operand || expr_is_literal_node(operand)) {
-      error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed ordinary fixed-width integer expressions",
+      if (signedness_cast) {
+         error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed ordinary fixed-width integer expressions",
+                    expr->file, expr->line, expr->column, flag_text);
+      }
+      error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed fixed-width integer or float expressions",
                  expr->file, expr->line, expr->column, flag_text);
    }
 
    src_type = expr_value_type(operand, ctx);
    src_decl = expr_value_declarator(operand, ctx);
-   if (!src_type || (src_decl && !declarator_is_plain_value(src_decl)) ||
-       !type_is_promotable_integer(src_type) || type_is_bool(src_type) ||
-       type_has_exactops(src_type) || type_is_float_like(src_type)) {
-      error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed ordinary fixed-width integer expressions",
-                 expr->file, expr->line, expr->column, flag_text);
+   if (signedness_cast) {
+      if (!src_type || (src_decl && !declarator_is_plain_value(src_decl)) ||
+          !type_is_promotable_integer(src_type) || type_is_bool(src_type) ||
+          type_has_exactops(src_type) || type_is_float_like(src_type)) {
+         error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed ordinary fixed-width integer expressions",
+                    expr->file, expr->line, expr->column, flag_text);
+      }
+   }
+   else {
+      if (!src_type || (src_decl && !declarator_is_plain_value(src_decl)) || type_is_bool(src_type) ||
+          (!type_is_promotable_integer(src_type) && !type_is_float_like(src_type))) {
+         error_user("[%s:%d.%d] shortcut cast '%s' is only legal on already-typed fixed-width integer or float expressions",
+                    expr->file, expr->line, expr->column, flag_text);
+      }
    }
 
    src_size = type_size_from_node(src_type);
    if (src_size <= 0) {
-      error_user("[%s:%d.%d] shortcut cast '%s' requires a fixed-width integer operand",
-                 expr->file, expr->line, expr->column, flag_text);
+      error_user("[%s:%d.%d] shortcut cast '%s' requires a fixed-width %s operand",
+                 expr->file, expr->line, expr->column, flag_text,
+                 signedness_cast ? "integer" : "integer or float");
    }
 
-   want_signed = !strcmp(flag_text, "$signed");
-   if (type_is_signed_integer(src_type) == want_signed) {
+   if (signedness_cast) {
+      want_signed = !strcmp(flag_text, "$signed");
+      if (type_is_signed_integer(src_type) == want_signed) {
+         return src_type;
+      }
+
+      src_endian = type_endian_name(src_type);
+      {
+         const ASTNode *dst_type = select_integer_type_by_shape(src_size, want_signed, src_endian, NULL, NULL);
+         if (!dst_type || type_size_from_node(dst_type) != src_size) {
+            error_user("[%s:%d.%d] shortcut cast '%s' has no matching %d-byte %s integer type",
+                       expr->file, expr->line, expr->column, flag_text, src_size,
+                       want_signed ? "signed" : "unsigned");
+         }
+         return dst_type;
+      }
+   }
+
+   target_endian = !strcmp(flag_text, "$big") ? "big" : "little";
+   src_endian = type_endian_name(src_type);
+   if (src_size <= 1 || !src_endian || !strcmp(src_endian, target_endian)) {
       return src_type;
    }
 
-   src_endian = type_endian_name(src_type);
    {
-      const ASTNode *dst_type = select_integer_type_by_shape(src_size, want_signed, src_endian, NULL, NULL);
-      if (!dst_type || type_size_from_node(dst_type) != src_size) {
-         error_user("[%s:%d.%d] shortcut cast '%s' has no matching %d-byte %s integer type",
-                    expr->file, expr->line, expr->column, flag_text, src_size,
-                    want_signed ? "signed" : "unsigned");
+      const ASTNode *dst_type = select_endian_variant_type(src_type, target_endian);
+      if (!dst_type) {
+         error_user("[%s:%d.%d] shortcut cast '%s' has no matching %d-byte %s-endian %s type",
+                    expr->file, expr->line, expr->column, flag_text, src_size, target_endian,
+                    type_is_float_like(src_type) ? "float" : "integer");
       }
       return dst_type;
    }
@@ -5379,7 +5475,7 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
          int idx_offset = saved_locals;
          int factor_offset = idx_offset + ptr_size;
          int scaled_offset = factor_offset + ptr_size;
-         int save_ptr0_offset = elem_size != 1 ? (scaled_offset + ptr_size) : (idx_offset + ptr_size);
+         int save_ptr0_offset = elem_size != 1 ? (scaled_offset + (ptr_size * 2)) : (idx_offset + ptr_size);
          int total = (save_ptr0_offset - idx_offset) + ptr_size;
          ContextEntry idx_tmp = { .name = "$idx", .type = idx_type ? idx_type : required_typename_node("int"), .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = idx_offset, .size = ptr_size };
 
@@ -5425,6 +5521,7 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
             emit_store_immediate_to_fp(factor_offset, factor_bytes, ptr_size);
             free(factor_bytes);
             emit_runtime_binary_fp_fp(int_mul_helper_name(idx_type ? idx_type : required_typename_node("int")), scaled_offset, idx_offset, factor_offset, ptr_size);
+            emit_load_ptr_from_fpvar(0, save_ptr0_offset);
             emit_add_fp_to_ptr(0, int_mul_result_offset(idx_type ? idx_type : required_typename_node("int"), scaled_offset, ptr_size), ptr_size);
          }
          else {
@@ -7204,6 +7301,7 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       const ASTNode *target_type = !strcmp(expr->name, "cast") ? cast_expr_target_type(expr) : flag_cast_target_type(expr, ctx);
       const ASTNode *target_decl = !strcmp(expr->name, "cast") ? cast_expr_target_declarator(expr) : flag_cast_target_declarator(expr, ctx);
       int target_size = !strcmp(expr->name, "cast") ? cast_expr_target_size(expr) : flag_cast_target_size(expr, ctx);
+      int saved_locals = ctx ? ctx->locals : 0;
       ContextEntry tmp;
       if (!target_type || target_size <= 0 || expr->count < 2) {
          return false;
@@ -7212,13 +7310,22 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _pushN\n");
-      tmp = (ContextEntry){ .name = "$cast", .type = target_type, .declarator = target_decl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = target_size };
+      tmp = (ContextEntry){ .name = "$cast", .type = target_type, .declarator = target_decl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = target_size };
+      if (ctx) {
+         ctx->locals = saved_locals + target_size;
+      }
       if (!compile_expr_to_slot(expr->children[1], ctx, &tmp)) {
+         if (ctx) {
+            ctx->locals = saved_locals;
+         }
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
          return false;
+      }
+      if (ctx) {
+         ctx->locals = saved_locals;
       }
       emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, tmp.offset, tmp.size, tmp.type);
       remember_runtime_import("popN");
@@ -11435,13 +11542,22 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          emit_copy_fp_to_fp_convert(lhs_tmp_offset, work_size, work_type, dst->offset, dst->size, dst->type);
       }
 
+      if (ctx) {
+         ctx->locals = lhs_tmp_offset + tmp_total;
+      }
       if (!compile_expr_to_slot(rhs, ctx, &rhs_tmp)) {
+         if (ctx) {
+            ctx->locals = lhs_tmp_offset;
+         }
          remember_runtime_import("popN");
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
          error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
          return;
+      }
+      if (ctx) {
+         ctx->locals = lhs_tmp_offset;
       }
 
       if (scaled_pointer_assign && pointer_scale != 1) {

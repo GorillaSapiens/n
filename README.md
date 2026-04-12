@@ -91,7 +91,7 @@ type int    { $size:4 $integer:signed $endian:little };
 type uint   { $size:4 $integer:unsigned $endian:little };
 ```
 
-The old `$signed` and `$unsigned` type flags are no longer accepted in `type` declarations.
+The old `$signed` and `$unsigned` type flags are no longer accepted in `type` declarations. The expression-level shortcut casts `($signed)` / `($unsigned)` still exist, and there are matching endian shortcuts `($big)` / `($little)` for fixed-width integers and floats.
 
 Bitfields now follow the integer style of their declared type. Use an unsigned integer type for raw packed/overlay fields, and a signed integer type when you want sign extension on bitfield reads.
 

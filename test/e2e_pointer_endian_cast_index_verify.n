@@ -19,10 +19,12 @@ void main(void) {
 
    idx := (u2le)raw;
    if (idx != 2`u2le) { asm lda #$ff; asm ldx #1; asm ldy #0; asm jsr $ffff; }
+   if (a[(u2le)raw] != 33`u2le) { asm lda #$ff; asm ldx #2; asm ldy #0; asm jsr $ffff; }
 
    p := &a[0];
+   if (p[(u2le)raw] != 33`u2le) { asm lda #$ff; asm ldx #3; asm ldy #0; asm jsr $ffff; }
    p += idx;
-   if (p[0] != 33`u2le) { asm lda #$ff; asm ldx #2; asm ldy #0; asm jsr $ffff; }
+   if (p[0] != 33`u2le) { asm lda #$ff; asm ldx #4; asm ldy #0; asm jsr $ffff; }
 
    asm lda #$ff;
    asm ldx #0;
