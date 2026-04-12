@@ -1,9 +1,11 @@
+.NOTPARALLEL:
+
 GENERATED_FLOAT_ARCHIVE_FIXTURES = \
 	$(wildcard generated_float_archive_gf32_*.n) \
 	$(wildcard generated_float_archive_gf3be_*.n) \
 	$(wildcard generated_float_archive_gf10_*.n)
 
-all: unit e2e
+all: test
 
 generated_float_archive_fixtures:
 	tmpdir=$$(mktemp -d); \

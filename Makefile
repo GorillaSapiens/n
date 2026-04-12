@@ -8,20 +8,30 @@ PACKAGE_PREFIX ?= /usr/local
 PACKAGE_STAGING ?= $(CURDIR)/pkgroot
 INSTALLCHECK_STAGING ?= $(CURDIR)/.installcheck-root
 
-all: tools unit e2e
+all: test
 
-generated_float_archive_fixtures:
+.NOTPARALLEL:
+
+generated_float_archive_fixtures: tools
 	@$(MAKE) --no-print-directory -C ./test generated_float_archive_fixtures
 
 tools:
-	( cd ./assembler ; make clean ; make )
-	( cd ./linker ; make clean ; make )
-	( cd ./archiver ; make clean ; make )
-	( cd ./libraries/nint ; make clean ; make )
-	( cd ./libraries/nlib ; make clean ; make )
-	( cd ./compiler ; make clean ; make )
-	( cd ./simulator ; make clean ; make )
-	( cd ./driver ; make clean ; make )
+	@$(MAKE) --no-print-directory -C ./assembler clean
+	@$(MAKE) --no-print-directory -C ./assembler all
+	@$(MAKE) --no-print-directory -C ./linker clean
+	@$(MAKE) --no-print-directory -C ./linker all
+	@$(MAKE) --no-print-directory -C ./archiver clean
+	@$(MAKE) --no-print-directory -C ./archiver all
+	@$(MAKE) --no-print-directory -C ./libraries/nint clean
+	@$(MAKE) --no-print-directory -C ./libraries/nint all
+	@$(MAKE) --no-print-directory -C ./libraries/nlib clean
+	@$(MAKE) --no-print-directory -C ./libraries/nlib all
+	@$(MAKE) --no-print-directory -C ./compiler clean
+	@$(MAKE) --no-print-directory -C ./compiler n65cc
+	@$(MAKE) --no-print-directory -C ./simulator clean
+	@$(MAKE) --no-print-directory -C ./simulator all
+	@$(MAKE) --no-print-directory -C ./driver clean
+	@$(MAKE) --no-print-directory -C ./driver all
 
 install: tools install-core
 
@@ -82,27 +92,32 @@ package: tools
 installcheck: tools
 	rm -rf $(INSTALLCHECK_STAGING)
 	$(MAKE) --no-print-directory install-core DESTDIR="$(INSTALLCHECK_STAGING)" PREFIX="/usr/local" BINDIR="/usr/local/bin" LIBDIR="/usr/local/lib/n" INCLUDEDIR="/usr/local/include/n" DATADIR="/usr/local/share/n"
-	stage_bin="$(INSTALLCHECK_STAGING)/usr/local/bin"; 	"$$stage_bin/n65driver" -print-prog-name=cc1 >/dev/null; 	"$$stage_bin/n65driver" -print-prog-name=as >/dev/null; 	"$$stage_bin/n65driver" -I "$(CURDIR)/test" "$(CURDIR)/test/sieve.n" -o "$(INSTALLCHECK_STAGING)/sieve.hex"; 	"$$stage_bin/n65sim" "$(INSTALLCHECK_STAGING)/sieve.hex" | head -n 1 >/dev/null
+	stage_bin="$(INSTALLCHECK_STAGING)/usr/local/bin"; \
+	"$$stage_bin/n65driver" -print-prog-name=cc1 >/dev/null; \
+	"$$stage_bin/n65driver" -print-prog-name=as >/dev/null; \
+	"$$stage_bin/n65driver" -I "$(CURDIR)/test" "$(CURDIR)/test/sieve.n" -o "$(INSTALLCHECK_STAGING)/sieve.hex"; \
+	"$$stage_bin/n65sim" "$(INSTALLCHECK_STAGING)/sieve.hex" | head -n 1 >/dev/null
 
 tarball:
 	-git clean -fdx
-	make
-	make ctar
+	$(MAKE)
+	$(MAKE) ctar
 
 ctar:
 	rm -f n.*.gz
 	tar -czf n.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
-unit:
+unit: tools
 	@$(MAKE) --no-print-directory -C ./test unit
 
-sieve:
+sieve: tools
 	./driver/n65driver -I test test/sieve.n -o sieve.hex
 	simulator/n65sim sieve.hex | head
 
-e2e:
+e2e: tools
 	@$(MAKE) --no-print-directory -C ./test e2e
 
-test: unit e2e
+test: tools
+	@$(MAKE) --no-print-directory -C ./test test
 
 .PHONY: all generated_float_archive_fixtures tools install install-core install-data uninstall uninstall-data package installcheck tarball unit sieve e2e test
