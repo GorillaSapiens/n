@@ -138,6 +138,8 @@ typedef struct alias_entry {
    const char *name;
    const char *rhs;
    const char *sourcefile;
+   const char **params;
+   int param_count;
    int sourceline;
    int sourcecol;
 } alias_entry;
@@ -161,6 +163,8 @@ static int alias_count = 0;
 static const char *alias_name = NULL;
 static const char *alias_rhs = NULL;
 static const char *alias_sourcefile = NULL;
+static const char **alias_params = NULL;
+static int alias_param_count = 0;
 static int alias_sourceline;
 static int alias_sourcecol;
 
@@ -177,6 +181,14 @@ static void alias_reset(void) {
       free((char *)alias_sourcefile);
       alias_sourcefile = NULL;
    }
+   if (alias_params) {
+      for (int i = 0; i < alias_param_count; i++) {
+         free((char *)alias_params[i]);
+      }
+      free((char **)alias_params);
+      alias_params = NULL;
+   }
+   alias_param_count = 0;
 }
 
 static void alias_error(const char *msg) {
@@ -210,6 +222,18 @@ static void alias_set_name(const char *name) {
    alias_sourcecol = yylloc.first_column;
 }
 
+static void alias_add_param(const char *name) {
+   for (int i = 0; i < alias_param_count; i++) {
+      if (!strcmp(alias_params[i], name)) {
+         error_user("duplicate alias parameter '%s'", name);
+      }
+   }
+
+   alias_params = realloc((char **)alias_params, sizeof(const char *) * (alias_param_count + 1));
+   alias_params[alias_param_count] = strdup(name);
+   alias_param_count++;
+}
+
 static void alias_finish(void) {
    alias_entries = realloc(alias_entries, sizeof(alias_entry) * (alias_count + 1));
 
@@ -224,6 +248,11 @@ static void alias_finish(void) {
 
    alias_entries[alias_count].sourcefile = alias_sourcefile;
    alias_sourcefile = NULL;
+
+   alias_entries[alias_count].params = alias_params;
+   alias_params = NULL;
+   alias_entries[alias_count].param_count = alias_param_count;
+   alias_param_count = 0;
 
    alias_entries[alias_count].sourceline = alias_sourceline;
 
@@ -292,6 +321,9 @@ static void pop_alias(void) {
 }
 
 static void alias_append_rhs(const char *rhs) {
+   if (alias_rhs) {
+      free((char *)alias_rhs);
+   }
    alias_rhs = strdup(rhs);
 }
 
@@ -329,15 +361,33 @@ IDENT     [a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]*
 
 CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/ 
 
-%x ALIAS_NAME ALIAS_RHS
+%x ALIAS_NAME ALIAS_AFTER_NAME ALIAS_PARAMS ALIAS_PARAM_TAIL ALIAS_AFTER_PARAMS ALIAS_RHS
 
 %%
 
 "alias"[[:space:]]+        { alias_reset(); BEGIN(ALIAS_NAME); }
 
 <ALIAS_NAME>[[:space:]]+   ;
-<ALIAS_NAME>{IDENT}        { alias_set_name(yytext); BEGIN(ALIAS_RHS); }
+<ALIAS_NAME>{IDENT}        { alias_set_name(yytext); BEGIN(ALIAS_AFTER_NAME); }
 <ALIAS_NAME>.|\n           { alias_error("expected alias name"); BEGIN(INITIAL); }
+
+<ALIAS_AFTER_NAME>"("     { BEGIN(ALIAS_PARAMS); }
+<ALIAS_AFTER_NAME>\n      { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_AFTER_NAME>[^\n]    { BEGIN(ALIAS_RHS); yyless(0); }
+
+<ALIAS_PARAMS>[ \t\r\f\v]+ ;
+<ALIAS_PARAMS>")"         { BEGIN(ALIAS_AFTER_PARAMS); }
+<ALIAS_PARAMS>{IDENT}      { alias_add_param(yytext); BEGIN(ALIAS_PARAM_TAIL); }
+<ALIAS_PARAMS>.|\n        { alias_error("expected alias parameter name or ')'"); BEGIN(INITIAL); }
+
+<ALIAS_PARAM_TAIL>[ \t\r\f\v]+ ;
+<ALIAS_PARAM_TAIL>","     { BEGIN(ALIAS_PARAMS); }
+<ALIAS_PARAM_TAIL>")"     { BEGIN(ALIAS_AFTER_PARAMS); }
+<ALIAS_PARAM_TAIL>.|\n     { alias_error("expected ',' or ')' in alias parameter list"); BEGIN(INITIAL); }
+
+<ALIAS_AFTER_PARAMS>[ \t\r\f\v]+ ;
+<ALIAS_AFTER_PARAMS>\n     { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_AFTER_PARAMS>[^\n]  { BEGIN(ALIAS_RHS); yyless(0); }
 
 <ALIAS_RHS>\n              { alias_finish(); BEGIN(INITIAL); }
 <ALIAS_RHS>[^\n]+          { alias_append_rhs(yytext); }
