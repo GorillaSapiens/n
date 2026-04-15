@@ -111,9 +111,117 @@ static char *strip_underscores(const char *p) {
    return ret;
 }
 
+////////////////////
+///// alias handling
+////////////////////
+
+typedef struct alias_entry {
+   const char *name;
+   const char *rhs;
+   const char *sourcefile;
+   int sourceline;
+   int sourcecol;
+} alias_entry;
+
+alias_entry *alias_entries = NULL;
+static int alias_count = 0;
+
+static const char *alias_name = NULL;
+static const char *alias_rhs = NULL;
+static const char *alias_sourcefile = NULL;
+static int alias_sourceline;
+static int alias_sourcecol;
+
+static void alias_reset(void) {
+   if (alias_name) {
+      free((char *)alias_name);
+      alias_name = NULL;
+   }
+   if (alias_rhs) {
+      free((char *)alias_rhs);
+      alias_rhs = NULL;
+   }
+   if (alias_sourcefile) {
+      free((char *)alias_sourcefile);
+      alias_sourcefile = NULL;
+   }
+}
+
+static void alias_error(const char *msg) {
+   error_user(msg);
+}
+
+static void alias_set_name(const char *name) {
+   if (!strcmp(name, "true") || !strcmp(name, "false")) {
+      alias_error("alias 'true' and 'false' are not allowed.");
+   }
+
+   if (xform_exists(yytext)) {
+      alias_error("alias name cannot override xform name.");
+   }
+
+   if (memname_exists(yytext)) {
+      alias_error("alias name cannot override mem name.");
+   }
+
+   if (typename_exists(yytext)) {
+      alias_error("alias name cannot override type name.");
+   }
+
+   if (enumname_exists(yytext)) {
+      alias_error("alias name cannot override enum name.");
+   }
+
+   alias_name = strdup(name);
+   alias_sourcefile = strdup(current_filename);
+   alias_sourceline = yylineno;
+   alias_sourcecol = yycolumn;
+}
+
+static void alias_finish(void) {
+   alias_entries = realloc(alias_entries, sizeof(alias_entry) * (alias_count + 1));
+
+   alias_entries[alias_count].name = alias_name;
+   alias_name = NULL;
+
+   alias_entries[alias_count].rhs = alias_rhs;
+   alias_rhs = NULL;
+
+   alias_entries[alias_count].sourcefile = alias_sourcefile;
+   alias_sourcefile = NULL;
+
+   alias_entries[alias_count].sourceline = alias_sourceline;
+
+   alias_entries[alias_count].sourcecol = alias_sourcecol;
+
+   alias_count++;
+}
+
+static int alias_find(const char *key) {
+   for (int i = 0; i < alias_count; i++) {
+      if (!strcmp(alias_entries[i].name, key)) {
+         return i;
+      }
+   }
+   return -1;
+}
+
+static void alias_scan_string(int index) {
+   if (index >= 0 && index < alias_count) {
+      yypush_buffer_state(yy_scan_string(alias_entries[index].rhs));
+   }
+   else {
+      error_unreachable("bad internal alias index (%d).", index);
+   }
+}
+
+static void alias_append_rhs(const char *rhs) {
+   alias_rhs = strdup(rhs);
+}
+
 %}
 
-%option noinput nounput
+%option noinput nounput noyywrap
 
 HEXINT    0[xX][0-9a-fA-F]((_)?[0-9a-fA-F])*
 BININT    0[bB][01]((_)?[01])*
@@ -145,7 +253,18 @@ IDENT     [a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]*
 
 CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/ 
 
+%x ALIAS_NAME ALIAS_RHS
+
 %%
+
+"alias"[[:space:]]+        { alias_reset(); BEGIN(ALIAS_NAME); }
+
+<ALIAS_NAME>[[:space:]]+   ;
+<ALIAS_NAME>{IDENT}        { alias_set_name(yytext); BEGIN(ALIAS_RHS); }
+<ALIAS_NAME>.|\n           { alias_error("expected alias name"); BEGIN(INITIAL); }
+
+<ALIAS_RHS>\n              { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_RHS>[^\n]+          { alias_append_rhs(yytext); }
 
 "break"         return BREAK;
 "case"          return CASE;
@@ -231,13 +350,19 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 }
 
 {IDENT} {
-   yylval.str = strdup(yytext);
-   if (!strcmp(yytext, "true") || !strcmp(yytext, "false")) return INTEGER;
-   if (xform_exists(yytext)) return XFORMNAME;
-   if (memname_exists(yytext)) return MEMNAME;
-   if (typename_exists(yytext)) return TYPENAME;
-   if (enumname_exists(yytext)) return ENUMNAME;
-   return IDENTIFIER;
+   int i = alias_find(yytext);
+   if (i != -1) {
+      alias_scan_string(i);
+   }
+   else {
+      yylval.str = strdup(yytext);
+      if (!strcmp(yytext, "true") || !strcmp(yytext, "false")) return INTEGER;
+      if (xform_exists(yytext)) return XFORMNAME;
+      if (memname_exists(yytext)) return MEMNAME;
+      if (typename_exists(yytext)) return TYPENAME;
+      if (enumname_exists(yytext)) return ENUMNAME;
+      return IDENTIFIER;
+   }
 }
 
 {CBLOCK} {   // C style block comments
@@ -263,10 +388,28 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 
 [\n]                      { yylineno++; yycolumn = 0; }
 
-.               return yytext[0]; // return single-character tokens
+.                         return yytext[0]; // return single-character tokens
+
+<<EOF>> {
+   if (YY_CURRENT_BUFFER) {
+      yypop_buffer_state();
+
+      if (YY_CURRENT_BUFFER) {
+         return 0;   /* continue scanning previous buffer */
+      }
+   }
+
+   if (file_stack_top >= 0) {
+      pop_file();
+      return 0;
+   }
+
+   yyterminate();
+}
 
 %%
 
+/*
 int yywrap(void) {
    if (file_stack_top >= 0) {
       pop_file();
@@ -274,6 +417,7 @@ int yywrap(void) {
    }
    return 1;  // tell Flex: we're done
 }
+*/
 
 /*
 int yyparse_file(const char *filename) {
