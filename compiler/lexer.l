@@ -20,6 +20,7 @@
 #include "parser.tab.h"
 
 #define MAX_INCLUDE_DEPTH 32
+#define MAX_ALIAS_DEPTH 128
 
 char *root_filename = "<stdin>";
 char *current_filename = "<stdin>";
@@ -28,13 +29,27 @@ int yycolumn = 0;
 typedef struct FileContext {
    FILE *file;
    char *filename;
+   char *saved_filename;
    int lineno;
    int column;
+   int start;
    YY_BUFFER_STATE buffer;
 } FileContext;
 
+typedef struct AliasContext {
+   int alias_index;
+   char *virtual_filename;
+   char *saved_filename;
+   int lineno;
+   int column;
+   int start;
+   YY_BUFFER_STATE buffer;
+} AliasContext;
+
 static FileContext file_stack[MAX_INCLUDE_DEPTH];
 static int file_stack_top = -1;
+static AliasContext alias_stack[MAX_ALIAS_DEPTH];
+static int alias_stack_top = -1;
 
 #define YY_USER_ACTION \
    yylloc.first_line = yylineno; \
@@ -65,13 +80,16 @@ int push_file(const char *filename) {
    file_stack_top++;
    file_stack[file_stack_top].file = f;
    file_stack[file_stack_top].filename = strdup(filename);
+   file_stack[file_stack_top].saved_filename = current_filename;
    file_stack[file_stack_top].lineno = yylineno;
    file_stack[file_stack_top].column = yycolumn;
+   file_stack[file_stack_top].start = YY_START;
    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
 
    YY_BUFFER_STATE new_buffer = yy_create_buffer(f, YY_BUF_SIZE);
    yy_switch_to_buffer(new_buffer);
 
+   BEGIN(0);
    yylineno = 1;
    yycolumn = 0;
    current_filename = file_stack[file_stack_top].filename;
@@ -86,8 +104,9 @@ void pop_file() {
    yy_switch_to_buffer(file_stack[file_stack_top].buffer);
    yylineno = file_stack[file_stack_top].lineno;
    yycolumn = file_stack[file_stack_top].column;
+   current_filename = file_stack[file_stack_top].saved_filename;
+   BEGIN(file_stack[file_stack_top].start);
    file_stack_top--;
-   current_filename = (file_stack_top >= 0) ? file_stack[file_stack_top].filename : root_filename;
 }
 
 static char *strip_underscores(const char *p) {
@@ -123,6 +142,19 @@ typedef struct alias_entry {
    int sourcecol;
 } alias_entry;
 
+static char *alias_build_virtual_filename(const alias_entry *entry) {
+   char buf[1024];
+
+   snprintf(buf, sizeof(buf),
+            "<alias %s from %s:%d.%d>",
+            entry->name ? entry->name : "?",
+            entry->sourcefile ? entry->sourcefile : "?",
+            entry->sourceline,
+            entry->sourcecol);
+
+   return strdup(buf);
+}
+
 alias_entry *alias_entries = NULL;
 static int alias_count = 0;
 
@@ -156,26 +188,26 @@ static void alias_set_name(const char *name) {
       alias_error("alias 'true' and 'false' are not allowed.");
    }
 
-   if (xform_exists(yytext)) {
+   if (xform_exists(name)) {
       alias_error("alias name cannot override xform name.");
    }
 
-   if (memname_exists(yytext)) {
+   if (memname_exists(name)) {
       alias_error("alias name cannot override mem name.");
    }
 
-   if (typename_exists(yytext)) {
+   if (typename_exists(name)) {
       alias_error("alias name cannot override type name.");
    }
 
-   if (enumname_exists(yytext)) {
+   if (enumname_exists(name)) {
       alias_error("alias name cannot override enum name.");
    }
 
    alias_name = strdup(name);
    alias_sourcefile = strdup(current_filename);
-   alias_sourceline = yylineno;
-   alias_sourcecol = yycolumn;
+   alias_sourceline = yylloc.first_line;
+   alias_sourcecol = yylloc.first_column;
 }
 
 static void alias_finish(void) {
@@ -184,6 +216,9 @@ static void alias_finish(void) {
    alias_entries[alias_count].name = alias_name;
    alias_name = NULL;
 
+   if (!alias_rhs) {
+      alias_rhs = strdup("");
+   }
    alias_entries[alias_count].rhs = alias_rhs;
    alias_rhs = NULL;
 
@@ -208,11 +243,52 @@ static int alias_find(const char *key) {
 
 static void alias_scan_string(int index) {
    if (index >= 0 && index < alias_count) {
-      yypush_buffer_state(yy_scan_string(alias_entries[index].rhs));
+      if (alias_stack_top + 1 >= MAX_ALIAS_DEPTH) {
+         error_user("alias nesting too deep");
+      }
+
+      for (int i = 0; i <= alias_stack_top; i++) {
+         if (alias_stack[i].alias_index == index) {
+            error_user("recursive alias expansion for '%s'", alias_entries[index].name);
+         }
+      }
+
+      alias_stack_top++;
+      alias_stack[alias_stack_top].alias_index = index;
+      alias_stack[alias_stack_top].virtual_filename = alias_build_virtual_filename(&alias_entries[index]);
+      alias_stack[alias_stack_top].saved_filename = current_filename;
+      alias_stack[alias_stack_top].lineno = yylineno;
+      alias_stack[alias_stack_top].column = yycolumn;
+      alias_stack[alias_stack_top].start = YY_START;
+      alias_stack[alias_stack_top].buffer = YY_CURRENT_BUFFER;
+
+      yy_scan_string(alias_entries[index].rhs);
+
+      BEGIN(0);
+      current_filename = alias_stack[alias_stack_top].virtual_filename;
+      yylineno = 1;
+      yycolumn = 0;
    }
    else {
       error_unreachable("bad internal alias index (%d).", index);
    }
+}
+
+static void pop_alias(void) {
+   if (alias_stack_top < 0) {
+      return;
+   }
+
+   yy_delete_buffer(YY_CURRENT_BUFFER);
+   yy_switch_to_buffer(alias_stack[alias_stack_top].buffer);
+
+   current_filename = alias_stack[alias_stack_top].saved_filename;
+   yylineno = alias_stack[alias_stack_top].lineno;
+   yycolumn = alias_stack[alias_stack_top].column;
+   BEGIN(alias_stack[alias_stack_top].start);
+
+   free(alias_stack[alias_stack_top].virtual_filename);
+   alias_stack_top--;
 }
 
 static void alias_append_rhs(const char *rhs) {
@@ -391,33 +467,18 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 .                         return yytext[0]; // return single-character tokens
 
 <<EOF>> {
-   if (YY_CURRENT_BUFFER) {
-      yypop_buffer_state();
-
-      if (YY_CURRENT_BUFFER) {
-         return 0;   /* continue scanning previous buffer */
-      }
+   if (alias_stack_top >= 0) {
+      pop_alias();
    }
-
-   if (file_stack_top >= 0) {
+   else if (file_stack_top >= 0) {
       pop_file();
-      return 0;
    }
-
-   yyterminate();
+   else {
+      yyterminate();
+   }
 }
 
 %%
-
-/*
-int yywrap(void) {
-   if (file_stack_top >= 0) {
-      pop_file();
-      return 0;  // tell Flex: more input available
-   }
-   return 1;  // tell Flex: we're done
-}
-*/
 
 /*
 int yyparse_file(const char *filename) {
