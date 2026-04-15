@@ -795,7 +795,7 @@ sub discover_default_paths {
 
 sub progress {
    my ($num, $den) = @_;
-   my $nubs = int($num * 80 / $den);
+   my $nubs = int($num * 120 / $den);
    my $terms = 0;
    my $ret = "\x{2595}$GRAY";
 
@@ -811,7 +811,7 @@ sub progress {
       $terms += 8;
    }
 
-   while ($terms < 80) {
+   while ($terms < 120) {
       $ret .= $LINE[0];
       $terms += 8;
    }
