@@ -807,45 +807,45 @@ static void alias_set_invoke_error_location(void) {
                             alias_invoke_near);
 }
 
-static char *alias_strip_rhs_comments(const char *rhs) {
+static char *strip_trailing_comments_preserving_quotes(const char *text) {
    size_t len;
    char *ret;
    size_t i = 0;
    size_t j = 0;
 
-   if (!rhs) {
+   if (!text) {
       return NULL;
    }
 
-   len = strlen(rhs);
+   len = strlen(text);
    ret = malloc(len + 1);
 
-   while (rhs[i]) {
-      if (rhs[i] == '/' && rhs[i + 1] == '/') {
+   while (text[i]) {
+      if (text[i] == '/' && text[i + 1] == '/') {
          break;
       }
 
-      if (rhs[i] == '/' && rhs[i + 1] == '*') {
+      if (text[i] == '/' && text[i + 1] == '*') {
          i += 2;
-         while (rhs[i] && !(rhs[i] == '*' && rhs[i + 1] == '/')) {
+         while (text[i] && !(text[i] == '*' && text[i + 1] == '/')) {
             i++;
          }
-         if (rhs[i]) {
+         if (text[i]) {
             i += 2;
          }
          continue;
       }
 
-      if (rhs[i] == '\'' || rhs[i] == '"') {
-         char quote = rhs[i++];
+      if (text[i] == '\'' || text[i] == '"') {
+         char quote = text[i++];
          ret[j++] = quote;
-         while (rhs[i]) {
-            ret[j++] = rhs[i];
-            if (rhs[i] == '\\' && rhs[i + 1]) {
+         while (text[i]) {
+            ret[j++] = text[i];
+            if (text[i] == '\\' && text[i + 1]) {
                i++;
-               ret[j++] = rhs[i];
+               ret[j++] = text[i];
             }
-            else if (rhs[i] == quote) {
+            else if (text[i] == quote) {
                i++;
                break;
             }
@@ -854,7 +854,7 @@ static char *alias_strip_rhs_comments(const char *rhs) {
          continue;
       }
 
-      ret[j++] = rhs[i++];
+      ret[j++] = text[i++];
    }
 
    while (j > 0 && (ret[j - 1] == ' ' || ret[j - 1] == '\t' || ret[j - 1] == '\r' || ret[j - 1] == '\f' || ret[j - 1] == '\v')) {
@@ -1248,7 +1248,7 @@ static void alias_append_rhs(const char *rhs) {
    if (alias_rhs) {
       free((char *)alias_rhs);
    }
-   alias_rhs = alias_strip_rhs_comments(rhs);
+   alias_rhs = strip_trailing_comments_preserving_quotes(rhs);
 }
 
 %}
@@ -1291,12 +1291,15 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 
 <INITIAL,PP_SKIP>^[ \t]*#[^\n]*\n? {
    int has_newline = yyleng > 0 && yytext[yyleng - 1] == '\n';
+   char *directive_text;
 
    if (has_newline) {
       yytext[yyleng - 1] = 0;
    }
 
-   pp_handle_directive(yytext);
+   directive_text = strip_trailing_comments_preserving_quotes(yytext);
+   pp_handle_directive(directive_text);
+   free(directive_text);
 
    if (has_newline) {
       yylineno++;
