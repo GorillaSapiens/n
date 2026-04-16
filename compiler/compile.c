@@ -4539,6 +4539,7 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
           (!strcmp(expr->name, "expr") ||
            !strcmp(expr->name, "assign_expr") ||
            !strcmp(expr->name, "conditional_expr") ||
+           !strcmp(expr->name, "case_conditional_expr") ||
            !strcmp(expr->name, "initializer") ||
            !strcmp(expr->name, "opt_expr") ||
            !strcmp(expr->name, "case_choice") ||
@@ -4546,6 +4547,56 @@ static const ASTNode *unwrap_expr_node(const ASTNode *expr) {
       expr = expr->children[0];
    }
    return expr;
+}
+
+static bool expr_is_ternary_node(const ASTNode *expr) {
+   expr = unwrap_expr_node(expr);
+
+   if (!expr) {
+      return false;
+   }
+
+   if ((!strcmp(expr->name, "conditional_expr") || !strcmp(expr->name, "case_conditional_expr")) &&
+       expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER &&
+       !strcmp(expr->children[0]->strval, "?:")) {
+      return true;
+   }
+
+   if (!strcmp(expr->name, "?:") && expr->count >= 3) {
+      return true;
+   }
+
+   return false;
+}
+
+static ASTNode *expr_ternary_test(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr_is_ternary_node(expr)) {
+      return NULL;
+   }
+
+   return (!strcmp(expr->name, "?:")) ? expr->children[0] : expr->children[1];
+}
+
+static ASTNode *expr_ternary_true(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr_is_ternary_node(expr)) {
+      return NULL;
+   }
+
+   return (!strcmp(expr->name, "?:")) ? expr->children[1] : expr->children[2];
+}
+
+static ASTNode *expr_ternary_false(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+
+   if (!expr_is_ternary_node(expr)) {
+      return NULL;
+   }
+
+   return (!strcmp(expr->name, "?:")) ? expr->children[2] : expr->children[3];
 }
 
 static const ASTNode *cast_expr_target_type(const ASTNode *expr) {
@@ -7791,25 +7842,28 @@ static bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst)
       return compile_expr_to_slot(expr->children[expr->count - 1], ctx, dst);
    }
 
-   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
+   if (expr_is_ternary_node(expr)) {
+      ASTNode *test_expr = expr_ternary_test(expr);
+      ASTNode *true_expr = expr_ternary_true(expr);
+      ASTNode *false_expr = expr_ternary_false(expr);
       const char *false_label = next_label("ternary_false");
       const char *end_label = next_label("ternary_end");
       bool ok;
-      if (!false_label || !end_label) {
+      if (!test_expr || !true_expr || !false_expr || !false_label || !end_label) {
          free((void *) false_label);
          free((void *) end_label);
          return false;
       }
-      if (!compile_condition_branch_false(expr->children[1], ctx, false_label)) {
+      if (!compile_condition_branch_false(test_expr, ctx, false_label)) {
          free((void *) false_label);
          free((void *) end_label);
          return false;
       }
-      ok = compile_expr_to_slot(expr->children[2], ctx, dst);
+      ok = compile_expr_to_slot(true_expr, ctx, dst);
       emit(&es_code, "    jmp %s\n", end_label);
       emit(&es_code, "%s:\n", false_label);
       if (ok) {
-         ok = compile_expr_to_slot(expr->children[3], ctx, dst);
+         ok = compile_expr_to_slot(false_expr, ctx, dst);
       }
       emit(&es_code, "%s:\n", end_label);
       free((void *) false_label);
@@ -8557,9 +8611,9 @@ static const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
       return expr_value_type(expr->children[expr->count - 1], ctx);
    }
 
-   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
-      lhs_type = expr_value_type(expr->children[2], ctx);
-      rhs_type = expr_value_type(expr->children[3], ctx);
+   if (expr_is_ternary_node(expr)) {
+      lhs_type = expr_value_type(expr_ternary_true(expr), ctx);
+      rhs_type = expr_value_type(expr_ternary_false(expr), ctx);
       return lhs_type ? lhs_type : rhs_type;
    }
 
@@ -8717,8 +8771,8 @@ static const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
       return expr_value_declarator(expr->children[expr->count - 1], ctx);
    }
 
-   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
-      return expr_value_declarator(expr->children[2], ctx);
+   if (expr_is_ternary_node(expr)) {
+      return expr_value_declarator(expr_ternary_true(expr), ctx);
    }
 
    return NULL;
@@ -8788,9 +8842,9 @@ static int expr_value_size(ASTNode *expr, Context *ctx) {
       return declarator ? declarator_value_size(type, declarator) : type_size_from_node(type);
    }
 
-   if (!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] && expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) {
-      lhs_size = expr_value_size(expr->children[2], ctx);
-      rhs_size = expr_value_size(expr->children[3], ctx);
+   if (expr_is_ternary_node(expr)) {
+      lhs_size = expr_value_size(expr_ternary_true(expr), ctx);
+      rhs_size = expr_value_size(expr_ternary_false(expr), ctx);
       return lhs_size > rhs_size ? lhs_size : rhs_size;
    }
 
@@ -9690,14 +9744,15 @@ static bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
       }
    }
 
-   if ((!strcmp(expr->name, "conditional_expr") && expr->count == 4 && expr->children[0] &&
-        expr->children[0]->kind == AST_IDENTIFIER && !strcmp(expr->children[0]->strval, "?:")) ||
-       (!strcmp(expr->name, "?:") && expr->count >= 3)) {
+   if (expr_is_ternary_node(expr)) {
       InitConstValue cond = {0};
-      ASTNode *test = !strcmp(expr->name, "conditional_expr") ? expr->children[1] : expr->children[0];
-      ASTNode *iftrue = !strcmp(expr->name, "conditional_expr") ? expr->children[2] : expr->children[1];
-      ASTNode *iffalse = !strcmp(expr->name, "conditional_expr") ? expr->children[3] : expr->children[2];
+      ASTNode *test = expr_ternary_test(expr);
+      ASTNode *iftrue = expr_ternary_true(expr);
+      ASTNode *iffalse = expr_ternary_false(expr);
 
+      if (!test || !iftrue || !iffalse) {
+         return false;
+      }
       if (!eval_constant_initializer_expr(test, &cond)) {
          return false;
       }
@@ -10878,7 +10933,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          ASTNode *high = case_expr->count > 1 ? case_expr->children[1] : NULL;
 
          if (!low) {
-            error_unreachable("[%s:%d.%d] malformed case label", section->file, section->line, section->column);
+            error_unreachable("[%s:%d.%d] malformed case label", case_expr->file, case_expr->line, case_expr->column);
             continue;
          }
 
@@ -10891,7 +10946,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
-               error_unreachable("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case expression not compiled yet", low->file, low->line, low->column);
                continue;
             }
             if (ctx) {
@@ -10919,7 +10974,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                                                : (type_is_big_endian(type) ? "leNube" : "leNule");
 
             if (!skip_label) {
-               warning("[%s:%d.%d] switch case label generation failed", section->file, section->line, section->column);
+               warning("[%s:%d.%d] switch case label generation failed", case_expr->file, case_expr->line, case_expr->column);
                continue;
             }
 
@@ -10948,7 +11003,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range start not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case range start not compiled yet", ordered_low->file, ordered_low->line, ordered_low->column);
                continue;
             }
             if (ctx) {
@@ -10972,7 +11027,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range end not compiled yet", section->file, section->line, section->column);
+               error_unreachable("[%s:%d.%d] case range end not compiled yet", ordered_high->file, ordered_high->line, ordered_high->column);
                continue;
             }
             if (ctx) {
@@ -10999,7 +11054,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          if (ctx) {
             ctx->locals = saved_locals;
          }
-         error_unreachable("[%s:%d.%d] case expression not compiled yet", section->file, section->line, section->column);
+         error_unreachable("[%s:%d.%d] case expression not compiled yet", case_expr->file, case_expr->line, case_expr->column);
          continue;
       }
       if (ctx) {
