@@ -8,6 +8,7 @@
 
 #include "ast.h"
 #include "enumname.h"
+#include "integer.h"
 #include "lextern.h"
 #include "main.h"
 #include "md5seen.h"
@@ -35,6 +36,7 @@ typedef struct FileContext {
    int lineno;
    int column;
    int start;
+   int cond_depth;
    YY_BUFFER_STATE buffer;
 } FileContext;
 
@@ -47,6 +49,7 @@ typedef struct AliasContext {
    int lineno;
    int column;
    int start;
+   int cond_depth;
    YY_BUFFER_STATE buffer;
    const char **local_names;
    char **local_values;
@@ -57,6 +60,8 @@ static FileContext file_stack[MAX_INCLUDE_DEPTH];
 static int file_stack_top = -1;
 static AliasContext alias_stack[MAX_ALIAS_DEPTH];
 static int alias_stack_top = -1;
+static int cond_stack_top = -1;
+static void pp_require_balanced_at_eof(int saved_depth, const char *context_name);
 
 #define YY_USER_ACTION \
    yylloc.first_line = yylineno; \
@@ -91,6 +96,7 @@ int push_file(const char *filename) {
    file_stack[file_stack_top].lineno = yylineno;
    file_stack[file_stack_top].column = yycolumn;
    file_stack[file_stack_top].start = YY_START;
+   file_stack[file_stack_top].cond_depth = cond_stack_top;
    file_stack[file_stack_top].buffer = YY_CURRENT_BUFFER;
 
    YY_BUFFER_STATE new_buffer = yy_create_buffer(f, YY_BUF_SIZE);
@@ -105,6 +111,8 @@ int push_file(const char *filename) {
 
 void pop_file() {
    if (file_stack_top < 0) return;
+   pp_require_balanced_at_eof(file_stack[file_stack_top].cond_depth,
+                              current_filename ? current_filename : "file");
    fclose(file_stack[file_stack_top].file);
    free(file_stack[file_stack_top].filename);
    yy_delete_buffer(YY_CURRENT_BUFFER);
@@ -137,10 +145,24 @@ static char *strip_underscores(const char *p) {
    return ret;
 }
 
-////////////////////
-///// alias handling
-////////////////////
 
+/////////////////////////////
+///// conditional handling
+/////////////////////////////
+
+#define MAX_COND_DEPTH 128
+
+typedef struct CondContext {
+   int parent_active;
+   int current_active;
+   int branch_taken;
+   int saw_else;
+   char *sourcefile;
+   int sourceline;
+   int sourcecol;
+} CondContext;
+
+static CondContext cond_stack[MAX_COND_DEPTH];
 typedef struct alias_entry {
    const char *name;
    const char *rhs;
@@ -151,6 +173,494 @@ typedef struct alias_entry {
    int sourceline;
    int sourcecol;
 } alias_entry;
+
+static alias_entry *alias_entries = NULL;
+static int alias_count = 0;
+static int alias_find(const char *key);
+
+static int pp_is_active(void) {
+   if (cond_stack_top < 0) {
+      return 1;
+   }
+   return cond_stack[cond_stack_top].current_active;
+}
+
+static void pp_free_top(void) {
+   if (cond_stack_top >= 0) {
+      free(cond_stack[cond_stack_top].sourcefile);
+      cond_stack[cond_stack_top].sourcefile = NULL;
+   }
+}
+
+static void pp_push_cond(int cond) {
+   int parent_active = pp_is_active();
+
+   if (cond_stack_top + 1 >= MAX_COND_DEPTH) {
+      error_user("conditional nesting too deep");
+   }
+
+   cond_stack_top++;
+   cond_stack[cond_stack_top].parent_active = parent_active;
+   cond_stack[cond_stack_top].current_active = parent_active && cond;
+   cond_stack[cond_stack_top].branch_taken = parent_active && cond;
+   cond_stack[cond_stack_top].saw_else = 0;
+   cond_stack[cond_stack_top].sourcefile = strdup(current_filename ? current_filename : "<stdin>");
+   cond_stack[cond_stack_top].sourceline = yylineno;
+   cond_stack[cond_stack_top].sourcecol = 0;
+}
+
+static void pp_pop_cond(void) {
+   if (cond_stack_top < 0) {
+      error_user("unexpected #endif");
+   }
+
+   pp_free_top();
+   cond_stack_top--;
+}
+
+static void pp_require_balanced_at_eof(int saved_depth, const char *context_name) {
+   if (cond_stack_top > saved_depth) {
+      error_user("[%s:%d.%d] unterminated conditional compilation block before end of %s",
+                 cond_stack[cond_stack_top].sourcefile,
+                 cond_stack[cond_stack_top].sourceline,
+                 cond_stack[cond_stack_top].sourcecol,
+                 context_name ? context_name : "input");
+   }
+}
+
+static const char *pp_skip_hspace(const char *p) {
+   while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\f' || *p == '\v') {
+      p++;
+   }
+   return p;
+}
+
+static int pp_is_ident_start(unsigned char c) {
+   return isalpha(c) || c == '_' || c >= 0x80;
+}
+
+static int pp_is_ident_char(unsigned char c) {
+   return isalnum(c) || c == '_' || c >= 0x80;
+}
+
+static char *pp_parse_identifier_dup(const char **pp) {
+   const char *p = pp_skip_hspace(*pp);
+   const char *start = p;
+
+   if (!pp_is_ident_start((unsigned char)*p)) {
+      return NULL;
+   }
+
+   p++;
+   while (pp_is_ident_char((unsigned char)*p)) {
+      p++;
+   }
+
+   *pp = p;
+   return strndup(start, p - start);
+}
+
+static int pp_has_trailing_junk(const char *p) {
+   p = pp_skip_hspace(p);
+   return *p != 0;
+}
+
+static int pp_match_op(const char **pp, const char *op) {
+   const char *p = pp_skip_hspace(*pp);
+   size_t n = strlen(op);
+
+   if (!strncmp(p, op, n)) {
+      *pp = p + n;
+      return 1;
+   }
+
+   return 0;
+}
+
+static long long pp_eval_expr(const char *text);
+static int alias_find(const char *key);
+
+typedef long long (*pp_parse_fn)(const char **pp);
+
+static long long pp_eval_alias_rhs(int index) {
+   static int eval_stack[MAX_ALIAS_DEPTH];
+   static int eval_top = -1;
+
+   if (index < 0 || index >= alias_count) {
+      error_unreachable("bad alias index in conditional (%d)", index);
+   }
+
+   if (alias_entries[index].is_function_like) {
+      return 0;
+   }
+
+   for (int i = 0; i <= eval_top; i++) {
+      if (eval_stack[i] == index) {
+         error_user("recursive alias expansion for '%s' in conditional",
+                    alias_entries[index].name);
+      }
+   }
+
+   if (eval_top + 1 >= MAX_ALIAS_DEPTH) {
+      error_user("conditional alias expansion nesting too deep");
+   }
+
+   eval_stack[++eval_top] = index;
+   long long value = pp_eval_expr(alias_entries[index].rhs);
+   eval_top--;
+   return value;
+}
+
+static void pp_skip_invocation_text(const char **pp) {
+   const char *p = pp_skip_hspace(*pp);
+   int depth = 0;
+
+   if (*p != '(') {
+      *pp = p;
+      return;
+   }
+
+   for (;;) {
+      char c = *p++;
+
+      if (!c) {
+         error_user("unterminated function-like alias invocation in conditional");
+      }
+
+      if (c == '\'' || c == '"') {
+         char quote = c;
+         while (*p) {
+            c = *p++;
+            if (c == '\\' && *p) {
+               p++;
+               continue;
+            }
+            if (c == quote) {
+               break;
+            }
+         }
+         if (!c) {
+            error_user("unterminated quoted text in conditional");
+         }
+         continue;
+      }
+
+      if (c == '(') {
+         depth++;
+         continue;
+      }
+
+      if (c == ')') {
+         if (depth == 0) {
+            *pp = p;
+            return;
+         }
+         depth--;
+      }
+   }
+}
+
+static long long pp_parse_or(const char **pp);
+
+static long long pp_parse_primary(const char **pp) {
+   const char *p = pp_skip_hspace(*pp);
+   long long value;
+
+   if (*p == '(') {
+      p++;
+      value = pp_parse_or(&p);
+      p = pp_skip_hspace(p);
+      if (*p != ')') {
+         error_user("expected ')' in conditional expression");
+      }
+      p++;
+      *pp = p;
+      return value;
+   }
+
+   if (isdigit((unsigned char)*p)) {
+      const char *start = p;
+      char *token;
+      char *clean;
+
+      while (isalnum((unsigned char)*p) || *p == '_') {
+         p++;
+      }
+
+      token = strndup(start, p - start);
+      clean = strip_underscores(token);
+      free(token);
+      value = parse_int(clean);
+      free(clean);
+      *pp = p;
+      return value;
+   }
+
+   if (pp_is_ident_start((unsigned char)*p)) {
+      char *name = pp_parse_identifier_dup(&p);
+
+      if (!strcmp(name, "defined")) {
+         char *target;
+
+         p = pp_skip_hspace(p);
+         if (*p == '(') {
+            p++;
+            target = pp_parse_identifier_dup(&p);
+            if (!target) {
+               error_user("expected identifier after defined(");
+            }
+            p = pp_skip_hspace(p);
+            if (*p != ')') {
+               error_user("expected ')' after defined(identifier)");
+            }
+            p++;
+         }
+         else {
+            target = pp_parse_identifier_dup(&p);
+            if (!target) {
+               error_user("expected identifier after defined");
+            }
+         }
+
+         value = alias_find(target) != -1;
+         free(target);
+         free(name);
+         *pp = p;
+         return value;
+      }
+
+      if (!strcmp(name, "true")) {
+         free(name);
+         *pp = p;
+         return 1;
+      }
+      if (!strcmp(name, "false")) {
+         free(name);
+         *pp = p;
+         return 0;
+      }
+
+      int index = alias_find(name);
+      if (index != -1) {
+         if (alias_entries[index].is_function_like) {
+            const char *q = pp_skip_hspace(p);
+            if (*q == '(') {
+               p = q;
+               pp_skip_invocation_text(&p);
+            }
+            value = 0;
+         }
+         else {
+            value = pp_eval_alias_rhs(index);
+         }
+      }
+      else {
+         value = 0;
+      }
+
+      free(name);
+      *pp = p;
+      return value;
+   }
+
+   error_user("unexpected text in conditional expression near '%s'", p);
+   return 0;
+}
+
+static long long pp_parse_unary(const char **pp) {
+   if (pp_match_op(pp, "!")) {
+      return !pp_parse_unary(pp);
+   }
+   if (pp_match_op(pp, "-")) {
+      return -pp_parse_unary(pp);
+   }
+   if (pp_match_op(pp, "+")) {
+      return pp_parse_unary(pp);
+   }
+
+   return pp_parse_primary(pp);
+}
+
+static long long pp_parse_cmp(const char **pp) {
+   long long lhs = pp_parse_unary(pp);
+
+   for (;;) {
+      if (pp_match_op(pp, "==")) {
+         lhs = lhs == pp_parse_unary(pp);
+      }
+      else if (pp_match_op(pp, "!=")) {
+         lhs = lhs != pp_parse_unary(pp);
+      }
+      else if (pp_match_op(pp, "<=")) {
+         lhs = lhs <= pp_parse_unary(pp);
+      }
+      else if (pp_match_op(pp, ">=")) {
+         lhs = lhs >= pp_parse_unary(pp);
+      }
+      else if (pp_match_op(pp, "<")) {
+         lhs = lhs < pp_parse_unary(pp);
+      }
+      else if (pp_match_op(pp, ">")) {
+         lhs = lhs > pp_parse_unary(pp);
+      }
+      else {
+         return lhs;
+      }
+   }
+}
+
+static long long pp_parse_and(const char **pp) {
+   long long lhs = pp_parse_cmp(pp);
+
+   while (pp_match_op(pp, "&&")) {
+      lhs = lhs && pp_parse_cmp(pp);
+   }
+
+   return lhs;
+}
+
+static long long pp_parse_or(const char **pp) {
+   long long lhs = pp_parse_and(pp);
+
+   while (pp_match_op(pp, "||")) {
+      lhs = lhs || pp_parse_and(pp);
+   }
+
+   return lhs;
+}
+
+static long long pp_eval_expr(const char *text) {
+   const char *p = text;
+   long long value = pp_parse_or(&p);
+
+   if (pp_has_trailing_junk(p)) {
+      error_user("unexpected trailing text in conditional expression near '%s'", p);
+   }
+
+   return value;
+}
+
+static char *pp_directive_rest_dup(const char *p) {
+   const char *start;
+   const char *end;
+
+   p = pp_skip_hspace(p);
+   start = p;
+   end = p + strlen(p);
+
+   while (end > start && (end[-1] == ' ' || end[-1] == '\t' || end[-1] == '\r' || end[-1] == '\f' || end[-1] == '\v')) {
+      end--;
+   }
+
+   return strndup(start, end - start);
+}
+
+static void pp_handle_directive(const char *text) {
+   const char *p = pp_skip_hspace(text);
+   char keyword[32];
+   size_t klen = 0;
+
+   if (*p != '#') {
+      return;
+   }
+   p++;
+   p = pp_skip_hspace(p);
+
+   while (isalpha((unsigned char)*p)) {
+      if (klen + 1 >= sizeof(keyword)) {
+         error_user("preprocessor directive too long");
+      }
+      keyword[klen++] = *p++;
+   }
+   keyword[klen] = 0;
+
+   if (!strcmp(keyword, "if")) {
+      char *rest = pp_directive_rest_dup(p);
+      int cond = 0;
+
+      if (pp_is_active()) {
+         cond = pp_eval_expr(rest) != 0;
+      }
+      pp_push_cond(cond);
+      free(rest);
+   }
+   else if (!strcmp(keyword, "ifdef")) {
+      char *name = pp_parse_identifier_dup(&p);
+      int cond = 0;
+
+      if (!name || pp_has_trailing_junk(p)) {
+         error_user("expected identifier after #ifdef");
+      }
+      if (pp_is_active()) {
+         cond = alias_find(name) != -1;
+      }
+      pp_push_cond(cond);
+      free(name);
+   }
+   else if (!strcmp(keyword, "ifndef")) {
+      char *name = pp_parse_identifier_dup(&p);
+      int cond = 0;
+
+      if (!name || pp_has_trailing_junk(p)) {
+         error_user("expected identifier after #ifndef");
+      }
+      if (pp_is_active()) {
+         cond = alias_find(name) == -1;
+      }
+      pp_push_cond(cond);
+      free(name);
+   }
+   else if (!strcmp(keyword, "elif")) {
+      char *rest;
+
+      if (cond_stack_top < 0) {
+         error_user("unexpected #elif");
+      }
+      if (cond_stack[cond_stack_top].saw_else) {
+         error_user("#elif after #else");
+      }
+
+      rest = pp_directive_rest_dup(p);
+      if (!cond_stack[cond_stack_top].parent_active || cond_stack[cond_stack_top].branch_taken) {
+         cond_stack[cond_stack_top].current_active = 0;
+      }
+      else {
+         int cond = pp_eval_expr(rest) != 0;
+         cond_stack[cond_stack_top].current_active = cond;
+         if (cond) {
+            cond_stack[cond_stack_top].branch_taken = 1;
+         }
+      }
+      free(rest);
+   }
+   else if (!strcmp(keyword, "else")) {
+      if (cond_stack_top < 0) {
+         error_user("unexpected #else");
+      }
+      if (cond_stack[cond_stack_top].saw_else) {
+         error_user("duplicate #else");
+      }
+      if (pp_has_trailing_junk(p)) {
+         error_user("unexpected trailing text after #else");
+      }
+      cond_stack[cond_stack_top].saw_else = 1;
+      cond_stack[cond_stack_top].current_active = cond_stack[cond_stack_top].parent_active && !cond_stack[cond_stack_top].branch_taken;
+      cond_stack[cond_stack_top].branch_taken = 1;
+   }
+   else if (!strcmp(keyword, "endif")) {
+      if (pp_has_trailing_junk(p)) {
+         error_user("unexpected trailing text after #endif");
+      }
+      pp_pop_cond();
+   }
+   else {
+      error_user("unknown preprocessor directive '#%s'", keyword);
+   }
+}
+
+////////////////////
+///// alias handling
+////////////////////
 
 static char *alias_build_virtual_filename(const alias_entry *entry) {
    char buf[1024];
@@ -164,9 +674,6 @@ static char *alias_build_virtual_filename(const alias_entry *entry) {
 
    return strdup(buf);
 }
-
-alias_entry *alias_entries = NULL;
-static int alias_count = 0;
 
 static const char *alias_name = NULL;
 static const char *alias_rhs = NULL;
@@ -206,6 +713,8 @@ static void alias_error(const char *msg) {
 }
 
 static void alias_set_name(const char *name) {
+   int existing_index;
+
    if (!strcmp(name, "true") || !strcmp(name, "false")) {
       alias_error("alias 'true' and 'false' are not allowed.");
    }
@@ -224,6 +733,18 @@ static void alias_set_name(const char *name) {
 
    if (enumname_exists(name)) {
       alias_error("alias name cannot override enum name.");
+   }
+
+   existing_index = alias_find(name);
+   if (existing_index != -1) {
+      error_user("[%s:%d.%d] vs [%s:%d.%d] multiple definitions for alias '%s'",
+                 current_filename,
+                 yylloc.first_line,
+                 yylloc.first_column,
+                 alias_entries[existing_index].sourcefile,
+                 alias_entries[existing_index].sourceline,
+                 alias_entries[existing_index].sourcecol,
+                 name);
    }
 
    alias_name = strdup(name);
@@ -348,6 +869,7 @@ static void alias_push_text(const char *text,
    alias_stack[alias_stack_top].lineno = yylineno;
    alias_stack[alias_stack_top].column = yycolumn;
    alias_stack[alias_stack_top].start = YY_START;
+   alias_stack[alias_stack_top].cond_depth = cond_stack_top;
    alias_stack[alias_stack_top].buffer = YY_CURRENT_BUFFER;
    alias_stack[alias_stack_top].local_names = local_names;
    alias_stack[alias_stack_top].local_values = local_values;
@@ -589,6 +1111,9 @@ static void pop_alias(void) {
       return;
    }
 
+   pp_require_balanced_at_eof(alias_stack[alias_stack_top].cond_depth,
+                              current_filename ? current_filename : "alias expansion");
+
    yy_delete_buffer(YY_CURRENT_BUFFER);
    yy_switch_to_buffer(alias_stack[alias_stack_top].buffer);
 
@@ -649,9 +1174,14 @@ IDENT     [a-zA-Z_\xc0-\xff][a-zA-Z0-9_\x80-\xff]*
 
 CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/ 
 
-%x ALIAS_NAME ALIAS_AFTER_NAME ALIAS_PARAMS ALIAS_PARAM_TAIL ALIAS_AFTER_PARAMS ALIAS_RHS
+%x ALIAS_NAME ALIAS_AFTER_NAME ALIAS_PARAMS ALIAS_PARAM_TAIL ALIAS_AFTER_PARAMS ALIAS_RHS PP_SKIP
 
 %%
+
+<INITIAL,PP_SKIP>^[ 	]*#[^\n]* {
+   pp_handle_directive(yytext);
+   BEGIN(pp_is_active() ? INITIAL : PP_SKIP);
+}
 
 "alias"[[:space:]]+        { alias_reset(); BEGIN(ALIAS_NAME); }
 
@@ -805,11 +1335,19 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
    return ASM;
 }
 
+<PP_SKIP>[^\n]+               ;
+
 \/\/[^\n]*                ;   // skip line comments
 
 [ \t\r]+                  ;   // skip whitespace
 
-[\n]                      { yylineno++; yycolumn = 0; }
+[\n]                      {
+                             yylineno++;
+                             yycolumn = 0;
+                             if (YY_START == PP_SKIP && pp_is_active()) {
+                                BEGIN(INITIAL);
+                             }
+                          }
 
 .                         return yytext[0]; // return single-character tokens
 
@@ -821,6 +1359,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
       pop_file();
    }
    else {
+      pp_require_balanced_at_eof(-1, current_filename ? current_filename : "input");
       yyterminate();
    }
 }
