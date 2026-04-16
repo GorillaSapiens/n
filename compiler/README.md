@@ -15,6 +15,86 @@ N is a mostly C-like systems language aimed at small targets, especially 8-bit m
 - Strings can be translated through named `xform` mappings.
 - Inline assembly statements are supported as raw one-line passthroughs with `asm ...` inside functions.
 
+## Aliases
+
+The compiler supports newline-terminated lexical aliases:
+
+```n
+alias PI 3.14159
+alias inc(x) (x + 1)
+alias add(a,b) (a + b)
+```
+
+Object-like aliases replace a bare identifier with the stored replacement text. Function-like aliases declare a fixed parameter list and are expanded only when invoked as `name(...)` immediately after the alias name.
+
+Current alias rules:
+
+- alias names are unique within a translation unit; redefining an alias name is a hard error even if one form is object-like and the other is function-like
+- function-like aliases are not overloaded with object-like aliases
+- function-like alias arguments are split using balanced parentheses and quoted string/character handling
+- alias parameters are local to one expansion and shadow outer/global aliases only for that expansion
+- recursive alias expansion is rejected
+
+Pitfalls:
+
+- aliases are lexer-level textual substitution, not typed functions or templates
+- a function-like alias name used without an immediate `(` is an error, so `foo(...)` works but `foo (...)` does not
+- object-like alias replacement text is the rest of the definition line; if you put a semicolon there, that semicolon becomes part of the expansion text
+- argument splitting currently tracks parentheses plus quoted strings/chars; careless use of commas in other syntactic constructs can still surprise you
+- repeated parameter use duplicates the argument text, so side-effect-heavy arguments are easy to misuse
+
+Use aliases for small, local convenience rewrites... not for hiding control flow, declarations, or anything that would make the source lie about what it does.
+
+## Conditional compilation
+
+The lexer also supports simple beginning-of-line conditional directives inspired by the C preprocessor:
+
+```n
+alias FEATURE 2
+
+#if defined(FEATURE) && (FEATURE >= 2)
+alias MODE 1
+#else
+alias MODE 0
+#endif
+
+#ifdef FEATURE
+#ifndef DISABLE_THING
+...
+#endif
+#endif
+```
+
+Supported directives:
+
+- `#if expr`
+- `#ifdef NAME`
+- `#ifndef NAME`
+- `#elif expr`
+- `#else`
+- `#endif`
+
+Current expression support inside `#if` / `#elif`:
+
+- integer literals in the same forms the lexer already accepts
+- `defined(NAME)` and `defined NAME`
+- object-like alias expansion
+- unary `!`, unary `+`, unary `-`
+- `&&` and `||`
+- integer comparisons `== != < > <= >=`
+- parentheses for grouping
+
+Current rules and pitfalls:
+
+- directives only count at beginning-of-line, optionally preceded by horizontal whitespace
+- undefined names in conditional expressions evaluate to `0`
+- object-like aliases expand recursively inside conditional expressions; recursive alias use there is rejected
+- function-like aliases do not expand in conditional expressions yet
+- skipped branches are lexer-inert other than nested conditional directives, so syntax errors inside a skipped branch are ignored as long as the conditionals balance
+- conditional blocks must balance before the end of the current source input
+
+As with aliases, keep conditional compilation boring and local. It is useful for configuration gates and small compile-time switches... not for turning one source file into twelve different personalities.
+
 ## Type system
 
 There are no implicit built-in scalar types other than the required pointer type `*`, the required boolean type `bool`, and the required empty type `void`.
