@@ -39,7 +39,7 @@ Pitfalls:
 
 - aliases are lexer-level textual substitution, not typed functions or templates
 - a function-like alias name used without an immediate `(` is an error, so `foo(...)` works but `foo (...)` does not
-- object-like alias replacement text is the rest of the definition line; if you put a semicolon there, that semicolon becomes part of the expansion text
+- object-like alias replacement text is the rest of the definition line after stripping trailing `/* ... */` and `// ...` comments outside quoted text; if you put a semicolon there, that semicolon becomes part of the expansion text
 - argument splitting currently tracks parentheses plus quoted strings/chars; careless use of commas in other syntactic constructs can still surprise you
 - repeated parameter use duplicates the argument text, so side-effect-heavy arguments are easy to misuse
 

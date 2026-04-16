@@ -1,0 +1,9 @@
+// n65cc -I .
+// expectfail
+// expecterr: Error at conditional_expression_location_error_test.n:6.6
+// expecterr: unexpected trailing text in conditional expression
+
+#if 1 junk
+void main(void) {
+}
+#endif

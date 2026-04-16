@@ -12,5 +12,6 @@ extern char *current_filename;
 extern int yylineno;
 extern int yycolumn;
 extern char* yytext;
+extern char *yyfilename;
 
 #endif

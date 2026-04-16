@@ -4,9 +4,47 @@
 #include <string.h>
 #include <stdbool.h>
 
+#include "ast.h"
 #include "lextern.h"
 #include "messages.h"
+#include "parser.tab.h"
 #include "xray.h"
+
+static const char *message_filename = NULL;
+static int message_line = 0;
+static int message_column = 0;
+static char *message_near = NULL;
+
+static char *dup_near(const char *near) {
+   size_t len;
+
+   if (!near) {
+      return NULL;
+   }
+
+   len = strcspn(near, "\r\n");
+   if (len > 120) {
+      len = 120;
+   }
+
+   return strndup(near, len);
+}
+
+void message_set_location(const char *filename, int line, int column, const char *near) {
+   free(message_near);
+   message_filename = filename;
+   message_line = line;
+   message_column = column;
+   message_near = dup_near(near);
+}
+
+void message_clear_location(void) {
+   free(message_near);
+   message_near = NULL;
+   message_filename = NULL;
+   message_line = 0;
+   message_column = 0;
+}
 
 void message(const char *fmt, ...) {
    va_list args;
@@ -27,21 +65,61 @@ void debug(const char *fmt, ...) {
    }
 }
 
-static void noreturn verror_impl(const char *fmt, va_list args) {
-   fprintf(stderr, "Error: ");
-   vfprintf(stderr, fmt, args);
-   fprintf(stderr, "\n");
-   exit(-1);
+static const char *display_filename(const char *filename) {
+   const char *slash;
+   const char *bslash;
+   const char *base;
+
+   if (!filename || !*filename || filename[0] == '<') {
+      return filename;
+   }
+
+   slash = strrchr(filename, '/');
+   bslash = strrchr(filename, '\\');
+   base = filename;
+
+   if (slash && slash + 1 > base) {
+      base = slash + 1;
+   }
+   if (bslash && bslash + 1 > base) {
+      base = bslash + 1;
+   }
+
+   return base;
 }
 
-#if 0
-void error(const char *fmt, ...) {
-   va_list args;
-   va_start(args, fmt);
-   verror_impl(fmt, args);
-   va_end(args);
+static void format_location_header(const char *preamble,
+                                   const char *filename,
+                                   int line,
+                                   int column,
+                                   const char *near) {
+   if (filename && line > 0) {
+      fprintf(stderr, "%s at %s:%d.%d", preamble, display_filename(filename), line, column);
+      if (near && *near) {
+         fprintf(stderr, " (near '%s')", near);
+      }
+      fprintf(stderr, "\n");
+   }
+   else {
+      fprintf(stderr, "%s: ", preamble);
+   }
 }
-#endif
+
+static void noreturn verror_impl(const char *fmt, va_list args) {
+   if (message_filename && message_line > 0) {
+      format_location_header("Error", message_filename, message_line, message_column, message_near);
+      fprintf(stderr, "   ");
+      vfprintf(stderr, fmt, args);
+      fprintf(stderr, "\n");
+   }
+   else {
+      fprintf(stderr, "Error: ");
+      vfprintf(stderr, fmt, args);
+      fprintf(stderr, "\n");
+   }
+   message_clear_location();
+   exit(-1);
+}
 
 void error_user(const char *fmt, ...) {
    va_list args;
@@ -88,14 +166,12 @@ static void replace_in_place(char *s, const char *l, const char *r) {
     while ((pos = strstr(s, l)) != NULL && (pos == s || !isident(pos-1)) && !isident(pos + len_l)) {
         size_t tail_len = strlen(pos + len_l);
         if (len_r > len_l) {
-            // Shift right to make room
-            memmove(pos + len_r, pos + len_l, tail_len + 1); // +1 to copy null terminator
+            memmove(pos + len_r, pos + len_l, tail_len + 1);
         } else if (len_r < len_l) {
-            // Shift left to close the gap
             memmove(pos + len_r, pos + len_l, tail_len + 1);
         }
         memcpy(pos, r, len_r);
-        s = pos + len_r; // continue after the replacement
+        s = pos + len_r;
     }
 }
 
@@ -111,17 +187,21 @@ static void do_replacements(char *s) {
 
 static void yymessage(const char *preamble, const char *fmt, va_list args) {
    va_list args_copy;
+   int size;
+   char *str;
+   const char *filename;
+   int line;
+   int column;
+
    va_copy(args_copy, args);
+   size = 1 + vsnprintf(NULL, 0, fmt, args_copy);
+   va_end(args_copy);
 
-   int size = 1 + vsnprintf(NULL, 0, fmt, args);
-   char *str = (char *) malloc(sizeof(char) * size);
+   str = (char *) malloc(sizeof(char) * size);
+   va_copy(args_copy, args);
    vsnprintf(str, size, fmt, args_copy);
+   va_end(args_copy);
 
-   // compute a max size as current size PLUS the length of the right
-   // hand side of any left hand thing we find. in reality, actual size
-   // will be less because left hand size is nonzero length. BUT we want
-   // to overguess because not all matched left sides get replaced (e.g.
-   // strings occurring inside identifier names)
    for (char *p = str; *p; p++) {
       for (size_t i = 0; i < sizeof(replacements) / sizeof(replacements[0]); i += 2) {
          size_t len_l = strlen(replacements[i]);
@@ -135,9 +215,18 @@ static void yymessage(const char *preamble, const char *fmt, va_list args) {
 
    do_replacements(str);
 
-   fprintf(stderr, "%s at %s:%d.%d (near '%s')\n",
-      preamble, current_filename, yylineno, yycolumn, yytext);
-   fprintf(stderr, "   %s\n", str);
+   filename = yyfilename ? yyfilename : current_filename;
+   line = yylloc.first_line;
+   column = yylloc.first_column;
+
+   if (filename && line > 0) {
+      format_location_header(preamble, filename, line, column, yytext);
+      fprintf(stderr, "   %s\n", str);
+   }
+   else {
+      fprintf(stderr, "%s: %s\n", preamble, str);
+   }
+
    free(str);
 }
 
