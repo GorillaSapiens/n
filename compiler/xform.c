@@ -246,7 +246,12 @@ ASTNode *do_xform(ASTNode *node, const char *name) {
 
    context = pair_get(xforms, name);
    if (!context) {
-      warning("could not find context '%s'", name ? name : "(null)");
+      if (!name || (name && !name[0])) {
+         warning("default xform context not defined");
+      }
+      else {
+         warning("could not find xform context '%s'", name);
+      }
       return node;
    }
 

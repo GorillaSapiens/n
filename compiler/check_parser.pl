@@ -166,6 +166,14 @@ sub next_token {
         return $tok;
     }
 
+    # %prec override
+    pos($grammar) = $pos;
+    if ($grammar =~ /\G%prec\b/gc) {
+        my $tok = { type => 'prec', line => $start_line };
+        $pos = pos($grammar);
+        return $tok;
+    }
+
     # Single-quoted char token (terminal)
     if ($ch eq "'") {
         my ($newpos, $text) = parse_char_token_at($pos);
@@ -214,6 +222,13 @@ while (defined (my $tok = next_token())) {
         while (defined (my $t = next_token())) {
             if ($t->{type} eq 'empty') {
                 # %empty contributes no symbols; nothing to push.
+                next;
+            }
+            if ($t->{type} eq 'prec') {
+                my $prec_tok = next_token();
+                die "Expected identifier after %prec at line $t->{line}
+"
+                    unless $prec_tok && $prec_tok->{type} eq 'id';
                 next;
             }
             if ($t->{type} eq 'id') {

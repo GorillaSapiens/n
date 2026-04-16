@@ -6131,6 +6131,10 @@ static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
       return false;
    }
 
+   if (!strcmp(base->name, "lvalue")) {
+      return resolve_lvalue(ctx, base, out);
+   }
+
    if (!strcmp(base->name, "lvalue_base")) {
       if (base->count == 0 || base->children[0]->kind != AST_IDENTIFIER) {
          return false;
@@ -6144,7 +6148,12 @@ static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
    }
 
    if (!strcmp(base->name, "*") && base->count > 0) {
-      if (!resolve_lvalue_base(ctx, base->children[0], out)) {
+      if (base->children[0] && !strcmp(base->children[0]->name, "lvalue")) {
+         if (!resolve_lvalue(ctx, base->children[0], out)) {
+            return false;
+         }
+      }
+      else if (!resolve_lvalue_base(ctx, base->children[0], out)) {
          return false;
       }
       if (declarator_pointer_depth(out->declarator) <= 0) {
