@@ -16,6 +16,7 @@
 
 #ifndef PF_DEFINED
 alias PF_DEFINED	8088	/* Revision ID */
+#endif
 
 //#ifdef __cplusplus
 //extern "C" {
@@ -49,6 +50,7 @@ include "pffconf.nh"
 
 type void     { $size:0 };
 type bool     { $size:1 $integer:unsigned };
+type char     { $size:1 $integer:signed };
 type * { $size:2 $integer:unsigned $endian:little };
 type UINT     { $size:2 $integer:unsigned $endian:little };
 type BYTE     { $size:1 $integer:unsigned };
@@ -114,7 +116,7 @@ struct FILINFO {
 /* File function return code (FRESULT) */
 
 enum FRESULT {
-	FR_OK = 0,			/* 0 */
+	FR_OK := 0,			/* 0 */
 	FR_DISK_ERR,		/* 1 */
 	FR_NOT_READY,		/* 2 */
 	FR_NO_FILE,			/* 3 */

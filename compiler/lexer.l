@@ -1289,8 +1289,20 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 
 %%
 
-<INITIAL,PP_SKIP>^[ 	]*#[^\n]* {
+<INITIAL,PP_SKIP>^[ \t]*#[^\n]*\n? {
+   int has_newline = yyleng > 0 && yytext[yyleng - 1] == '\n';
+
+   if (has_newline) {
+      yytext[yyleng - 1] = 0;
+   }
+
    pp_handle_directive(yytext);
+
+   if (has_newline) {
+      yylineno++;
+      yycolumn = 0;
+   }
+
    BEGIN(pp_is_active() ? INITIAL : PP_SKIP);
 }
 
@@ -1301,7 +1313,7 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 <ALIAS_NAME>.|\n           { alias_error("expected alias name"); BEGIN(INITIAL); }
 
 <ALIAS_AFTER_NAME>"("     { alias_mark_function_like(); BEGIN(ALIAS_PARAMS); }
-<ALIAS_AFTER_NAME>\n      { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_AFTER_NAME>\n      { alias_finish(); yylineno++; yycolumn = 0; BEGIN(INITIAL); }
 <ALIAS_AFTER_NAME>[^\n]    { BEGIN(ALIAS_RHS); yyless(0); }
 
 <ALIAS_PARAMS>[ \t\r\f\v]+ ;
@@ -1315,10 +1327,10 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 <ALIAS_PARAM_TAIL>.|\n     { alias_error("expected ',' or ')' in alias parameter list"); BEGIN(INITIAL); }
 
 <ALIAS_AFTER_PARAMS>[ \t\r\f\v]+ ;
-<ALIAS_AFTER_PARAMS>\n     { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_AFTER_PARAMS>\n     { alias_finish(); yylineno++; yycolumn = 0; BEGIN(INITIAL); }
 <ALIAS_AFTER_PARAMS>[^\n]  { BEGIN(ALIAS_RHS); yyless(0); }
 
-<ALIAS_RHS>\n              { alias_finish(); BEGIN(INITIAL); }
+<ALIAS_RHS>\n              { alias_finish(); yylineno++; yycolumn = 0; BEGIN(INITIAL); }
 <ALIAS_RHS>[^\n]+          { alias_append_rhs(yytext); }
 
 "break"         return BREAK;
@@ -1430,15 +1442,21 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 }
 
 {CBLOCK} {   // C style block comments
+   int line = yylloc.first_line;
+   int col = yylloc.first_column;
+
    for (char *p = yytext; *p; p++) {
       if (*p == '\n') {
-         yylineno++;
-         yycolumn = 0;
+         line++;
+         col = 0;
       }
       else {
-         yycolumn++;
+         col++;
       }
    }
+
+   yylineno = line;
+   yycolumn = col;
 }
 
 "asm "[^;\n]* {
