@@ -1,6 +1,10 @@
 // n65cc -I .
 // expectfail
+// expecterr: Error at void_pointer_argument_reverse_error_test.n:21.23 (near 'take_byte_ptr')
 // expecterr: no viable overload for function 'take_byte_ptr'
+// expecterr: call arguments: (void*)
+// expecterr: candidates:
+// expecterr: void_pointer_argument_reverse_error_test.n:15.26   take_byte_ptr(BYTE*)
 
 type void  { $size:0 };
 type bool  { $size:1 $integer:unsigned };
