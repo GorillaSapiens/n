@@ -563,7 +563,8 @@ static long long pp_parse_and(const char **pp) {
    long long lhs = pp_parse_cmp(pp);
 
    while (pp_match_op(pp, "&&")) {
-      lhs = lhs && pp_parse_cmp(pp);
+      long long rhs = pp_parse_cmp(pp);
+      lhs = lhs && rhs;
    }
 
    return lhs;
@@ -573,7 +574,8 @@ static long long pp_parse_or(const char **pp) {
    long long lhs = pp_parse_and(pp);
 
    while (pp_match_op(pp, "||")) {
-      lhs = lhs || pp_parse_and(pp);
+      long long rhs = pp_parse_and(pp);
+      lhs = lhs || rhs;
    }
 
    return lhs;
@@ -712,6 +714,7 @@ static const char *alias_sourcefile = NULL;
 static const char **alias_params = NULL;
 static int alias_param_count = 0;
 static int alias_is_function_like = 0;
+static int alias_rhs_continues = 0;
 static int alias_sourceline;
 static int alias_sourcecol;
 static const char *alias_invoke_filename = NULL;
@@ -741,6 +744,7 @@ static void alias_reset(void) {
    }
    alias_param_count = 0;
    alias_is_function_like = 0;
+   alias_rhs_continues = 0;
 }
 
 static void alias_error(const char *msg) {
@@ -1245,10 +1249,34 @@ static void pop_alias(void) {
 }
 
 static void alias_append_rhs(const char *rhs) {
-   if (alias_rhs) {
-      free((char *)alias_rhs);
+   char *clean_rhs;
+   size_t clean_len;
+   size_t old_len;
+
+   clean_rhs = strip_trailing_comments_preserving_quotes(rhs);
+   clean_len = strlen(clean_rhs);
+
+   while (clean_len > 0 &&
+          (clean_rhs[clean_len - 1] == ' ' ||
+           clean_rhs[clean_len - 1] == '\t' ||
+           clean_rhs[clean_len - 1] == '\r' ||
+           clean_rhs[clean_len - 1] == '\f' ||
+           clean_rhs[clean_len - 1] == '\v')) {
+      clean_len--;
    }
-   alias_rhs = strip_trailing_comments_preserving_quotes(rhs);
+
+   alias_rhs_continues = 0;
+   if (clean_len > 0 && clean_rhs[clean_len - 1] == '\\') {
+      alias_rhs_continues = 1;
+      clean_len--;
+   }
+
+   old_len = alias_rhs ? strlen(alias_rhs) : 0;
+   alias_rhs = realloc((char *)alias_rhs, old_len + clean_len + 1);
+   memcpy((char *)alias_rhs + old_len, clean_rhs, clean_len);
+   ((char *)alias_rhs)[old_len + clean_len] = 0;
+
+   free(clean_rhs);
 }
 
 %}
@@ -1333,7 +1361,17 @@ CBLOCK    \/\*([^*]|\*+[^*/])*\*+\/
 <ALIAS_AFTER_PARAMS>\n     { alias_finish(); yylineno++; yycolumn = 0; BEGIN(INITIAL); }
 <ALIAS_AFTER_PARAMS>[^\n]  { BEGIN(ALIAS_RHS); yyless(0); }
 
-<ALIAS_RHS>\n              { alias_finish(); yylineno++; yycolumn = 0; BEGIN(INITIAL); }
+<ALIAS_RHS>\n              {
+                             yylineno++;
+                             yycolumn = 0;
+                             if (alias_rhs_continues) {
+                                alias_rhs_continues = 0;
+                             }
+                             else {
+                                alias_finish();
+                                BEGIN(INITIAL);
+                             }
+                          }
 <ALIAS_RHS>[^\n]+          { alias_append_rhs(yytext); }
 
 "break"         return BREAK;
@@ -1468,6 +1506,13 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 }
 
 <PP_SKIP>[^\n]+               ;
+<PP_SKIP>\n                  {
+                                yylineno++;
+                                yycolumn = 0;
+                                if (pp_is_active()) {
+                                   BEGIN(INITIAL);
+                                }
+                             }
 
 \/\/[^\n]*                ;   // skip line comments
 
