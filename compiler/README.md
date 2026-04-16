@@ -148,6 +148,13 @@ The compiler supports:
 - functions
 - combinations such as arrays of pointers, pointer-to-function style declarators, and return-value arrays where the grammar allows them
 
+Current `const` behavior on declarators follows the common C reading for leading `const` on pointer declarations:
+
+- `const T* p` means a pointer to const `T`
+- the pointer object itself is still mutable, so it does not require an initializer just because the pointee type is const
+- non-pointer declarations such as `const T x` are still treated as const objects and currently require an initializer
+- syntax for a truly const pointer object in the C sense (`T * const p`) is not supported yet
+
 Struct and union declarations immediately introduce their names as usable types.
 
 ### Function declarations
@@ -173,8 +180,10 @@ int twice(int x) {
 Ordinary non-operator functions can now be overloaded by parameter signature. Overload resolution uses a best-viable-match search much like the current operator-overload matcher:
 
 - exact matches win first
+- implicit object-pointer conversion to `void*` or `const void*` is considered after exact matches
 - safe integer promotions for plain value parameters are considered after exact matches
 - `ref` parameters remain strict and require an lvalue of the exact declared type
+- the reverse direction (`void*` to some typed pointer) still requires an explicit cast
 - ambiguous best matches are rejected
 
 Examples:

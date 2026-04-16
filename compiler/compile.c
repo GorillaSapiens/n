@@ -255,6 +255,7 @@ static bool type_is_float_like(const ASTNode *type);
 static const char *type_float_style(const ASTNode *type);
 static int type_float_expbits(const ASTNode *type);
 static bool has_modifier(ASTNode *node, const char *modifier);
+static bool declaration_const_applies_to_object(const ASTNode *modifiers, const ASTNode *declarator);
 static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
 static const ASTNode *function_modifiers_node(const ASTNode *fn);
 static bool function_has_body(const ASTNode *fn);
@@ -860,6 +861,28 @@ static void expr_match_signature(ASTNode *expr, Context *ctx, const ASTNode **ty
    if (decl_out) *decl_out = decl;
 }
 
+static bool implicit_object_pointer_to_void_pointer_allowed(const ASTNode *formal_type, const ASTNode *formal_decl,
+                                                            const ASTNode *actual_type, const ASTNode *actual_decl) {
+   const char *formal_name = type_name_from_node(formal_type);
+
+   if (!formal_type || !formal_decl || !actual_type || !actual_decl) {
+      return false;
+   }
+   if (!formal_name || !type_name_from_node(actual_type)) {
+      return false;
+   }
+   if (strcmp(formal_name, "void")) {
+      return false;
+   }
+   if (declarator_pointer_depth(formal_decl) != 1 || declarator_pointer_depth(actual_decl) != 1) {
+      return false;
+   }
+   if (declarator_function_pointer_depth(formal_decl) > 0 || declarator_function_pointer_depth(actual_decl) > 0) {
+      return false;
+   }
+   return true;
+}
+
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
                                               const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue) {
    const char *pname;
@@ -895,6 +918,10 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
 
    if (pref) {
       return -1;
+   }
+
+   if (implicit_object_pointer_to_void_pointer_allowed(ptype, pdecl, atype, adecl)) {
+      return 12;
    }
 
    promo_cost = integer_promotion_conversion_cost(atype, adecl, ptype, pdecl);
@@ -3738,6 +3765,14 @@ static bool has_modifier(ASTNode *node, const char *modifier) {
       }
    }
    return false;
+}
+
+static bool declaration_const_applies_to_object(const ASTNode *modifiers, const ASTNode *declarator) {
+   if (!has_modifier((ASTNode *) modifiers, "const")) {
+      return false;
+   }
+
+   return declarator_pointer_depth(declarator) <= 0;
 }
 
 static bool parse_flag_u64(const ASTNode *flags, const char *prefix, unsigned long long *out) {
@@ -10637,7 +10672,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       return;
    }
 
-   if (is_empty(expression) && has_modifier(modifiers, "const")) {
+   if (is_empty(expression) && declaration_const_applies_to_object(modifiers, declarator)) {
       error_user("[%s:%d.%d] 'const' missing initializer", node->file, node->line, node->column);
    }
 
@@ -10693,7 +10728,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
                emit(sink, ".segment \"%s\"\n", segbuf);
             }
             else {
-               sink = has_modifier(modifiers, "const") ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
+               sink = declaration_const_applies_to_object(modifiers, declarator) ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
             }
             emit(sink, "%s:\n", sym);
             emit_sink_append(sink, &init_es);
@@ -12268,7 +12303,7 @@ static void compile_global_decl_item(ASTNode *node) {
    set_add(globals, strdup(name), node);
 
    bool is_extern = has_modifier(modifiers, "extern");
-   bool is_const = has_modifier(modifiers, "const");
+   bool is_const = declaration_const_applies_to_object(modifiers, declarator);
    bool is_static = has_modifier(modifiers, "static");
    bool is_zeropage = modifiers_imply_zeropage(modifiers);
    bool is_ref = has_modifier(modifiers, "ref");
