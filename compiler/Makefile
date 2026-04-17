@@ -45,6 +45,7 @@ SRCSRC = \
    enumname.c \
    expropt.c \
    float.c \
+   float_bignat.c \
    integer.c \
    md5.c \
    md5seen.c \
