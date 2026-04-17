@@ -79,8 +79,8 @@ static void free_if(char *s)
 %token REG_A REG_X REG_Y
 %token EOL
 
-%type <expr> expr add_expr mul_expr unary_expr primary
-%type <expr> simple_expr simple_add_expr simple_mul_expr simple_unary simple_primary
+%type <expr> expr lohi_expr add_expr mul_expr unary_expr primary
+%type <expr> simple_expr simple_lohi_expr simple_add_expr simple_mul_expr simple_unary simple_primary
 %type <operand> operand_expr
 %type <expr_list> expr_list
 %type <directive> directive_stmt
@@ -237,9 +237,24 @@ operand_expr
    ;
 
 expr
+   : lohi_expr
+     {
+        $$ = $1;
+     }
+   ;
+
+lohi_expr
    : add_expr
      {
         $$ = $1;
+     }
+   | '<' lohi_expr
+     {
+        $$ = expr_make_unary(EXPR_UOP_LO, $2);
+     }
+   | '>' lohi_expr
+     {
+        $$ = expr_make_unary(EXPR_UOP_HI, $2);
      }
    ;
 
@@ -282,14 +297,6 @@ unary_expr
      {
         $$ = expr_make_unary(EXPR_UOP_NEG, $2);
      }
-   | '<' unary_expr
-     {
-        $$ = expr_make_unary(EXPR_UOP_LO, $2);
-     }
-   | '>' unary_expr
-     {
-        $$ = expr_make_unary(EXPR_UOP_HI, $2);
-     }
    ;
 
 primary
@@ -319,9 +326,24 @@ primary
    ;
 
 simple_expr
+   : simple_lohi_expr
+     {
+        $$ = $1;
+     }
+   ;
+
+simple_lohi_expr
    : simple_add_expr
      {
         $$ = $1;
+     }
+   | '<' simple_lohi_expr
+     {
+        $$ = expr_make_unary(EXPR_UOP_LO, $2);
+     }
+   | '>' simple_lohi_expr
+     {
+        $$ = expr_make_unary(EXPR_UOP_HI, $2);
      }
    ;
 
@@ -363,14 +385,6 @@ simple_unary
    | '-' unary_expr
      {
         $$ = expr_make_unary(EXPR_UOP_NEG, $2);
-     }
-   | '<' unary_expr
-     {
-        $$ = expr_make_unary(EXPR_UOP_LO, $2);
-     }
-   | '>' unary_expr
-     {
-        $$ = expr_make_unary(EXPR_UOP_HI, $2);
      }
    ;
 
