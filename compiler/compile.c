@@ -9,9 +9,12 @@
 
 #include "ast.h"
 #include "compile.h"
+#include "compile_decl.h"
 #include "compile_init.h"
 #include "compile_internal.h"
+#include "compile_lvalue.h"
 #include "compile_overload.h"
+#include "compile_stmt.h"
 #include "compile_type.h"
 #include "emit.h"
 #include "float.h"
@@ -44,16 +47,8 @@ Set *runtime_imports = NULL;
 Set *imported_symbols = NULL;
 Set *string_literals = NULL;
 static int label_counter = 0;
-static const char *loop_break_stack[128];
-static const char *loop_continue_stack[128];
-static int loop_depth = 0;
-static const char *named_loop_names[128];
-static const char *named_loop_break_stack[128];
-static const char *named_loop_continue_stack[128];
-static int named_loop_depth = 0;
-static const char *pending_loop_label_name = NULL;
 
-static const char *next_label(const char *prefix);
+const char *next_label(const char *prefix);
 
 
 
@@ -91,43 +86,30 @@ typedef struct VaListLayout {
 #define BUILTIN_VA_LIST_BYTES_FIELD "bytes"
 #define BUILTIN_VA_LIST_OFFSET_FIELD "offset"
 
-typedef enum LValueAccessMode {
-   LVALUE_ACCESS_READ = 0,
-   LVALUE_ACCESS_WRITE,
-   LVALUE_ACCESS_ADDRESS
-} LValueAccessMode;
 
 static CallGraphNode *call_graph_nodes = NULL;
 static int call_graph_node_count = 0;
 static CallGraphEdge *call_graph_edges = NULL;
 static int call_graph_edge_count = 0;
-static int current_call_graph_node = -1;
-static const ASTNode *current_call_graph_function = NULL;
+int current_call_graph_node = -1;
+const ASTNode *current_call_graph_function = NULL;
 
-static const ASTNode *global_decl_lookup(const char *name);
+const ASTNode *global_decl_lookup(const char *name);
 bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
-static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
+void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size);
 
 void remember_runtime_import(const char *name);
-static void remember_symbol_import(const char *name);
+void remember_symbol_import(const char *name);
 static bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
                                            char *buf, size_t bufsize, bool *is_zeropage_out);
 static ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc);
 static ASTNode *make_synthetic_incdec_operand(ASTNode *origin);
-static const ASTNode *decl_subitem_declarator(const ASTNode *node);
-static const ASTNode *decl_subitem_address_spec(const ASTNode *node);
-static const ASTNode *decl_node_declarator(const ASTNode *node);
-static const ASTNode *decl_node_address_spec(const ASTNode *node);
-static const char *address_spec_read_expr(const ASTNode *node);
-static const char *address_spec_write_expr(const ASTNode *node);
-static bool address_spec_has_read(const ASTNode *node);
-static bool address_spec_has_write(const ASTNode *node);
 static bool entry_has_read_address(const ContextEntry *entry);
 static bool entry_has_write_address(const ContextEntry *entry);
 static bool entry_is_absolute_ref(const ContextEntry *entry);
-static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g);
+bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g);
 static void add_variadic_hidden_locals(Context *ctx);
-static void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx);
+void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx);
 static bool variadic_hidden_name_reserved(const char *name);
 void validate_nonreserved_variadic_name(const char *name, const ASTNode *node);
 void validate_function_nonreserved_variadic_names(const ASTNode *fn);
@@ -136,68 +118,48 @@ static bool get_builtin_va_list_layout(VaListLayout *out);
 static bool compile_builtin_va_start_expr(ASTNode *expr, Context *ctx);
 static bool compile_builtin_va_arg_expr(ASTNode *expr, Context *ctx);
 static bool compile_builtin_va_end_expr(ASTNode *expr, Context *ctx);
-static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode);
 const ASTNode *cast_expr_target_type(const ASTNode *expr);
 const ASTNode *cast_expr_target_declarator(const ASTNode *expr);
 static int cast_expr_target_size(const ASTNode *expr);
-static void predeclare_top_level_functions(ASTNode *program);
 bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
-static void compile_statement_list(ASTNode *node, Context *ctx);
-static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label);
-static const char *next_label(const char *prefix);
-static void compile_if_stmt(ASTNode *node, Context *ctx);
-static void compile_while_stmt(ASTNode *node, Context *ctx);
-static void compile_for_stmt(ASTNode *node, Context *ctx);
-static void compile_break_stmt(ASTNode *node, Context *ctx);
-static void compile_continue_stmt(ASTNode *node, Context *ctx);
-static void compile_do_stmt(ASTNode *node, Context *ctx);
-static void compile_local_decl_item(ASTNode *node, Context *ctx);
-static void compile_label_stmt(ASTNode *node, Context *ctx);
-static void compile_goto_stmt(ASTNode *node, Context *ctx);
-static void compile_switch_stmt(ASTNode *node, Context *ctx);
-static void compile_return_stmt(ASTNode *node, Context *ctx);
-static void compile_asm_stmt(ASTNode *node, Context *ctx);
-static void compile_expr(ASTNode *node, Context *ctx);
+bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label);
+const char *next_label(const char *prefix);
+void compile_expr(ASTNode *node, Context *ctx);
 bool function_has_static_parameters(const ASTNode *fn);
 static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst,
                                                ASTNode *callee, ASTNode *args,
                                                const ASTNode *ret_type,
                                                const ASTNode *callable_decl);
-static int call_graph_node_index_for_function(const ASTNode *fn);
+int call_graph_node_index_for_function(const ASTNode *fn);
 static void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee);
 static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, const char *sym);
 static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const char *caller_sym, const char *callee_sym);
 static void emit_symbol_backed_call_graph_metadata(void);
 static void analyze_static_parameter_call_graph(void);
 static bool is_identifier_spelling(const char *s);
-bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
-void calculate_struct_union_sizes(ASTNode *program);
-static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
+bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
-static bool find_aggregate_member_info(const ASTNode *type, const char *member, AggregateMemberInfo *out);
-static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
-static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
-static void emit_prepare_fp_ptr(int ptrno, int offset);
-static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size);
-static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend);
-static const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size);
-static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend);
-static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend);
-static void emit_deref_ptr(int ptrno);
+void emit_prepare_fp_ptr(int ptrno, int offset);
+void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size);
+void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend);
+const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size);
+void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend);
+void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend);
+void emit_deref_ptr(int ptrno);
 static int expr_byte_index(const ASTNode *type, int size, int i);
 void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
-static void emit_runtime_fill_ptr1(int count, unsigned char value);
-static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type);
-static void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size);
+void emit_runtime_fill_ptr1(int count, unsigned char value);
+const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type);
+void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size);
 void emit_store_immediate_to_fp(int dst_offset, const unsigned char *bytes, int size);
 bool decode_char_constant_value(const char *text, long long *value_out);
-static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type);
+void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type);
 static void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type);
-static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
+bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size);
 bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
-static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size);
-static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset);
-static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out);
+void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size);
+void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset);
+const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out);
 static unsigned char *decode_string_literal_bytes(const char *text, int *out_len) {
    size_t raw_len;
    unsigned char *buf;
@@ -265,7 +227,7 @@ bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode 
 const char *emit_pointer_initializer_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr);
 static void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label);
 
-static ContextEntry *ctx_lookup(Context *ctx, const char *name) {
+ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
 }
 
@@ -573,7 +535,7 @@ bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
    return false;
 }
 
-static const ASTNode *global_decl_lookup(const char *name) {
+const ASTNode *global_decl_lookup(const char *name) {
    const void *value;
    if (!globals || !name) {
       return NULL;
@@ -636,14 +598,6 @@ static const char *address_spec_write_expr(const ASTNode *node) {
    return node->strval;
 }
 
-static bool address_spec_has_read(const ASTNode *node) {
-   return address_spec_read_expr(node) != NULL;
-}
-
-static bool address_spec_has_write(const ASTNode *node) {
-   return address_spec_write_expr(node) != NULL;
-}
-
 static bool entry_has_read_address(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref && entry->read_expr && *entry->read_expr;
 }
@@ -656,15 +610,7 @@ static bool entry_is_absolute_ref(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref;
 }
 
-static void warn_address_spec_without_ref(const ASTNode *node, const char *name) {
-   if (!node) {
-      return;
-   }
-   warning("[%s:%d.%d] '@' on non-ref declaration '%s' is ignored",
-         node->file, node->line, node->column, name ? name : "?");
-}
-
-static bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g) {
+bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g) {
    const ASTNode *modifiers;
    const ASTNode *type;
    const ASTNode *declarator;
@@ -733,7 +679,7 @@ void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size) {
    emit_copy_fp_to_symbol_offset(symbol, 0, src_offset, size);
 }
 
-static void emit_load_a_from_expr_address(const char *expr, int addend) {
+void emit_load_a_from_expr_address(const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
 
@@ -745,7 +691,7 @@ static void emit_load_a_from_expr_address(const char *expr, int addend) {
    }
 }
 
-static void emit_store_a_to_expr_address(const char *expr, int addend) {
+void emit_store_a_to_expr_address(const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
 
@@ -1069,7 +1015,7 @@ bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int base_of
    return false;
 }
 
-static void emit_runtime_fill_ptr1(int count, unsigned char value) {
+void emit_runtime_fill_ptr1(int count, unsigned char value) {
    const char *helper;
 
    if (count <= 0) {
@@ -1087,7 +1033,7 @@ static void emit_runtime_fill_ptr1(int count, unsigned char value) {
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
-static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type) {
+const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
    bool is_signed = type_is_signed_integer(src_type);
@@ -1099,7 +1045,7 @@ static const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode 
                     : (src_big_endian ? "copyzxNbe" : "copyzxNle");
 }
 
-static void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size) {
+void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size) {
    if (!helper || src_size <= 0 || dst_size <= 0) {
       return;
    }
@@ -1137,7 +1083,7 @@ static void emit_sign_fill_from_masked_a(void) {
    emit(&es_code, "%s:\n", done_label);
 }
 
-static void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
+void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
    bool is_signed = type_is_signed_integer(src_type);
@@ -1277,7 +1223,7 @@ void remember_runtime_import(const char *name) {
    }
 }
 
-static void remember_symbol_import(const char *name) {
+void remember_symbol_import(const char *name) {
    if (!imported_symbols) {
       imported_symbols = new_set();
    }
@@ -1306,74 +1252,6 @@ static void remember_symbol_import_mode(const char *name, bool is_zeropage) {
    }
 }
 
-static void push_loop_labels(const char *break_label, const char *continue_label) {
-   if (loop_depth < (int)(sizeof(loop_break_stack) / sizeof(loop_break_stack[0]))) {
-      loop_break_stack[loop_depth] = break_label;
-      loop_continue_stack[loop_depth] = continue_label;
-      loop_depth++;
-   }
-}
-
-static void pop_loop_labels(void) {
-   if (loop_depth > 0) {
-      loop_depth--;
-      loop_break_stack[loop_depth] = NULL;
-      loop_continue_stack[loop_depth] = NULL;
-   }
-}
-
-static const char *current_break_label(void) {
-   return loop_depth > 0 ? loop_break_stack[loop_depth - 1] : NULL;
-}
-
-static const char *current_continue_label(void) {
-   return loop_depth > 0 ? loop_continue_stack[loop_depth - 1] : NULL;
-}
-
-static void push_named_loop_labels(const char *name, const char *break_label, const char *continue_label) {
-   if (!name) {
-      return;
-   }
-   if (named_loop_depth < (int)(sizeof(named_loop_names) / sizeof(named_loop_names[0]))) {
-      named_loop_names[named_loop_depth] = name;
-      named_loop_break_stack[named_loop_depth] = break_label;
-      named_loop_continue_stack[named_loop_depth] = continue_label;
-      named_loop_depth++;
-   }
-}
-
-static void pop_named_loop_labels(void) {
-   if (named_loop_depth > 0) {
-      named_loop_depth--;
-      named_loop_names[named_loop_depth] = NULL;
-      named_loop_break_stack[named_loop_depth] = NULL;
-      named_loop_continue_stack[named_loop_depth] = NULL;
-   }
-}
-
-static const char *lookup_named_break_label(const char *name) {
-   if (!name) {
-      return NULL;
-   }
-   for (int i = named_loop_depth - 1; i >= 0; i--) {
-      if (named_loop_names[i] && !strcmp(named_loop_names[i], name)) {
-         return named_loop_break_stack[i];
-      }
-   }
-   return NULL;
-}
-
-static const char *lookup_named_continue_label(const char *name) {
-   if (!name) {
-      return NULL;
-   }
-   for (int i = named_loop_depth - 1; i >= 0; i--) {
-      if (named_loop_names[i] && !strcmp(named_loop_names[i], name)) {
-         return named_loop_continue_stack[i];
-      }
-   }
-   return NULL;
-}
 
 static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
@@ -1402,7 +1280,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
-static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
+void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
@@ -1429,7 +1307,7 @@ static void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
-static void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
+void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    int base_size;
    int value_size;
@@ -1446,7 +1324,7 @@ static void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNod
 }
 
 
-static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
+void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
@@ -1472,7 +1350,7 @@ static void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
-static void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
+void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
       error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
@@ -1631,7 +1509,7 @@ static void add_variadic_hidden_locals(Context *ctx) {
    ctx_push(ctx, required_typename_node("*"), VARIADIC_HIDDEN_BYTES_NAME);
 }
 
-static void build_function_context(const ASTNode *node, Context *ctx) {
+void build_function_context(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
    int i = 0;
@@ -1693,7 +1571,7 @@ static void build_function_context(const ASTNode *node, Context *ctx) {
    }
 }
 
-static void emit_prepare_fp_ptr(int ptrno, int offset) {
+void emit_prepare_fp_ptr(int ptrno, int offset) {
    static const char *plus_helpers[] = { "fp2ptr0p", "fp2ptr1p", "fp2ptr2p", "fp2ptr3p" };
    static const char *minus_helpers[] = { "fp2ptr0m", "fp2ptr1m", "fp2ptr2m", "fp2ptr3m" };
    const char *helper;
@@ -1711,14 +1589,14 @@ static void emit_prepare_fp_ptr(int ptrno, int offset) {
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
-static void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) {
+void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    lda #<(%s + %d)\n", symbol, addend);
    emit(&es_code, "    sta ptr%d\n", ptrno);
    emit(&es_code, "    lda #>(%s + %d)\n", symbol, addend);
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
-static const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size) {
+const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size) {
    const char *p = expr;
    bool neg = false;
 
@@ -1750,7 +1628,7 @@ static const char *assembler_address_expr(const char *expr, char *buf, size_t bu
    return expr;
 }
 
-static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
+void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
 
@@ -1760,7 +1638,7 @@ static void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int adden
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
-static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend) {
+void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    ldy #0\n");
    emit(&es_code, "    lda %s + %d,y\n", symbol, addend);
    emit(&es_code, "    sta ptr%d\n", ptrno);
@@ -1769,7 +1647,7 @@ static void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend)
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
-static void emit_deref_ptr(int ptrno) {
+void emit_deref_ptr(int ptrno) {
    emit(&es_code, "    ldy #0\n");
    emit(&es_code, "    lda (ptr%d),y\n", ptrno);
    emit(&es_code, "    sta arg0\n");
@@ -1782,7 +1660,7 @@ static void emit_deref_ptr(int ptrno) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
-static void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size) {
+void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size) {
    bool direct = src_offset >= 0 && src_offset + src_size <= 256;
    int src_ptr = ptrno == 0 ? 1 : 0;
    int ptr_size = get_size("*");
@@ -1824,7 +1702,7 @@ void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, int size
 }
 
 
-static bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
+bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    InitConstValue value = {0};
    unsigned char *bytes;
    (void) ctx;
@@ -1894,7 +1772,7 @@ static bool make_incdec_delta_bytes(const ASTNode *type, const ASTNode *declarat
    return true;
 }
 
-static void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
+void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    bool dst_direct;
    bool src_direct;
 
@@ -2169,1091 +2047,6 @@ static void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_off
    }
 }
 
-static bool find_aggregate_member_info(const ASTNode *type, const char *member, AggregateMemberInfo *out) {
-   const ASTNode *agg;
-   int bit_cursor = 0;
-   bool is_union = false;
-
-   if (!type || !type_name_from_node(type) || !member) {
-      return false;
-   }
-   agg = get_typename_node(type_name_from_node(type));
-   if (!agg || agg->count < 2) {
-      return false;
-   }
-   is_union = !strcmp(agg->name, "union_decl_stmt");
-   for (int i = 1; i < agg->count; i++) {
-      const ASTNode *field = agg->children[i];
-      const ASTNode *ftype;
-      const ASTNode *fdecl;
-      const char *fname;
-      int fsize;
-      int bit_width;
-      int byte_offset;
-      int bit_offset;
-      int storage_size;
-      if (!field || field->count < 3) {
-         continue;
-      }
-      ftype = field->children[1];
-      fdecl = field->children[2];
-      fname = declarator_name(fdecl);
-      if (!fname) {
-         continue;
-      }
-      fsize = declarator_storage_size(ftype, fdecl);
-      bit_width = declarator_bitfield_width(fdecl);
-      if (is_union) {
-         byte_offset = 0;
-         bit_offset = 0;
-      }
-      else if (bit_width > 0) {
-         byte_offset = bit_cursor / 8;
-         bit_offset = bit_cursor % 8;
-      }
-      else {
-         if (bit_cursor % 8) {
-            bit_cursor = ((bit_cursor + 7) / 8) * 8;
-         }
-         byte_offset = bit_cursor / 8;
-         bit_offset = 0;
-      }
-      storage_size = bit_width > 0 ? ((bit_offset + bit_width + 7) / 8) : fsize;
-      if (!strcmp(fname, member)) {
-         if (out) {
-            out->type = ftype;
-            out->declarator = fdecl;
-            out->byte_offset = byte_offset;
-            out->bit_offset = bit_offset;
-            out->bit_width = bit_width;
-            out->storage_size = storage_size;
-            out->is_bitfield = bit_width > 0;
-         }
-         return true;
-      }
-      if (!is_union) {
-         if (bit_width > 0) {
-            bit_cursor += bit_width;
-         }
-         else {
-            bit_cursor += fsize * 8;
-         }
-      }
-   }
-   return false;
-}
-
-bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
-   AggregateMemberInfo info = {0};
-   if (!find_aggregate_member_info(type, member, &info)) {
-      return false;
-   }
-   if (member_type) *member_type = info.type;
-   if (member_declarator) *member_declarator = info.declarator;
-   if (member_offset) *member_offset = info.byte_offset;
-   return true;
-}
-
-static void emit_load_ptr_from_fpvar(int ptrno, int src_offset) {
-   bool direct = src_offset >= 0 && src_offset + 2 <= 256;
-   if (!direct) {
-      emit_prepare_fp_ptr(ptrno == 0 ? 1 : 0, src_offset);
-   }
-   for (int i = 0; i < 2; i++) {
-      emit(&es_code, "    ldy #%d\n", direct ? (src_offset + i) : i);
-      emit(&es_code, "    lda %s,y\n", direct ? "(fp)" : (ptrno == 0 ? "(ptr1)" : "(ptr0)"));
-      emit(&es_code, "    sta ptr%d%s\n", ptrno, i == 0 ? "" : "+1");
-   }
-}
-
-static void emit_add_immediate_to_ptr(int ptrno, int adjust) {
-   if (adjust == 0) {
-      return;
-   }
-   emit(&es_code, "    clc\n");
-   emit(&es_code, "    lda ptr%d\n", ptrno);
-   emit(&es_code, "    adc #$%02x\n", adjust & 0xff);
-   emit(&es_code, "    sta ptr%d\n", ptrno);
-   emit(&es_code, "    lda ptr%d+1\n", ptrno);
-   emit(&es_code, "    adc #$%02x\n", (adjust >> 8) & 0xff);
-   emit(&es_code, "    sta ptr%d+1\n", ptrno);
-}
-
-static void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
-   bool direct = dst_offset >= 0 && dst_offset + size <= 256;
-
-   if (size <= 0) {
-      return;
-   }
-
-   if (!direct) {
-      emit_prepare_fp_ptr(ptrno == 0 ? 1 : 0, dst_offset);
-   }
-
-   for (int i = 0; i < size; i++) {
-      if (i < get_size("*")) {
-         emit(&es_code, "    lda ptr%d%s\n", ptrno, i == 0 ? "" : "+1");
-      }
-      else {
-         emit(&es_code, "    lda #0\n");
-      }
-      emit(&es_code, "    ldy #%d\n", direct ? (dst_offset + i) : i);
-      emit(&es_code, "    sta %s,y\n", direct ? "(fp)" : (ptrno == 0 ? "(ptr1)" : "(ptr0)"));
-   }
-}
-
-bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out) {
-   ContextEntry *entry;
-   expr = (ASTNode *) unwrap_expr_node(expr);
-   if (!expr) {
-      return false;
-   }
-   if (!strcmp(expr->name, "lvalue") && expr->count > 0) {
-      if (!out) {
-         LValueRef tmp;
-         return resolve_lvalue(ctx, expr, &tmp);
-      }
-      return resolve_lvalue(ctx, expr, out);
-   }
-   if (expr->kind != AST_IDENTIFIER) {
-      return false;
-   }
-   entry = ctx_lookup(ctx, expr->strval);
-   if (!entry) {
-      const ASTNode *g = global_decl_lookup(expr->strval);
-      if (g && g->count >= 3) {
-         static ContextEntry gtmp;
-         if (init_context_entry_from_global_decl(&gtmp, expr->strval, g)) {
-            entry = &gtmp;
-         }
-      }
-   }
-   if (!entry) {
-      return false;
-   }
-   if (out) {
-      memset(out, 0, sizeof(*out));
-      out->name = entry->name ? entry->name : expr->strval;
-      out->type = entry->type;
-      out->declarator = entry->declarator;
-      out->base_type = entry->type;
-      out->base_declarator = entry->declarator;
-      out->suffixes = NULL;
-      out->is_static = entry->is_static;
-      out->is_zeropage = entry->is_zeropage;
-      out->is_global = entry->is_global;
-      out->is_ref = entry->is_ref;
-      out->is_absolute_ref = entry->is_absolute_ref;
-      out->read_expr = entry->read_expr;
-      out->write_expr = entry->write_expr;
-      out->base_offset = entry->offset;
-      out->offset = entry->offset;
-      out->size = entry->size;
-      if (entry->is_ref) {
-         out->indirect = true;
-      }
-   }
-   return true;
-}
-
-static bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_offset, int dst_size) {
-   LValueRef lv;
-   if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
-      error_user("[%s:%d.%d] ref argument must be an lvalue", expr->file, expr->line, expr->column);
-   }
-   if (!emit_prepare_lvalue_ptr(ctx, &lv, LVALUE_ACCESS_ADDRESS)) {
-      return false;
-   }
-   emit_store_ptr_to_fp(dst_offset, 0, dst_size);
-   return true;
-}
-
-static void emit_load_count_lowbyte_fp_to_arg1(int src_offset, const ASTNode *src_type, int src_size) {
-   bool direct;
-   int mem_index;
-
-   if (src_size <= 0) {
-      src_size = 1;
-   }
-   mem_index = endian_mem_index_for_significance(src_size, type_is_big_endian(src_type), 0);
-   direct = src_offset >= 0 && src_offset + src_size <= 256;
-   if (!direct) {
-      emit_prepare_fp_ptr(0, src_offset);
-      emit(&es_code, "    ldy #%d\n", mem_index);
-      emit(&es_code, "    lda (ptr0),y\n");
-   }
-   else {
-      emit(&es_code, "    ldy #%d\n", src_offset + mem_index);
-      emit(&es_code, "    lda (fp),y\n");
-   }
-   emit(&es_code, "    sta arg1\n");
-}
-
-static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size) {
-   emit_prepare_fp_ptr(0, lhs_offset);
-   emit_prepare_fp_ptr(1, rhs_offset);
-   emit_prepare_fp_ptr(2, dst_offset);
-   emit(&es_code, "    lda #$%02x\n", size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   remember_runtime_import(helper);
-   emit(&es_code, "    jsr _%s\n", helper);
-}
-
-static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset) {
-   emit_prepare_fp_ptr(0, lhs_offset);
-   emit_prepare_fp_ptr(1, rhs_offset);
-   emit_prepare_fp_ptr(2, dst_offset);
-   remember_runtime_import(helper);
-   emit(&es_code, "    jsr _%s\n", helper);
-}
-
-static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out) {
-   bool big_endian = type_is_big_endian(type);
-
-   if (is_generic_out) {
-      *is_generic_out = false;
-   }
-   if (size < 3 || !type) {
-      return NULL;
-   }
-   switch (size) {
-      case 3: return subtract ? (big_endian ? "sub24be" : "sub24le") : (big_endian ? "add24be" : "add24le");
-      case 4: return subtract ? (big_endian ? "sub32be" : "sub32le") : (big_endian ? "add32be" : "add32le");
-      default:
-         if (is_generic_out) {
-            *is_generic_out = true;
-         }
-         return subtract ? (big_endian ? "subNbe" : "subNle") : (big_endian ? "addNbe" : "addNle");
-   }
-}
-
-static const char *int_mul_helper_name(const ASTNode *type) {
-   return type_is_big_endian(type) ? "mulNbe" : "mulNle";
-}
-
-static int int_mul_result_offset(const ASTNode *type, int product_offset, int size) {
-   return type_is_big_endian(type) ? (product_offset + size) : product_offset;
-}
-
-static const char *int_div_helper_name(const ASTNode *type) {
-   return type_is_big_endian(type) ? "divNbe" : "divNle";
-}
-
-static const char *int_shift_helper_name(const ASTNode *type, bool left_shift) {
-   if (left_shift) {
-      return type_is_big_endian(type) ? "lslNbe" : "lslNle";
-   }
-   return type_is_signed_integer(type)
-      ? (type_is_big_endian(type) ? "asrNbe" : "asrNle")
-      : (type_is_big_endian(type) ? "lsrNbe" : "lsrNle");
-}
-
-static const char *int_comp2_helper_name(const ASTNode *type) {
-   return type_is_big_endian(type) ? "comp2Nbe" : "comp2Nle";
-}
-
-static const char *int_compare_helper_name(const ASTNode *type, const char *op) {
-   bool big_endian = type_is_big_endian(type);
-   bool is_signed = type_is_signed_integer(type);
-
-   if (!strcmp(op, "==") || !strcmp(op, "!=")) {
-      return "eqN";
-   }
-   if (!strcmp(op, "<") || !strcmp(op, ">")) {
-      return is_signed ? (big_endian ? "ltNsbe" : "ltNsle")
-                       : (big_endian ? "ltNube" : "ltNule");
-   }
-   if (!strcmp(op, "<=") || !strcmp(op, ">=")) {
-      return is_signed ? (big_endian ? "leNsbe" : "leNsle")
-                       : (big_endian ? "leNube" : "leNule");
-   }
-   return NULL;
-}
-
-static void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size, int expbits) {
-   emit_prepare_fp_ptr(0, lhs_offset);
-   emit_prepare_fp_ptr(1, rhs_offset);
-   emit_prepare_fp_ptr(2, dst_offset);
-   emit(&es_code, "    lda #$%02x\n", size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   emit(&es_code, "    lda #$%02x\n", expbits & 0xff);
-   emit(&es_code, "    sta arg1\n");
-   remember_runtime_import(helper);
-   emit(&es_code, "    jsr _%s\n", helper);
-}
-
-static void emit_runtime_float_compare(int lhs_offset, int rhs_offset, int size, int expbits) {
-   emit_prepare_fp_ptr(0, lhs_offset);
-   emit_prepare_fp_ptr(1, rhs_offset);
-   emit(&es_code, "    lda #$%02x\n", size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   emit(&es_code, "    lda #$%02x\n", expbits & 0xff);
-   emit(&es_code, "    sta arg1\n");
-   remember_runtime_import("fcmp");
-   emit(&es_code, "    jsr _fcmp\n");
-}
-
-static void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset,
-                                  const ASTNode *count_type, int count_size, int size) {
-   emit_prepare_fp_ptr(0, value_offset);
-   emit_prepare_fp_ptr(1, scratch_offset);
-   emit_load_count_lowbyte_fp_to_arg1(count_offset, count_type, count_size);
-   emit(&es_code, "    lda #$%02x\n", size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   remember_runtime_import(helper);
-   emit(&es_code, "    jsr _%s\n", helper);
-}
-
-static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffixes, const ASTNode **type_io, const ASTNode **decl_io) {
-   if (!suffixes || is_empty(suffixes)) {
-      return true;
-   }
-   if (suffixes->count > 0 && !emit_prepare_lvalue_ptr_suffixes(ctx, suffixes->children[0], type_io, decl_io)) {
-      return false;
-   }
-   if (!strcmp(suffixes->name, "[")) {
-      const ASTNode *idx = unwrap_expr_node(suffixes->children[1]);
-      int elem_size = declarator_first_element_size(*type_io, *decl_io);
-      const ASTNode *next_decl;
-
-      if (!idx || elem_size <= 0) {
-         return false;
-      }
-      if (declarator_pointer_depth(*decl_io) > 0) {
-         emit_deref_ptr(0);
-      }
-      else if (declarator_array_count(*decl_io) <= 0) {
-         return false;
-      }
-
-      if (idx->kind == AST_INTEGER) {
-         emit_add_immediate_to_ptr(0, atoi(idx->strval) * elem_size);
-      }
-      else {
-         const ASTNode *idx_type = expr_value_type((ASTNode *) idx, ctx);
-         int ptr_size = get_size("*");
-         require_no_mixed_endian_pointer_index_expr((ASTNode *) idx, (ASTNode *) idx, ctx, "[]");
-         int saved_locals = ctx ? ctx->locals : 0;
-         int idx_offset = saved_locals;
-         int factor_offset = idx_offset + ptr_size;
-         int scaled_offset = factor_offset + ptr_size;
-         int save_ptr0_offset = elem_size != 1 ? (scaled_offset + (ptr_size * 2)) : (idx_offset + ptr_size);
-         int total = (save_ptr0_offset - idx_offset) + ptr_size;
-         ContextEntry idx_tmp = { .name = "$idx", .type = idx_type ? idx_type : required_typename_node("int"), .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = idx_offset, .size = ptr_size };
-
-         remember_runtime_import("pushN");
-         emit(&es_code, "    lda #$%02x\n", total & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _pushN\n");
-         emit_store_ptr_to_fp(save_ptr0_offset, 0, ptr_size);
-         if (ctx) {
-            ctx->locals = saved_locals + total;
-         }
-         if (!compile_expr_to_slot((ASTNode *) idx, ctx, &idx_tmp)) {
-            if (ctx) {
-               ctx->locals = saved_locals;
-            }
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", total & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-            return false;
-         }
-         if (ctx) {
-            ctx->locals = saved_locals;
-         }
-         emit_load_ptr_from_fpvar(0, save_ptr0_offset);
-         if (elem_size != 1) {
-            unsigned char *factor_bytes = (unsigned char *) calloc(ptr_size ? ptr_size : 1, sizeof(unsigned char));
-            char factor_buf[64];
-            if (!factor_bytes) {
-               remember_runtime_import("popN");
-               emit(&es_code, "    lda #$%02x\n", total & 0xff);
-               emit(&es_code, "    sta arg0\n");
-               emit(&es_code, "    jsr _popN\n");
-               return false;
-            }
-            snprintf(factor_buf, sizeof(factor_buf), "%d", elem_size);
-            if (idx_type && has_flag(type_name_from_node(idx_type), "$endian:big")) {
-               make_be_int(factor_buf, factor_bytes, ptr_size);
-            }
-            else {
-               make_le_int(factor_buf, factor_bytes, ptr_size);
-            }
-            emit_store_immediate_to_fp(factor_offset, factor_bytes, ptr_size);
-            free(factor_bytes);
-            emit_runtime_binary_fp_fp(int_mul_helper_name(idx_type ? idx_type : required_typename_node("int")), scaled_offset, idx_offset, factor_offset, ptr_size);
-            emit_load_ptr_from_fpvar(0, save_ptr0_offset);
-            emit_add_fp_to_ptr(0, int_mul_result_offset(idx_type ? idx_type : required_typename_node("int"), scaled_offset, ptr_size), ptr_size);
-         }
-         else {
-            emit_add_fp_to_ptr(0, idx_offset, ptr_size);
-         }
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", total & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-      }
-
-      next_decl = declarator_after_subscript(*decl_io);
-      *decl_io = next_decl;
-      return true;
-   }
-   if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
-      AggregateMemberInfo info = {0};
-
-      if (!strcmp(suffixes->name, "->")) {
-         if (declarator_pointer_depth(*decl_io) <= 0) {
-            return false;
-         }
-         emit_deref_ptr(0);
-      }
-      if (!find_aggregate_member_info(*type_io, suffixes->children[1]->strval, &info)) {
-         return false;
-      }
-      emit_add_immediate_to_ptr(0, info.byte_offset);
-      *type_io = info.type;
-      *decl_io = info.declarator;
-      return true;
-   }
-   return true;
-}
-
-static bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode) {
-   ContextEntry base_entry;
-   char sym[256];
-   const ASTNode *type;
-   const ASTNode *decl;
-   const char *abs_expr = NULL;
-
-   if (!lv) {
-      return false;
-   }
-   if (mode == LVALUE_ACCESS_ADDRESS && lv->is_bitfield) {
-      return false;
-   }
-
-   if (lv->is_absolute_ref) {
-      switch (mode) {
-         case LVALUE_ACCESS_READ:
-            abs_expr = lv->read_expr;
-            break;
-         case LVALUE_ACCESS_WRITE:
-            abs_expr = lv->write_expr;
-            break;
-         case LVALUE_ACCESS_ADDRESS:
-            if (lv->read_expr && lv->write_expr) {
-               if (strcmp(lv->read_expr, lv->write_expr)) {
-                  return false;
-               }
-               abs_expr = lv->read_expr;
-            }
-            else {
-               abs_expr = lv->read_expr ? lv->read_expr : lv->write_expr;
-            }
-            break;
-      }
-      if (!abs_expr || !*abs_expr) {
-         return false;
-      }
-      emit_load_expr_address_to_ptr(0, abs_expr, lv->ptr_adjust);
-      if (!lv->base_type) {
-         return true;
-      }
-      type = lv->base_type;
-      decl = lv->base_declarator;
-      return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
-   }
-
-   if (!lv->base_type) {
-      if (lv->indirect) {
-         if (lv->is_static || lv->is_zeropage || lv->is_global) {
-            base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = lv->size };
-            if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
-               return false;
-            }
-            emit_load_ptr_from_symbol(0, sym, 0);
-         }
-         else {
-            emit_load_ptr_from_fpvar(0, lv->offset);
-         }
-         emit_add_immediate_to_ptr(0, lv->ptr_adjust);
-         return true;
-      }
-      if (lv->is_static || lv->is_zeropage || lv->is_global) {
-         base_entry = (ContextEntry){ .name = lv->name, .type = lv->type, .declarator = lv->declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->offset, .size = lv->size };
-         if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
-            return false;
-         }
-         emit_load_address_to_ptr(0, sym, 0);
-      }
-      else {
-         emit_prepare_fp_ptr(0, lv->offset);
-      }
-      emit_add_immediate_to_ptr(0, lv->ptr_adjust);
-      return true;
-   }
-
-   base_entry = (ContextEntry){ .name = lv->name, .type = lv->base_type, .declarator = lv->base_declarator, .is_static = lv->is_static, .is_zeropage = lv->is_zeropage, .is_global = lv->is_global, .is_ref = lv->is_ref, .is_absolute_ref = lv->is_absolute_ref, .read_expr = lv->read_expr, .write_expr = lv->write_expr, .offset = lv->base_offset, .size = declarator_storage_size(lv->base_type, lv->base_declarator) };
-   type = lv->base_type;
-   decl = lv->base_declarator;
-
-   if (lv->is_static || lv->is_zeropage || lv->is_global) {
-      if (!entry_symbol_name(ctx, &base_entry, sym, sizeof(sym))) {
-         return false;
-      }
-      if (lv->deref_depth > 0 || lv->is_ref) {
-         int extra_derefs = lv->deref_depth;
-         emit_load_ptr_from_symbol(0, sym, 0);
-         if (!lv->is_ref && extra_derefs > 0) {
-            extra_derefs--;
-         }
-         for (int i = 0; i < extra_derefs; i++) {
-            emit_deref_ptr(0);
-         }
-      }
-      else {
-         emit_load_address_to_ptr(0, sym, 0);
-      }
-   }
-   else {
-      if (lv->deref_depth > 0 || lv->is_ref) {
-         int extra_derefs = lv->deref_depth;
-         emit_load_ptr_from_fpvar(0, lv->base_offset);
-         if (!lv->is_ref && extra_derefs > 0) {
-            extra_derefs--;
-         }
-         for (int i = 0; i < extra_derefs; i++) {
-            emit_deref_ptr(0);
-         }
-      }
-      else {
-         emit_prepare_fp_ptr(0, lv->base_offset);
-      }
-   }
-
-   return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
-}
-
-static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
-   int copy_size = size < src->size ? size : src->size;
-   bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
-   int saved_locals = ctx ? ctx->locals : 0;
-   int protected_locals = saved_locals;
-   int ptr_save_offset;
-   bool is_signed;
-   int src_byte_offset;
-   int shift_bits;
-   int raw_copy_size;
-   int field_last_byte;
-   int field_rem;
-
-   if (copy_size <= 0) {
-      return true;
-   }
-   if (dst_offset + copy_size > protected_locals) {
-      protected_locals = dst_offset + copy_size;
-   }
-   ptr_save_offset = protected_locals;
-   if (ctx) {
-      ctx->locals = protected_locals;
-   }
-   if (!emit_prepare_lvalue_ptr(ctx, src, LVALUE_ACCESS_READ)) {
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      return false;
-   }
-   if (!dst_direct) {
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
-      if (ctx) {
-         ctx->locals = protected_locals + get_size("*");
-      }
-      emit_prepare_fp_ptr(1, dst_offset);
-      emit_load_ptr_from_fpvar(0, ptr_save_offset);
-      if (ctx) {
-         ctx->locals = protected_locals;
-      }
-   }
-   if (dst_direct) {
-      emit_prepare_fp_ptr(1, dst_offset);
-   }
-
-   emit_runtime_fill_ptr1(copy_size, 0x00);
-
-   src_byte_offset = src->bit_offset / 8;
-   shift_bits = src->bit_offset % 8;
-   raw_copy_size = src->size - src_byte_offset;
-   if (raw_copy_size > copy_size) {
-      raw_copy_size = copy_size;
-   }
-   if (raw_copy_size > 0) {
-      if (src_byte_offset > 0) {
-         emit_add_immediate_to_ptr(0, src_byte_offset);
-      }
-      emit_runtime_copy_ptr0_to_ptr1("cpyN", raw_copy_size, raw_copy_size);
-   }
-
-   if (shift_bits > 0) {
-      const char *outer_label = next_label("bitfield_load_shift_outer");
-      const char *inner_label = next_label("bitfield_load_shift_inner");
-      const char *done_label = next_label("bitfield_load_shift_done");
-
-      emit(&es_code, "    ldx #$%02x\n", shift_bits & 0xff);
-      emit(&es_code, "%s:\n", outer_label);
-      emit(&es_code, "    cpx #0\n");
-      emit(&es_code, "    beq %s\n", done_label);
-      emit(&es_code, "    clc\n");
-      emit(&es_code, "    ldy #$%02x\n", (copy_size - 1) & 0xff);
-      emit(&es_code, "%s:\n", inner_label);
-      emit(&es_code, "    lda (ptr1),y\n");
-      emit(&es_code, "    ror a\n");
-      emit(&es_code, "    sta (ptr1),y\n");
-      emit(&es_code, "    dey\n");
-      emit(&es_code, "    bpl %s\n", inner_label);
-      emit(&es_code, "    dex\n");
-      emit(&es_code, "    bne %s\n", outer_label);
-      emit(&es_code, "%s:\n", done_label);
-   }
-
-   field_last_byte = (src->bit_width - 1) / 8;
-   field_rem = src->bit_width % 8;
-   if (src->bit_width > 0 && src->bit_width < copy_size * 8) {
-      if (field_rem != 0) {
-         emit(&es_code, "    ldy #%d\n", field_last_byte);
-         emit(&es_code, "    lda (ptr1),y\n");
-         emit(&es_code, "    and #$%02x\n", ((1 << field_rem) - 1) & 0xff);
-         emit(&es_code, "    sta (ptr1),y\n");
-      }
-      if (copy_size - (field_last_byte + 1) > 0) {
-         emit_add_immediate_to_ptr(1, field_last_byte + 1);
-         emit_runtime_fill_ptr1(copy_size - (field_last_byte + 1), 0x00);
-         emit_prepare_fp_ptr(1, dst_offset);
-      }
-   }
-
-   is_signed = src->type && type_is_signed_integer(src->type);
-   if (is_signed && src->bit_width > 0 && src->bit_width < copy_size * 8) {
-      int sign_byte = (src->bit_width - 1) / 8;
-      int sign_mask = 1 << ((src->bit_width - 1) % 8);
-      int rem = src->bit_width % 8;
-      const char *skip_label = next_label("bitfield_signext_skip");
-      emit(&es_code, "    ldy #%d\n", sign_byte);
-      emit(&es_code, "    lda (ptr1),y\n");
-      emit(&es_code, "    and #$%02x\n", sign_mask & 0xff);
-      emit(&es_code, "    beq %s\n", skip_label);
-      if (rem != 0) {
-         emit(&es_code, "    ldy #%d\n", sign_byte);
-         emit(&es_code, "    lda (ptr1),y\n");
-         emit(&es_code, "    ora #$%02x\n", ((0xff << rem) & 0xff));
-         emit(&es_code, "    sta (ptr1),y\n");
-      }
-      if (copy_size - (sign_byte + 1) > 0) {
-         emit_add_immediate_to_ptr(1, sign_byte + 1);
-         emit_runtime_fill_ptr1(copy_size - (sign_byte + 1), 0xff);
-         emit_prepare_fp_ptr(1, dst_offset);
-      }
-      emit(&es_code, "%s:\n", skip_label);
-   }
-   if (!dst_direct) {
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-   }
-   if (ctx) {
-      ctx->locals = saved_locals;
-   }
-   return true;
-}
-
-static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
-   int copy_size = size < dst->size ? size : dst->size;
-   bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
-   int saved_locals = ctx ? ctx->locals : 0;
-   int protected_locals = saved_locals;
-   int ptr_save_offset;
-
-   if (copy_size <= 0) {
-      return true;
-   }
-   if (src_offset + copy_size > protected_locals) {
-      protected_locals = src_offset + copy_size;
-   }
-   ptr_save_offset = protected_locals;
-   if (ctx) {
-      ctx->locals = protected_locals;
-   }
-   if (!emit_prepare_lvalue_ptr(ctx, dst, LVALUE_ACCESS_WRITE)) {
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      return false;
-   }
-   if (!src_direct) {
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-      emit_store_ptr_to_fp(ptr_save_offset, 0, get_size("*"));
-      if (ctx) {
-         ctx->locals = protected_locals + get_size("*");
-      }
-      emit_prepare_fp_ptr(1, src_offset);
-      emit_load_ptr_from_fpvar(0, ptr_save_offset);
-      if (ctx) {
-         ctx->locals = protected_locals;
-      }
-   }
-   for (int bit = 0; bit < dst->bit_width; bit++) {
-      int dst_byte = (dst->bit_offset + bit) / 8;
-      int dst_mask = 1 << ((dst->bit_offset + bit) % 8);
-      int src_byte = bit / 8;
-      int src_mask = 1 << (bit % 8);
-      const char *clear_label = next_label("bitfield_store_clear");
-      const char *done_label = next_label("bitfield_store_done");
-      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + src_byte) : src_byte);
-      emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
-      emit(&es_code, "    and #$%02x\n", src_mask & 0xff);
-      emit(&es_code, "    beq %s\n", clear_label);
-      emit(&es_code, "    ldy #%d\n", dst_byte);
-      emit(&es_code, "    lda (ptr0),y\n");
-      emit(&es_code, "    ora #$%02x\n", dst_mask & 0xff);
-      emit(&es_code, "    sta (ptr0),y\n");
-      emit(&es_code, "    jmp %s\n", done_label);
-      emit(&es_code, "%s:\n", clear_label);
-      emit(&es_code, "    ldy #%d\n", dst_byte);
-      emit(&es_code, "    lda (ptr0),y\n");
-      emit(&es_code, "    and #$%02x\n", (0xff ^ dst_mask) & 0xff);
-      emit(&es_code, "    sta (ptr0),y\n");
-      emit(&es_code, "%s:\n", done_label);
-   }
-   if (!src_direct) {
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$02\n");
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-   }
-   if (ctx) {
-      ctx->locals = saved_locals;
-   }
-   return true;
-}
-
-static bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
-   int copy_size = size < src->size ? size : src->size;
-   bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
-   int saved_locals = ctx ? ctx->locals : 0;
-   int protected_locals = saved_locals;
-
-   if (src && src->is_bitfield) {
-      return emit_copy_bitfield_lvalue_to_fp(ctx, dst_offset, src, size);
-   }
-   if (absolute_ref_supports_direct_access(src)) {
-      const char *read_expr = src->read_expr;
-
-      if (!read_expr || !*read_expr) {
-         return false;
-      }
-      if (!dst_direct) {
-         emit_prepare_fp_ptr(1, dst_offset);
-      }
-      for (int i = 0; i < copy_size; i++) {
-         emit_load_a_from_expr_address(read_expr, src->offset + i);
-         emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-         emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-      }
-      return true;
-   }
-   if (copy_size <= 0) {
-      return true;
-   }
-   if (dst_offset + copy_size > protected_locals) {
-      protected_locals = dst_offset + copy_size;
-   }
-   if (ctx) {
-      ctx->locals = protected_locals;
-   }
-   if (!emit_prepare_lvalue_ptr(ctx, src, LVALUE_ACCESS_READ)) {
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      return false;
-   }
-   if (!dst_direct) {
-      emit_prepare_fp_ptr(1, dst_offset);
-   }
-   for (int i = 0; i < copy_size; i++) {
-      emit(&es_code, "    ldy #%d\n", i);
-      emit(&es_code, "    lda (ptr0),y\n");
-      emit(&es_code, "    ldy #%d\n", dst_direct ? (dst_offset + i) : i);
-      emit(&es_code, "    sta %s,y\n", dst_direct ? "(fp)" : "(ptr1)");
-   }
-   if (ctx) {
-      ctx->locals = saved_locals;
-   }
-   return true;
-}
-
-bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
-   int copy_size = size < dst->size ? size : dst->size;
-   bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
-   int saved_locals = ctx ? ctx->locals : 0;
-   int protected_locals = saved_locals;
-
-   if (dst && dst->is_bitfield) {
-      return emit_copy_fp_to_bitfield_lvalue(ctx, dst, src_offset, size);
-   }
-   if (absolute_ref_supports_direct_access(dst)) {
-      const char *write_expr = dst->write_expr;
-
-      if (!write_expr || !*write_expr) {
-         return false;
-      }
-      if (!src_direct) {
-         emit_prepare_fp_ptr(1, src_offset);
-      }
-      for (int i = 0; i < copy_size; i++) {
-         emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
-         emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
-         emit_store_a_to_expr_address(write_expr, dst->offset + i);
-      }
-      return true;
-   }
-   if (copy_size <= 0) {
-      return true;
-   }
-   if (src_offset + copy_size > protected_locals) {
-      protected_locals = src_offset + copy_size;
-   }
-   if (ctx) {
-      ctx->locals = protected_locals;
-   }
-   if (!emit_prepare_lvalue_ptr(ctx, dst, LVALUE_ACCESS_WRITE)) {
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      return false;
-   }
-   if (!src_direct) {
-      emit_prepare_fp_ptr(1, src_offset);
-   }
-   for (int i = 0; i < copy_size; i++) {
-      emit(&es_code, "    ldy #%d\n", src_direct ? (src_offset + i) : i);
-      emit(&es_code, "    lda %s,y\n", src_direct ? "(fp)" : "(ptr1)");
-      emit(&es_code, "    ldy #%d\n", i);
-      emit(&es_code, "    sta (ptr0),y\n");
-   }
-   if (ctx) {
-      ctx->locals = saved_locals;
-   }
-   return true;
-}
-static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValueRef *out) {
-   if (!suffixes || is_empty(suffixes)) {
-      return true;
-   }
-   if (suffixes->count > 0 && !resolve_lvalue_suffixes(ctx, suffixes->children[0], out)) {
-      return false;
-   }
-   if (!strcmp(suffixes->name, "[")) {
-      const ASTNode *idx = unwrap_expr_node(suffixes->children[1]);
-      int elem_size = declarator_first_element_size(out->type, out->declarator);
-      const ASTNode *next_decl = declarator_after_subscript(out->declarator);
-
-      if (!idx || elem_size <= 0) {
-         return false;
-      }
-      if (declarator_pointer_depth(out->declarator) > 0) {
-         out->indirect = true;
-         if (idx->kind == AST_INTEGER && !out->needs_runtime_address) {
-            out->ptr_adjust += atoi(idx->strval) * elem_size;
-         }
-         else if (ctx) {
-            out->needs_runtime_address = true;
-         }
-         else {
-            return false;
-         }
-      }
-      else if (declarator_array_count(out->declarator) > 0) {
-         if (idx->kind == AST_INTEGER && !out->needs_runtime_address) {
-            if (out->indirect) {
-               out->ptr_adjust += atoi(idx->strval) * elem_size;
-            }
-            else {
-               out->offset += atoi(idx->strval) * elem_size;
-            }
-         }
-         else if (ctx) {
-            out->needs_runtime_address = true;
-         }
-         else {
-            return false;
-         }
-      }
-      else {
-         error_user("[%s:%d.%d] cannot subscript non-pointer/non-array '%s'",
-               suffixes->file, suffixes->line, suffixes->column,
-               out->name ? out->name : "<unnamed>");
-      }
-      out->declarator = next_decl;
-      out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
-      out->is_bitfield = false;
-      out->bit_offset = 0;
-      out->bit_width = 0;
-      out->bit_storage_size = 0;
-      return true;
-   }
-   if (!strcmp(suffixes->name, ".") || !strcmp(suffixes->name, "->")) {
-      AggregateMemberInfo info = {0};
-      if (!find_aggregate_member_info(out->type, suffixes->children[1]->strval, &info)) {
-         return false;
-      }
-      if (!strcmp(suffixes->name, "->")) {
-         if (declarator_pointer_depth(out->declarator) <= 0) {
-            error_user("[%s:%d.%d] cannot use '->' on non-pointer '%s'",
-                  suffixes->file, suffixes->line, suffixes->column,
-                  out->name ? out->name : "<unnamed>");
-         }
-         out->indirect = true;
-         if (!out->needs_runtime_address) {
-            out->ptr_adjust += info.byte_offset;
-         }
-      }
-      else if (out->indirect) {
-         if (!out->needs_runtime_address) {
-            out->ptr_adjust += info.byte_offset;
-         }
-      }
-      else {
-         out->offset += info.byte_offset;
-      }
-      out->type = info.type;
-      out->declarator = info.declarator;
-      out->size = declarator_storage_size(info.type, info.declarator);
-      out->is_bitfield = info.is_bitfield;
-      out->bit_offset = info.bit_offset;
-      out->bit_width = info.bit_width;
-      out->bit_storage_size = info.storage_size;
-      return true;
-   }
-   return true;
-}
-static ContextEntry *lookup_lvalue_entry(Context *ctx, const char *name, ContextEntry *scratch) {
-   ContextEntry *entry;
-   const ASTNode *g;
-
-   if (!name) {
-      return NULL;
-   }
-
-   entry = ctx_lookup(ctx, name);
-   if (entry) {
-      return entry;
-   }
-
-   g = global_decl_lookup(name);
-   if (g && g->count >= 3 && scratch && init_context_entry_from_global_decl(scratch, name, g)) {
-      return scratch;
-   }
-
-   return NULL;
-}
-
-static void init_lvalue_from_entry(LValueRef *out, const ContextEntry *entry, const char *fallback_name) {
-   out->name = entry->name ? entry->name : fallback_name;
-   out->type = entry->type;
-   out->declarator = entry->declarator;
-   out->base_type = entry->type;
-   out->base_declarator = entry->declarator;
-   out->is_static = entry->is_static;
-   out->is_zeropage = entry->is_zeropage;
-   out->is_global = entry->is_global;
-   out->is_ref = entry->is_ref;
-   out->is_absolute_ref = entry->is_absolute_ref;
-   out->read_expr = entry->read_expr;
-   out->write_expr = entry->write_expr;
-   out->base_offset = entry->offset;
-   out->offset = entry->offset;
-   out->size = entry->size;
-   out->deref_depth = 0;
-   out->indirect = entry->is_ref;
-}
-
-static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
-   ContextEntry scratch;
-   ContextEntry *entry;
-
-   if (!base || !out) {
-      return false;
-   }
-
-   if (!strcmp(base->name, "lvalue")) {
-      return resolve_lvalue(ctx, base, out);
-   }
-
-   if (!strcmp(base->name, "lvalue_base")) {
-      if (base->count == 0 || base->children[0]->kind != AST_IDENTIFIER) {
-         return false;
-      }
-      entry = lookup_lvalue_entry(ctx, base->children[0]->strval, &scratch);
-      if (!entry) {
-         return false;
-      }
-      init_lvalue_from_entry(out, entry, base->children[0]->strval);
-      return true;
-   }
-
-   if (!strcmp(base->name, "*") && base->count > 0) {
-      if (base->children[0] && !strcmp(base->children[0]->name, "lvalue")) {
-         if (!resolve_lvalue(ctx, base->children[0], out)) {
-            return false;
-         }
-      }
-      else if (!resolve_lvalue_base(ctx, base->children[0], out)) {
-         return false;
-      }
-      if (declarator_pointer_depth(out->declarator) <= 0) {
-         error_user("[%s:%d.%d] cannot dereference non-pointer '%s'",
-               base->file, base->line, base->column,
-               out->name ? out->name : "<unnamed>");
-      }
-      out->declarator = declarator_after_deref(out->declarator);
-      out->size = out->declarator ? declarator_storage_size(out->type, out->declarator) : get_size(type_name_from_node(out->type));
-      out->indirect = true;
-      out->deref_depth++;
-      return true;
-   }
-
-   return false;
-}
-
-bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
-   ASTNode *base;
-
-   if (!node || strcmp(node->name, "lvalue") || node->count == 0 || !out) {
-      return false;
-   }
-
-   memset(out, 0, sizeof(*out));
-   out->suffixes = node->children[1];
-   base = node->children[0];
-   if (!base) {
-      return false;
-   }
-
-   if (!resolve_lvalue_base(ctx, base, out)) {
-      return false;
-   }
-
-   return resolve_lvalue_suffixes(ctx, node->children[1], out);
-}
-
 bool function_has_static_parameters(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -3272,7 +2065,7 @@ bool function_has_static_parameters(const ASTNode *fn) {
    return false;
 }
 
-static int call_graph_node_index_for_function(const ASTNode *fn) {
+int call_graph_node_index_for_function(const ASTNode *fn) {
    char sym[256];
 
    if (!fn) {
@@ -3495,7 +2288,7 @@ static void emit_symbol_backed_call_graph_metadata(void) {
    }
 }
 
-static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
+void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
 
@@ -3538,7 +2331,7 @@ static void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    }
 }
 
-static void emit_function_parameter_exports(const ASTNode *node) {
+void emit_function_parameter_exports(const ASTNode *node) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
 
@@ -3563,7 +2356,7 @@ static void emit_function_parameter_exports(const ASTNode *node) {
    }
 }
 
-static void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx) {
+void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx) {
    ContextEntry *args_entry;
    ContextEntry *bytes_entry;
    int ptr_size;
@@ -5763,7 +4556,7 @@ const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
 }
 
 
-static const char *next_label(const char *prefix) {
+const char *next_label(const char *prefix) {
    char buf[64];
    snprintf(buf, sizeof(buf), "@%s_%d", prefix, label_counter++);
    return strdup(buf);
@@ -5827,7 +4620,7 @@ static bool compile_truthy_expr_branch_false(ASTNode *expr, Context *ctx,
    return true;
 }
 
-static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label) {
+bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
    if (!expr || is_empty(expr)) {
@@ -6114,872 +4907,7 @@ static bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const ch
    }
 }
 
-static void compile_if_stmt(ASTNode *node, Context *ctx) {
-   const char *false_label = next_label("if_false");
-   const char *end_label = next_label("if_end");
-   ASTNode *cond = node->children[0];
-   ASTNode *then_block = node->children[1];
-   ASTNode *else_block = (node->count > 2) ? node->children[2] : NULL;
-
-   if (!compile_condition_branch_false(cond, ctx, false_label)) {
-      error_unreachable("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
-      free((void *) false_label);
-      free((void *) end_label);
-      return;
-   }
-
-   compile_statement_list(then_block, ctx);
-   if (else_block && !is_empty(else_block)) {
-      emit(&es_code, "    jmp %s\n", end_label);
-   }
-   emit(&es_code, "%s:\n", false_label);
-   if (else_block && !is_empty(else_block)) {
-      compile_statement_list(else_block, ctx);
-      emit(&es_code, "%s:\n", end_label);
-   }
-   free((void *) false_label);
-   free((void *) end_label);
-}
-
-static void compile_while_stmt(ASTNode *node, Context *ctx) {
-   const char *start_label = next_label("while_start");
-   const char *end_label = next_label("while_end");
-   const char *named_loop = pending_loop_label_name;
-   ASTNode *cond = node->children[0];
-   ASTNode *body = node->children[1];
-
-   pending_loop_label_name = NULL;
-
-   if (!start_label || !end_label) {
-      free((void *) start_label);
-      free((void *) end_label);
-      warning("[%s:%d.%d] while label generation failed", node->file, node->line, node->column);
-      return;
-   }
-
-   push_loop_labels(end_label, start_label);
-   if (named_loop) {
-      push_named_loop_labels(named_loop, end_label, start_label);
-   }
-   emit(&es_code, "%s:\n", start_label);
-   if (!compile_condition_branch_false(cond, ctx, end_label)) {
-      error_unreachable("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
-      pop_loop_labels();
-      if (named_loop) {
-         pop_named_loop_labels();
-      }
-      free((void *) start_label);
-      free((void *) end_label);
-      return;
-   }
-   compile_statement_list(body, ctx);
-   emit(&es_code, "    jmp %s\n", start_label);
-   emit(&es_code, "%s:\n", end_label);
-   pop_loop_labels();
-   if (named_loop) {
-      pop_named_loop_labels();
-   }
-   free((void *) start_label);
-   free((void *) end_label);
-}
-
-static void compile_for_stmt(ASTNode *node, Context *ctx) {
-   const char *start_label = next_label("for_start");
-   const char *step_label = next_label("for_step");
-   const char *end_label = next_label("for_end");
-   const char *named_loop = pending_loop_label_name;
-   ASTNode *init = node->children[0];
-   ASTNode *cond = node->children[1];
-   ASTNode *step = node->children[2];
-   ASTNode *body = node->children[3];
-
-   pending_loop_label_name = NULL;
-
-   if (!start_label || !step_label || !end_label) {
-      free((void *) start_label);
-      free((void *) step_label);
-      free((void *) end_label);
-      warning("[%s:%d.%d] for label generation failed", node->file, node->line, node->column);
-      return;
-   }
-
-   push_loop_labels(end_label, step_label);
-   if (named_loop) {
-      push_named_loop_labels(named_loop, end_label, step_label);
-   }
-   if (init && !is_empty(init)) {
-      if (!strcmp(init->name, "defdecl_stmt")) {
-         ASTNode *list = init->children[0];
-         for (int i = 0; i < list->count; i++) {
-            compile_local_decl_item(list->children[i], ctx);
-         }
-      }
-      else {
-         compile_expr(init, ctx);
-      }
-   }
-
-   emit(&es_code, "%s:\n", start_label);
-   if (cond && !is_empty(cond)) {
-      if (!compile_condition_branch_false(cond, ctx, end_label)) {
-         error_unreachable("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
-         pop_loop_labels();
-         if (named_loop) {
-            pop_named_loop_labels();
-         }
-         free((void *) start_label);
-         free((void *) step_label);
-         free((void *) end_label);
-         return;
-      }
-   }
-   compile_statement_list(body, ctx);
-   emit(&es_code, "%s:\n", step_label);
-   if (step && !is_empty(step)) {
-      compile_expr(step, ctx);
-   }
-   emit(&es_code, "    jmp %s\n", start_label);
-   emit(&es_code, "%s:\n", end_label);
-   pop_loop_labels();
-   if (named_loop) {
-      pop_named_loop_labels();
-   }
-   free((void *) start_label);
-   free((void *) step_label);
-   free((void *) end_label);
-}
-
-static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
-   return compile_expr_to_slot(expr, ctx, ret);
-}
-
-static void compile_break_stmt(ASTNode *node, Context *ctx) {
-   const char *target = current_break_label();
-
-   (void) ctx;
-   if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
-      target = lookup_named_break_label(node->children[0]->strval);
-      if (!target) {
-         warning("[%s:%d.%d] labeled break target '%s' not found", node->file, node->line, node->column, node->children[0]->strval);
-         return;
-      }
-   }
-   else if (!target) {
-      error_user("[%s:%d.%d] break used outside loop", node->file, node->line, node->column);
-      return;
-   }
-
-   emit(&es_code, "    jmp %s\n", target);
-}
-
-static void compile_continue_stmt(ASTNode *node, Context *ctx) {
-   const char *target = current_continue_label();
-
-   (void) ctx;
-   if (node->count > 0 && node->children[0] && !is_empty(node->children[0])) {
-      target = lookup_named_continue_label(node->children[0]->strval);
-      if (!target) {
-         warning("[%s:%d.%d] labeled continue target '%s' not found", node->file, node->line, node->column, node->children[0]->strval);
-         return;
-      }
-   }
-   else if (!target) {
-      error_user("[%s:%d.%d] continue used outside loop", node->file, node->line, node->column);
-      return;
-   }
-
-   emit(&es_code, "    jmp %s\n", target);
-}
-
-static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
-   ASTNode *modifiers  = node->children[0];
-   ASTNode *type       = node->children[1];
-   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
-   const ASTNode *addrspec = decl_node_address_spec(node);
-   const char *name    = declarator_name(declarator);
-   int size            = declarator_storage_size(type, declarator);
-   ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
-   validate_nonreserved_variadic_name(name, node);
-
-   if (entry != NULL) {
-      return;
-   }
-
-   if (addrspec != NULL && !has_modifier(modifiers, "ref")) {
-      warn_address_spec_without_ref(node, name);
-   }
-
-   if (has_modifier(modifiers, "ref") && addrspec != NULL) {
-      if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
-         error_user("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
-               node->file, node->line, node->column, name);
-      }
-      entry = (ContextEntry *) malloc(sizeof(ContextEntry));
-      if (!entry) {
-         error_unreachable("out of memory");
-      }
-      entry->name = strdup(name);
-      entry->is_static = false;
-      entry->is_zeropage = false;
-      entry->is_global = false;
-      entry->is_ref = false;
-      entry->is_absolute_ref = true;
-      entry->read_expr = address_spec_read_expr(addrspec);
-      entry->write_expr = address_spec_write_expr(addrspec);
-      entry->type = type;
-      entry->declarator = declarator;
-      entry->size = size;
-      entry->offset = 0;
-      set_add(ctx->vars, strdup(name), entry);
-      return;
-   }
-
-   if (has_modifier(modifiers, "static") || modifiers_imply_named_nonzeropage(modifiers)) {
-      ctx_static(ctx, type, name);
-      entry = (ContextEntry *) set_get(ctx->vars, name);
-   }
-   else if (modifiers_imply_zeropage(modifiers)) {
-      ctx_zeropage(ctx, type, name);
-      entry = (ContextEntry *) set_get(ctx->vars, name);
-   }
-   else {
-      ctx_push(ctx, type, name);
-      entry = (ContextEntry *) set_get(ctx->vars, name);
-   }
-
-   if (entry != NULL) {
-      entry->size = size;
-      entry->declarator = declarator;
-      if (!has_modifier(modifiers, "static") && !modifiers_imply_mem_storage(modifiers)) {
-         ctx_resize_last_push(ctx, type, declarator, name);
-      }
-   }
-}
-
-
-
-static void predeclare_statement_list(ASTNode *node, Context *ctx) {
-   if (!node || is_empty(node)) {
-      return;
-   }
-
-   for (int i = 0; i < node->count; i++) {
-      ASTNode *stmt = node->children[i];
-      if (!strcmp(stmt->name, "defdecl_stmt")) {
-         ASTNode *list = stmt->children[0];
-         for (int j = 0; j < list->count; j++) {
-            predeclare_local_decl_item(list->children[j], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "statement_list")) {
-         predeclare_statement_list(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "if_stmt")) {
-         predeclare_statement_list(stmt->children[1], ctx);
-         if (stmt->count > 2) {
-            predeclare_statement_list(stmt->children[2], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "while_stmt")) {
-         predeclare_statement_list(stmt->children[1], ctx);
-      }
-      else if (!strcmp(stmt->name, "for_stmt")) {
-         if (stmt->count > 0 && stmt->children[0] && !is_empty(stmt->children[0]) && !strcmp(stmt->children[0]->name, "defdecl_stmt")) {
-            ASTNode *list = stmt->children[0]->children[0];
-            for (int j = 0; j < list->count; j++) {
-               predeclare_local_decl_item(list->children[j], ctx);
-            }
-         }
-         if (stmt->count > 3) {
-            predeclare_statement_list(stmt->children[3], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "do_stmt")) {
-         predeclare_statement_list(stmt->children[0], ctx);
-      }
-      else if (!strcmp(stmt->name, "label_stmt")) {
-         if (stmt->count > 1) {
-            predeclare_statement_list(stmt->children[1], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "switch_stmt")) {
-         if (stmt->count > 1) {
-            predeclare_statement_list(stmt->children[1], ctx);
-         }
-      }
-   }
-}
-
-static void compile_local_decl_item(ASTNode *node, Context *ctx) {
-   ASTNode *modifiers  = node->children[0];
-   ASTNode *type       = node->children[1];
-   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
-   const char *name    = declarator_name(declarator);
-   ASTNode *expression = node->children[node->count - 1];
-   validate_nonreserved_variadic_name(name, node);
-   int size            = declarator_storage_size(type, declarator);
-   ContextEntry *entry;
-
-   entry = (ContextEntry *) set_get(ctx->vars, name);
-   if (entry == NULL) {
-      predeclare_local_decl_item(node, ctx);
-      entry = (ContextEntry *) set_get(ctx->vars, name);
-   }
-   if (entry != NULL) {
-      entry->size = size;
-      entry->declarator = declarator;
-   }
-
-   while (expression && expression->count == 1 && !strcmp(expression->name, "assign_expr")) {
-      expression = expression->children[0];
-   }
-
-   if (entry == NULL) {
-      error_unreachable("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
-      return;
-   }
-
-   if (entry->is_absolute_ref) {
-      if (is_empty(expression)) {
-         return;
-      }
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$%02x\n", size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-      if (initializer_is_list(unwrap_expr_node(expression)) || declarator_array_count(declarator) > 0 || type_is_aggregate(type)) {
-         emit_fill_fp_bytes(ctx->locals, 0, size, 0x00);
-         if (!compile_initializer_to_fp(expression, ctx, type, declarator, ctx->locals, size)) {
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-            return;
-         }
-      }
-      else if (!compile_expr_to_slot(expression, ctx, &(ContextEntry){ .name = "$tmp", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = size })) {
-         remember_runtime_import("popN");
-         emit(&es_code, "    lda #$%02x\n", size & 0xff);
-         emit(&es_code, "    sta arg0\n");
-         emit(&es_code, "    jsr _popN\n");
-         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-         return;
-      }
-      {
-         LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = entry->is_static, .is_zeropage = entry->is_zeropage, .is_global = entry->is_global, .is_ref = entry->is_ref, .is_absolute_ref = entry->is_absolute_ref, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = entry->offset, .size = entry->size };
-         if (!emit_copy_fp_to_lvalue(ctx, &lv, ctx->locals, size)) {
-            remember_runtime_import("popN");
-            emit(&es_code, "    lda #$%02x\n", size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-            return;
-         }
-      }
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$%02x\n", size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-      return;
-   }
-
-   if (is_empty(expression) && declaration_const_applies_to_object(modifiers, declarator)) {
-      error_user("[%s:%d.%d] 'const' missing initializer", node->file, node->line, node->column);
-   }
-
-   if (!entry->is_static && !entry->is_zeropage) {
-      if (!is_empty(expression)) {
-         if (initializer_is_list(unwrap_expr_node(expression)) || declarator_array_count(declarator) > 0 || type_is_aggregate(type)) {
-            unsigned char *zeroes = (unsigned char *) calloc(size ? size : 1, sizeof(unsigned char));
-            if (zeroes) {
-               emit_store_immediate_to_fp(entry->offset, zeroes, size);
-               free(zeroes);
-            }
-            if (!compile_initializer_to_fp(expression, ctx, type, declarator, entry->offset, size)) {
-               error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-            }
-         }
-         else if (!compile_expr_to_slot(expression, ctx, entry)) {
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-         }
-      }
-      return;
-   }
-
-   {
-      char sym[256];
-      EmitSink *sink;
-      if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
-         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
-         return;
-      }
-      if (is_empty(expression)) {
-         if (entry->is_zeropage) {
-            sink = &es_zp;
-         }
-         else {
-            char segbuf[256];
-            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
-            sink = &es_bss;
-            emit(sink, ".segment \"%s\"\n", segbuf);
-         }
-         emit(sink, "%s:\n", sym);
-         emit(sink, "\t.res %d\n", size);
-         return;
-      }
-
-      {
-         EmitSink init_es = EMIT_INIT;
-
-         if (emit_global_initializer(&init_es, type, declarator, expression, size)) {
-            if (modifiers_imply_named_nonzeropage(modifiers)) {
-               char segbuf[256];
-               sink = &es_data;
-               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
-               emit(sink, ".segment \"%s\"\n", segbuf);
-            }
-            else {
-               sink = declaration_const_applies_to_object(modifiers, declarator) ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
-            }
-            emit(sink, "%s:\n", sym);
-            emit_sink_append(sink, &init_es);
-         }
-         else {
-            if (entry->is_zeropage) {
-               sink = &es_zp;
-            }
-            else {
-               char segbuf[256];
-               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
-               sink = &es_bss;
-               emit(sink, ".segment \"%s\"\n", segbuf);
-            }
-            emit(sink, "%s:\n", sym);
-            emit(sink, "\t.res %d\n", size);
-            remember_pending_global_init(name, sym, type, declarator, expression, size, entry->is_zeropage, false, NULL, NULL);
-         }
-      }
-      return;
-   }
-}
-
-
-
-static void compile_do_stmt(ASTNode *node, Context *ctx) {
-   const char *start_label = next_label("do_start");
-   const char *cond_label = next_label("do_cond");
-   const char *end_label = next_label("do_end");
-   const char *named_loop = pending_loop_label_name;
-   pending_loop_label_name = NULL;
-   if (!start_label || !cond_label || !end_label) {
-      free((void *) start_label);
-      free((void *) cond_label);
-      free((void *) end_label);
-      warning("[%s:%d.%d] failed to allocate labels for do statement", node->file, node->line, node->column);
-      return;
-   }
-
-   emit(&es_code, "%s:\n", start_label);
-   push_loop_labels(end_label, cond_label);
-   if (named_loop) {
-      push_named_loop_labels(named_loop, end_label, cond_label);
-   }
-   compile_statement_list(node->children[0], ctx);
-   emit(&es_code, "%s:\n", cond_label);
-   if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
-      error_unreachable("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
-   }
-   emit(&es_code, "    jmp %s\n", start_label);
-   emit(&es_code, "%s:\n", end_label);
-   pop_loop_labels();
-   if (named_loop) {
-      pop_named_loop_labels();
-   }
-
-   free((void *) start_label);
-   free((void *) cond_label);
-   free((void *) end_label);
-}
-
-static void compile_label_stmt(ASTNode *node, Context *ctx) {
-   (void) ctx;
-   emit(&es_code, "@user_%s:\n", node->children[0]->strval);
-   if (node->count > 1) {
-      ASTNode *stmt = node->children[1];
-      const char *saved_pending = pending_loop_label_name;
-      if (!strcmp(stmt->name, "while_stmt") || !strcmp(stmt->name, "for_stmt") || !strcmp(stmt->name, "do_stmt") || !strcmp(stmt->name, "switch_stmt")) {
-         pending_loop_label_name = node->children[0]->strval;
-      }
-      if (!strcmp(stmt->name, "return_stmt")) {
-         compile_return_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "expr") || !strcmp(stmt->name, "assign_expr")) {
-         compile_expr(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "if_stmt")) {
-         compile_if_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "while_stmt")) {
-         compile_while_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "for_stmt")) {
-         compile_for_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "do_stmt")) {
-         compile_do_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "break_stmt")) {
-         compile_break_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "continue_stmt")) {
-         compile_continue_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "goto_stmt")) {
-         compile_goto_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "switch_stmt")) {
-         compile_switch_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "label_stmt")) {
-         compile_label_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "defdecl_stmt")) {
-         ASTNode *list = stmt->children[0];
-         for (int j = 0; j < list->count; j++) {
-            compile_local_decl_item(list->children[j], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "asm_stmt")) {
-         compile_asm_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "statement_list")) {
-         compile_statement_list(stmt, ctx);
-      }
-      else if (is_empty(stmt) || !strcmp(stmt->name, "empty")) {
-         /* labeled empty statement: no-op */
-      }
-      else {
-         error_unreachable("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
-      }
-      pending_loop_label_name = saved_pending;
-   }
-}
-
-static void compile_goto_stmt(ASTNode *node, Context *ctx) {
-   (void) ctx;
-   if (node->count > 0 && !is_empty(node->children[0])) {
-      emit(&es_code, "    jmp @user_%s\n", node->children[0]->strval);
-   }
-}
-
-static void compile_switch_stmt(ASTNode *node, Context *ctx) {
-   const char *named_loop = pending_loop_label_name;
-   ASTNode *expr;
-   ASTNode *sections;
-   const ASTNode *type;
-   int size;
-   int compare_size;
-   int saved_locals;
-   ContextEntry lhs;
-   ContextEntry rhs;
-   const char *cleanup_label;
-   const char *default_label = NULL;
-   const char *end_label = NULL;
-   const char **case_labels = NULL;
-   int section_count;
-   bool is_signed;
-
-   pending_loop_label_name = NULL;
-
-   if (!node || node->count < 2) {
-      return;
-   }
-
-   expr = node->children[0];
-   sections = node->children[1];
-   if (!sections || is_empty(sections) || sections->count <= 0) {
-      return;
-   }
-
-   type = expr_value_type(expr, ctx);
-   size = expr_value_size(expr, ctx);
-   if (size <= 0) {
-      size = 1;
-   }
-   compare_size = size * 2;
-   saved_locals = ctx ? ctx->locals : 0;
-   lhs = (ContextEntry){ .name = "$lhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals, .size = size };
-   rhs = (ContextEntry){ .name = "$rhs", .type = type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = saved_locals + size, .size = size };
-   is_signed = type_is_signed_integer(type);
-   cleanup_label = next_label("switch_cleanup");
-   end_label = next_label("switch_end");
-   if (!cleanup_label || !end_label) {
-      free((void *) cleanup_label);
-      free((void *) end_label);
-      warning("[%s:%d.%d] switch label generation failed", node->file, node->line, node->column);
-      return;
-   }
-
-   section_count = sections->count;
-   case_labels = calloc((size_t)section_count, sizeof(*case_labels));
-   if (!case_labels) {
-      free((void *) cleanup_label);
-      free((void *) end_label);
-      error_unreachable("out of memory");
-   }
-
-   remember_runtime_import("pushN");
-   emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   emit(&es_code, "    jsr _pushN\n");
-   if (ctx) {
-      ctx->locals = saved_locals + compare_size;
-   }
-
-   if (!compile_expr_to_slot(expr, ctx, &lhs)) {
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      error_unreachable("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-      free(case_labels);
-      free((void *) cleanup_label);
-      free((void *) end_label);
-      return;
-   }
-   if (ctx) {
-      ctx->locals = saved_locals;
-   }
-
-   for (int i = 0; i < section_count; i++) {
-      ASTNode *section = sections->children[i];
-      case_labels[i] = next_label("case");
-      if (!case_labels[i]) {
-         warning("[%s:%d.%d] switch case label generation failed", node->file, node->line, node->column);
-         default_label = cleanup_label;
-         break;
-      }
-      if (section->children[0] && is_empty(section->children[0])) {
-         default_label = case_labels[i];
-      }
-   }
-
-   for (int i = 0; i < section_count; i++) {
-      ASTNode *section = sections->children[i];
-      ASTNode *case_expr = section->children[0];
-      if (!case_labels[i] || (case_expr && is_empty(case_expr))) {
-         continue;
-      }
-
-      if (!strcmp(case_expr->name, "case_choice")) {
-         ASTNode *low = case_expr->count > 0 ? case_expr->children[0] : NULL;
-         ASTNode *high = case_expr->count > 1 ? case_expr->children[1] : NULL;
-
-         if (!low) {
-            error_unreachable("[%s:%d.%d] malformed case label", case_expr->file, case_expr->line, case_expr->column);
-            continue;
-         }
-
-         if (!high) {
-            if (ctx) {
-               ctx->locals = saved_locals + compare_size;
-            }
-            if (!compile_constant_expr_to_slot(low, ctx, &rhs) &&
-                !compile_expr_to_slot(low, ctx, &rhs)) {
-               if (ctx) {
-                  ctx->locals = saved_locals;
-               }
-               error_unreachable("[%s:%d.%d] case expression not compiled yet", low->file, low->line, low->column);
-               continue;
-            }
-            if (ctx) {
-               ctx->locals = saved_locals;
-            }
-            emit_prepare_fp_ptr(0, lhs.offset);
-            emit_prepare_fp_ptr(1, rhs.offset);
-            emit(&es_code, "    lda #$%02x\n", size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            remember_runtime_import("eqN");
-            emit(&es_code, "    jsr _eqN\n");
-            emit(&es_code, "    lda arg1\n");
-            emit(&es_code, "    bne %s\n", case_labels[i]);
-            continue;
-         }
-
-         {
-            InitConstValue low_value = {0};
-            InitConstValue high_value = {0};
-            bool swapped = false;
-            ASTNode *ordered_low = low;
-            ASTNode *ordered_high = high;
-            const char *skip_label = next_label("case_skip");
-            const char *le_helper = is_signed ? (type_is_big_endian(type) ? "leNsbe" : "leNsle")
-                                               : (type_is_big_endian(type) ? "leNube" : "leNule");
-
-            if (!skip_label) {
-               warning("[%s:%d.%d] switch case label generation failed", case_expr->file, case_expr->line, case_expr->column);
-               continue;
-            }
-
-            if (eval_constant_initializer_expr(low, &low_value) &&
-                eval_constant_initializer_expr(high, &high_value) &&
-                low_value.kind == high_value.kind) {
-               if ((low_value.kind == INIT_CONST_INT && low_value.i > high_value.i) ||
-                   (low_value.kind == INIT_CONST_FLOAT && low_value.f > high_value.f)) {
-                  swapped = true;
-                  ordered_low = high;
-                  ordered_high = low;
-               }
-            }
-
-            if (swapped) {
-               warning("[%s:%d.%d] case range bounds were reversed; compiling as the inclusive range in ascending order",
-                       section->file, section->line, section->column);
-            }
-
-            if (ctx) {
-               ctx->locals = saved_locals + compare_size;
-            }
-            if (!compile_constant_expr_to_slot(ordered_low, ctx, &rhs) &&
-                !compile_expr_to_slot(ordered_low, ctx, &rhs)) {
-               if (ctx) {
-                  ctx->locals = saved_locals;
-               }
-               free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range start not compiled yet", ordered_low->file, ordered_low->line, ordered_low->column);
-               continue;
-            }
-            if (ctx) {
-               ctx->locals = saved_locals;
-            }
-            emit_prepare_fp_ptr(0, rhs.offset);
-            emit_prepare_fp_ptr(1, lhs.offset);
-            emit(&es_code, "    lda #$%02x\n", size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            remember_runtime_import(le_helper);
-            emit(&es_code, "    jsr _%s\n", le_helper);
-            emit(&es_code, "    lda arg1\n");
-            emit(&es_code, "    beq %s\n", skip_label);
-
-            if (ctx) {
-               ctx->locals = saved_locals + compare_size;
-            }
-            if (!compile_constant_expr_to_slot(ordered_high, ctx, &rhs) &&
-                !compile_expr_to_slot(ordered_high, ctx, &rhs)) {
-               if (ctx) {
-                  ctx->locals = saved_locals;
-               }
-               free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range end not compiled yet", ordered_high->file, ordered_high->line, ordered_high->column);
-               continue;
-            }
-            if (ctx) {
-               ctx->locals = saved_locals;
-            }
-            emit_prepare_fp_ptr(0, lhs.offset);
-            emit_prepare_fp_ptr(1, rhs.offset);
-            emit(&es_code, "    lda #$%02x\n", size & 0xff);
-            emit(&es_code, "    sta arg0\n");
-            remember_runtime_import(le_helper);
-            emit(&es_code, "    jsr _%s\n", le_helper);
-            emit(&es_code, "    lda arg1\n");
-            emit(&es_code, "    bne %s\n", case_labels[i]);
-            emit(&es_code, "%s:\n", skip_label);
-            free((void *) skip_label);
-            continue;
-         }
-      }
-
-      if (ctx) {
-         ctx->locals = saved_locals + compare_size;
-      }
-      if (!compile_expr_to_slot(case_expr, ctx, &rhs)) {
-         if (ctx) {
-            ctx->locals = saved_locals;
-         }
-         error_unreachable("[%s:%d.%d] case expression not compiled yet", case_expr->file, case_expr->line, case_expr->column);
-         continue;
-      }
-      if (ctx) {
-         ctx->locals = saved_locals;
-      }
-      emit_prepare_fp_ptr(0, lhs.offset);
-      emit_prepare_fp_ptr(1, rhs.offset);
-      emit(&es_code, "    lda #$%02x\n", size & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      remember_runtime_import("eqN");
-      emit(&es_code, "    jsr _eqN\n");
-      emit(&es_code, "    lda arg1\n");
-      emit(&es_code, "    bne %s\n", case_labels[i]);
-   }
-
-   emit(&es_code, "    jmp %s\n", default_label ? default_label : cleanup_label);
-
-   push_loop_labels(cleanup_label, current_continue_label());
-   if (named_loop) {
-      push_named_loop_labels(named_loop, cleanup_label, current_continue_label());
-   }
-   for (int i = 0; i < section_count; i++) {
-      ASTNode *section = sections->children[i];
-      ASTNode *body = (section->count > 1) ? section->children[1] : NULL;
-      if (!case_labels[i]) {
-         continue;
-      }
-      emit(&es_code, "%s:\n", case_labels[i]);
-      if (body && !is_empty(body)) {
-         if (ctx) {
-            ctx->locals = saved_locals + compare_size;
-         }
-         compile_statement_list(body, ctx);
-         if (ctx) {
-            ctx->locals = saved_locals;
-         }
-      }
-   }
-   pop_loop_labels();
-   if (named_loop) {
-      pop_named_loop_labels();
-   }
-
-   emit(&es_code, "%s:\n", cleanup_label);
-   remember_runtime_import("popN");
-   emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
-   emit(&es_code, "    sta arg0\n");
-   emit(&es_code, "    jsr _popN\n");
-   emit(&es_code, "%s:\n", end_label);
-
-   for (int i = 0; i < section_count; i++) {
-      free((void *) case_labels[i]);
-   }
-   free(case_labels);
-   free((void *) cleanup_label);
-   free((void *) end_label);
-}
-
-static void compile_return_stmt(ASTNode *node, Context *ctx) {
-   ContextEntry *ret = (ContextEntry *) set_get(ctx->vars, "$$");
-   ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
-
-   if (!ret) {
-      error_unreachable("[%s:%d.%d] internal missing return slot", node->file, node->line, node->column);
-   }
-
-   if (!expr || is_empty(expr)) {
-      emit(&es_code, "    jmp @fini\n");
-      return;
-   }
-
-   if (!compile_expr_to_return_slot(expr, ctx, ret)) {
-      error_unreachable("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
-   }
-   emit(&es_code, "    jmp @fini\n");
-}
-
-static void compile_expr(ASTNode *node, Context *ctx) {
+void compile_expr(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;
    }
@@ -7613,899 +5541,6 @@ static void compile_expr(ASTNode *node, Context *ctx) {
    error_unreachable("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
 }
 
-
-static void compile_asm_stmt(ASTNode *node, Context *ctx) {
-   (void) ctx;
-
-   if (!node || is_empty(node) || node->count < 1 || !node->children[0]) {
-      return;
-   }
-
-   const ASTNode *leaf = node->children[0];
-   if (leaf->kind != AST_ASM || !leaf->strval) {
-      warning("[%s:%d.%d] inline asm statement malformed", node->file, node->line, node->column);
-      return;
-   }
-
-   emit(&es_code, "%s\n", leaf->strval);
-}
-
-
-static void compile_statement_list(ASTNode *node, Context *ctx) {
-   if (!node || is_empty(node)) {
-      return;
-   }
-
-   for (int i = 0; i < node->count; i++) {
-      ASTNode *stmt = node->children[i];
-      if (!strcmp(stmt->name, "return_stmt")) {
-         compile_return_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "expr") || !strcmp(stmt->name, "assign_expr")) {
-         compile_expr(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "defdecl_stmt")) {
-         ASTNode *list = stmt->children[0];
-         for (int j = 0; j < list->count; j++) {
-            compile_local_decl_item(list->children[j], ctx);
-         }
-      }
-      else if (!strcmp(stmt->name, "if_stmt")) {
-         compile_if_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "while_stmt")) {
-         compile_while_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "for_stmt")) {
-         compile_for_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "break_stmt")) {
-         compile_break_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "continue_stmt")) {
-         compile_continue_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "do_stmt")) {
-         compile_do_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "label_stmt")) {
-         compile_label_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "goto_stmt")) {
-         compile_goto_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "switch_stmt")) {
-         compile_switch_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "asm_stmt")) {
-         compile_asm_stmt(stmt, ctx);
-      }
-      else if (!strcmp(stmt->name, "statement_list")) {
-         compile_statement_list(stmt, ctx);
-      }
-      else {
-         compile_expr(stmt, ctx);
-      }
-   }
-}
-
-static void compile_function_decl(ASTNode *node) {
-   ASTNode *modifiers  = node->children[0]->children[0];
-   ASTNode *declarator = node->children[1];
-   ASTNode *body       = node->children[2];
-   const char *name    = declarator_name(declarator);
-   const ASTNode *saved_call_graph_function = current_call_graph_function;
-   int saved_call_graph_node = current_call_graph_node;
-   char sym[256];
-
-   remember_function(node, name);
-   if (!function_symbol_name(node, name, sym, sizeof(sym))) {
-      error_unreachable("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
-   }
-
-   if (!has_modifier(modifiers, "static")) {
-      emit(&es_export, ".export %s\n", sym);
-      emit_function_parameter_exports(node);
-   }
-
-   Context ctx;
-   ctx.name = strdup(sym);
-   ctx.locals = 0;
-   ctx.params = 0;
-   ctx.vars = new_set();
-   ctx.break_label = NULL;
-   ctx.continue_label = NULL;
-   build_function_context(node, &ctx);
-   current_call_graph_function = node;
-   current_call_graph_node = call_graph_node_index_for_function(node);
-
-   if (!is_empty(body) && !strcmp(body->name, "statement_list")) {
-      predeclare_statement_list(body, &ctx);
-   }
-
-   emit_function_parameter_storage(node, &ctx);
-   emit(&es_code, ".proc %s\n", sym);
-   emit(&es_code, "    lda sp+1\n");
-   emit(&es_code, "    sta fp+1\n");
-   emit(&es_code, "    lda sp\n");
-   emit(&es_code, "    sta fp\n");
-   if (ctx.locals > 0) {
-      remember_runtime_import("pushN");
-      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _pushN\n");
-   }
-
-   emit_variadic_hidden_local_setup(node, &ctx);
-
-   if (!is_empty(body)) {
-      if (!strcmp(body->name, "statement_list")) {
-         compile_statement_list(body, &ctx);
-      }
-      else {
-         error_unreachable("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
-      }
-   }
-
-   emit(&es_code, "@fini:\n");
-   if (ctx.locals > 0) {
-      remember_runtime_import("popN");
-      emit(&es_code, "    lda #$%02x\n", ctx.locals & 0xff);
-      emit(&es_code, "    sta arg0\n");
-      emit(&es_code, "    jsr _popN\n");
-   }
-   emit(&es_code, "    rts\n");
-   emit(&es_code, ".endproc\n");
-   current_call_graph_function = saved_call_graph_function;
-   current_call_graph_node = saved_call_graph_node;
-}
-
-static void compile_mem_decl_stmt(ASTNode *node) {
-   attach_memname(node->children[0]->strval, node);
-}
-
-static void compile_type_decl_stmt(ASTNode *node) {
-   const char *key = node->children[0]->strval;
-   attach_typename(key, node);
-
-   //debug("%s:%s", __func__, node->children[0]->strval);
-   bool haveSize = false;
-   int size = -1;
-   bool haveEndian = false;
-   const char *endian = NULL;
-   bool haveFloat = false;
-   const char *float_style = NULL;
-   bool haveInteger = false;
-   const char *integer_style = NULL;
-   bool integer_required;
-
-   integer_required = key && strcmp(key, "void");
-
-   // we need to guarantee a "size" and "endian"
-   if (strcmp(node->children[1]->name, "empty")) {
-      for (int i = 0; i < node->children[1]->count; i++) {
-         ASTNode *item = node->children[1]->children[i];
-
-         // check for $size, must be nonnegative
-         if (!strncmp(item->strval, "$size:", 6)) {
-            if (haveSize) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$size:' flags",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval);
-            }
-            char *p = strchr(item->strval, ':');
-            p++;
-            size = atoi(p);
-            if (size < 0 || (size == 0 && strcmp(p, "0"))) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$size:%s' flag",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval, p);
-            }
-            haveSize = true;
-            pair_insert(typesizes, key, (void *)(intptr_t) size);
-         }
-
-         // check for $endian, must be "big" or "little"
-         if (!strncmp(item->strval, "$endian:", 8)) {
-            if (haveEndian) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$endian:' flags",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval);
-            }
-            endian = strchr(item->strval, ':');
-            endian++;
-            if (strcmp(endian, "big") && strcmp(endian, "little")) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '$endian:%s' flag",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval, endian);
-            }
-
-            haveEndian = true;
-         }
-
-         if (!strcmp(item->strval, "$signed") || !strcmp(item->strval, "$unsigned")) {
-            error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$integer:signed' or '$integer:unsigned' instead of '%s'",
-                  node->file, node->line, node->column,
-                  node->children[0]->strval, item->strval);
-         }
-         else if (!strcmp(item->strval, "$float")) {
-            error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$float:ieee754' or '$float:simple'",
-                  node->file, node->line, node->column,
-                  node->children[0]->strval);
-         }
-         else if (!strncmp(item->strval, "$float:", 7)) {
-            const char *style = parse_float_style_flag_text(item->strval);
-            if (haveFloat) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$float' flags",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval);
-            }
-            if (!style || !float_style_is_known(style)) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval, item->strval);
-            }
-            haveFloat = true;
-            float_style = style;
-         }
-         else if (!strncmp(item->strval, "$integer:", 9)) {
-            const char *style = parse_integer_style_flag_text(item->strval);
-            if (haveInteger) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' has multiple '$integer' flags",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval);
-            }
-            if (!style || (strcmp(style, "signed") && strcmp(style, "unsigned"))) {
-               error_user("[%s:%d.%d] type_decl_stmt '%s' unrecognized '%s' flag",
-                     node->file, node->line, node->column,
-                     node->children[0]->strval, item->strval);
-            }
-            haveInteger = true;
-            integer_style = style;
-         }
-      }
-   }
-
-   if (!haveSize) {
-      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$size:' flag",
-            node->file, node->line, node->column, node->children[0]->strval);
-   }
-
-   if (!haveEndian && size > 1) {
-      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$endian:' flag",
-            node->file, node->line, node->column, node->children[0]->strval);
-   }
-
-   if (haveFloat && haveInteger) {
-      error_user("[%s:%d.%d] type_decl_stmt '%s' cannot combine '$float:*' with '$integer:%s'",
-            node->file, node->line, node->column,
-            node->children[0]->strval,
-            integer_style ? integer_style : "?");
-   }
-
-   if (!haveFloat && integer_required && !haveInteger) {
-      error_user("[%s:%d.%d] type_decl_stmt '%s' missing '$integer:signed' or '$integer:unsigned' flag",
-            node->file, node->line, node->column, node->children[0]->strval);
-   }
-
-   if (key && !strcmp(key, "bool") && haveInteger && (!integer_style || strcmp(integer_style, "unsigned"))) {
-      error_user("[%s:%d.%d] type_decl_stmt '%s' must use '$integer:unsigned'",
-            node->file, node->line, node->column, node->children[0]->strval);
-   }
-
-   if (haveFloat) {
-      int expbits = float_style_expbits_for_size(float_style, size);
-      if (expbits < 0) {
-         error_user("[%s:%d.%d] type_decl_stmt '%s' float style '%s' does not support $size:%d",
-               node->file, node->line, node->column,
-               node->children[0]->strval,
-               float_style ? float_style : "(null)",
-               size);
-      }
-   }
-
-   if (get_xray(XRAY_TYPEINFO)) {
-      message("TYPEINFO: %s %d %s", key, haveSize ? size : -1, haveEndian ? endian : "unspec");
-   }
-}
-
-static bool enum_candidate_is_integer_type(const ASTNode *node) {
-   if (!node || strcmp(node->name, "type_decl_stmt")) {
-      return false;
-   }
-
-   return type_is_promotable_integer(node) && !type_is_bool(node);
-}
-
-static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_value, unsigned long long max_value, bool have_negative) {
-   int size;
-   int bits;
-   bool is_unsigned;
-   bool is_signed;
-   unsigned long long signed_max;
-   long long signed_min;
-   unsigned long long unsigned_max;
-
-   if (!enum_candidate_is_integer_type(node)) {
-      return false;
-   }
-
-   size = type_size_from_node(node);
-   if (size <= 0 || size > 8) {
-      return false;
-   }
-
-   bits = size * 8;
-   is_unsigned = type_is_unsigned_integer(node);
-   is_signed = type_is_signed_integer(node);
-
-   if (bits >= 64) {
-      signed_max = LLONG_MAX;
-      signed_min = LLONG_MIN;
-      unsigned_max = ULLONG_MAX;
-   }
-   else {
-      signed_max = (1ULL << (bits - 1)) - 1ULL;
-      signed_min = -(long long) (1ULL << (bits - 1));
-      unsigned_max = (1ULL << bits) - 1ULL;
-   }
-
-   if (is_unsigned) {
-      return !have_negative && max_value <= unsigned_max;
-   }
-
-   if (have_negative) {
-      return min_value >= signed_min && max_value <= signed_max;
-   }
-
-   if (is_signed) {
-      return max_value <= signed_max;
-   }
-
-   return max_value <= unsigned_max;
-}
-
-static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
-   long long min_value = 0;
-   unsigned long long max_value = 0;
-   bool have_range = false;
-   bool have_negative = false;
-   const ASTNode *best = NULL;
-   int best_size = INT_MAX;
-
-   if (!node || node->count < 2 || !node->children[1]) {
-      error_unreachable("[%s:%d.%d] invalid enum declaration", node ? node->file : __FILE__, node ? node->line : __LINE__, node ? node->column : 0);
-   }
-
-   for (int i = 0; i < node->children[1]->count; i++) {
-      ASTNode *entry = node->children[1]->children[i];
-      long long value;
-      unsigned long long uvalue;
-      if (!entry || entry->count < 2 || !entry->children[1] || entry->children[1]->kind != AST_INTEGER) {
-         error_user("[%s:%d.%d] enum value '%s' is not an integer constant", entry ? entry->file : node->file, entry ? entry->line : node->line, entry ? entry->column : node->column, (entry && entry->count > 0 && entry->children[0]) ? entry->children[0]->strval : "?");
-      }
-      value = parse_int(entry->children[1]->strval);
-      uvalue = value < 0 ? 0ULL : (unsigned long long) value;
-      if (!have_range) {
-         min_value = value;
-         max_value = uvalue;
-         have_range = true;
-      }
-      else {
-         if (value < min_value) {
-            min_value = value;
-         }
-         if (uvalue > max_value) {
-            max_value = uvalue;
-         }
-      }
-      if (value < 0) {
-         have_negative = true;
-      }
-   }
-
-   if (!have_range) {
-      error_user("[%s:%d.%d] enum '%s' is empty", node->file, node->line, node->column, node->children[0]->strval);
-   }
-
-   for (int i = 0; root && i < root->count; i++) {
-      ASTNode *cand = root->children[i];
-      int cand_size;
-      if (!enum_candidate_can_hold_range(cand, min_value, max_value, have_negative)) {
-         continue;
-      }
-      cand_size = type_size_from_node(cand);
-      if (!best || cand_size < best_size) {
-         best = cand;
-         best_size = cand_size;
-      }
-   }
-
-   if (!best) {
-      error_user("[%s:%d.%d] enum '%s' has no declared integer type that can represent values %lld..%llu",
-            node->file, node->line, node->column,
-            node->children[0]->strval,
-            min_value, max_value);
-   }
-
-   return best;
-}
-
-static void compile_enum_decl_stmt(ASTNode *node) {
-   const char *key = node->children[0]->strval;
-   const ASTNode *backing = find_best_enum_backing_type(node);
-   const char *backing_name = type_name_from_node(backing);
-   int size = type_size_from_node(backing);
-
-   attach_typename(key, node);
-   pair_insert(typesizes, key, (void *)(intptr_t) size);
-   pair_insert(enumbackings, key, (void *) backing_name);
-
-   if (get_xray(XRAY_TYPEINFO)) {
-      message("TYPEINFO: enum %s %d %s", key, size, backing_name ? backing_name : "?");
-   }
-}
-
-static void compile_struct_decl_stmt(ASTNode *node) {
-   const char *key = node->children[0]->strval;
-   attach_typename(key, node);
-
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
-}
-
-static void compile_union_decl_stmt(ASTNode *node) {
-   const char *key = node->children[0]->strval;
-   attach_typename(key, node);
-
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
-}
-
-
-static void compile_global_decl_item(ASTNode *node) {
-   ASTNode *modifiers  = node->children[0];
-   ASTNode *type       = node->children[1];
-   ASTNode *declarator = (ASTNode *) decl_node_declarator(node);
-   const ASTNode *addrspec = decl_node_address_spec(node);
-   const char *name    = declarator_name(declarator);
-   ASTNode *expression = node->children[node->count - 1];
-   validate_nonreserved_variadic_name(name, node);
-   ASTNode *uexpr;
-   EmitSink init_es = EMIT_INIT;
-
-   if (!globals) {
-      globals = new_set();
-   }
-
-   const ASTNode *value = set_get(globals, name);
-   if (value != NULL) {
-      error_user("[%s:%d.%d] duplicate symbol '%s' first defined at [%s:%d.%d]",
-            node->file, node->line, node->column,
-            name,
-            value->file, value->line, value->column);
-   }
-   set_add(globals, strdup(name), node);
-
-   bool is_extern = has_modifier(modifiers, "extern");
-   bool is_const = declaration_const_applies_to_object(modifiers, declarator);
-   bool is_static = has_modifier(modifiers, "static");
-   bool is_zeropage = modifiers_imply_zeropage(modifiers);
-   bool is_ref = has_modifier(modifiers, "ref");
-   bool is_absolute_ref = is_ref && addrspec != NULL;
-   int size = declarator_storage_size(type, declarator);
-   char symname[256];
-   format_user_asm_symbol(name, symname, sizeof(symname));
-
-   if (addrspec != NULL && !is_ref) {
-      warn_address_spec_without_ref(node, name);
-   }
-
-   if (is_ref && !is_absolute_ref) {
-      error_user("[%s:%d.%d] 'ref' not allowed in global declaration without an absolute address binding",
-            node->file, node->line, node->column);
-   }
-
-   if (is_absolute_ref) {
-      if (!address_spec_has_read(addrspec) && !address_spec_has_write(addrspec)) {
-         error_user("[%s:%d.%d] absolute ref '%s' cannot use none for both read and write address",
-               node->file, node->line, node->column, name);
-      }
-      if (is_extern) {
-         error_user("[%s:%d.%d] 'extern' not allowed on absolute ref '%s'",
-               node->file, node->line, node->column, name);
-      }
-      if (!is_empty(expression)) {
-         ASTNode *runtime_expr = (ASTNode *) unwrap_expr_node(expression);
-         if (!address_spec_has_write(addrspec)) {
-            error_user("[%s:%d.%d] global absolute ref '%s' with initializer must be writable",
-                  node->file, node->line, node->column, name);
-         }
-         remember_pending_global_init(name,
-                                      NULL,
-                                      type,
-                                      declarator,
-                                      runtime_expr ? runtime_expr : expression,
-                                      size,
-                                      false,
-                                      true,
-                                      address_spec_read_expr(addrspec),
-                                      address_spec_write_expr(addrspec));
-      }
-      return;
-   }
-
-   if (is_extern) {
-      if (is_static) {
-         error_user("[%s:%d.%d] 'extern' and 'static' don't mix",
-               node->file, node->line, node->column);
-      }
-
-      if (is_zeropage) {
-         emit(&es_import, ".zpimport %s\n", symname);
-      }
-      else {
-         emit(&es_import, ".import %s\n", symname);
-      }
-      return;
-   }
-
-   if (!is_static) {
-      if (is_zeropage) {
-         emit(&es_export, ".zpexport %s\n", symname);
-      }
-      else {
-         emit(&es_export, ".export %s\n", symname);
-      }
-   }
-
-   if (is_empty(expression)) {
-      if (is_const) {
-         error_user("[%s:%d.%d] 'const' missing initializer",
-               node->file, node->line, node->column);
-      }
-      if (is_zeropage) {
-         emit(&es_zp, "%s:\n", symname);
-         emit(&es_zp, "\t.res %d\n", size);
-      }
-      else {
-         char segbuf[256];
-         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
-         emit(&es_bss, ".segment \"%s\"\n", segbuf);
-         emit(&es_bss, "%s:\n", symname);
-         emit(&es_bss, "\t.res %d\n", size);
-      }
-      return;
-   }
-
-   uexpr = (ASTNode *) unwrap_expr_node(expression);
-
-   {
-      char symbuf[256];
-      snprintf(symbuf, sizeof(symbuf), "%s", symname);
-
-      if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
-         if (modifiers_imply_named_nonzeropage(modifiers)) {
-            char segbuf[256];
-            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
-            emit(&es_data, ".segment \"%s\"\n", segbuf);
-            emit(&es_data, "%s:\n", symname);
-            emit_sink_append(&es_data, &init_es);
-         }
-         else {
-            EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
-            emit(es, "%s:\n", symname);
-            emit_sink_append(es, &init_es);
-         }
-         return;
-      }
-
-      if (is_zeropage) {
-         emit(&es_zp, "%s:\n", symname);
-         emit(&es_zp, "\t.res %d\n", size);
-      }
-      else {
-         char segbuf[256];
-         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "BSS");
-         emit(&es_bss, ".segment \"%s\"\n", segbuf);
-         emit(&es_bss, "%s:\n", symname);
-         emit(&es_bss, "\t.res %d\n", size);
-      }
-      remember_pending_global_init(name, symbuf, type, declarator, uexpr ? uexpr : expression, size, is_zeropage, false, NULL, NULL);
-   }
-}
-
-
-static void predeclare_top_level_functions(ASTNode *program) {
-   if (!functions) {
-      functions = new_set();
-   }
-
-   for (int i = 0; i < program->count; i++) {
-      ASTNode *node = program->children[i];
-      if (strcmp(node->name, "defdecl_stmt")) {
-         continue;
-      }
-
-      if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
-         ASTNode *list = node->children[0];
-         for (int j = 0; j < list->count; j++) {
-            ASTNode *item = list->children[j];
-            ASTNode *declarator = item->children[2];
-            if (declarator_is_function(declarator)) {
-               remember_function(item, declarator_name(declarator));
-            }
-         }
-      }
-      else if (node->count == 3) {
-         ASTNode *declarator = node->children[1];
-         remember_function(node, declarator_name(declarator));
-      }
-   }
-}
-
-static void compile_function_signature(ASTNode *node) {
-   ASTNode *modifiers  = node->children[0];
-   ASTNode *declarator = node->children[2];
-   const char *name    = declarator_name(declarator);
-   char sym[256];
-
-   remember_function(node, name);
-
-   if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
-      if (!function_symbol_name(node, name, sym, sizeof(sym))) {
-         error_unreachable("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
-      }
-      remember_symbol_import(sym);
-   }
-}
-
-
-static void compile_defdecl_stmt(ASTNode *node) {
-   if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
-      ASTNode *list = node->children[0];
-      for (int i = 0; i < list->count; i++) {
-         ASTNode *item = list->children[i];
-         ASTNode *declarator = item->children[2];
-         if (declarator_is_function(declarator)) {
-            compile_function_signature(item);
-         }
-         else {
-            compile_global_decl_item(item);
-         }
-      }
-      return;
-   }
-
-   if (node->count == 3) {
-      compile_function_decl(node);
-      return;
-   }
-
-   error_unreachable("[%s:%d.%d] unsupported defdecl_stmt shape", node->file, node->line, node->column);
-}
-
-static void check_struct_union_undefined(ASTNode *program) {
-   // undefined struct/union is always an error
-   const char *undefined = typename_find_null();
-   if (undefined) {
-      ASTNode *node = NULL;
-
-      // as an artifact of parsing,
-      // floaters have an empty node
-      // in the program tree
-      for (int i = 0; i < program->count; i++) {
-         if (!strcmp(program->children[i]->name, "empty")) {
-            if (!strcmp(program->children[i]->strval, undefined)) {
-               node = program->children[i];
-            }
-         }
-      }
-
-      if (node) {
-         error_user("undefined struct/union '%s' [%s:%d.%d]",
-               undefined, node->file, node->line, node->column);
-      }
-      else {
-         error_unreachable("undefined struct/union '%s'", undefined); // this is probably unreachable
-      }
-      // error_user() calls exit()
-   }
-}
-
-static bool crosscheck_helper(Pair *markers, const char *name) {
-   const char *childname;
-   ASTNode *child;
-   pair_insert(markers, name, (void *)1);
-   ASTNode *node = get_typename_node(name);
-   if (node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"))) {
-      for (int i = 1; i < node->count; i++) {
-         child = node->children[i];
-         {
-            const ASTNode *child_decl = child->children[2];
-            if (declarator_pointer_depth(child_decl) <= 0 && declarator_function_pointer_depth(child_decl) <= 0) {
-               childname = child->children[1]->strval;
-               void *color = pair_get(markers, childname);
-               if (color == 0) {
-                  if (crosscheck_helper(markers, childname)) {
-                     goto problem;
-                  }
-               }
-               else if ((intptr_t)color == 1) {
-                  goto problem;
-               }
-            }
-         }
-      }
-   }
-   pair_insert(markers, name, (void *) 2);
-   return false;
-
-problem:
-   warning("struct/union '%s' contains '%s' [%s:%d.%d]",
-         name, childname,
-         child->file, child->line, child->column);
-   return true;
-}
-
-static void crosscheck_struct_union_nesting(ASTNode *program) {
-   Pair *markers = pair_create();
-
-   for (int i = 0; i < program->count; i++) {
-      if (!strcmp(program->children[i]->name, "struct_decl_stmt") ||
-          !strcmp(program->children[i]->name, "union_decl_stmt")) {
-         ASTNode *node = program->children[i]->children[0];
-         pair_insert(markers, node->strval, 0);
-      }
-   }
-
-   for (int i = 0; i < program->count; i++) {
-      if (!strcmp(program->children[i]->name, "struct_decl_stmt") ||
-          !strcmp(program->children[i]->name, "union_decl_stmt")) {
-         ASTNode *node = program->children[i]->children[0];
-         if (pair_get(markers, node->strval) == 0) {
-            if (crosscheck_helper(markers, node->strval)) {
-               error_user("cyclic struct/union detected");
-               // error_user() calls exit()
-            }
-         }
-      }
-   }
-
-   pair_destroy(markers);
-}
-
-void calculate_struct_union_sizes(ASTNode *program) {
-   // everybody uses pointers, let's just do that now...
-
-   if (!typename_exists("*")) {
-      error_unreachable("type * is not defined, pointer size is unknown");
-      // error_user() calls exit()
-   }
-
-   int sizeof_ptr = (intptr_t) pair_get(typesizes, "*");
-
-   bool done = false;
-
-   while (!done) {
-      done = true;
-
-      for (int i = 0; i < program->count; i++) {
-         bool is_struct = false;
-         bool is_union = false;
-
-         if (!strcmp(program->children[i]->name, "struct_decl_stmt")) {
-            is_struct = true;
-         }
-         else if (!strcmp(program->children[i]->name, "union_decl_stmt")) {
-            is_union = true;
-         }
-         // else if (!strcmp(program->children[i]->name, "type_decl_stmt")) {
-         // // types have already been done.
-         // }
-
-         if (is_struct || is_union) {
-            ASTNode *node = program->children[i];
-            const char *name = node->children[0]->strval;
-            int size = 0;
-            int bit_cursor = 0;
-
-            if (!pair_exists(typesizes, name)) {
-               for (int j = 1; j < node->count; j++) {
-                  ASTNode *item = node->children[j];
-                  const ASTNode *type = item->children[1];
-                  const char *tname = type->strval;
-                  const ASTNode *decl = item->children[2];
-                  int mult = declarator_array_multiplier(decl);
-                  bool isptr = declarator_pointer_depth(decl) > 0 || declarator_function_pointer_depth(decl) > 0;
-                  int bit_width = declarator_bitfield_width(decl);
-                  int othersize;
-
-                  if (isptr) {
-                     othersize = sizeof_ptr;
-                  }
-                  else if (pair_exists(typesizes, tname)) {
-                     othersize = (intptr_t) pair_get(typesizes, tname);
-                  }
-                  else {
-                     othersize = -1;
-                  }
-
-                  if (othersize == -1) {
-                     size = -1;
-                     break;
-                  }
-
-                  if (bit_width > 0) {
-                     if (declarator_pointer_depth(decl) > 0 || declarator_function_pointer_depth(decl) > 0 || declarator_array_count(decl) > 0) {
-                        error_user("[%s:%d.%d] bitfield '%s' must be a plain scalar field",
-                              decl->file, decl->line, decl->column,
-                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>");
-                     }
-                     if (has_flag_prefix(tname, "$float:")) {
-                        error_user("[%s:%d.%d] bitfield '%s' cannot use floating type '%s'",
-                              decl->file, decl->line, decl->column,
-                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
-                              tname);
-                     }
-                     if (has_flag(tname, "$endian:big")) {
-                        error_user("[%s:%d.%d] bitfield '%s' does not support big-endian type '%s'",
-                              decl->file, decl->line, decl->column,
-                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
-                              tname);
-                     }
-                     if (bit_width <= 0 || bit_width > othersize * 8) {
-                        error_user("[%s:%d.%d] bitfield '%s' width %d exceeds storage of '%s' (%d bits)",
-                              decl->file, decl->line, decl->column,
-                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>",
-                              bit_width, tname, othersize * 8);
-                     }
-                     if (mult != 1) {
-                        error_user("[%s:%d.%d] bitfield '%s' cannot be an array",
-                              decl->file, decl->line, decl->column,
-                              declarator_name(decl) ? declarator_name(decl) : "<unnamed>");
-                     }
-                     if (is_struct) {
-                        bit_cursor += bit_width;
-                        size = (bit_cursor + 7) / 8;
-                     }
-                     else {
-                        int field_size = (bit_width + 7) / 8;
-                        if (field_size > size) {
-                           size = field_size;
-                        }
-                     }
-                  }
-                  else if (is_struct) {
-                     if (bit_cursor % 8) {
-                        bit_cursor = ((bit_cursor + 7) / 8) * 8;
-                     }
-                     bit_cursor += othersize * mult * 8;
-                     size = bit_cursor / 8;
-                  }
-                  else if (is_union) {
-                     if (othersize * mult > size) {
-                        size = othersize * mult;
-                     }
-                  }
-               }
-
-               if (size == -1) {
-                  done = false;
-               }
-               else {
-                  pair_insert(typesizes, name, (void *)(intptr_t)size);
-                  debug("sizeof(%s) == %d", name, size);
-               }
-            }
-         }
-      }
-   }
-}
 
 static void compile(ASTNode *program) {
 
