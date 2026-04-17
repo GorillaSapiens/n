@@ -1,10 +1,6 @@
 #ifndef _INCLUDE_COMPILE_EXPR_H_
 #define _INCLUDE_COMPILE_EXPR_H_
 
-#include "ast.h"
-#include "compile_internal.h"
-
-bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
-bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
+#include "compile_expr_slot.h"
 
 #endif

@@ -456,20 +456,12 @@ void compile_struct_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
 }
 
 void compile_union_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
-   debug("%s:%d %s >>", __FILE__, __LINE__,  __func__);
-   debug("========================================\n");
-   parse_dump_node(node);
-   debug("========================================\n");
 }
 
 
