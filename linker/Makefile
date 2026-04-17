@@ -6,10 +6,16 @@ DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
 
+OBJS = n65ld.o n65ld_input.o
+DEPS = $(OBJS:.o=.d)
+
 all: n65ld
 
-n65ld: n65ld.c
-	$(CC) $(CFLAGS) n65ld.c -o n65ld
+n65ld: $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o n65ld
+
+%.o: %.c
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
 install: n65ld
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
@@ -23,4 +29,6 @@ tarball:
 	tar -czf n65ld.`date "+%Y%m%d_%H%M%S"`.tar.gz *
 
 clean:
-	rm -f n65ld
+	rm -f n65ld $(OBJS) $(DEPS)
+
+-include $(DEPS)
