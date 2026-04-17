@@ -27,6 +27,7 @@ GENHDR = parser.tab.h delexer.h coverage_map.h
 SRCSRC = \
    ast.c \
    compile.c \
+   compile_init.c \
    compile_overload.c \
    compile_type.c \
    coverage.c \
