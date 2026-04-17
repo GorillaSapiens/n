@@ -435,17 +435,9 @@ static bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_o
 static void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size);
 static void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset);
 static const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out);
-static unsigned char hex_value(unsigned char c) {
-   if (c >= '0' && c <= '9') return (unsigned char) (c - '0');
-   if (c >= 'a' && c <= 'f') return (unsigned char) (10 + c - 'a');
-   if (c >= 'A' && c <= 'F') return (unsigned char) (10 + c - 'A');
-   return 0xff;
-}
-
 static unsigned char *decode_string_literal_bytes(const char *text, int *out_len) {
    size_t raw_len;
    unsigned char *buf;
-   int j = 0;
 
    if (!text) {
       text = "";
@@ -455,69 +447,13 @@ static unsigned char *decode_string_literal_bytes(const char *text, int *out_len
    if (!buf) {
       error_unreachable("out of memory");
    }
-
-   for (size_t i = 0; i < raw_len; i++) {
-      unsigned char c = (unsigned char) text[i];
-      if (c != '\\' || i + 1 >= raw_len) {
-         buf[j++] = c;
-         continue;
-      }
-
-      c = (unsigned char) text[++i];
-      switch (c) {
-         case 'a': buf[j++] = 0x07; break;
-         case 'b': buf[j++] = 0x08; break;
-         case 'e': buf[j++] = 0x1b; break;
-         case 'f': buf[j++] = 0x0c; break;
-         case 'n': buf[j++] = 0x0a; break;
-         case 'r': buf[j++] = 0x0d; break;
-         case 't': buf[j++] = 0x09; break;
-         case 'v': buf[j++] = 0x0b; break;
-         case '\\': buf[j++] = '\\'; break;
-         case '\'': buf[j++] = '\''; break;
-         case '"': buf[j++] = '"'; break;
-         case '?': buf[j++] = '?'; break;
-         case '\n':
-            break;
-         case 'x': {
-            unsigned char v1 = 0xff;
-            unsigned char v2 = 0xff;
-            if (i + 1 < raw_len) v1 = hex_value((unsigned char) text[i + 1]);
-            if (i + 2 < raw_len) v2 = hex_value((unsigned char) text[i + 2]);
-            if (v1 != 0xff) {
-               i++;
-               if (v2 != 0xff) {
-                  i++;
-                  buf[j++] = (unsigned char) ((v1 << 4) | v2);
-               }
-               else {
-                  buf[j++] = v1;
-               }
-            }
-            else {
-               buf[j++] = 'x';
-            }
-            break;
-         }
-         case '0': case '1': case '2': case '3':
-         case '4': case '5': case '6': case '7': {
-            unsigned int value = (unsigned int) (c - '0');
-            int digits = 1;
-            while (digits < 3 && i + 1 < raw_len && text[i + 1] >= '0' && text[i + 1] <= '7') {
-               value = (value << 3) | (unsigned int) (text[++i] - '0');
-               digits++;
-            }
-            buf[j++] = (unsigned char) value;
-            break;
-         }
-         default:
-            buf[j++] = c;
-            break;
-      }
+   if (raw_len > 0) {
+      memcpy(buf, text, raw_len);
    }
+   buf[raw_len] = 0;
 
    if (out_len) {
-      *out_len = j;
+      *out_len = (int) raw_len;
    }
    return buf;
 }
