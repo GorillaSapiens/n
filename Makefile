@@ -15,23 +15,25 @@ all: test
 generated_float_archive_fixtures: tools
 	@$(MAKE) --no-print-directory -C ./test generated_float_archive_fixtures
 
-tools:
-	$(MAKE) --no-print-directory -C ./assembler clean
+tools: clean
 	$(MAKE) --no-print-directory -C ./assembler all
-	$(MAKE) --no-print-directory -C ./linker clean
 	$(MAKE) --no-print-directory -C ./linker all
-	$(MAKE) --no-print-directory -C ./archiver clean
 	$(MAKE) --no-print-directory -C ./archiver all
-	$(MAKE) --no-print-directory -C ./libraries/nint clean
 	$(MAKE) --no-print-directory -C ./libraries/nint all
-	$(MAKE) --no-print-directory -C ./libraries/nlib clean
 	$(MAKE) --no-print-directory -C ./libraries/nlib all
-	$(MAKE) --no-print-directory -C ./compiler clean
 	$(MAKE) --no-print-directory -C ./compiler n65cc
-	$(MAKE) --no-print-directory -C ./simulator clean
 	$(MAKE) --no-print-directory -C ./simulator all
-	$(MAKE) --no-print-directory -C ./driver clean
 	$(MAKE) --no-print-directory -C ./driver all
+
+clean:
+	$(MAKE) --no-print-directory -C ./assembler clean
+	$(MAKE) --no-print-directory -C ./linker clean
+	$(MAKE) --no-print-directory -C ./archiver clean
+	$(MAKE) --no-print-directory -C ./libraries/nint clean
+	$(MAKE) --no-print-directory -C ./libraries/nlib clean
+	$(MAKE) --no-print-directory -C ./compiler clean
+	$(MAKE) --no-print-directory -C ./simulator clean
+	$(MAKE) --no-print-directory -C ./driver clean
 
 install: tools install-core
 
