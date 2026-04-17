@@ -5,11 +5,11 @@
 
 #include "ast.h"
 #include "compile.h"
-#include "compile_decl.h"
 #include "compile_expr.h"
 #include "compile_function.h"
 #include "compile_init.h"
 #include "compile_internal.h"
+#include "compile_toplevel.h"
 #include "emit.h"
 #include "messages.h"
 #include "pair.h"

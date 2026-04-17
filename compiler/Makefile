@@ -28,7 +28,6 @@ SRCSRC = \
    ast.c \
    compile.c \
    compile_call.c \
-   compile_decl.c \
    compile_declarator.c \
    compile_expr.c \
    compile_expr_flow.c \
@@ -40,6 +39,7 @@ SRCSRC = \
    compile_overload.c \
    compile_stmt.c \
    compile_support.c \
+   compile_toplevel.c \
    compile_type.c \
    coverage.c \
    emit.c \

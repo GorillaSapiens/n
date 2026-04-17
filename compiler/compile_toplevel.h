@@ -1,5 +1,5 @@
-#ifndef _INCLUDE_COMPILE_DECL_H_
-#define _INCLUDE_COMPILE_DECL_H_
+#ifndef _INCLUDE_COMPILE_TOPLEVEL_H_
+#define _INCLUDE_COMPILE_TOPLEVEL_H_
 
 #include "ast.h"
 

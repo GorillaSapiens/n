@@ -9,11 +9,11 @@
 
 #include "ast.h"
 #include "compile.h"
-#include "compile_decl.h"
 #include "compile_init.h"
 #include "compile_internal.h"
 #include "compile_overload.h"
 #include "compile_stmt.h"
+#include "compile_toplevel.h"
 #include "compile_type.h"
 #include "emit.h"
 #include "float.h"
