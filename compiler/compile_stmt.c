@@ -106,6 +106,8 @@ static bool address_spec_has_write(const ASTNode *node) {
 
 static void warn_address_spec_without_ref(const ASTNode *node, const char *name) {
    if (!node) {
+      error_unreachable("internal error: !node in %s %s:%d\n",
+         __func__, __FILE__, __LINE__);
       return;
    }
    warning("[%s:%d.%d] '@' on non-ref declaration '%s' is ignored",
