@@ -31,6 +31,7 @@ SRCSRC = \
    compile_declarator.c \
    compile_expr.c \
    compile_expr_slot.c \
+   compile_expr_ops.c \
    compile_expr_flow.c \
    compile_expr_info.c \
    compile_function.c \
