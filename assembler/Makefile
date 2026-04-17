@@ -25,6 +25,7 @@ GENHDR = parser.tab.h
 
 SRCSRC = \
    asm_pass.c \
+   asm_state.c \
    directive.c \
    expr.c \
    ihex.c \
