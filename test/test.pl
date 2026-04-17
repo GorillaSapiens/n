@@ -841,6 +841,16 @@ my @failures;
 my $total = scalar(@cases);
 my $index = 0;
 my $passed = 0;
+my $pre = "";
+my $post = "";
+
+if (-t STDOUT) {
+   $pre = "\r";
+}
+else {
+   $post = "\n";
+}
+
 for my $case (@cases) {
    $index++;
    my $result;
@@ -858,15 +868,17 @@ for my $case (@cases) {
 
    if ($result->{ok}) {
       $passed++;
-      printf("\r%s [%*d/%d] [%s] %s%s", $progress, length($total), $index, $total, $PASS, $case->{name}, $CLEAR);
+      printf("$pre%s [%*d/%d] [%s] %s%s$post", $progress, length($total), $index, $total, $PASS, $case->{name}, $CLEAR);
    }
    else {
       push @failures, { name => $case->{name}, message => $result->{message} };
       my $first = $result->{message};
       $first =~ s/\n.*//s;
-      printf("\r%s [%*d/%d] [%s] %s :: %s\n", $progress, length($total), $index, $total, $FAIL, $case->{name}, $first);
+      printf("$pre%s [%*d/%d] [%s] %s :: %s\n", $progress, length($total), $index, $total, $FAIL, $case->{name}, $first);
    }
-   sleep 0.1;
+   if (-t STDOUT) {
+      sleep 0.1;
+   }
 }
 
 print "\nSummary: $passed passed, " . scalar(@failures) . " failed, $total total\n";
