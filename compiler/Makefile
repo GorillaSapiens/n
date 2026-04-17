@@ -28,6 +28,7 @@ SRCSRC = \
    ast.c \
    compile.c \
    compile_decl.c \
+   compile_function.c \
    compile_init.c \
    compile_lvalue.c \
    compile_overload.c \

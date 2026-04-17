@@ -173,6 +173,8 @@ void validate_nonreserved_variadic_name(const char *name, const ASTNode *node);
 void validate_function_nonreserved_variadic_names(const ASTNode *fn);
 void remember_runtime_import(const char *name);
 void emit_store_immediate_to_fp(int dst_offset, const unsigned char *bytes, int size);
+void emit_add_immediate_to_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size);
+void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int size);
 bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst);
 bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset);
 void calculate_struct_union_sizes(ASTNode *program);
