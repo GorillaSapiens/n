@@ -31,8 +31,10 @@ SRCSRC = \
    compile_function.c \
    compile_init.c \
    compile_lvalue.c \
+   compile_literal.c \
    compile_overload.c \
    compile_stmt.c \
+   compile_support.c \
    compile_type.c \
    coverage.c \
    emit.c \

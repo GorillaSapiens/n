@@ -8,6 +8,7 @@
 #include "set.h"
 
 #include "emit.h"
+#include "compile_literal.h"
 
 typedef enum InitConstKind {
    INIT_CONST_NONE = 0,
@@ -102,6 +103,7 @@ extern Set *functions;
 extern Set *runtime_imports;
 extern Set *imported_symbols;
 extern Set *string_literals;
+extern int label_counter;
 extern int current_call_graph_node;
 extern const ASTNode *current_call_graph_function;
 
@@ -150,22 +152,16 @@ void remember_symbol_import(const char *name);
 bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g);
 const ASTNode *cast_expr_target_type(const ASTNode *expr);
 const ASTNode *cast_expr_target_declarator(const ASTNode *expr);
-bool decode_char_constant_value(const char *text, long long *value_out);
-const char *remember_string_literal(const char *text);
-bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr);
-const char *emit_pointer_initializer_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr);
 bool function_has_static_parameters(const ASTNode *fn);
 bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize);
 bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out);
 void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value);
 bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size);
 void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size);
-bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size, const char *text);
-bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *type, const ASTNode *declarator, int total_size, const char *text);
+void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label);
 const ASTNode *expr_value_type(ASTNode *expr, Context *ctx);
 bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out);
 const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx);
-bool string_literal_is_char_constant(const char *text);
 bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out);
 bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre);
 const char *expr_bare_identifier_name(ASTNode *expr);
