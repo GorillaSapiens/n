@@ -268,8 +268,12 @@ static int integer_promotion_conversion_cost(const ASTNode *actual_type, const A
 static const ASTNode *declarator_value_declarator(const ASTNode *declarator);
 static const ASTNode *clone_declarator_variant(const ASTNode *declarator, int new_ptr_depth, int first_array_child);
 static void expr_match_signature(ASTNode *expr, Context *ctx, const ASTNode **type_out, const ASTNode **decl_out);
+static bool expr_is_integer_constant_expr(const ASTNode *expr, long long *value_out);
+static bool expr_is_untyped_integer_literal(const ASTNode *expr);
+static bool integer_literal_is_zero_expr(const ASTNode *expr);
+static bool integer_literal_fits_plain_integer_type(const ASTNode *expr, const ASTNode *formal_type, const ASTNode *formal_decl);
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
-                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue);
+                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue, const ASTNode *arg_expr);
 
 static void remember_function(const ASTNode *node, const char *name);
 static bool is_operator_function_name(const char *name);
@@ -825,7 +829,7 @@ static bool implicit_object_pointer_to_void_pointer_allowed(const ASTNode *forma
 }
 
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
-                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue) {
+                                              const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue, const ASTNode *arg_expr) {
    const char *pname;
    const char *aname;
    bool decl_match = false;
@@ -841,6 +845,24 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
    aname = type_name_from_node(atype);
    if (!pname || !aname) {
       return -1;
+   }
+
+   if (!pref && expr_is_untyped_integer_literal(arg_expr)) {
+      if (pdecl && declarator_pointer_depth(pdecl) > 0 && integer_literal_is_zero_expr(arg_expr)) {
+         return 8 + declarator_pointer_depth(pdecl) - 1;
+      }
+      if (integer_literal_fits_plain_integer_type(arg_expr, ptype, pdecl)) {
+         int literal_cost = 16;
+         int formal_size = type_size_from_node(ptype);
+
+         if (formal_size > 1) {
+            literal_cost += (formal_size - 1) * 4;
+         }
+         if (type_is_signed_integer(ptype)) {
+            literal_cost += 1;
+         }
+         return literal_cost;
+      }
    }
 
    if (adecl) {
@@ -929,7 +951,7 @@ static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
    return function_same_signature(a, b);
 }
 
-static int function_signature_match_cost(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+static int function_signature_match_cost(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
    int seen = 0;
@@ -967,7 +989,8 @@ static int function_signature_match_cost(const ASTNode *fn, int arg_count, const
          param_cost = parameter_argument_conversion_cost(
                ptype, pdecl, pref,
                arg_types[seen], arg_decls[seen],
-               arg_lvalues ? arg_lvalues[seen] : false);
+               arg_lvalues ? arg_lvalues[seen] : false,
+               arg_exprs ? arg_exprs[seen] : NULL);
          if (param_cost < 0) {
             return -1;
          }
@@ -1549,7 +1572,7 @@ static bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
    return false;
 }
 
-static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+static const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *best = NULL;
    int best_cost = INT_MAX;
    bool ambiguous = false;
@@ -1559,7 +1582,7 @@ static const ASTNode *lookup_operator_overload(const char *name, int arg_count, 
       if (strcmp(operator_overloads[i].name, name)) {
          continue;
       }
-      cost = function_signature_match_cost(operator_overloads[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
+      cost = function_signature_match_cost(operator_overloads[i].node, arg_count, arg_types, arg_decls, arg_lvalues, arg_exprs);
       if (cost < 0) {
          continue;
       }
@@ -1886,7 +1909,7 @@ static int function_designator_match_cost(const ASTNode *fn, const ASTNode *expe
    return 0;
 }
 
-static const ASTNode *lookup_ordinary_function_overload(const char *name, const ASTNode *call_expr, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues) {
+static const ASTNode *lookup_ordinary_function_overload(const char *name, const ASTNode *call_expr, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *best = NULL;
    int best_cost = INT_MAX;
    bool ambiguous = false;
@@ -1899,7 +1922,7 @@ static const ASTNode *lookup_ordinary_function_overload(const char *name, const 
          continue;
       }
       saw_name = true;
-      cost = function_signature_match_cost(ordinary_functions[i].node, arg_count, arg_types, arg_decls, arg_lvalues);
+      cost = function_signature_match_cost(ordinary_functions[i].node, arg_count, arg_types, arg_decls, arg_lvalues, arg_exprs);
       if (cost < 0) {
          continue;
       }
@@ -1996,35 +2019,40 @@ static const ASTNode *resolve_function_call_target(const char *name, ASTNode *ca
    int arg_count = (args && !is_empty(args)) ? args->count : 0;
    const ASTNode **arg_types = NULL;
    const ASTNode **arg_decls = NULL;
+   const ASTNode **arg_exprs = NULL;
    bool *arg_lvalues = NULL;
    const ASTNode *ret = NULL;
 
    if (arg_count > 0) {
       arg_types = calloc((size_t) arg_count, sizeof(*arg_types));
       arg_decls = calloc((size_t) arg_count, sizeof(*arg_decls));
+      arg_exprs = calloc((size_t) arg_count, sizeof(*arg_exprs));
       arg_lvalues = calloc((size_t) arg_count, sizeof(*arg_lvalues));
-      if (!arg_types || !arg_decls || !arg_lvalues) {
+      if (!arg_types || !arg_decls || !arg_exprs || !arg_lvalues) {
          free((void *) arg_types);
          free((void *) arg_decls);
+         free((void *) arg_exprs);
          free(arg_lvalues);
          return NULL;
       }
    }
 
    for (int i = 0; i < arg_count; i++) {
+      arg_exprs[i] = unwrap_expr_node(args->children[i]);
       expr_match_signature(args->children[i], ctx, &arg_types[i], &arg_decls[i]);
       arg_lvalues[i] = resolve_ref_argument_lvalue(ctx, args->children[i], NULL);
    }
 
    if (is_operator_function_name(name)) {
-      ret = lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
+      ret = lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues, arg_exprs);
    }
    else {
-      ret = lookup_ordinary_function_overload(name, call_expr, arg_count, arg_types, arg_decls, arg_lvalues);
+      ret = lookup_ordinary_function_overload(name, call_expr, arg_count, arg_types, arg_decls, arg_lvalues, arg_exprs);
    }
 
    free((void *) arg_types);
    free((void *) arg_decls);
+   free((void *) arg_exprs);
    free(arg_lvalues);
    return ret;
 }
@@ -2068,7 +2096,7 @@ static const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx
          return NULL;
       }
    }
-   return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues);
+   return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues, (const ASTNode **) expr->children);
 }
 
 static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) {
@@ -2087,7 +2115,7 @@ static const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) 
       return NULL;
    }
    arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
-   return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl, &arg_lvalue);
+   return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl, &arg_lvalue, (const ASTNode **) &expr->children[0]);
 }
 
 static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
@@ -2103,7 +2131,7 @@ static const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
       return NULL;
    }
    arg_lvalue = resolve_ref_argument_lvalue(ctx, expr, NULL);
-   return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl, &arg_lvalue);
+   return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl, &arg_lvalue, (const ASTNode **) &expr->children[0]);
 }
 
 static const ASTNode *global_decl_lookup(const char *name) {
@@ -3235,7 +3263,7 @@ static bool expr_is_literal_node(const ASTNode *expr) {
    if (expr->kind == AST_INTEGER || expr->kind == AST_FLOAT || expr->kind == AST_STRING) {
       return true;
    }
-   return false;
+   return expr_is_integer_constant_expr(expr, NULL);
 }
 
 static bool ordinary_integer_endian_conflict(const ASTNode *lhs_type, const ASTNode *rhs_type) {
@@ -3781,6 +3809,90 @@ static int integer_literal_min_size(const ASTNode *expr) {
    }
 
    return size;
+}
+
+static bool expr_is_integer_constant_expr(const ASTNode *expr, long long *value_out) {
+   InitConstValue value = {0};
+
+   expr = unwrap_expr_node(expr);
+   if (!expr) {
+      return false;
+   }
+   if (expr->kind == AST_INTEGER) {
+      if (value_out) {
+         *value_out = parse_int(expr->strval);
+      }
+      return true;
+   }
+   if (!eval_constant_initializer_expr((ASTNode *) expr, &value) || value.kind != INIT_CONST_INT) {
+      return false;
+   }
+   if (value_out) {
+      *value_out = value.i;
+   }
+   return true;
+}
+
+static bool expr_is_untyped_integer_literal(const ASTNode *expr) {
+   expr = unwrap_expr_node(expr);
+   return expr && expr->kind == AST_INTEGER && !literal_annotation_type(expr);
+}
+
+static bool integer_literal_is_zero_expr(const ASTNode *expr) {
+   char *end = NULL;
+   unsigned long long value;
+
+   expr = unwrap_expr_node(expr);
+   if (!expr_is_untyped_integer_literal(expr) || !expr->strval) {
+      return false;
+   }
+
+   value = strtoull(expr->strval, &end, 0);
+   return end && end != expr->strval && *end == 0 && value == 0;
+}
+
+static bool integer_literal_fits_plain_integer_type(const ASTNode *expr, const ASTNode *formal_type, const ASTNode *formal_decl) {
+   unsigned long long value;
+   unsigned long long max_value;
+   int formal_size;
+   char *end = NULL;
+
+   expr = unwrap_expr_node(expr);
+   if (!expr_is_untyped_integer_literal(expr) || !formal_type || !declarator_is_plain_value(formal_decl) ||
+       !type_is_promotable_integer(formal_type) || !expr->strval) {
+      return false;
+   }
+
+   value = strtoull(expr->strval, &end, 0);
+   if (!end || end == expr->strval || *end != 0) {
+      return false;
+   }
+
+   formal_size = type_size_from_node(formal_type);
+   if (formal_size <= 0) {
+      return false;
+   }
+
+   if (type_is_signed_integer(formal_type)) {
+      int bits = formal_size * 8;
+      if (bits >= 64) {
+         max_value = (unsigned long long) LLONG_MAX;
+      }
+      else {
+         max_value = (1ULL << (bits - 1)) - 1ULL;
+      }
+   }
+   else {
+      int bits = formal_size * 8;
+      if (bits >= 64) {
+         max_value = ULLONG_MAX;
+      }
+      else {
+         max_value = (1ULL << bits) - 1ULL;
+      }
+   }
+
+   return value <= max_value;
 }
 
 // for parameterless flags (e.g. "$signed")
@@ -11472,6 +11584,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
       const char *base_op = NULL;
       const ASTNode *arg_types[2];
       const ASTNode *arg_decls[2];
+      const ASTNode *arg_exprs[2] = { node->children[0], rhs };
       bool arg_lvalues[2];
       const ASTNode *ofn = NULL;
       char opname[32];
@@ -11515,7 +11628,7 @@ static void compile_expr(ASTNode *node, Context *ctx) {
          arg_lvalues[1] = resolve_ref_argument_lvalue(ctx, rhs, NULL);
          if (arg_types[0] && arg_types[1]) {
             snprintf(opname, sizeof(opname), "operator%s", base_op);
-            ofn = lookup_operator_overload(opname, 2, arg_types, arg_decls, arg_lvalues);
+            ofn = lookup_operator_overload(opname, 2, arg_types, arg_decls, arg_lvalues, arg_exprs);
          }
       }
 
