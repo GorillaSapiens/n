@@ -29,6 +29,7 @@ SRCSRC = \
    compile.c \
    compile_decl.c \
    compile_expr.c \
+   compile_expr_info.c \
    compile_function.c \
    compile_init.c \
    compile_lvalue.c \
