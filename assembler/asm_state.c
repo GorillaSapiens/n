@@ -164,17 +164,20 @@ int asm_symbol_is_weak(const asm_context_t *ctx, const char *name)
 
 static int directive_name_implies_zp(const char *name)
 {
-   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp"));
+   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp") ||
+                   !strcmp(name, ".zpimport") || !strcmp(name, ".zpexport") || !strcmp(name, ".zpglobal"));
 }
 
 static int directive_is_import_family(const char *name)
 {
-   return name && (!strcmp(name, ".import") || !strcmp(name, ".importzp") || !strcmp(name, ".global") || !strcmp(name, ".globalzp"));
+   return name && (!strcmp(name, ".import") || !strcmp(name, ".importzp") || !strcmp(name, ".global") || !strcmp(name, ".globalzp") ||
+                   !strcmp(name, ".zpimport") || !strcmp(name, ".zpglobal"));
 }
 
 static int directive_is_export_family(const char *name)
 {
-   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp"));
+   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp") ||
+                   !strcmp(name, ".zpglobal") || !strcmp(name, ".zpexport"));
 }
 
 static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name, int addr_size_zp)

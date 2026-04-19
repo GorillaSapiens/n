@@ -17,6 +17,7 @@
 #define O65_RTYPE_LOW  0x20
 #define O65_RTYPE_HIGH 0x40
 #define O65_RTYPE_WORD 0x80
+#define O65_RTYPE_AUX  0x10
 
 #define O65_MODE_ALIGN1 0x0000
 #define O65_MODE_OBJECT 0x1000
@@ -32,6 +33,8 @@ typedef struct o65_reloc {
    unsigned char type;
    unsigned char segid;
    unsigned short undef_index;
+   unsigned char aux_low;
+   int has_aux_low;
    struct o65_reloc *next;
 } o65_reloc_t;
 
@@ -59,8 +62,10 @@ typedef struct o65_segment_buf {
 typedef struct o65_segment_layout {
    char *name;
    unsigned char segid;
+   unsigned char image_segid;
    long source_base;
    unsigned short packed_base;
+    unsigned short image_base;
    unsigned short used_size;
    struct o65_segment_layout *next;
 } o65_segment_layout_t;
@@ -82,6 +87,7 @@ typedef struct reloc_expr_info {
    int segid;
    unsigned short undef_index;
    long value;
+   long reloc_value;
    int part;
 } reloc_expr_info_t;
 
@@ -149,12 +155,50 @@ static int segment_name_to_o65(const char *name)
 
 static int directive_name_implies_zp(const char *name)
 {
-   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp"));
+   return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp") ||
+                   !strcmp(name, ".zpimport") || !strcmp(name, ".zpexport") || !strcmp(name, ".zpglobal"));
 }
 
 static int directive_is_export_family(const char *name)
 {
-   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp"));
+   return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp") ||
+                   !strcmp(name, ".zpglobal") || !strcmp(name, ".zpexport"));
+}
+
+static int stmt_emits_load_image_bytes(const stmt_t *stmt)
+{
+   if (!stmt)
+      return 0;
+
+   switch (stmt->kind) {
+      case STMT_INSN:
+         return 1;
+
+      case STMT_DIR:
+         return !strcmp(stmt->u.dir->name, ".byte") || !strcmp(stmt->u.dir->name, ".word") ||
+                !strcmp(stmt->u.dir->name, ".text") || !strcmp(stmt->u.dir->name, ".ascii") ||
+                !strcmp(stmt->u.dir->name, ".asciiz");
+
+      default:
+         return 0;
+   }
+}
+
+static int segment_needs_load_image(const asm_context_t *ctx, const char *name)
+{
+   const stmt_t *stmt;
+   const char *want = name ? name : DEFAULT_SEGMENT_NAME;
+
+   for (stmt = ctx->prog->head; stmt; stmt = stmt->next) {
+      const char *stmt_name = stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME;
+
+      if (strcmp(stmt_name, want) != 0)
+         continue;
+      if (stmt_emits_load_image_bytes(stmt))
+         return 1;
+   }
+
+   return 0;
 }
 
 static const asm_segment_t *find_source_segment(const asm_context_t *ctx, const char *name)
@@ -201,7 +245,9 @@ static int register_layout(o65_writer_t *wr, const char *name)
    const asm_segment_t *seg;
    o65_segment_layout_t *layout;
    unsigned int total;
+   unsigned int image_total;
    int segid;
+   int needs_load_image;
    const char *want = name ? name : DEFAULT_SEGMENT_NAME;
 
    if (find_layout(wr, want))
@@ -212,9 +258,16 @@ static int register_layout(o65_writer_t *wr, const char *name)
       return 1;
 
    segid = segment_name_to_o65(want);
+   needs_load_image = (segid == O65_SEG_TEXT || segid == O65_SEG_DATA) ? 1 :
+      (segid == O65_SEG_ZP ? segment_needs_load_image(wr->ctx, want) : 0);
    total = wr->seg_lengths[segid] + (unsigned int)((seg->used_size < 0) ? 0 : seg->used_size);
    if (total > 0xFFFFu) {
       fprintf(stderr, "o65 segment '%s' exceeds 64 KiB when packed into output segment %d\n", want, segid);
+      return 0;
+   }
+   image_total = wr->seg_lengths[O65_SEG_DATA] + ((needs_load_image && segid == O65_SEG_ZP) ? (unsigned int)((seg->used_size < 0) ? 0 : seg->used_size) : 0u);
+   if (image_total > 0xFFFFu) {
+      fprintf(stderr, "o65 data image exceeds 64 KiB after packing segment '%s'\n", want);
       return 0;
    }
 
@@ -226,8 +279,11 @@ static int register_layout(o65_writer_t *wr, const char *name)
 
    layout->name = xstrdup(want);
    layout->segid = (unsigned char)segid;
+   layout->image_segid = (unsigned char)((segid == O65_SEG_TEXT) ? O65_SEG_TEXT :
+      ((segid == O65_SEG_DATA || (segid == O65_SEG_ZP && needs_load_image)) ? O65_SEG_DATA : segid));
    layout->source_base = seg->base;
    layout->packed_base = wr->seg_lengths[segid];
+   layout->image_base = (unsigned short)((layout->image_segid == O65_SEG_DATA && segid == O65_SEG_ZP) ? wr->seg_lengths[O65_SEG_DATA] : layout->packed_base);
    layout->used_size = (unsigned short)((seg->used_size < 0) ? 0 : seg->used_size);
    layout->next = NULL;
 
@@ -241,6 +297,8 @@ static int register_layout(o65_writer_t *wr, const char *name)
    }
 
    wr->seg_lengths[segid] = (unsigned short)total;
+   if (segid == O65_SEG_ZP && needs_load_image)
+      wr->seg_lengths[O65_SEG_DATA] = (unsigned short)image_total;
    return 1;
 }
 
@@ -276,6 +334,18 @@ static long packed_stmt_offset(o65_writer_t *wr, const stmt_t *stmt)
       return stmt->address;
 
    return (long)layout->packed_base + (stmt->address - layout->source_base);
+}
+
+static long packed_stmt_image_offset(o65_writer_t *wr, const stmt_t *stmt)
+{
+   const o65_segment_layout_t *layout;
+   const char *segname = stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME;
+
+   layout = find_layout_const(wr, segname);
+   if (!layout)
+      return stmt->address;
+
+   return (long)layout->image_base + (stmt->address - layout->source_base);
 }
 
 static long packed_symbol_value(const o65_writer_t *wr, const symbol_t *sym)
@@ -323,6 +393,8 @@ static o65_segment_buf_t *writer_buf_for_segid(o65_writer_t *wr, int segid)
    if (segid == O65_SEG_TEXT)
       return &wr->text;
    if (segid == O65_SEG_DATA)
+      return &wr->data;
+   if (segid == O65_SEG_ZP)
       return &wr->data;
    return NULL;
 }
@@ -372,7 +444,8 @@ static int buf_write_word(o65_segment_buf_t *buf, long offset, unsigned short v)
           buf_write_byte(buf, offset + 1, (unsigned char)((v >> 8) & 0xFF));
 }
 
-static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, unsigned char segid, unsigned short undef_index)
+static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, unsigned char segid, unsigned short undef_index,
+                     int has_aux_low, unsigned char aux_low)
 {
    o65_reloc_t *r;
 
@@ -384,6 +457,8 @@ static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, un
    r->type = type;
    r->segid = segid;
    r->undef_index = undef_index;
+   r->has_aux_low = has_aux_low;
+   r->aux_low = aux_low;
 
    if (!buf->relocs)
       buf->relocs = r;
@@ -507,6 +582,7 @@ static int analyze_expr(o65_writer_t *wr,
             out->is_reloc = (sym->segment_id != O65_SEG_ABS);
             out->segid = sym->segment_id;
             out->value = packed_symbol_value(wr, sym);
+            out->reloc_value = out->value;
             out->part = RELOC_PART_WORD;
             return 1;
          }
@@ -516,6 +592,7 @@ static int analyze_expr(o65_writer_t *wr,
             out->segid = O65_SEG_UNDEF;
             out->undef_index = intern_undef(wr, expr->u.ident);
             out->value = 0;
+            out->reloc_value = 0;
             out->part = RELOC_PART_WORD;
             return 1;
          }
@@ -566,11 +643,13 @@ static int analyze_expr(o65_writer_t *wr,
                if (left.is_reloc) {
                   *out = left;
                   out->value += right.value;
+                  out->reloc_value += right.value;
                   return 1;
                }
                if (right.is_reloc) {
                   *out = right;
                   out->value += left.value;
+                  out->reloc_value += left.value;
                   return 1;
                }
                out->value = left.value + right.value;
@@ -584,6 +663,7 @@ static int analyze_expr(o65_writer_t *wr,
                if (left.is_reloc) {
                   *out = left;
                   out->value -= right.value;
+                  out->reloc_value -= right.value;
                   return 1;
                }
                out->value = left.value - right.value;
@@ -635,7 +715,17 @@ static int maybe_add_expr_reloc(o65_writer_t *wr,
          return 0;
    }
 
-   if (!add_reloc(buf, offset, type, (unsigned char)info->segid, info->undef_index)) {
+   if (width == 1 && info->segid != O65_SEG_UNDEF) {
+      type |= O65_RTYPE_AUX;
+      if (!add_reloc(buf, offset, type, (unsigned char)info->segid, info->undef_index, 1,
+                     (unsigned char)((part == RELOC_PART_LOW) ? ((info->reloc_value >> 8) & 0xFF) : (info->reloc_value & 0xFF)))) {
+         writer_error(wr->ctx, stmt, "out of memory recording relocation");
+         return 0;
+      }
+      return 1;
+   }
+
+   if (!add_reloc(buf, offset, type, (unsigned char)info->segid, info->undef_index, 0, 0)) {
       writer_error(wr->ctx, stmt, "out of memory recording relocation");
       return 0;
    }
@@ -742,7 +832,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
    const expr_list_node_t *node;
 
    segid = segment_name_to_o65(stmt->segment);
-   if (segid == O65_SEG_BSS || segid == O65_SEG_ZP)
+   if (segid == O65_SEG_BSS)
       return 1;
 
    buf = writer_buf_for_segid(wr, segid);
@@ -751,7 +841,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
       return 0;
    }
 
-   off = packed_stmt_offset(wr, stmt);
+   off = (segid == O65_SEG_ZP) ? packed_stmt_image_offset(wr, stmt) : packed_stmt_offset(wr, stmt);
 
    switch (stmt->kind) {
       case STMT_LABEL:
@@ -763,7 +853,9 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
              !strcmp(stmt->u.dir->name, ".segmentdef") || !strcmp(stmt->u.dir->name, ".global") ||
              !strcmp(stmt->u.dir->name, ".export") || !strcmp(stmt->u.dir->name, ".import") ||
              !strcmp(stmt->u.dir->name, ".globalzp") || !strcmp(stmt->u.dir->name, ".exportzp") ||
-             !strcmp(stmt->u.dir->name, ".importzp") || !strcmp(stmt->u.dir->name, ".weak") || !strcmp(stmt->u.dir->name, ".proc") ||
+             !strcmp(stmt->u.dir->name, ".importzp") || !strcmp(stmt->u.dir->name, ".zpglobal") ||
+             !strcmp(stmt->u.dir->name, ".zpexport") || !strcmp(stmt->u.dir->name, ".zpimport") ||
+             !strcmp(stmt->u.dir->name, ".weak") || !strcmp(stmt->u.dir->name, ".proc") ||
              !strcmp(stmt->u.dir->name, ".endproc"))
             return 1;
 
@@ -822,6 +914,7 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
 
          if (!strcmp(stmt->u.dir->name, ".res")) {
             long count;
+            const o65_segment_layout_t *layout;
             if (!stmt->u.dir->exprs || stmt->u.dir->exprs->next) {
                writer_error(wr->ctx, stmt, ".res expects exactly one expression");
                return 0;
@@ -830,6 +923,9 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
                writer_error(wr->ctx, stmt, "invalid .res in o65 output");
                return 0;
             }
+            layout = find_layout_const(wr, stmt->segment ? stmt->segment : DEFAULT_SEGMENT_NAME);
+            if (segid == O65_SEG_ZP && (!layout || layout->image_segid != O65_SEG_DATA))
+               return 1;
             while (count-- > 0) {
                if (!buf_write_byte(buf, off++, 0)) {
                   writer_error(wr->ctx, stmt, "failed to write .res padding");
@@ -967,6 +1063,8 @@ static int write_reloc_table(FILE *fp, const o65_reloc_t *r)
          return 0;
       if (r->segid == O65_SEG_UNDEF && !write_u16(fp, r->undef_index))
          return 0;
+      if (r->has_aux_low && !write_u8(fp, r->aux_low))
+         return 0;
       prev = r->offset;
    }
    return write_u8(fp, 0);
@@ -1027,7 +1125,8 @@ static int write_layouts(FILE *fp, const o65_segment_layout_t *layout)
       return 0;
 
    for (; layout; layout = layout->next) {
-      if (!write_cstr(fp, layout->name) || !write_u8(fp, layout->segid) || !write_u16(fp, layout->packed_base) || !write_u16(fp, layout->used_size))
+      if (!write_cstr(fp, layout->name) || !write_u8(fp, layout->segid) || !write_u16(fp, layout->packed_base) ||
+          !write_u16(fp, layout->used_size) || !write_u8(fp, layout->image_segid) || !write_u16(fp, layout->image_base))
          return 0;
    }
 

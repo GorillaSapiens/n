@@ -18,8 +18,10 @@
 #define O65_RTYPE_LOW  0x20
 #define O65_RTYPE_HIGH 0x40
 #define O65_RTYPE_WORD 0x80
+#define O65_RTYPE_AUX  0x10
 
 #define SYMBOL_BACKED_META_PREFIX "__sbpmeta$"
+#define ABI_META_PREFIX "__abimeta$V1$"
 
 #define MAX_NAME 128
 #define MAX_PATH 512
@@ -56,7 +58,9 @@ typedef struct {
 typedef struct {
    char *name;
    uint8_t segid;
+   uint8_t image_segid;
    uint16_t packed_base;
+   uint16_t image_base;
    uint16_t size;
    uint16_t load_addr;
    uint16_t run_addr;

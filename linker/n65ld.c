@@ -10,6 +10,7 @@
 
 #include "n65ld_internal.h"
 #include "n65ld_input.h"
+#include "n65ld_abi.h"
 
 static void usage(FILE *fp)
 {
@@ -66,6 +67,11 @@ char *xstrdup(const char *s)
 static int symbol_backed_metadata_has_prefix(const char *name)
 {
    return name && strncmp(name, SYMBOL_BACKED_META_PREFIX, sizeof(SYMBOL_BACKED_META_PREFIX) - 1) == 0;
+}
+
+static int reserved_metadata_has_prefix(const char *name)
+{
+   return symbol_backed_metadata_has_prefix(name) || abi_metadata_has_prefix(name);
 }
 
 static int symbol_backed_metadata_parse_function(const char *name, const char **sym_out)
@@ -829,6 +835,20 @@ static uint16_t object_runtime_addr_for_value(const object_file_t *obj, uint8_t 
    return (uint16_t)(base + (packed_value - lay->packed_base));
 }
 
+static uint16_t object_layout_load_addr(const object_file_t *obj, const object_layout_t *lay)
+{
+   switch (lay->image_segid) {
+      case O65_SEG_TEXT:
+         return (uint16_t)(obj->place_text_load + lay->image_base);
+
+      case O65_SEG_DATA:
+         return (uint16_t)(obj->place_data_load + lay->image_base);
+
+      default:
+         return 0;
+   }
+}
+
 static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t *layout)
 {
    const segment_rule_t *code = find_segment_rule(cfg, "CODE");
@@ -868,13 +888,13 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
 
          switch (lay->segid) {
             case O65_SEG_TEXT:
-               lay->load_addr = (uint16_t)(obj->place_text_load + lay->packed_base);
+               lay->load_addr = object_layout_load_addr(obj, lay);
                lay->run_addr = lay->load_addr;
                break;
 
             case O65_SEG_DATA: {
                const char *run_name = (suffix && segment_name_matches_prefix(lay->name, "DATA")) ? suffix : data_run_name;
-               lay->load_addr = (uint16_t)(obj->place_data_load + lay->packed_base);
+               lay->load_addr = object_layout_load_addr(obj, lay);
                lay->run_addr = alloc_from_region(layout, cfg, run_name, lay->size, lay->name, obj->origin);
                add_copy_record(layout, lay->name, lay->load_addr, lay->run_addr, lay->size);
                break;
@@ -889,7 +909,10 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
 
             case O65_SEG_ZP: {
                const char *run_name = (suffix && (segment_name_matches_prefix(lay->name, "ZEROPAGE") || segment_name_matches_prefix(lay->name, "ZP") || segment_name_matches_prefix(lay->name, "ZERO"))) ? suffix : zp_run_name;
+               lay->load_addr = object_layout_load_addr(obj, lay);
                lay->run_addr = alloc_from_region(layout, cfg, run_name, lay->size, lay->name, obj->origin);
+               if (lay->image_segid == O65_SEG_DATA || lay->image_segid == O65_SEG_TEXT)
+                  add_copy_record(layout, lay->name, lay->load_addr, lay->run_addr, lay->size);
                break;
             }
          }
@@ -920,7 +943,7 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
       for (j = 0; j < obj->export_count; ++j) {
          uint16_t addr;
 
-         if (symbol_backed_metadata_has_prefix(obj->exports[j].name))
+         if (reserved_metadata_has_prefix(obj->exports[j].name))
             continue;
 
          if (obj->exports[j].segid == O65_SEG_ABS)
@@ -968,13 +991,27 @@ static void apply_segment_relocs(object_file_t *obj, o65_segment_t *seg, const l
          }
          target = lookup_global_addr(layout, obj->undefs[r->undef_index]);
       } else {
-         current_word = (r->type == O65_RTYPE_WORD)
-            ? (uint16_t)(seg->data[r->offset] | (seg->data[r->offset + 1] << 8))
-            : seg->data[r->offset];
+         switch (r->type & (O65_RTYPE_LOW | O65_RTYPE_HIGH | O65_RTYPE_WORD)) {
+            case O65_RTYPE_WORD:
+               current_word = (uint16_t)(seg->data[r->offset] | (seg->data[r->offset + 1] << 8));
+               break;
+
+            case O65_RTYPE_LOW:
+               current_word = (uint16_t)(seg->data[r->offset] | ((r->has_aux_low ? r->aux_low : 0) << 8));
+               break;
+
+            case O65_RTYPE_HIGH:
+               current_word = (uint16_t)((r->has_aux_low ? r->aux_low : 0) | (seg->data[r->offset] << 8));
+               break;
+
+            default:
+               current_word = seg->data[r->offset];
+               break;
+         }
          target = object_runtime_addr_for_value(obj, r->segid, current_word);
       }
 
-      switch (r->type) {
+      switch (r->type & (O65_RTYPE_LOW | O65_RTYPE_HIGH | O65_RTYPE_WORD)) {
          case O65_RTYPE_LOW:
             patch_u8(seg->data, seg->length, r->offset, (uint8_t)(target & 0xFFu), who);
             break;
@@ -1386,6 +1423,7 @@ int main(int argc, char **argv)
       init_default_config(&cfg);
 
    select_needed_objects(&inputs);
+   validate_abi_metadata(&inputs);
    enforce_symbol_backed_call_graph(&inputs);
    warn_unused_cmdline_objects(&inputs);
    layout_objects(&cfg, &inputs, &layout);

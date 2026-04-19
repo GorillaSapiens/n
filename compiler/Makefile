@@ -25,6 +25,7 @@ GENSRC = parser.tab.c lex.yy.c
 GENHDR = parser.tab.h delexer.h coverage_map.h
 
 SRCSRC = \
+   abi_meta.c \
    ast.c \
    compile.c \
    compile_call.c \

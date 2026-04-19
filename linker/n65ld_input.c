@@ -119,6 +119,10 @@ static int parse_reloc_table_old(reader_t *r, reloc_t **out, size_t *count_out)
       items[count].segid = rd_u8(r);
       if (items[count].segid == O65_SEG_UNDEF)
          items[count].undef_index = rd_u16(r);
+      if (items[count].type & O65_RTYPE_AUX) {
+         items[count].aux_low = rd_u8(r);
+         items[count].has_aux_low = 1;
+      }
       count++;
    }
 
@@ -142,20 +146,94 @@ static int parse_exports(reader_t *r, symbol_t **out, size_t *count_out)
    return 1;
 }
 
-static int parse_layouts(reader_t *r, object_layout_t **out, size_t *count_out)
+static void free_partial_layouts(object_layout_t *items, size_t count)
 {
    size_t i;
-   uint16_t count = rd_u16(r);
-   object_layout_t *items = (object_layout_t *)xcalloc(count, sizeof(*items));
+   for (i = 0; i < count; ++i)
+      free(items[i].name);
+   free(items);
+}
+
+static int scan_cstr_bytes(const uint8_t *data, size_t size, size_t *pos, char **out)
+{
+   size_t start = *pos;
+   size_t len;
+
+   while (*pos < size && data[*pos] != 0)
+      (*pos)++;
+   if (*pos >= size)
+      return 0;
+
+   len = *pos - start;
+   *out = (char *)xmalloc(len + 1);
+   memcpy(*out, data + start, len);
+   (*out)[len] = '\0';
+   (*pos)++;
+   return 1;
+}
+
+static int parse_layouts_with_mode(const uint8_t *data, size_t size, size_t start, int v2,
+   object_layout_t **out, size_t *count_out, size_t *end_out)
+{
+   size_t i;
+   size_t pos = start;
+   uint16_t count;
+   object_layout_t *items;
+
+   if (pos + 2 > size)
+      return 0;
+   count = (uint16_t)(data[pos] | (data[pos + 1] << 8));
+   pos += 2;
+   items = (object_layout_t *)xcalloc(count, sizeof(*items));
+
    for (i = 0; i < count; ++i) {
-      items[i].name = rd_cstr(r);
-      items[i].segid = rd_u8(r);
-      items[i].packed_base = rd_u16(r);
-      items[i].size = rd_u16(r);
+      if (!scan_cstr_bytes(data, size, &pos, &items[i].name) || pos + 5 > size) {
+         free_partial_layouts(items, count);
+         return 0;
+      }
+      items[i].segid = data[pos++];
+      items[i].packed_base = (uint16_t)(data[pos] | (data[pos + 1] << 8));
+      pos += 2;
+      items[i].size = (uint16_t)(data[pos] | (data[pos + 1] << 8));
+      pos += 2;
+      if (v2) {
+         if (pos + 3 > size) {
+            free_partial_layouts(items, count);
+            return 0;
+         }
+         items[i].image_segid = data[pos++];
+         items[i].image_base = (uint16_t)(data[pos] | (data[pos + 1] << 8));
+         pos += 2;
+      } else {
+         items[i].image_segid = items[i].segid;
+         items[i].image_base = items[i].packed_base;
+      }
    }
+
    *out = items;
    *count_out = count;
+   *end_out = pos;
    return 1;
+}
+
+static int parse_layouts_any(reader_t *r, object_layout_t **out, size_t *count_out)
+{
+   size_t end_pos = 0;
+
+   if (parse_layouts_with_mode(r->data, r->size, r->pos, 1, out, count_out, &end_pos) && end_pos == r->size) {
+      r->pos = end_pos;
+      return 1;
+   }
+   *out = NULL;
+   *count_out = 0;
+
+   if (parse_layouts_with_mode(r->data, r->size, r->pos, 0, out, count_out, &end_pos) && end_pos == r->size) {
+      r->pos = end_pos;
+      return 1;
+   }
+   *out = NULL;
+   *count_out = 0;
+   return 0;
 }
 
 static int parse_undefs(reader_t *r, char ***out, size_t *count_out)
@@ -206,7 +284,7 @@ static int try_parse_tail(const uint8_t *tail, size_t tail_size,
          parse_exports(&r, exports, export_count)) {
       if (r.pos == r.size)
          return 1;
-      if (parse_layouts(&r, layouts, layout_count) && r.pos == r.size)
+      if (parse_layouts_any(&r, layouts, layout_count) && r.pos == r.size)
          return 1;
    }
 
@@ -221,7 +299,7 @@ static int try_parse_tail(const uint8_t *tail, size_t tail_size,
          parse_exports(&r, exports, export_count)) {
       if (r.pos == r.size)
          return 1;
-      if (parse_layouts(&r, layouts, layout_count) && r.pos == r.size)
+      if (parse_layouts_any(&r, layouts, layout_count) && r.pos == r.size)
          return 1;
    }
 
@@ -254,28 +332,36 @@ static void synthesize_default_layouts(object_file_t *obj)
    if (obj->text.length > 0) {
       items[count].name = xstrdup("CODE");
       items[count].segid = O65_SEG_TEXT;
+      items[count].image_segid = O65_SEG_TEXT;
       items[count].packed_base = 0;
+      items[count].image_base = 0;
       items[count].size = (uint16_t)obj->text.length;
       count++;
    }
    if (obj->data.length > 0) {
       items[count].name = xstrdup("DATA");
       items[count].segid = O65_SEG_DATA;
+      items[count].image_segid = O65_SEG_DATA;
       items[count].packed_base = 0;
+      items[count].image_base = 0;
       items[count].size = (uint16_t)obj->data.length;
       count++;
    }
    if (obj->blen > 0) {
       items[count].name = xstrdup("BSS");
       items[count].segid = O65_SEG_BSS;
+      items[count].image_segid = O65_SEG_BSS;
       items[count].packed_base = 0;
+      items[count].image_base = 0;
       items[count].size = obj->blen;
       count++;
    }
    if (obj->zlen > 0) {
       items[count].name = xstrdup("ZEROPAGE");
       items[count].segid = O65_SEG_ZP;
+      items[count].image_segid = O65_SEG_ZP;
       items[count].packed_base = 0;
+      items[count].image_base = 0;
       items[count].size = obj->zlen;
       count++;
    }

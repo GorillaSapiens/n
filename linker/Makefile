@@ -6,7 +6,7 @@ DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
 
-OBJS = n65ld.o n65ld_input.o
+OBJS = n65ld.o n65ld_input.o n65ld_abi.o
 DEPS = $(OBJS:.o=.d)
 
 all: n65ld

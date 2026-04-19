@@ -706,6 +706,9 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
                 !strcmp(stmt->u.dir->name, ".globalzp") ||
                 !strcmp(stmt->u.dir->name, ".exportzp") ||
                 !strcmp(stmt->u.dir->name, ".importzp") ||
+                !strcmp(stmt->u.dir->name, ".zpglobal") ||
+                !strcmp(stmt->u.dir->name, ".zpexport") ||
+                !strcmp(stmt->u.dir->name, ".zpimport") ||
                 !strcmp(stmt->u.dir->name, ".weak") ||
                 !strcmp(stmt->u.dir->name, ".proc") ||
                 !strcmp(stmt->u.dir->name, ".endproc")) {
@@ -999,6 +1002,9 @@ static int directive_emit_pass2(asm_context_t *ctx,
        !strcmp(dir->name, ".globalzp") ||
        !strcmp(dir->name, ".exportzp") ||
        !strcmp(dir->name, ".importzp") ||
+       !strcmp(dir->name, ".zpglobal") ||
+       !strcmp(dir->name, ".zpexport") ||
+       !strcmp(dir->name, ".zpimport") ||
        !strcmp(dir->name, ".weak") ||
        !strcmp(dir->name, ".proc") ||
        !strcmp(dir->name, ".endproc")) {

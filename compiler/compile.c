@@ -34,6 +34,7 @@ Set *globals = NULL;
 Set *functions = NULL;
 Set *runtime_imports = NULL;
 Set *imported_symbols = NULL;
+Set *abi_metadata_symbols = NULL;
 Set *string_literals = NULL;
 int label_counter = 0;
 

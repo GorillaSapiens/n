@@ -102,6 +102,7 @@ extern Set *globals;
 extern Set *functions;
 extern Set *runtime_imports;
 extern Set *imported_symbols;
+extern Set *abi_metadata_symbols;
 extern Set *string_literals;
 extern int label_counter;
 extern int current_call_graph_node;

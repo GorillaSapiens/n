@@ -8,6 +8,7 @@
 #include <limits.h>
 
 #include "ast.h"
+#include "abi_meta.h"
 #include "compile.h"
 #include "compile_init.h"
 #include "compile_internal.h"
@@ -112,6 +113,7 @@ void compile_function_decl(ASTNode *node) {
    if (!has_modifier(modifiers, "static")) {
       emit(&es_export, ".export %s\n", sym);
       emit_function_parameter_exports(node);
+      emit_function_abi_metadata(node, sym, true);
    }
 
    Context ctx;
@@ -549,6 +551,7 @@ void compile_global_decl_item(ASTNode *node) {
       else {
          emit(&es_import, ".import %s\n", symname);
       }
+      emit_global_abi_metadata(node, symname, false, is_zeropage);
       return;
    }
 
@@ -559,6 +562,7 @@ void compile_global_decl_item(ASTNode *node) {
       else {
          emit(&es_export, ".export %s\n", symname);
       }
+      emit_global_abi_metadata(node, symname, true, is_zeropage);
    }
 
    if (is_empty(expression)) {
@@ -654,10 +658,14 @@ static void compile_function_signature(ASTNode *node) {
 
    remember_function(node, name);
 
-   if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
+   if (!has_modifier(modifiers, "static")) {
       if (!function_symbol_name(node, name, sym, sizeof(sym))) {
          error_unreachable("[%s:%d.%d] could not mangle function '%s'", node->file, node->line, node->column, name);
       }
+      emit_function_abi_metadata(node, sym, false);
+   }
+
+   if (has_modifier(modifiers, "extern") && !has_modifier(modifiers, "static")) {
       remember_symbol_import(sym);
    }
 }
