@@ -35,6 +35,55 @@
 #include "compile_expr_slot.h"
 static int cast_expr_target_size(const ASTNode *expr);
 
+static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr);
+
+static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
+   if (!base) {
+      return NULL;
+   }
+   if (!strcmp(base->name, "lvalue_base")) {
+      if (base->count <= 0 || !base->children[0] || base->children[0]->kind != AST_IDENTIFIER) {
+         return NULL;
+      }
+      return base->children[0];
+   }
+   if (!strcmp(base->name, "*") && base->count > 0) {
+      return expr_lvalue_base_identifier_node(base->children[0]);
+   }
+   return NULL;
+}
+
+static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+   if (expr->kind == AST_IDENTIFIER) {
+      return expr;
+   }
+   if (strcmp(expr->name, "lvalue") || expr->count < 1) {
+      return NULL;
+   }
+   return lvalue_base_identifier_node(expr->children[0]);
+}
+
+static const ASTNode *expr_bare_identifier_node(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+   if (expr->kind == AST_IDENTIFIER) {
+      return expr;
+   }
+   if (strcmp(expr->name, "lvalue") || expr->count != 2) {
+      return NULL;
+   }
+   if (!expr->children[1] || !is_empty(expr->children[1])) {
+      return NULL;
+   }
+   return lvalue_base_identifier_node(expr->children[0]);
+}
+
 
 bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    InitConstValue value = {0};
@@ -83,6 +132,28 @@ bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *ds
 
 
 
+static bool declarator_is_not_pointer(const ASTNode *declarator) {
+   return declarator_pointer_depth(declarator) == 0;
+}
+
+static bool type_node_is_plain_void(const ASTNode *type, const ASTNode *declarator) {
+   const char *name = type_name_from_node(type);
+   return name && !strcmp(name, "void") && declarator_is_not_pointer(declarator);
+}
+
+static bool expr_is_plain_void_cast(ASTNode *expr) {
+   const ASTNode *target_type;
+   const ASTNode *target_decl;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || strcmp(expr->name, "cast")) {
+      return false;
+   }
+   target_type = cast_expr_target_type(expr);
+   target_decl = cast_expr_target_declarator(expr);
+   return type_node_is_plain_void(target_type, target_decl);
+}
+
 static int cast_expr_target_size(const ASTNode *expr) {
    const ASTNode *type = cast_expr_target_type(expr);
    const ASTNode *declarator = cast_expr_target_declarator(expr);
@@ -99,19 +170,41 @@ static int cast_expr_target_size(const ASTNode *expr) {
    return size;
 }
 
+static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *fallback, const char *ident) {
+   error_user("[%s:%d.%d] unknown identifier '%s'",
+         idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
+         idnode ? idnode->line : (fallback ? fallback->line : 0),
+         idnode ? idnode->column : (fallback ? fallback->column : 0),
+         ident ? ident : "<unknown>");
+}
+
 static int sizeof_operand_size(const ASTNode *operand, Context *ctx) {
    operand = unwrap_expr_node(operand);
    if (!operand || is_empty(operand)) {
       return 0;
    }
    if (!strcmp(operand->name, "sizeof_expr") && operand->count > 0) {
-      return expr_value_size((ASTNode *) operand->children[0], ctx);
+      ASTNode *value = (ASTNode *) operand->children[0];
+      const char *ident = expr_bare_identifier_name(value);
+      int size;
+      if (ident && !ctx_lookup(ctx, ident) && !global_decl_lookup(ident) && !resolve_function_designator_target(ident, NULL, NULL)) {
+         error_unknown_identifier_node(expr_bare_identifier_node(value), value, ident);
+      }
+      size = expr_value_size(value, ctx);
+      if (size <= 0) {
+         error_user("[%s:%d.%d] invalid operand to sizeof",
+               value && value->file ? value->file : (operand->file ? operand->file : "<unknown>"),
+               value ? value->line : operand->line,
+               value ? value->column : operand->column);
+      }
+      return size;
    }
    if (!strcmp(operand->name, "sizeof_type") && operand->count > 0) {
       const ASTNode *cast_type = operand->children[0];
       const ASTNode *specifiers;
       const ASTNode *type;
       const ASTNode *declarator;
+      const char *type_name;
       int size;
       if (!cast_type || strcmp(cast_type->name, "cast_type") || cast_type->count < 2) {
          return 0;
@@ -122,9 +215,23 @@ static int sizeof_operand_size(const ASTNode *operand, Context *ctx) {
       }
       type = specifiers->children[1];
       declarator = cast_type->children[1];
+      type_name = type_name_from_node(type);
+      if (type_name && !strcmp(type_name, "void") && declarator_pointer_depth(declarator) == 0) {
+         error_user("[%s:%d.%d] invalid application of sizeof to void type",
+               type && type->file ? type->file : (operand->file ? operand->file : "<unknown>"),
+               type ? type->line : operand->line,
+               type ? type->column : operand->column);
+      }
       size = declarator_storage_size(type, declarator);
       if (size <= 0) {
          size = type_size_from_node(type);
+      }
+      if (size <= 0) {
+         error_user("[%s:%d.%d] invalid application of sizeof to incomplete type '%s'",
+               type && type->file ? type->file : (operand->file ? operand->file : "<unknown>"),
+               type ? type->line : operand->line,
+               type ? type->column : operand->column,
+               type_name ? type_name : "<unknown>");
       }
       return size;
    }
@@ -191,8 +298,13 @@ bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
       int target_size = !strcmp(expr->name, "cast") ? cast_expr_target_size(expr) : flag_cast_target_size(expr, ctx);
       int saved_locals = ctx ? ctx->locals : 0;
       ContextEntry tmp;
+      if (expr_is_plain_void_cast(expr)) {
+         error_user("[%s:%d.%d] void expression has no value",
+               expr->file ? expr->file : "<unknown>", expr->line, expr->column);
+      }
       if (!target_type || target_size <= 0 || expr->count < 2) {
-         return false;
+         error_user("[%s:%d.%d] invalid cast target type",
+               expr->file ? expr->file : "<unknown>", expr->line, expr->column);
       }
       remember_runtime_import("pushN");
       emit(&es_code, "    lda #$%02x\n", target_size & 0xff);
@@ -407,6 +519,7 @@ bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
                return true;
             }
          }
+         error_unknown_identifier_node(expr_bare_identifier_node(expr), expr, ident);
       }
    }
 
@@ -444,6 +557,9 @@ bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
                }
                emit_store_label_address_to_fp(dst->offset, dst->size, sym);
                return true;
+            }
+            if (!ctx_lookup(ctx, ident) && !global_decl_lookup(ident)) {
+               error_unknown_identifier_node(expr_bare_identifier_node(inner), inner, ident);
             }
          }
       }
@@ -493,6 +609,15 @@ bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
          emit_copy_fp_to_fp_convert(dst->offset, dst->size, dst->type, dst->offset, load_size, lv.type);
          return true;
       }
+      {
+         const ASTNode *idnode = expr_lvalue_base_identifier_node(expr);
+         const char *ident = idnode ? idnode->strval : NULL;
+         if (ident && !ctx_lookup(ctx, ident) && !global_decl_lookup(ident)) {
+            error_unknown_identifier_node(idnode, expr, ident);
+         }
+      }
+      error_user("[%s:%d.%d] invalid lvalue expression",
+            expr->file ? expr->file : "<unknown>", expr->line, expr->column);
    }
 
    if (!strcmp(expr->name, "comma_expr") && expr->count > 0) {

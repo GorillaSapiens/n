@@ -31,6 +31,81 @@
 #include "xray.h"
 #include "lextern.h"
 
+static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr);
+
+static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
+   if (!base) {
+      return NULL;
+   }
+   if (!strcmp(base->name, "lvalue_base")) {
+      if (base->count <= 0 || !base->children[0] || base->children[0]->kind != AST_IDENTIFIER) {
+         return NULL;
+      }
+      return base->children[0];
+   }
+   if (!strcmp(base->name, "*") && base->count > 0) {
+      return expr_lvalue_base_identifier_node(base->children[0]);
+   }
+   return NULL;
+}
+
+static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || is_empty(expr)) {
+      return NULL;
+   }
+   if (expr->kind == AST_IDENTIFIER) {
+      return expr;
+   }
+   if (strcmp(expr->name, "lvalue") || expr->count < 1) {
+      return NULL;
+   }
+   return lvalue_base_identifier_node(expr->children[0]);
+}
+
+static bool declarator_is_not_pointer(const ASTNode *declarator) {
+   return declarator_pointer_depth(declarator) == 0;
+}
+
+static bool type_node_is_plain_void(const ASTNode *type, const ASTNode *declarator) {
+   const char *name = type_name_from_node(type);
+   return name && !strcmp(name, "void") && declarator_is_not_pointer(declarator);
+}
+
+static bool expr_is_plain_void_cast(ASTNode *expr) {
+   const ASTNode *target_type;
+   const ASTNode *target_decl;
+
+   expr = (ASTNode *) unwrap_expr_node(expr);
+   if (!expr || strcmp(expr->name, "cast")) {
+      return false;
+   }
+   target_type = cast_expr_target_type(expr);
+   target_decl = cast_expr_target_declarator(expr);
+   return type_node_is_plain_void(target_type, target_decl);
+}
+
+static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *fallback, const char *ident) {
+   error_user("[%s:%d.%d] unknown identifier '%s'",
+         idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
+         idnode ? idnode->line : (fallback ? fallback->line : 0),
+         idnode ? idnode->column : (fallback ? fallback->column : 0),
+         ident ? ident : "<unknown>");
+}
+
+static void error_unresolved_assignment_target(Context *ctx, ASTNode *target, ASTNode *fallback) {
+   const ASTNode *idnode = expr_lvalue_base_identifier_node(target);
+   const char *ident = idnode ? idnode->strval : NULL;
+
+   if (ident && !ctx_lookup(ctx, ident) && !global_decl_lookup(ident)) {
+      error_unknown_identifier_node(idnode, target, ident);
+   }
+   error_user("[%s:%d.%d] invalid assignment target",
+         target && target->file ? target->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
+         target ? target->line : (fallback ? fallback->line : 0),
+         target ? target->column : (fallback ? fallback->column : 0));
+}
+
 static bool compile_truthy_expr_branch_false(ASTNode *expr, Context *ctx,
                                              const ASTNode *type,
                                              const ASTNode *declarator,
@@ -383,9 +458,16 @@ void compile_expr(ASTNode *node, Context *ctx) {
 
    node = (ASTNode *) unwrap_expr_node(node);
 
+   if (expr_is_plain_void_cast(node)) {
+      if (node->count > 1) {
+         compile_expr(node->children[1], ctx);
+      }
+      return;
+   }
+
    if (!strcmp(node->name, "()")) {
       if (!compile_call_expr_to_slot(node, ctx, NULL)) {
-         error_unreachable("[%s:%d.%d] call expression not compiled yet", node->file, node->line, node->column);
+         error_user("[%s:%d.%d] invalid call expression", node->file, node->line, node->column);
       }
       return;
    }
@@ -405,7 +487,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
       emit(&es_code, "    lda #$%02x\n", size & 0xff);
       emit(&es_code, "    sta arg0\n");
       emit(&es_code, "    jsr _popN\n");
-         error_unreachable("[%s:%d.%d] expression not compiled yet", node->file, node->line, node->column);
+         error_user("[%s:%d.%d] invalid expression", node->file, node->line, node->column);
          return;
       }
       remember_runtime_import("popN");
@@ -425,7 +507,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
       error_user("[%s:%d.%d] braced initializer not valid in assignment", urhs->file, urhs->line, urhs->column);
    }
    if (!resolve_lvalue(ctx, node->children[1], &lv)) {
-      error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+      error_unresolved_assignment_target(ctx, node->children[1], node);
       return;
    }
    dst_store = (ContextEntry){ .name = lv.name, .type = lv.type, .declarator = lv.declarator, .is_static = lv.is_static, .is_zeropage = lv.is_zeropage, .is_global = lv.is_global, .is_ref = lv.is_ref, .is_absolute_ref = lv.is_absolute_ref, .read_expr = lv.read_expr, .write_expr = lv.write_expr, .offset = lv.offset, .size = lv.size };
@@ -450,17 +532,17 @@ void compile_expr(ASTNode *node, Context *ctx) {
          char sym[256];
          LValueRef rhs_lv;
          if (!entry_symbol_name(ctx, dst, sym, sizeof(sym))) {
-            error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_user("[%s:%d.%d] invalid assignment target", node->file, node->line, node->column);
             return;
          }
          if (resolve_ref_argument_lvalue(ctx, rhs, &rhs_lv) && rhs_lv.size == dst->size && !strcmp(type_name_from_node(rhs_lv.type), type_name_from_node(dst->type)) && !rhs_lv.is_bitfield) {
             if (!emit_copy_lvalue_to_symbol(ctx, sym, lv.offset, &rhs_lv, dst->size)) {
-               error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+               error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
             }
             return;
          }
          if (!compile_expr_to_slot(rhs, ctx, &(ContextEntry){ .name = "$tmp", .type = dst->type, .declarator = NULL, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = dst->size })) {
-            error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_symbol_offset(sym, lv.offset, ctx->locals, dst->size);
@@ -488,7 +570,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+            error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
             return;
          }
          if (ctx) {
@@ -499,7 +581,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] assignment target not compiled yet", node->file, node->line, node->column);
+            error_user("[%s:%d.%d] invalid assignment target", node->file, node->line, node->column);
             return;
          }
          remember_runtime_import("popN");
@@ -508,14 +590,14 @@ void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    jsr _popN\n");
       }
       else if (!compile_expr_to_slot(rhs, ctx, dst)) {
-         error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
       }
       return;
    }
 
    rhs = (ASTNode *) unwrap_expr_node(rhs);
    if (!rhs) {
-      error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
       return;
    }
 
@@ -613,7 +695,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
          tmp = (ContextEntry){ .name = "$tmp", .type = rtype, .declarator = rdecl, .is_static = false, .is_zeropage = false, .is_global = false, .offset = ctx->locals, .size = rsize };
          call = make_synthetic_call_expr(node, declarator_name(function_declarator_node(ofn)), argv, 2);
          if (!call) {
-            error_unreachable("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_user("[%s:%d.%d] invalid overloaded compound assignment '%s'", node->file, node->line, node->column, op);
             return;
          }
 
@@ -626,7 +708,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] overloaded compound assignment '%s' not compiled yet", node->file, node->line, node->column, op);
+            error_user("[%s:%d.%d] invalid overloaded compound assignment '%s'", node->file, node->line, node->column, op);
             return;
          }
 
@@ -637,7 +719,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_user("[%s:%d.%d] invalid compound assignment target", node->file, node->line, node->column);
                return;
             }
             if (dst_size != rsize || dst->type != rtype) {
@@ -670,7 +752,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", dst_size & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_user("[%s:%d.%d] invalid compound assignment target", node->file, node->line, node->column);
                   return;
                }
                remember_runtime_import("popN");
@@ -684,7 +766,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
                   emit(&es_code, "    lda #$%02x\n", rsize & 0xff);
                   emit(&es_code, "    sta arg0\n");
                   emit(&es_code, "    jsr _popN\n");
-                  error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+                  error_user("[%s:%d.%d] invalid compound assignment target", node->file, node->line, node->column);
                   return;
                }
             }
@@ -842,7 +924,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+            error_user("[%s:%d.%d] invalid compound assignment target", node->file, node->line, node->column);
             return;
          }
          emit_copy_fp_to_fp_convert(lhs_tmp_offset, work_size, work_type, lhs_tmp_offset, lhs_src_size, dst->type);
@@ -862,7 +944,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unreachable("[%s:%d.%d] assignment value not compiled yet", node->file, node->line, node->column);
+         error_user("[%s:%d.%d] invalid assignment value", node->file, node->line, node->column);
          return;
       }
       if (ctx) {
@@ -976,7 +1058,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unreachable("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op);
+         error_user("[%s:%d.%d] unsupported compound assignment operator '%s'", node->file, node->line, node->column, op);
          return;
       }
 
@@ -991,7 +1073,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
                emit(&es_code, "    lda #$%02x\n", tmp_total & 0xff);
                emit(&es_code, "    sta arg0\n");
                emit(&es_code, "    jsr _popN\n");
-               error_unreachable("[%s:%d.%d] compound assignment target not compiled yet", node->file, node->line, node->column);
+               error_user("[%s:%d.%d] invalid compound assignment target", node->file, node->line, node->column);
                return;
             }
          }
@@ -1007,7 +1089,7 @@ void compile_expr(ASTNode *node, Context *ctx) {
       return;
    }
 
-   error_unreachable("[%s:%d.%d] expression '%s' not compiled yet", node->file, node->line, node->column, op ? op : "?");
+   error_user("[%s:%d.%d] unsupported assignment operator '%s'", node->file, node->line, node->column, op ? op : "?");
 }
 
 

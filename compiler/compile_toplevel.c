@@ -151,7 +151,7 @@ void compile_function_decl(ASTNode *node) {
          compile_statement_list(body, &ctx);
       }
       else {
-         error_unreachable("[%s:%d.%d] function body node '%s' not compiled yet", body->file, body->line, body->column, body->name);
+         error_unreachable("[%s:%d.%d] internal compiler error: unexpected function body node '%s'", body->file, body->line, body->column, body->name);
       }
    }
 

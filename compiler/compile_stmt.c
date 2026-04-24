@@ -191,7 +191,7 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
    ASTNode *else_block = (node->count > 2) ? node->children[2] : NULL;
 
    if (!compile_condition_branch_false(cond, ctx, false_label)) {
-      error_unreachable("[%s:%d.%d] if condition not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid if condition", node->file, node->line, node->column);
       free((void *) false_label);
       free((void *) end_label);
       return;
@@ -232,7 +232,7 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    }
    emit(&es_code, "%s:\n", start_label);
    if (!compile_condition_branch_false(cond, ctx, end_label)) {
-      error_unreachable("[%s:%d.%d] while condition not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid while condition", node->file, node->line, node->column);
       pop_loop_labels();
       if (named_loop) {
          pop_named_loop_labels();
@@ -291,7 +291,7 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "%s:\n", start_label);
    if (cond && !is_empty(cond)) {
       if (!compile_condition_branch_false(cond, ctx, end_label)) {
-         error_unreachable("[%s:%d.%d] for condition not compiled yet", node->file, node->line, node->column);
+         error_user("[%s:%d.%d] invalid for condition", node->file, node->line, node->column);
          pop_loop_labels();
          if (named_loop) {
             pop_named_loop_labels();
@@ -504,7 +504,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    }
 
    if (entry == NULL) {
-      error_unreachable("[%s:%d.%d] local declaration for '%s' not compiled yet", node->file, node->line, node->column, name);
+      error_unreachable("[%s:%d.%d] internal compiler error: local declaration for '%s' was not predeclared", node->file, node->line, node->column, name);
       return;
    }
 
@@ -523,7 +523,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -532,7 +532,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          emit(&es_code, "    lda #$%02x\n", size & 0xff);
          emit(&es_code, "    sta arg0\n");
          emit(&es_code, "    jsr _popN\n");
-         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
          return;
       }
       {
@@ -542,7 +542,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
             emit(&es_code, "    lda #$%02x\n", size & 0xff);
             emit(&es_code, "    sta arg0\n");
             emit(&es_code, "    jsr _popN\n");
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
             return;
          }
       }
@@ -566,11 +566,11 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
                free(zeroes);
             }
             if (!compile_initializer_to_fp(expression, ctx, type, declarator, entry->offset, size)) {
-               error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+               error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
             }
          }
          else if (!compile_expr_to_slot(expression, ctx, entry)) {
-            error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+            error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
          }
       }
       return;
@@ -580,7 +580,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       char sym[256];
       EmitSink *sink;
       if (!entry_symbol_name(ctx, entry, sym, sizeof(sym))) {
-         error_unreachable("[%s:%d.%d] local initializer for '%s' not compiled yet", node->file, node->line, node->column, name);
+         error_user("[%s:%d.%d] invalid initializer for '%s'", node->file, node->line, node->column, name);
          return;
       }
       if (is_empty(expression)) {
@@ -657,7 +657,7 @@ static void compile_do_stmt(ASTNode *node, Context *ctx) {
    compile_statement_list(node->children[0], ctx);
    emit(&es_code, "%s:\n", cond_label);
    if (!compile_condition_branch_false(node->children[1], ctx, end_label)) {
-      error_unreachable("[%s:%d.%d] do/while condition not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid do/while condition", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp %s\n", start_label);
    emit(&es_code, "%s:\n", end_label);
@@ -729,7 +729,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
          /* labeled empty statement: no-op */
       }
       else {
-         error_unreachable("[%s:%d.%d] labeled statement '%s' not compiled yet", stmt->file, stmt->line, stmt->column, stmt->name);
+         error_user("[%s:%d.%d] unsupported labeled statement '%s'", stmt->file, stmt->line, stmt->column, stmt->name);
       }
       pending_loop_label_name = saved_pending;
    }
@@ -810,7 +810,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
       if (ctx) {
          ctx->locals = saved_locals;
       }
-      error_unreachable("[%s:%d.%d] switch expression not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid switch expression", node->file, node->line, node->column);
       remember_runtime_import("popN");
       emit(&es_code, "    lda #$%02x\n", compare_size & 0xff);
       emit(&es_code, "    sta arg0\n");
@@ -862,7 +862,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                if (ctx) {
                   ctx->locals = saved_locals;
                }
-               error_unreachable("[%s:%d.%d] case expression not compiled yet", low->file, low->line, low->column);
+               error_user("[%s:%d.%d] invalid case expression", low->file, low->line, low->column);
                continue;
             }
             if (ctx) {
@@ -919,7 +919,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range start not compiled yet", ordered_low->file, ordered_low->line, ordered_low->column);
+               error_user("[%s:%d.%d] invalid case range start", ordered_low->file, ordered_low->line, ordered_low->column);
                continue;
             }
             if (ctx) {
@@ -943,7 +943,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
                   ctx->locals = saved_locals;
                }
                free((void *) skip_label);
-               error_unreachable("[%s:%d.%d] case range end not compiled yet", ordered_high->file, ordered_high->line, ordered_high->column);
+               error_user("[%s:%d.%d] invalid case range end", ordered_high->file, ordered_high->line, ordered_high->column);
                continue;
             }
             if (ctx) {
@@ -970,7 +970,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
          if (ctx) {
             ctx->locals = saved_locals;
          }
-         error_unreachable("[%s:%d.%d] case expression not compiled yet", case_expr->file, case_expr->line, case_expr->column);
+         error_user("[%s:%d.%d] invalid case expression", case_expr->file, case_expr->line, case_expr->column);
          continue;
       }
       if (ctx) {
@@ -1043,7 +1043,7 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
    }
 
    if (!compile_expr_to_return_slot(expr, ctx, ret)) {
-      error_unreachable("[%s:%d.%d] return expression not compiled yet", node->file, node->line, node->column);
+      error_user("[%s:%d.%d] invalid return expression", node->file, node->line, node->column);
    }
    emit(&es_code, "    jmp @fini\n");
 }
