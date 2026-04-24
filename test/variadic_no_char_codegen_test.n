@@ -1,6 +1,6 @@
 // n65cc -I .
-// expectfail
-// expecterr: builtin variadic support requires type 'char'
+// expectasm: .proc scan
+// forbidasm: builtin variadic support requires type 'char'
 type bool { $size:1 $integer:unsigned };
 type void { $size:0 };
 type * { $size:2 $integer:unsigned $endian:little };

@@ -217,8 +217,8 @@ static bool get_builtin_va_list_layout(VaListLayout *out) {
    if (!find_aggregate_member_info(type, BUILTIN_VA_LIST_ARGS_FIELD, &info)) {
       error_user("type '%s' must define member '%s'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_ARGS_FIELD);
    }
-   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "char") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
-      error_user("type '%s' member '%s' must be declared as 'char *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_ARGS_FIELD);
+   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "void") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
+      error_user("type '%s' member '%s' must be declared as 'void *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_ARGS_FIELD);
    }
 
    if (out) {
@@ -231,8 +231,8 @@ static bool get_builtin_va_list_layout(VaListLayout *out) {
    if (!find_aggregate_member_info(type, BUILTIN_VA_LIST_BYTES_FIELD, &info)) {
       error_user("type '%s' must define member '%s'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_BYTES_FIELD);
    }
-   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "char") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
-      error_user("type '%s' member '%s' must be declared as 'char *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_BYTES_FIELD);
+   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "void") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
+      error_user("type '%s' member '%s' must be declared as 'void *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_BYTES_FIELD);
    }
    if (out) {
       out->bytes_offset = info.byte_offset;
@@ -242,8 +242,8 @@ static bool get_builtin_va_list_layout(VaListLayout *out) {
    if (!find_aggregate_member_info(type, BUILTIN_VA_LIST_OFFSET_FIELD, &info)) {
       error_user("type '%s' must define member '%s'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_OFFSET_FIELD);
    }
-   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "char") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
-      error_user("type '%s' member '%s' must be declared as 'char *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_OFFSET_FIELD);
+   if (type_name_from_node(info.type) == NULL || strcmp(type_name_from_node(info.type), "void") || declarator_pointer_depth(info.declarator) <= 0 || info.storage_size != ptr_size) {
+      error_user("type '%s' member '%s' must be declared as 'void *'", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_LIST_OFFSET_FIELD);
    }
    if (out) {
       out->offset_offset = info.byte_offset;
@@ -261,16 +261,12 @@ static void add_variadic_hidden_locals(Context *ctx) {
       return;
    }
 
-   if (!typename_exists("char")) {
-      error_user("builtin variadic support requires type 'char'");
-   }
-
-   ctx_push(ctx, required_typename_node("char"), VARIADIC_HIDDEN_ARGS_NAME);
+   ctx_push(ctx, required_typename_node("void"), VARIADIC_HIDDEN_ARGS_NAME);
    entry = (ContextEntry *) set_get(ctx->vars, VARIADIC_HIDDEN_ARGS_NAME);
    ptr_decl = make_named_pointer_declarator(VARIADIC_HIDDEN_ARGS_NAME);
    if (entry) {
       entry->declarator = ptr_decl;
-      ctx_resize_last_push(ctx, required_typename_node("char"), ptr_decl, VARIADIC_HIDDEN_ARGS_NAME);
+      ctx_resize_last_push(ctx, required_typename_node("void"), ptr_decl, VARIADIC_HIDDEN_ARGS_NAME);
    }
 
    ctx_push(ctx, required_typename_node("*"), VARIADIC_HIDDEN_BYTES_NAME);

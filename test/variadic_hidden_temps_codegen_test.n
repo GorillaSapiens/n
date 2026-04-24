@@ -10,6 +10,7 @@
 include "machine_6502.n"
 
 int probe(int tag, ...) {
-   char *p := __va_args;
+   void *raw := __va_args;
+   char *p := raw;
    return __va_arg_bytes + p[0];
 }

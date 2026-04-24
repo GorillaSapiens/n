@@ -4,7 +4,7 @@
 include "machine_6502.n"
 
 int sniff(int tag, ...) {
-   char *p := __va_args;
+   void *p := __va_args;
 
    if (tag != 0x6677) { return 1; }
    if (__va_arg_bytes != 0) { return 2; }

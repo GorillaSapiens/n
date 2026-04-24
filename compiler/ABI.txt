@@ -79,7 +79,7 @@ Each variadic argument's bytes are copied in that argument's own storage order. 
 
 Inside a variadic callee, the compiler synthesizes two reserved implementation locals:
 
-- `__va_args` ... `char *` pointing at the first raw variadic byte
+- `__va_args` ... `void *` pointing at the first raw variadic byte
 - `__va_arg_bytes` ... pointer-sized integer metadata holding the total byte length of the raw variadic blob
 
 These names are reserved and may not be used by user declarations.
@@ -88,9 +88,9 @@ The user-facing wrapper in `libraries/nlib/stdarg.n` defines:
 
 ```n
 struct va_list {
-   char *args;
-   char *bytes;
-   char *offset;
+   void *args;
+   void *bytes;
+   void *offset;
 };
 ```
 
@@ -98,6 +98,6 @@ struct va_list {
 `va_arg(ap, out)` copies `sizeof(out)` bytes from `ap.args + ap.offset` into `out`, then increments `ap.offset` by that same byte count.
 `va_end(ap)` zeroes the `va_list` state.
 
-`bytes` and `offset` are exposed as pointer-width `char *` slots because ordinary user declarations do not currently have a direct bare-object spelling for the builtin `*` type. Treat them as raw pointer-sized counters, not as character pointers to dereference.
+`bytes` and `offset` are exposed as pointer-width `void *` slots because ordinary user declarations do not currently have a direct bare-object spelling for the builtin `*` type. Treat them as raw pointer-sized counters, not as character pointers to dereference.
 
 `va_arg(ap, out)` is intentionally raw and unchecked. It does not verify types, promotions, alignment, or bounds at runtime. Caller and callee must already agree on the exact sequence of sizes and types.

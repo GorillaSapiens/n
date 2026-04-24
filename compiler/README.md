@@ -260,9 +260,9 @@ int sum(int count, ...) {
 
 ```n
 struct va_list {
-   char *args;
-   char *bytes;
-   char *offset;
+   void *args;
+   void *bytes;
+   void *offset;
 };
 ```
 
