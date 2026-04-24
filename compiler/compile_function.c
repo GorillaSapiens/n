@@ -261,6 +261,10 @@ static void add_variadic_hidden_locals(Context *ctx) {
       return;
    }
 
+   if (!typename_exists("char")) {
+      error_user("builtin variadic support requires type 'char'");
+   }
+
    ctx_push(ctx, required_typename_node("char"), VARIADIC_HIDDEN_ARGS_NAME);
    entry = (ContextEntry *) set_get(ctx->vars, VARIADIC_HIDDEN_ARGS_NAME);
    ptr_decl = make_named_pointer_declarator(VARIADIC_HIDDEN_ARGS_NAME);
@@ -710,7 +714,7 @@ bool compile_builtin_va_start_expr(ASTNode *expr, Context *ctx) {
    }
 
    if (layout.size > (int) sizeof(zeroes)) {
-      error_unreachable("va_list too large for %s", BUILTIN_VA_START_NAME);
+      error_user("type '%s' is too large for %s", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_START_NAME);
    }
 
    saved_locals = ctx->locals;
@@ -762,7 +766,7 @@ bool compile_builtin_va_arg_expr(ASTNode *expr, Context *ctx) {
       error_user("[%s:%d.%d] second %s argument has no runtime storage", args->children[1]->file, args->children[1]->line, args->children[1]->column, BUILTIN_VA_ARG_NAME);
    }
    if (ptr_size > (int) sizeof(add_bytes)) {
-      error_unreachable("pointer size too large for %s", BUILTIN_VA_ARG_NAME);
+      error_user("pointer type '*' is too large for %s", BUILTIN_VA_ARG_NAME);
    }
 
    saved_locals = ctx->locals;
@@ -820,7 +824,7 @@ bool compile_builtin_va_end_expr(ASTNode *expr, Context *ctx) {
       return false;
    }
    if (layout.size > (int) sizeof(zeroes)) {
-      error_unreachable("va_list too large for %s", BUILTIN_VA_END_NAME);
+      error_user("type '%s' is too large for %s", BUILTIN_VA_LIST_TYPE_NAME, BUILTIN_VA_END_NAME);
    }
    if (ap_lv.size != layout.size || !ap_lv.type || !type_name_from_node(ap_lv.type) || strcmp(type_name_from_node(ap_lv.type), BUILTIN_VA_LIST_TYPE_NAME)) {
       error_user("[%s:%d.%d] %s argument must have type '%s'", args->children[0]->file, args->children[0]->line, args->children[0]->column, BUILTIN_VA_END_NAME, BUILTIN_VA_LIST_TYPE_NAME);

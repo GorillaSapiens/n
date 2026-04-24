@@ -868,13 +868,13 @@ void emit_runtime_global_init_function(void) {
          emit_fill_fp_bytes(0, 0, entry->size, 0x00);
       }
       if (!compile_initializer_to_fp(entry->expression, &ctx, entry->type, entry->declarator, 0, entry->size)) {
-         error_unreachable("[%s:%d.%d] could not compile runtime global initializer for '%s'",
+         error_user("[%s:%d.%d] invalid runtime global initializer for '%s'",
                entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
       }
       if (entry->is_absolute_ref) {
          LValueRef lv = { .name = entry->name, .type = entry->type, .declarator = entry->declarator, .base_type = entry->type, .base_declarator = entry->declarator, .is_static = false, .is_zeropage = false, .is_global = true, .is_ref = true, .is_absolute_ref = true, .read_expr = entry->read_expr, .write_expr = entry->write_expr, .offset = 0, .size = entry->size };
          if (!emit_copy_fp_to_lvalue(&ctx, &lv, 0, entry->size)) {
-            error_unreachable("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
+            error_user("[%s:%d.%d] could not store runtime initializer for absolute ref '%s'",
                   entry->expression->file, entry->expression->line, entry->expression->column, entry->name);
          }
       }
@@ -978,8 +978,13 @@ bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode 
          }
          if (!is_empty(item->children[0])) {
             if (!find_aggregate_member(type, item->children[0]->strval, &ftype, &fdecl, &offset)) {
-               ok = false;
-               break;
+               free(items);
+               error_user("[%s:%d.%d] unknown initializer field '%s' for '%s'",
+                     item->children[0]->file ? item->children[0]->file : item->file,
+                     item->children[0]->line,
+                     item->children[0]->column,
+                     item->children[0]->strval ? item->children[0]->strval : "<unknown>",
+                     aggregate_initializer_target_name(type));
             }
          }
          else {
@@ -1107,8 +1112,13 @@ static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_o
          }
          if (!is_empty(item->children[0])) {
             if (!find_aggregate_member(type, item->children[0]->strval, &ftype, &fdecl, &offset)) {
-               ok = false;
-               break;
+               free(items);
+               error_user("[%s:%d.%d] unknown initializer field '%s' for '%s'",
+                     item->children[0]->file ? item->children[0]->file : item->file,
+                     item->children[0]->line,
+                     item->children[0]->column,
+                     item->children[0]->strval ? item->children[0]->strval : "<unknown>",
+                     aggregate_initializer_target_name(type));
             }
          }
          else {

@@ -789,8 +789,7 @@ void calculate_struct_union_sizes(ASTNode *program) {
    // everybody uses pointers, let's just do that now...
 
    if (!typename_exists("*")) {
-      error_unreachable("type * is not defined, pointer size is unknown");
-      // error_user() calls exit()
+      error_user("required pointer type '*' is not defined");
    }
 
    int sizeof_ptr = (intptr_t) pair_get(typesizes, "*");

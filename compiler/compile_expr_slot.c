@@ -374,7 +374,9 @@ bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
          error_unreachable("out of memory");
       }
       if (!style) {
-         error_unreachable("[%s:%d] floating literal assigned to non-float type", __FILE__, __LINE__);
+         error_user("[%s:%d.%d] floating literal cannot be used as non-float type '%s'",
+               expr->file ? expr->file : "<unknown>", expr->line, expr->column,
+               type_name_from_node(dst->type) ? type_name_from_node(dst->type) : "<unknown>");
       }
       if (has_flag(type_name_from_node(dst->type), "$endian:big")) {
          make_be_float_style(expr->strval, bytes, dst->size, style);

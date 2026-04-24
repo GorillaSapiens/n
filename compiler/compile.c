@@ -93,10 +93,10 @@ static void compile(ASTNode *program) {
    }
 
    if (!typename_exists("bool")) {
-      error_unreachable("type bool is not defined");
+      error_user("required type 'bool' is not defined");
    }
    if (!typename_exists("void")) {
-      error_unreachable("type void is not defined");
+      error_user("required type 'void' is not defined");
    }
 
    for (int i = 0; i < program->count; i++) {
