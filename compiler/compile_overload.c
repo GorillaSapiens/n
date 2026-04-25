@@ -1279,6 +1279,7 @@ void remember_function(const ASTNode *node, const char *name) {
    bool name_present = false;
 
    validate_function_nonreserved_variadic_names(node);
+   validate_function_parameter_storage_modifiers(node);
 
    if (!name) {
       error_user("[%s:%d.%d] unnamed function declaration is not supported here", node->file, node->line, node->column);

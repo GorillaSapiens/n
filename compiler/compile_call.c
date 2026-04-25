@@ -272,6 +272,8 @@ bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    int len_size = get_size("*");
    int fixed_params = 0;
    int fixed_stack_total = 0;
+   int symbol_scratch_size = 0;
+   int symbol_scratch_offset = 0;
    int variadic_total = 0;
    bool variadic = false;
    int base_locals = ctx ? ctx->locals : 0;
@@ -322,7 +324,12 @@ bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
             }
             fixed_params++;
             psz = parameter_storage_size(parameter);
-            if (!parameter_has_symbol_storage(parameter)) {
+            if (parameter_has_symbol_storage(parameter)) {
+               if (psz > symbol_scratch_size) {
+                  symbol_scratch_size = psz;
+               }
+            }
+            else {
                fixed_stack_total += psz;
             }
          }
@@ -350,7 +357,8 @@ bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    }
 
    if (ret_size < 0) ret_size = 0;
-   int call_size = ret_size + arg_total;
+   int call_size = ret_size + arg_total + symbol_scratch_size;
+   symbol_scratch_offset = base_locals + ret_size + arg_total;
 
    if (call_size > 0) {
       remember_runtime_import("pushN");
@@ -442,7 +450,7 @@ bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
                   goto fail;
                }
 
-               tmp.offset = base_locals;
+               tmp.offset = symbol_scratch_offset;
                if (parameter_is_ref(parameter)) {
                   if (!compile_ref_argument_to_slot(args->children[actual_index], ctx, tmp.offset, tmp.size)) {
                      goto fail;

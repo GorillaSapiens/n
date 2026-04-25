@@ -203,6 +203,61 @@ void validate_function_nonreserved_variadic_names(const ASTNode *fn) {
    }
 }
 
+//! @brief Validate function parameter storage modifier combinations before later compiler stages depend on them.
+void validate_function_parameter_storage_modifiers(const ASTNode *fn) {
+   const ASTNode *declarator;
+   const ASTNode *params;
+   const char *fname;
+
+   if (!fn) {
+      return;
+   }
+
+   declarator = function_declarator_node(fn);
+   fname = declarator_name(declarator);
+   if (!fname || !*fname) {
+      fname = "<unnamed>";
+   }
+
+   params = declarator_parameter_list(declarator);
+   if (!params || is_empty(params)) {
+      return;
+   }
+
+   for (int i = 0; i < params->count; i++) {
+      const ASTNode *parameter = params->children[i];
+      const ASTNode *decl_specs = parameter ? parameter_decl_specifiers(parameter) : NULL;
+      const ASTNode *modifiers = (decl_specs && decl_specs->count > 0) ? decl_specs->children[0] : NULL;
+      const ASTNode *pdecl = parameter ? parameter_declarator(parameter) : NULL;
+      const char *memname;
+      const char *pname;
+
+      if (!parameter || parameter_is_void(parameter) || !modifiers) {
+         continue;
+      }
+
+      if (!has_modifier((ASTNode *) modifiers, "static")) {
+         continue;
+      }
+
+      memname = find_mem_modifier_name(modifiers);
+      if (!memname) {
+         continue;
+      }
+
+      pname = pdecl ? declarator_name(pdecl) : NULL;
+      if (pname && *pname) {
+         error_user("[%s:%d.%d] parameter '%s' of function '%s' combines 'static' with mem region '%s'. This is redundant and ambiguous: use '%s <type> %s' to place the symbol-backed parameter in that mem region, or use 'static <type> %s' for default BSS-backed parameter storage; do not write both.",
+                    parameter->file, parameter->line, parameter->column,
+                    pname, fname, memname, memname, pname, pname);
+      }
+
+      error_user("[%s:%d.%d] parameter %d of function '%s' combines 'static' with mem region '%s'. This is redundant and ambiguous: use '%s <type>' to place the symbol-backed parameter in that mem region, or use 'static <type>' for default BSS-backed parameter storage; do not write both.",
+                 parameter->file, parameter->line, parameter->column,
+                 i + 1, fname, memname, memname);
+   }
+}
+
 //! @brief Handle builtin variadic call name logic for compiler function lowering.
 bool builtin_variadic_call_name(const char *name) {
    return name && (!strcmp(name, BUILTIN_VA_START_NAME) || !strcmp(name, BUILTIN_VA_ARG_NAME) || !strcmp(name, BUILTIN_VA_END_NAME));

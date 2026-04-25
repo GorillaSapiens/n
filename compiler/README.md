@@ -541,6 +541,8 @@ Instead:
 
 This includes zero-page-backed parameters and non-zero-page named memory regions such as `banana`.
 
+A parameter may not combine `static` with an explicit `mem` modifier. Use `static int x` for default BSS-backed parameter storage, or use the memory-region modifier by itself, such as `zeropage int x`, `banana int x`, or `register int x` if a `mem register` region has been declared.
+
 Because that storage is owned by the callee rather than the call frame, symbol-backed parameters should be treated as re-entrancy-hostile unless the programmer arranges external protection. Recursive or interrupt-driven re-entry can overwrite the shared parameter slots.
 
 The compiler now performs a direct-call graph check inside each translation unit and rejects any call-cycle strongly connected component that contains a function with symbol-backed parameters. That catches obvious self-recursion and mutual recursion cases before code generation completes.
