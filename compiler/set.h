@@ -1,3 +1,6 @@
+//! @file compiler/set.h
+//! @brief Declares string-keyed set/map collection for the n65 compiler.
+
 #ifndef _INCLUDE_SET_H_
 #define _INCLUDE_SET_H_
 

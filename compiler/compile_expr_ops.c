@@ -1,3 +1,6 @@
+//! @file compiler/compile_expr_ops.c
+//! @brief Implements operator lowering helpers for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

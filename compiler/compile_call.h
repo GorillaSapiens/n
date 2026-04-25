@@ -1,3 +1,6 @@
+//! @file compiler/compile_call.h
+//! @brief Declares function call lowering for the n65 compiler.
+
 #ifndef _INCLUDE_COMPILE_CALL_H_
 #define _INCLUDE_COMPILE_CALL_H_
 

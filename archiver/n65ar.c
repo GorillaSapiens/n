@@ -1,3 +1,6 @@
+//! @file archiver/n65ar.c
+//! @brief Implements archive file command-line driver for the n65 archive tool.
+
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>

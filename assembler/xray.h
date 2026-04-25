@@ -1,3 +1,6 @@
+//! @file assembler/xray.h
+//! @brief Declares diagnostic tracing for the n65 assembler.
+
 #ifndef ASM_XRAY_H
 #define ASM_XRAY_H
 

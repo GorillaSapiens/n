@@ -1,3 +1,6 @@
+//! @file compiler/compile_expr_slot.c
+//! @brief Implements expression-to-storage-slot lowering for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

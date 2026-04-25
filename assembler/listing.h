@@ -1,3 +1,6 @@
+//! @file assembler/listing.h
+//! @brief Declares assembly listing generation for the n65 assembler.
+
 #ifndef LISTING_H
 #define LISTING_H
 

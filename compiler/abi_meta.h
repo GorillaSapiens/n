@@ -1,3 +1,6 @@
+//! @file compiler/abi_meta.h
+//! @brief Declares ABI metadata emission for the n65 compiler.
+
 #ifndef _INCLUDE_ABI_META_H_
 #define _INCLUDE_ABI_META_H_
 

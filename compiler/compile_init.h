@@ -1,3 +1,6 @@
+//! @file compiler/compile_init.h
+//! @brief Declares initializer lowering for the n65 compiler.
+
 #ifndef _INCLUDE_COMPILE_INIT_H_
 #define _INCLUDE_COMPILE_INIT_H_
 

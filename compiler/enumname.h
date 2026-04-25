@@ -1,3 +1,6 @@
+//! @file compiler/enumname.h
+//! @brief Declares enum declaration support for the n65 compiler.
+
 #ifndef _INCLUDE_ENUMNAME_H_
 #define _INCLUDE_ENUMNAME_H_
 

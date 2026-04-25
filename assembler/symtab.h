@@ -1,3 +1,6 @@
+//! @file assembler/symtab.h
+//! @brief Declares assembler symbol table for the n65 assembler.
+
 #ifndef SYMTAB_H
 #define SYMTAB_H
 

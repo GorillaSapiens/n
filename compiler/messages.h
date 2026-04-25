@@ -1,3 +1,6 @@
+//! @file compiler/messages.h
+//! @brief Declares compiler diagnostics for the n65 compiler.
+
 #ifndef _INCLUDE_MESSAGES_H_
 #define _INCLUDE_MESSAGES_H_
 

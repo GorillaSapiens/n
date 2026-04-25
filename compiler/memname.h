@@ -1,3 +1,6 @@
+//! @file compiler/memname.h
+//! @brief Declares memory-name declaration support for the n65 compiler.
+
 #ifndef _INCLUDE_MEMNAME_H_
 #define _INCLUDE_MEMNAME_H_
 

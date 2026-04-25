@@ -1,3 +1,6 @@
+//! @file compiler/integer.c
+//! @brief Implements integer literal conversion for the n65 compiler.
+
 #include <string.h>
 #include <strings.h>
 #include <stdbool.h>

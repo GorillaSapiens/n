@@ -1,3 +1,6 @@
+//! @file assembler/asm_pass.h
+//! @brief Declares assembly pass orchestration for the n65 assembler.
+
 #ifndef ASM_PASS_H
 #define ASM_PASS_H
 

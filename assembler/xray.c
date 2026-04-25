@@ -1,3 +1,6 @@
+//! @file assembler/xray.c
+//! @brief Implements diagnostic tracing for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

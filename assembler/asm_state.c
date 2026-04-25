@@ -1,3 +1,6 @@
+//! @file assembler/asm_state.c
+//! @brief Implements assembler state management for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

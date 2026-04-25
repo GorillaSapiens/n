@@ -1,3 +1,6 @@
+//! @file assembler/opcode.h
+//! @brief Declares 6502 opcode tables and lookup for the n65 assembler.
+
 #ifndef OPCODE_H
 #define OPCODE_H
 

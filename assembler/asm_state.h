@@ -1,3 +1,6 @@
+//! @file assembler/asm_state.h
+//! @brief Declares assembler state management for the n65 assembler.
+
 #ifndef ASM_STATE_H
 #define ASM_STATE_H
 

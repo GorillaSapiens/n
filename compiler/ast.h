@@ -1,3 +1,6 @@
+//! @file compiler/ast.h
+//! @brief Declares abstract syntax tree support for the n65 compiler.
+
 #ifndef _INCLUDE_AST_H_
 #define _INCLUDE_AST_H_
 

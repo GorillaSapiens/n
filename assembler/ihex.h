@@ -1,3 +1,6 @@
+//! @file assembler/ihex.h
+//! @brief Declares Intel HEX emission for the n65 assembler.
+
 #ifndef IHEX_H
 #define IHEX_H
 

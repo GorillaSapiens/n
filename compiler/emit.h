@@ -1,3 +1,6 @@
+//! @file compiler/emit.h
+//! @brief Declares assembly emission buffers for the n65 compiler.
+
 #ifndef _INCLUDE_EMIT_H_
 #define _INCLUDE_EMIT_H_
 

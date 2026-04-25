@@ -1,3 +1,6 @@
+//! @file compiler/compile_expr.c
+//! @brief Implements expression lowering entry points for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

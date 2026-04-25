@@ -1,3 +1,6 @@
+//! @file compiler/xray.h
+//! @brief Declares diagnostic tracing for the n65 compiler.
+
 #ifndef _INCLUDE_XRAY_H_
 #define _INCLUDE_XRAY_H_
 

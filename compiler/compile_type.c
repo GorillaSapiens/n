@@ -1,3 +1,6 @@
+//! @file compiler/compile_type.c
+//! @brief Implements type declaration and layout handling for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

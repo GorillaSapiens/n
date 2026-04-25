@@ -1,3 +1,6 @@
+//! @file compiler/typename.c
+//! @brief Implements type-name registry for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -1,3 +1,6 @@
+//! @file compiler/coverage.h
+//! @brief Declares grammar coverage instrumentation for the n65 compiler.
+
 #ifndef _INCLUDE_COVERAGE_H_
 #define _INCLUDE_COVERAGE_H_
 

@@ -1,3 +1,6 @@
+//! @file linker/n65ld_internal.h
+//! @brief Declares linker internal interfaces for the n65 linker.
+
 #ifndef N65LD_INTERNAL_H
 #define N65LD_INTERNAL_H
 

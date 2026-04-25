@@ -1,3 +1,6 @@
+//! @file assembler/asm_pass.c
+//! @brief Implements assembly pass orchestration for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

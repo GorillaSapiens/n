@@ -1,3 +1,6 @@
+//! @file compiler/xray.c
+//! @brief Implements diagnostic tracing for the n65 compiler.
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

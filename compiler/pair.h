@@ -1,3 +1,6 @@
+//! @file compiler/pair.h
+//! @brief Declares pointer pair collection for the n65 compiler.
+
 #ifndef _INCLUDE_PAIR_H_
 #define _INCLUDE_PAIR_H_
 

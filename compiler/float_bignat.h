@@ -1,3 +1,6 @@
+//! @file compiler/float_bignat.h
+//! @brief Declares big natural integer arithmetic for floats for the n65 compiler.
+
 #ifndef _INCLUDE_FLOAT_BIGNAT_H_
 #define _INCLUDE_FLOAT_BIGNAT_H_
 

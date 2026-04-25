@@ -1,3 +1,6 @@
+//! @file assembler/directive.c
+//! @brief Implements assembler directive handling for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

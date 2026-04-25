@@ -1,3 +1,6 @@
+//! @file compiler/compile_support.c
+//! @brief Implements shared compiler support routines for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

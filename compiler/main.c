@@ -1,3 +1,6 @@
+//! @file compiler/main.c
+//! @brief Implements compiler command-line entry point for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

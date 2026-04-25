@@ -1,3 +1,6 @@
+//! @file compiler/compile_literal.h
+//! @brief Declares literal lowering for the n65 compiler.
+
 #ifndef _INCLUDE_COMPILE_LITERAL_H_
 #define _INCLUDE_COMPILE_LITERAL_H_
 

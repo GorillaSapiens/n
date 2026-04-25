@@ -1,3 +1,6 @@
+//! @file compiler/noreturn.h
+//! @brief Declares noreturn portability helpers for the n65 compiler.
+
 #ifndef _INCLUDE_NORETURN_H_
 #define _INCLUDE_NORETURN_H_
 

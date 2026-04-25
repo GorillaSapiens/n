@@ -1,3 +1,6 @@
+//! @file compiler/compile.c
+//! @brief Implements compiler front-end orchestration for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>

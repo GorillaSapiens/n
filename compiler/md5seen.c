@@ -1,3 +1,6 @@
+//! @file compiler/md5seen.c
+//! @brief Implements MD5 duplicate tracking for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>

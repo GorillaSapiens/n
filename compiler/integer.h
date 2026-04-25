@@ -1,3 +1,6 @@
+//! @file compiler/integer.h
+//! @brief Declares integer literal conversion for the n65 compiler.
+
 #ifndef _INCLUDE_INTEGER_H_
 #define _INCLUDE_INTEGER_H_
 

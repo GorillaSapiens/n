@@ -1,3 +1,6 @@
+//! @file compiler/compile_expr.h
+//! @brief Declares expression lowering entry points for the n65 compiler.
+
 #ifndef _INCLUDE_COMPILE_EXPR_H_
 #define _INCLUDE_COMPILE_EXPR_H_
 

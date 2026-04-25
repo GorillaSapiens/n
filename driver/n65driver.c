@@ -1,3 +1,6 @@
+//! @file driver/n65driver.c
+//! @brief Implements toolchain driver command-line entry point for the n65 driver.
+
 #define _GNU_SOURCE
 #define _POSIX_C_SOURCE 200809L
 

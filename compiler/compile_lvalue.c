@@ -1,3 +1,6 @@
+//! @file compiler/compile_lvalue.c
+//! @brief Implements lvalue resolution and storage access for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

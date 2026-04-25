@@ -1,3 +1,6 @@
+//! @file compiler/expropt.h
+//! @brief Declares expression optimization for the n65 compiler.
+
 #ifndef _INCLUDE_EXPROPT_H_
 #define _INCLUDE_EXPROPT_H_
 

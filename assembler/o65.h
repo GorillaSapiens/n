@@ -1,3 +1,6 @@
+//! @file assembler/o65.h
+//! @brief Declares o65 object file emission for the n65 assembler.
+
 #ifndef O65_H
 #define O65_H
 

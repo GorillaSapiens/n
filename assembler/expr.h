@@ -1,3 +1,6 @@
+//! @file assembler/expr.h
+//! @brief Declares assembler expression parsing and evaluation for the n65 assembler.
+
 #ifndef EXPR_H
 #define EXPR_H
 

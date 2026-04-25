@@ -1,3 +1,6 @@
+//! @file assembler/listing.c
+//! @brief Implements assembly listing generation for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

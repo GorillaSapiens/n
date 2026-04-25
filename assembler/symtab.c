@@ -1,3 +1,6 @@
+//! @file assembler/symtab.c
+//! @brief Implements assembler symbol table for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

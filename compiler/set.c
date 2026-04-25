@@ -1,3 +1,6 @@
+//! @file compiler/set.c
+//! @brief Implements string-keyed set/map collection for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

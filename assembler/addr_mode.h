@@ -1,3 +1,6 @@
+//! @file assembler/addr_mode.h
+//! @brief Declares 6502 addressing mode helpers for the n65 assembler.
+
 #ifndef ADDR_MODE_H
 #define ADDR_MODE_H
 

@@ -1,3 +1,6 @@
+//! @file assembler/ihex.c
+//! @brief Implements Intel HEX emission for the n65 assembler.
+
 #include <stdio.h>
 #include <string.h>
 #include "ihex.h"

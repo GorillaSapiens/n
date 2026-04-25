@@ -1,3 +1,6 @@
+//! @file compiler/md5.h
+//! @brief Declares MD5 hashing for the n65 compiler.
+
 #ifndef _INCLUDE_MD5_H_
 #define _INCLUDE_MD5_H_
 

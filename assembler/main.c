@@ -1,3 +1,6 @@
+//! @file assembler/main.c
+//! @brief Implements assembler command-line entry point for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

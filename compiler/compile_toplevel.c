@@ -1,3 +1,6 @@
+//! @file compiler/compile_toplevel.c
+//! @brief Implements top-level declaration lowering for the n65 compiler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>

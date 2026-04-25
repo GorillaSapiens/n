@@ -1,3 +1,6 @@
+//! @file assembler/ir.h
+//! @brief Declares assembler intermediate representation for the n65 assembler.
+
 #ifndef IR_H
 #define IR_H
 

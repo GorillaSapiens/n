@@ -1,3 +1,6 @@
+//! @file compiler/float.h
+//! @brief Declares floating-point literal conversion for the n65 compiler.
+
 #ifndef _INCLUDE_FLOAT_H_
 #define _INCLUDE_FLOAT_H_
 

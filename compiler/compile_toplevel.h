@@ -1,3 +1,6 @@
+//! @file compiler/compile_toplevel.h
+//! @brief Declares top-level declaration lowering for the n65 compiler.
+
 #ifndef _INCLUDE_COMPILE_TOPLEVEL_H_
 #define _INCLUDE_COMPILE_TOPLEVEL_H_
 

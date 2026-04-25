@@ -1,3 +1,6 @@
+//! @file assembler/expr.c
+//! @brief Implements assembler expression parsing and evaluation for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

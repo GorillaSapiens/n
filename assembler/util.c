@@ -1,3 +1,6 @@
+//! @file assembler/util.c
+//! @brief Implements shared assembler utilities for the n65 assembler.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

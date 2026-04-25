@@ -1,3 +1,6 @@
+//! @file assembler/directive.h
+//! @brief Declares assembler directive handling for the n65 assembler.
+
 #ifndef DIRECTIVE_H
 #define DIRECTIVE_H
 

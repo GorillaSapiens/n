@@ -1,3 +1,6 @@
+//! @file compiler/lextern.h
+//! @brief Declares lexer/parser external declarations for the n65 compiler.
+
 #ifndef _INCLUDE_LEXTERN_H_
 #define _INCLUDE_LEXTERN_H_
 
