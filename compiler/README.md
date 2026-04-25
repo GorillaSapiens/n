@@ -570,6 +570,10 @@ A declaration is treated as zero-page only if its referenced `mem` declaration f
 
 So a region named `banana` can still be zero-page if its declared address range fits there, and a region literally named `zeropage` is **not** magically zero-page if its range does not fit.
 
+When a `mem` region is actually used for symbol storage, the compiler emits object metadata describing the region name, `$start`, size, and `$rw`/`$ro` type. `n65ld` validates that metadata against the linker config `MEMORY` entry before laying out the image. This turns stale cfg/source mismatches into link-time errors instead of silent placement surprises.
+
+For validation to work, any used `mem` declaration must provide `$start`, either `$size` or `$end`, and exactly one of `$rw` or `$ro`.
+
 ## Initializers
 
 ### Static and global initializers

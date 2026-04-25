@@ -78,10 +78,16 @@ static int symbol_backed_metadata_has_prefix(const char *name)
    return name && strncmp(name, SYMBOL_BACKED_META_PREFIX, sizeof(SYMBOL_BACKED_META_PREFIX) - 1) == 0;
 }
 
+//! @brief Return whether mem-region metadata has prefix in linker layout and image writer.
+static int mem_region_metadata_has_prefix(const char *name)
+{
+   return name && strncmp(name, MEM_REGION_META_PREFIX, sizeof(MEM_REGION_META_PREFIX) - 1) == 0;
+}
+
 //! @brief Return whether reserved metadata has prefix in linker layout and image writer.
 static int reserved_metadata_has_prefix(const char *name)
 {
-   return symbol_backed_metadata_has_prefix(name) || abi_metadata_has_prefix(name);
+   return symbol_backed_metadata_has_prefix(name) || abi_metadata_has_prefix(name) || mem_region_metadata_has_prefix(name);
 }
 
 //! @brief Handle symbol backed metadata parse function logic for linker layout and image writer.
@@ -215,6 +221,129 @@ static const memory_region_t *find_memory(const linker_config_t *cfg, const char
    return NULL;
 }
 
+//! @brief Parse exactly four hexadecimal digits from mem-region metadata.
+static int parse_hex4(const char *s, uint16_t *out)
+{
+   unsigned int v = 0;
+   int i;
+
+   if (!s || !out)
+      return 0;
+   for (i = 0; i < 4; ++i) {
+      unsigned char c = (unsigned char)s[i];
+      if (!isxdigit(c))
+         return 0;
+      v <<= 4;
+      if (isdigit(c))
+         v |= (unsigned int)(c - '0');
+      else
+         v |= (unsigned int)(toupper(c) - 'A' + 10);
+   }
+   *out = (uint16_t)v;
+   return 1;
+}
+
+//! @brief Decode compiler-emitted mem-region metadata from an exported symbol name.
+static int mem_region_metadata_parse(const char *name, char *region, size_t region_size,
+      uint16_t *start, uint16_t *size, char *type, size_t type_size)
+{
+   const char *p;
+   const char *smark;
+   const char *zmark;
+   const char *tmark;
+   size_t region_len;
+   size_t type_len;
+
+   if (!mem_region_metadata_has_prefix(name))
+      return 0;
+
+   p = name + sizeof(MEM_REGION_META_PREFIX) - 1;
+   smark = strstr(p, "$S");
+   if (!smark || smark == p)
+      return 0;
+   region_len = (size_t)(smark - p);
+   if (region_len >= region_size)
+      return 0;
+   memcpy(region, p, region_len);
+   region[region_len] = '\0';
+
+   if (!parse_hex4(smark + 2, start))
+      return 0;
+   zmark = smark + 6;
+   if (strncmp(zmark, "$Z", 2) != 0)
+      return 0;
+   if (!parse_hex4(zmark + 2, size))
+      return 0;
+   tmark = zmark + 6;
+   if (strncmp(tmark, "$T", 2) != 0)
+      return 0;
+   type_len = strlen(tmark + 2);
+   if (type_len == 0 || type_len >= type_size || strchr(tmark + 2, '$'))
+      return 0;
+   memcpy(type, tmark + 2, type_len + 1);
+   return 1;
+}
+
+//! @brief Validate compiler mem declarations against linker cfg MEMORY entries.
+static void validate_mem_region_metadata(const linker_config_t *cfg, const input_set_t *in)
+{
+   size_t i;
+
+   for (i = 0; i < in->object_count; ++i) {
+      const object_file_t *obj = &in->objects[i];
+      size_t j;
+
+      for (j = 0; j < obj->export_count; ++j) {
+         const char *sym = obj->exports[j].name;
+         char region[MAX_NAME];
+         char type[8];
+         uint16_t declared_start;
+         uint16_t declared_size;
+         const memory_region_t *mem;
+
+         if (!mem_region_metadata_has_prefix(sym))
+            continue;
+         if (!mem_region_metadata_parse(sym, region, sizeof(region), &declared_start, &declared_size, type, sizeof(type))) {
+            fprintf(stderr, "n65ld: malformed mem-region metadata symbol '%s' in %s\n",
+                  sym, obj->origin);
+            exit(1);
+         }
+
+         mem = find_memory(cfg, region);
+         if (!mem) {
+            fprintf(stderr,
+                  "n65ld: mem region '%s' declared by %s is not present in linker cfg MEMORY. "
+                  "Add a MEMORY entry named '%s' or change the n source mem declaration so they match.\n",
+                  region, obj->origin, region);
+            exit(1);
+         }
+
+         if (mem->start != declared_start) {
+            fprintf(stderr,
+                  "n65ld: mem region '%s' start mismatch in %s: compiler mem declaration says $%04X "
+                  "but linker cfg MEMORY %s starts at $%04X. Update the n source mem declaration or the linker cfg so they match.\n",
+                  region, obj->origin, declared_start, mem->name, mem->start);
+            exit(1);
+         }
+         if (mem->size != declared_size) {
+            fprintf(stderr,
+                  "n65ld: mem region '%s' size mismatch in %s: compiler mem declaration says $%04X "
+                  "but linker cfg MEMORY %s has size $%04X. Update the n source mem declaration or the linker cfg so they match.\n",
+                  region, obj->origin, declared_size, mem->name, mem->size);
+            exit(1);
+         }
+         if (!str_ieq(mem->type, type)) {
+            fprintf(stderr,
+                  "n65ld: mem region '%s' type mismatch in %s: compiler mem declaration says %s "
+                  "but linker cfg MEMORY %s has type %s. Update the n source mem declaration or the linker cfg so they match.\n",
+                  region, obj->origin, type, mem->name, mem->type);
+            exit(1);
+         }
+      }
+   }
+}
+
+
 //! @brief Find segment rule in linker layout and image writer tables without transferring ownership.
 static const segment_rule_t *find_segment_rule(const linker_config_t *cfg, const char *name)
 {
@@ -231,7 +360,7 @@ static void init_default_config(linker_config_t *cfg)
 {
    memset(cfg, 0, sizeof(*cfg));
 
-   strcpy(cfg->mem[0].name, "ZP");
+   strcpy(cfg->mem[0].name, "ZEROPAGE");
    cfg->mem[0].start = 0x0000;
    cfg->mem[0].size = 0x0100;
    strcpy(cfg->mem[0].type, "rw");
@@ -258,7 +387,7 @@ static void init_default_config(linker_config_t *cfg)
 
    strcpy(cfg->seg[0].name, "ZEROPAGE");
    strcpy(cfg->seg[0].load_name, "ROM");
-   strcpy(cfg->seg[0].run_name, "ZP");
+   strcpy(cfg->seg[0].run_name, "ZEROPAGE");
    strcpy(cfg->seg[0].type, "zp");
    cfg->seg[0].define_yes = 1;
 
@@ -1484,6 +1613,7 @@ int main(int argc, char **argv)
 
    select_needed_objects(&inputs);
    validate_abi_metadata(&inputs);
+   validate_mem_region_metadata(&cfg, &inputs);
    enforce_symbol_backed_call_graph(&inputs);
    warn_unused_cmdline_objects(&inputs);
    layout_objects(&cfg, &inputs, &layout);

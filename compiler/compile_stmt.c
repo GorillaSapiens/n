@@ -25,6 +25,8 @@
 #include "xray.h"
 #include "lextern.h"
 
+void emit_mem_region_metadata_for_modifiers(const ASTNode *origin, const ASTNode *modifiers);
+
 static const char *loop_break_stack[128];
 static const char *loop_continue_stack[128];
 static int loop_depth = 0;
@@ -397,6 +399,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    int size            = declarator_storage_size(type, declarator);
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    validate_nonreserved_variadic_name(name, node);
+   emit_mem_region_metadata_for_modifiers(node, modifiers);
 
    if (entry != NULL) {
       return;
@@ -615,7 +618,10 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
       }
       if (is_empty(expression)) {
          if (entry->is_zeropage) {
+            char segbuf[256];
+            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
             sink = &es_zp;
+            emit(sink, ".segment \"%s\"\n", segbuf);
          }
          else {
             char segbuf[256];
@@ -632,21 +638,30 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
          EmitSink init_es = EMIT_INIT;
 
          if (emit_global_initializer(&init_es, type, declarator, expression, size)) {
-            if (modifiers_imply_named_nonzeropage(modifiers)) {
+            if (entry->is_zeropage) {
+               char segbuf[256];
+               sink = &es_zpdata;
+               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
+               emit(sink, ".segment \"%s\"\n", segbuf);
+            }
+            else if (modifiers_imply_mem_storage(modifiers)) {
                char segbuf[256];
                sink = &es_data;
                build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
                emit(sink, ".segment \"%s\"\n", segbuf);
             }
             else {
-               sink = declaration_const_applies_to_object(modifiers, declarator) ? &es_rodata : (entry->is_zeropage ? &es_zpdata : &es_data);
+               sink = declaration_const_applies_to_object(modifiers, declarator) ? &es_rodata : &es_data;
             }
             emit(sink, "%s:\n", sym);
             emit_sink_append(sink, &init_es);
          }
          else {
             if (entry->is_zeropage) {
+               char segbuf[256];
+               build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
                sink = &es_zp;
+               emit(sink, ".segment \"%s\"\n", segbuf);
             }
             else {
                char segbuf[256];

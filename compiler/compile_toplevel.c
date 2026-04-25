@@ -31,6 +31,8 @@
 #include "xray.h"
 #include "lextern.h"
 
+void emit_mem_region_metadata_for_modifiers(const ASTNode *origin, const ASTNode *modifiers);
+
 //! @brief Return decl subitem declarator data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    if (!node) {
@@ -520,6 +522,7 @@ void compile_global_decl_item(ASTNode *node) {
    bool is_zeropage = modifiers_imply_zeropage(modifiers);
    bool is_ref = has_modifier(modifiers, "ref");
    bool is_absolute_ref = is_ref && addrspec != NULL;
+   emit_mem_region_metadata_for_modifiers(node, modifiers);
    int size = declarator_storage_size(type, declarator);
    char symname[256];
    format_user_asm_symbol(name, symname, sizeof(symname));
@@ -594,6 +597,9 @@ void compile_global_decl_item(ASTNode *node) {
                node->file, node->line, node->column);
       }
       if (is_zeropage) {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
+         emit(&es_zp, ".segment \"%s\"\n", segbuf);
          emit(&es_zp, "%s:\n", symname);
          emit(&es_zp, "\t.res %d\n", size);
       }
@@ -614,7 +620,14 @@ void compile_global_decl_item(ASTNode *node) {
       snprintf(symbuf, sizeof(symbuf), "%s", symname);
 
       if (emit_global_initializer(&init_es, type, declarator, uexpr ? uexpr : expression, size)) {
-         if (modifiers_imply_named_nonzeropage(modifiers)) {
+         if (is_zeropage) {
+            char segbuf[256];
+            build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
+            emit(&es_zpdata, ".segment \"%s\"\n", segbuf);
+            emit(&es_zpdata, "%s:\n", symname);
+            emit_sink_append(&es_zpdata, &init_es);
+         }
+         else if (modifiers_imply_mem_storage(modifiers)) {
             char segbuf[256];
             build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "DATA");
             emit(&es_data, ".segment \"%s\"\n", segbuf);
@@ -622,7 +635,7 @@ void compile_global_decl_item(ASTNode *node) {
             emit_sink_append(&es_data, &init_es);
          }
          else {
-            EmitSink *es = is_const ? &es_rodata : (is_zeropage ? &es_zpdata : &es_data);
+            EmitSink *es = is_const ? &es_rodata : &es_data;
             emit(es, "%s:\n", symname);
             emit_sink_append(es, &init_es);
          }
@@ -630,6 +643,9 @@ void compile_global_decl_item(ASTNode *node) {
       }
 
       if (is_zeropage) {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
+         emit(&es_zp, ".segment \"%s\"\n", segbuf);
          emit(&es_zp, "%s:\n", symname);
          emit(&es_zp, "\t.res %d\n", size);
       }

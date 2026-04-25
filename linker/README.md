@@ -107,14 +107,14 @@ If no config file is supplied, `n65ld` uses this built-in layout:
 
 ```cfg
 MEMORY {
-    ZP:       start = $0000, size = $0100, type = rw, define = yes;
+    ZEROPAGE: start = $0000, size = $0100, type = rw, define = yes;
     CPUSTACK: start = $0100, size = $0100, type = rw, define = yes;
     RAM:      start = $0200, size = $1E00, type = rw, define = yes;
     ROM:      start = $2000, size = $E000, type = ro, define = yes;
 }
 
 SEGMENTS {
-    ZEROPAGE: load = ROM, run=ZP,  type = zp,   define = yes;
+    ZEROPAGE: load = ROM, run=ZEROPAGE, type = zp,   define = yes;
     CODE:     load = ROM,          type = ro,   define = yes;
     RODATA:   load = ROM,          type = ro,   define = yes;
     BSS:      load = RAM,          type = bss,  define = yes;
@@ -135,6 +135,14 @@ SEGMENTS {
 - `define = yes/no`
 
 It is not trying to be a full `ld65` config parser.
+## Compiler mem-region validation
+
+Objects produced by `n65cc` include hidden metadata for each `mem` region that was used for symbol-backed storage. Before layout, `n65ld` compares that metadata with the config `MEMORY` table.
+
+The linker rejects the image if the config is missing the region, or if the `start`, `size`, or `type` differs from the compiler's `mem` declaration. The diagnostic reports both sides and tells the user to update either the N source declaration or the linker cfg so they match.
+
+Named zero-page regions use suffixed zero-page segments such as `ZEROPAGE.register`, so the cfg must contain a matching `MEMORY` entry for the region name when such a region is used.
+
 
 ## Segment mapping
 

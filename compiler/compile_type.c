@@ -1332,7 +1332,7 @@ void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modif
       return;
    }
 
-   if (modifiers_imply_named_nonzeropage(modifiers) && memname && *memname) {
+   if (modifiers_imply_mem_storage(modifiers) && memname && *memname) {
       snprintf(buf, bufsize, "%s.%s", base_segment, memname);
    }
    else {

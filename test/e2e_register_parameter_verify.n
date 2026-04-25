@@ -1,7 +1,8 @@
 // n65cc -I .
+// linkcfg: e2e_register_parameter_verify__register.cfg
 // expectexit: 0
 include "machine_6502.n"
-mem register { $start:0x0000 $size:0x0010 $rw };
+mem register { $start:0x0080 $size:0x0010 $rw };
 
 type u4 { $size:4 $integer:unsigned $endian:little };
 

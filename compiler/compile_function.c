@@ -29,6 +29,8 @@
 #include "xray.h"
 #include "lextern.h"
 
+void emit_mem_region_metadata_for_modifiers(const ASTNode *origin, const ASTNode *modifiers);
+
 typedef struct CallGraphNode {
    const ASTNode *fn;
    char *sym;
@@ -681,6 +683,8 @@ void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
          continue;
       }
 
+      emit_mem_region_metadata_for_modifiers(parameter, modifiers);
+
       entry = (const ContextEntry *) set_get(ctx->vars, name);
       if (!entry) {
          continue;
@@ -690,6 +694,9 @@ void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
       }
 
       if (entry->is_zeropage) {
+         char segbuf[256];
+         build_named_storage_segment(segbuf, sizeof(segbuf), modifiers, "ZEROPAGE");
+         emit(&es_zp, ".segment \"%s\"\n", segbuf);
          emit(&es_zp, "%s:\n", sym);
          emit(&es_zp, "\t.res %d\n", entry->size);
       }

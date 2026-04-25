@@ -38,6 +38,144 @@ ContextEntry *ctx_lookup(Context *ctx, const char *name) {
 }
 
 
+
+#define MEM_REGION_META_PREFIX "__memmeta$V1$"
+
+static Set *emitted_mem_region_metadata = NULL;
+
+//! @brief Parse unsigned integer flag from a mem declaration flag list.
+static bool mem_metadata_parse_u16_flag(const ASTNode *flags, const char *prefix, unsigned int *out) {
+   size_t prefix_len;
+
+   if (!flags || is_empty(flags) || !prefix || !out) {
+      return false;
+   }
+
+   prefix_len = strlen(prefix);
+   for (int i = 0; i < flags->count; i++) {
+      const char *text;
+      char *end = NULL;
+      unsigned long value;
+
+      if (!flags->children[i] || !flags->children[i]->strval) {
+         continue;
+      }
+      text = flags->children[i]->strval;
+      if (strncmp(text, prefix, prefix_len)) {
+         continue;
+      }
+
+      value = strtoul(text + prefix_len, &end, 0);
+      if (!end || *end != '\0' || value > 0xFFFFul) {
+         return false;
+      }
+      *out = (unsigned int)value;
+      return true;
+   }
+
+   return false;
+}
+
+//! @brief Find read/write type flag from a mem declaration.
+static const char *mem_metadata_type_flag(const ASTNode *flags) {
+   bool have_rw = false;
+   bool have_ro = false;
+
+   if (!flags || is_empty(flags)) {
+      return NULL;
+   }
+
+   for (int i = 0; i < flags->count; i++) {
+      const char *text = (flags->children[i] && flags->children[i]->strval) ? flags->children[i]->strval : NULL;
+      if (!text) {
+         continue;
+      }
+      if (!strcmp(text, "$rw")) {
+         have_rw = true;
+      }
+      else if (!strcmp(text, "$ro")) {
+         have_ro = true;
+      }
+   }
+
+   if (have_rw && have_ro) {
+      return "conflict";
+   }
+   if (have_rw) {
+      return "rw";
+   }
+   if (have_ro) {
+      return "ro";
+   }
+   return NULL;
+}
+
+//! @brief Emit object metadata describing a used compiler mem region for later linker cfg validation.
+void emit_mem_region_metadata_for_modifiers(const ASTNode *origin, const ASTNode *modifiers) {
+   const char *name;
+   const ASTNode *mem_decl;
+   const ASTNode *flags;
+   unsigned int start = 0;
+   unsigned int size = 0;
+   unsigned int end = 0;
+   bool have_start;
+   bool have_size;
+   bool have_end;
+   const char *type;
+   char sym[256];
+
+   name = find_mem_modifier_name(modifiers);
+   if (!name) {
+      return;
+   }
+
+   if (!emitted_mem_region_metadata) {
+      emitted_mem_region_metadata = new_set();
+   }
+   if (set_get(emitted_mem_region_metadata, name)) {
+      return;
+   }
+
+   mem_decl = get_memname_node(name);
+   if (!mem_decl || strcmp(mem_decl->name, "mem_decl_stmt") || mem_decl->count < 2) {
+      error_user("[%s:%d.%d] mem region '%s' is used for storage but has no declaration metadata for linker validation",
+            origin ? origin->file : __FILE__, origin ? origin->line : __LINE__, origin ? origin->column : 0, name);
+   }
+
+   flags = mem_decl->children[1];
+   have_start = mem_metadata_parse_u16_flag(flags, "$start:", &start);
+   have_size = mem_metadata_parse_u16_flag(flags, "$size:", &size);
+   have_end = mem_metadata_parse_u16_flag(flags, "$end:", &end);
+   type = mem_metadata_type_flag(flags);
+
+   if (!have_start || (!have_size && !have_end) || !type || !strcmp(type, "conflict")) {
+      error_user("[%s:%d.%d] mem region '%s' is used for storage and must declare $start plus $size or $end and exactly one of $rw/$ro so n65ld can validate it against the linker cfg",
+            origin ? origin->file : mem_decl->file,
+            origin ? origin->line : mem_decl->line,
+            origin ? origin->column : mem_decl->column,
+            name);
+   }
+
+   if (!have_size) {
+      if (end < start) {
+         error_user("[%s:%d.%d] mem region '%s' has $end below $start",
+               mem_decl->file, mem_decl->line, mem_decl->column, name);
+      }
+      size = end - start;
+   }
+
+   if (size > 0x10000u || start + size > 0x10000u) {
+      error_user("[%s:%d.%d] mem region '%s' range $%04X+$%04X is outside the 6502 address space",
+            mem_decl->file, mem_decl->line, mem_decl->column, name, start, size);
+   }
+
+   snprintf(sym, sizeof(sym), "%s%s$S%04X$Z%04X$T%s", MEM_REGION_META_PREFIX, name, start & 0xFFFFu, size & 0xFFFFu, type);
+   set_add(emitted_mem_region_metadata, strdup(name), (void *)1);
+   emit(&es_export, "%s = 0\n", sym);
+   emit(&es_export, ".export %s\n", sym);
+}
+
+
 //! @brief Return global decl lookup data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *global_decl_lookup(const char *name) {
    const void *value;
