@@ -21,6 +21,7 @@ static const asm_xray_desc_t g_xray_descs[] = {
    { -1, NULL, NULL }
 };
 
+//! @brief Handle assembler lookup xray logic for xray.
 int assembler_lookup_xray(const char *name)
 {
    int i;
@@ -41,6 +42,7 @@ int assembler_lookup_xray(const char *name)
    exit(1);
 }
 
+//! @brief Handle assembler set xray logic for xray.
 void assembler_set_xray(int n)
 {
    if (n < 0 || n >= (int)(8 * sizeof(g_xray_bits))) {
@@ -51,6 +53,7 @@ void assembler_set_xray(int n)
    g_xray_bits |= 1U << n;
 }
 
+//! @brief Handle assembler get xray logic for xray.
 int assembler_get_xray(int n)
 {
    if (n < 0 || n >= (int)(8 * sizeof(g_xray_bits))) {

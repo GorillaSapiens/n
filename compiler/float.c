@@ -34,6 +34,7 @@ typedef struct ParsedFloatValue {
    long long exp5;
 } ParsedFloatValue;
 
+//! @brief Handle parsed float init logic for compiler floating-point constants.
 static void parsed_float_init(ParsedFloatValue *value) {
    value->special = FLOAT_SPECIAL_FINITE;
    value->negative = false;
@@ -42,6 +43,7 @@ static void parsed_float_init(ParsedFloatValue *value) {
    value->exp5 = 0;
 }
 
+//! @brief Release float free storage owned by compiler floating-point constants.
 static void parsed_float_free(ParsedFloatValue *value) {
    if (!value) {
       return;
@@ -49,6 +51,7 @@ static void parsed_float_free(ParsedFloatValue *value) {
    bn_free(&value->sig);
 }
 
+//! @brief Handle string ieq logic for compiler floating-point constants.
 static bool string_ieq(const char *a, const char *b) {
    while (*a && *b) {
       if (tolower((unsigned char) *a) != tolower((unsigned char) *b)) {
@@ -60,6 +63,7 @@ static bool string_ieq(const char *a, const char *b) {
    return *a == '\0' && *b == '\0';
 }
 
+//! @brief Handle hex digit value logic for compiler floating-point constants.
 static int hex_digit_value(char c) {
    if (c >= '0' && c <= '9') {
       return c - '0';
@@ -73,6 +77,7 @@ static int hex_digit_value(char c) {
    return -1;
 }
 
+//! @brief Parse signed decimal text into the normalized representation used by compiler floating-point constants.
 static long long parse_signed_decimal_text(const char *text) {
    bool negative = false;
    unsigned long long value = 0;
@@ -122,6 +127,7 @@ static long long parse_signed_decimal_text(const char *text) {
    return (long long) value;
 }
 
+//! @brief Compute parsed float and update compiler floating-point constants state once prerequisite pass data is available.
 static void normalize_parsed_float(ParsedFloatValue *value) {
    if (!value || value->special != FLOAT_SPECIAL_FINITE || bn_is_zero(&value->sig)) {
       return;
@@ -138,6 +144,7 @@ static void normalize_parsed_float(ParsedFloatValue *value) {
    }
 }
 
+//! @brief Parse decimal float literal into the normalized representation used by compiler floating-point constants.
 static void parse_decimal_float_literal(const char *text, ParsedFloatValue *value) {
    const char *exp_mark = strchr(text, 'e');
    const char *exp_mark_upper = strchr(text, 'E');
@@ -189,6 +196,7 @@ static void parse_decimal_float_literal(const char *text, ParsedFloatValue *valu
    value->exp5 = exp10 - frac_digits;
 }
 
+//! @brief Parse hex float literal into the normalized representation used by compiler floating-point constants.
 static void parse_hex_float_literal(const char *text, ParsedFloatValue *value) {
    const char *p = text;
    const char *exp_ptr;
@@ -246,6 +254,7 @@ static void parse_hex_float_literal(const char *text, ParsedFloatValue *value) {
    value->exp5 = 0;
 }
 
+//! @brief Parse float literal into the normalized representation used by compiler floating-point constants.
 static void parse_float_literal(const char *text, ParsedFloatValue *value) {
    const char *p = text;
 
@@ -281,6 +290,7 @@ static void parse_float_literal(const char *text, ParsedFloatValue *value) {
    normalize_parsed_float(value);
 }
 
+//! @brief Handle set little-endian bit logic for compiler floating-point constants.
 static void set_le_bit(unsigned char *target, int bit_index, int bit_value) {
    int byte_index;
    int bit_in_byte;
@@ -299,6 +309,7 @@ static void set_le_bit(unsigned char *target, int bit_index, int bit_value) {
    }
 }
 
+//! @brief Handle set little-endian bits u64 logic for compiler floating-point constants.
 static void set_le_bits_u64(unsigned char *target, int start_bit, int bit_count, uint64_t value) {
    int i;
 
@@ -311,6 +322,7 @@ static void set_le_bits_u64(unsigned char *target, int start_bit, int bit_count,
    }
 }
 
+//! @brief Handle set little-endian bits all ones logic for compiler floating-point constants.
 static void set_le_bits_all_ones(unsigned char *target, int start_bit, int bit_count) {
    int i;
 
@@ -323,6 +335,7 @@ static void set_le_bits_all_ones(unsigned char *target, int start_bit, int bit_c
    }
 }
 
+//! @brief Extract set little-endian bits from bignat for compiler floating-point constants.
 static void set_le_bits_from_bignat(unsigned char *target, int start_bit, int bit_count, const BigNat *value) {
    int i;
 
@@ -337,6 +350,7 @@ static void set_le_bits_from_bignat(unsigned char *target, int start_bit, int bi
    }
 }
 
+//! @brief Handle increment little-endian field logic for compiler floating-point constants.
 static void increment_le_field(unsigned char *target, int start_bit, int bit_count) {
    int i;
    for (i = 0; i < bit_count; i++) {
@@ -352,6 +366,7 @@ static void increment_le_field(unsigned char *target, int start_bit, int bit_cou
    }
 }
 
+//! @brief Handle decrement little-endian field logic for compiler floating-point constants.
 static void decrement_le_field(unsigned char *target, int start_bit, int bit_count) {
    int i;
    for (i = 0; i < bit_count; i++) {
@@ -367,6 +382,7 @@ static void decrement_le_field(unsigned char *target, int start_bit, int bit_cou
    }
 }
 
+//! @brief Handle set little-endian exponent bias plus e logic for compiler floating-point constants.
 static void set_le_exponent_bias_plus_e(unsigned char *target, int start_bit, int expbits, long long e) {
    int i;
 
@@ -391,6 +407,7 @@ static void set_le_exponent_bias_plus_e(unsigned char *target, int start_bit, in
    }
 }
 
+//! @brief Handle reverse bytes logic for compiler floating-point constants.
 static void reverse_bytes(unsigned char *target, int size) {
    int i;
 
@@ -405,6 +422,7 @@ static void reverse_bytes(unsigned char *target, int size) {
    }
 }
 
+//! @brief Handle floor log2 ratio logic for compiler floating-point constants.
 static long long floor_log2_ratio(const BigNat *numerator, const BigNat *denominator) {
    long long q = (long long) bn_bit_length(numerator) - (long long) bn_bit_length(denominator);
 
@@ -415,6 +433,7 @@ static long long floor_log2_ratio(const BigNat *numerator, const BigNat *denomin
    return bn_cmp_shifted(denominator, numerator, (int) (-q)) > 0 ? q - 1 : q;
 }
 
+//! @brief Handle encode special value logic for compiler floating-point constants.
 static void encode_special_value(unsigned char *target, int mbits, int expbits, bool negative, FloatSpecialKind special) {
    if (negative) {
       set_le_bit(target, mbits + expbits, 1);
@@ -425,6 +444,7 @@ static void encode_special_value(unsigned char *target, int mbits, int expbits, 
    }
 }
 
+//! @brief Extract make little-endian float layout from parsed for compiler floating-point constants.
 static int make_le_float_layout_from_parsed(const ParsedFloatValue *value, unsigned char *target, int size, int expbits) {
    int total_bits;
    int mbits;
@@ -576,6 +596,7 @@ static int make_le_float_layout_from_parsed(const ParsedFloatValue *value, unsig
    }
 }
 
+//! @brief Parse float into the normalized representation used by compiler floating-point constants.
 double parse_float(const char *p) {
    ParsedFloatValue value;
    unsigned char bytes[8];
@@ -593,6 +614,7 @@ double parse_float(const char *p) {
    return ret;
 }
 
+//! @brief Handle ieee754 float expbits for size logic for compiler floating-point constants.
 static int ieee754_float_expbits_for_size(int size) {
    switch (size) {
       case 2: return 5;
@@ -603,6 +625,7 @@ static int ieee754_float_expbits_for_size(int size) {
    }
 }
 
+//! @brief Handle simple float expbits for size logic for compiler floating-point constants.
 static int simple_float_expbits_for_size(int size) {
    int total_bits;
    int expbits;
@@ -624,6 +647,7 @@ static int simple_float_expbits_for_size(int size) {
    return expbits > 0 ? expbits : -1;
 }
 
+//! @brief Handle pack little-endian float layout logic for compiler floating-point constants.
 static int pack_le_float_layout(const char *p, unsigned char *target, int size, int expbits) {
    ParsedFloatValue value;
    int ret;
@@ -634,6 +658,7 @@ static int pack_le_float_layout(const char *p, unsigned char *target, int size, 
    return ret;
 }
 
+//! @brief Handle pack little-endian ieee754 float logic for compiler floating-point constants.
 static int pack_le_ieee754_float(const char *p, unsigned char *target, int size) {
    int expbits = ieee754_float_expbits_for_size(size);
 
@@ -644,6 +669,7 @@ static int pack_le_ieee754_float(const char *p, unsigned char *target, int size)
    return pack_le_float_layout(p, target, size, expbits);
 }
 
+//! @brief Handle pack little-endian simple float logic for compiler floating-point constants.
 static int pack_le_simple_float(const char *p, unsigned char *target, int size) {
    int expbits = simple_float_expbits_for_size(size);
 
@@ -665,6 +691,7 @@ static const FloatStyleDef FLOAT_STYLE_TABLE[] = {
    { "simple",  simple_float_expbits_for_size,  pack_le_simple_float  },
 };
 
+//! @brief Find float style in compiler floating-point constants tables without transferring ownership.
 static const FloatStyleDef *find_float_style(const char *style) {
    int i;
 
@@ -681,10 +708,12 @@ static const FloatStyleDef *find_float_style(const char *style) {
    return NULL;
 }
 
+//! @brief Return whether float style is known in compiler floating-point constants.
 bool float_style_is_known(const char *style) {
    return find_float_style(style) != NULL;
 }
 
+//! @brief Handle float style expbits for size logic for compiler floating-point constants.
 int float_style_expbits_for_size(const char *style, int size) {
    const FloatStyleDef *def = find_float_style(style);
    if (!def) {
@@ -693,6 +722,7 @@ int float_style_expbits_for_size(const char *style, int size) {
    return def->expbits_for_size(size);
 }
 
+//! @brief Create little-endian float style for compiler floating-point constants.
 int make_le_float_style(const char *p, unsigned char *target, int size, const char *style) {
    const FloatStyleDef *def = find_float_style(style);
 
@@ -703,16 +733,19 @@ int make_le_float_style(const char *p, unsigned char *target, int size, const ch
    return def->pack_le(p, target, size);
 }
 
+//! @brief Handle negate little-endian float logic for compiler floating-point constants.
 void negate_le_float(unsigned char *target, int size) {
    target[size-1] |= 0x80;
 }
 
+//! @brief Create big-endian float style for compiler floating-point constants.
 int make_be_float_style(const char *p, unsigned char *target, int size, const char *style) {
    int ret = make_le_float_style(p, target, size, style);
    reverse_bytes(target, size);
    return ret;
 }
 
+//! @brief Handle negate big-endian float logic for compiler floating-point constants.
 void negate_be_float(unsigned char *target, int size) {
    (void) size;
    target[0] |= 0x80;

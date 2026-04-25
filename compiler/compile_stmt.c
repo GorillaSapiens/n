@@ -49,6 +49,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx);
 static void compile_return_stmt(ASTNode *node, Context *ctx);
 static void compile_asm_stmt(ASTNode *node, Context *ctx);
 
+//! @brief Return decl subitem declarator data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    if (!node) {
       return NULL;
@@ -59,6 +60,7 @@ static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    return node->children[0];
 }
 
+//! @brief Return decl subitem address spec data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    if (!node || strcmp(node->name, "decl_subitem") || node->count <= 1) {
       return NULL;
@@ -66,6 +68,7 @@ static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    return node->children[1];
 }
 
+//! @brief Return decl node declarator data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_node_declarator(const ASTNode *node) {
    if (!node || node->count < 3) {
       return NULL;
@@ -73,6 +76,7 @@ static const ASTNode *decl_node_declarator(const ASTNode *node) {
    return decl_subitem_declarator(node->children[2]);
 }
 
+//! @brief Return decl node address spec data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    if (!node || node->count < 3) {
       return NULL;
@@ -80,6 +84,7 @@ static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    return decl_subitem_address_spec(node->children[2]);
 }
 
+//! @brief Return address spec read expr data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_read_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -90,6 +95,7 @@ static const char *address_spec_read_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return address spec write expr data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_write_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -100,14 +106,17 @@ static const char *address_spec_write_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return whether address spec has read in compiler statement lowering.
 static bool address_spec_has_read(const ASTNode *node) {
    return address_spec_read_expr(node) != NULL;
 }
 
+//! @brief Return whether address spec has write in compiler statement lowering.
 static bool address_spec_has_write(const ASTNode *node) {
    return address_spec_write_expr(node) != NULL;
 }
 
+//! @brief Report address spec without ref diagnostics with the location/context expected by compiler statement lowering callers.
 static void warn_address_spec_without_ref(const ASTNode *node, const char *name) {
    if (!node) {
       error_unreachable("internal error: !node in %s %s:%d\n",
@@ -118,6 +127,7 @@ static void warn_address_spec_without_ref(const ASTNode *node, const char *name)
       node->file, node->line, node->column, name ? name : "?");
 }
 
+//! @brief Add loop labels to compiler statement lowering state, growing storage or preserving uniqueness as needed.
 static void push_loop_labels(const char *break_label, const char *continue_label) {
    if (loop_depth < (int)(sizeof(loop_break_stack) / sizeof(loop_break_stack[0]))) {
       loop_break_stack[loop_depth] = break_label;
@@ -126,6 +136,7 @@ static void push_loop_labels(const char *break_label, const char *continue_label
    }
 }
 
+//! @brief Handle pop loop labels logic for compiler statement lowering.
 static void pop_loop_labels(void) {
    if (loop_depth > 0) {
       loop_depth--;
@@ -134,14 +145,17 @@ static void pop_loop_labels(void) {
    }
 }
 
+//! @brief Return current break label data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *current_break_label(void) {
    return loop_depth > 0 ? loop_break_stack[loop_depth - 1] : NULL;
 }
 
+//! @brief Return current continue label data used by compiler statement lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *current_continue_label(void) {
    return loop_depth > 0 ? loop_continue_stack[loop_depth - 1] : NULL;
 }
 
+//! @brief Add named loop labels to compiler statement lowering state, growing storage or preserving uniqueness as needed.
 static void push_named_loop_labels(const char *name, const char *break_label, const char *continue_label) {
    if (!name) {
       return;
@@ -154,6 +168,7 @@ static void push_named_loop_labels(const char *name, const char *break_label, co
    }
 }
 
+//! @brief Handle pop named loop labels logic for compiler statement lowering.
 static void pop_named_loop_labels(void) {
    if (named_loop_depth > 0) {
       named_loop_depth--;
@@ -163,6 +178,7 @@ static void pop_named_loop_labels(void) {
    }
 }
 
+//! @brief Find named break label in compiler statement lowering tables without transferring ownership.
 static const char *lookup_named_break_label(const char *name) {
    if (!name) {
       return NULL;
@@ -175,6 +191,7 @@ static const char *lookup_named_break_label(const char *name) {
    return NULL;
 }
 
+//! @brief Find named continue label in compiler statement lowering tables without transferring ownership.
 static const char *lookup_named_continue_label(const char *name) {
    if (!name) {
       return NULL;
@@ -187,6 +204,7 @@ static const char *lookup_named_continue_label(const char *name) {
    return NULL;
 }
 
+//! @brief Lower if stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_if_stmt(ASTNode *node, Context *ctx) {
    const char *false_label = next_label("if_false");
    const char *end_label = next_label("if_end");
@@ -214,6 +232,7 @@ static void compile_if_stmt(ASTNode *node, Context *ctx) {
    free((void *) end_label);
 }
 
+//! @brief Lower while stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_while_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("while_start");
    const char *end_label = next_label("while_end");
@@ -256,6 +275,7 @@ static void compile_while_stmt(ASTNode *node, Context *ctx) {
    free((void *) end_label);
 }
 
+//! @brief Lower for stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_for_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("for_start");
    const char *step_label = next_label("for_step");
@@ -322,10 +342,12 @@ static void compile_for_stmt(ASTNode *node, Context *ctx) {
    free((void *) end_label);
 }
 
+//! @brief Lower expr to return slot from AST/semantic state into generated assembly or linker-visible metadata.
 static bool compile_expr_to_return_slot(ASTNode *expr, Context *ctx, ContextEntry *ret) {
    return compile_expr_to_slot(expr, ctx, ret);
 }
 
+//! @brief Lower break stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_break_stmt(ASTNode *node, Context *ctx) {
    const char *target = current_break_label();
 
@@ -345,6 +367,7 @@ static void compile_break_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp %s\n", target);
 }
 
+//! @brief Lower continue stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_continue_stmt(ASTNode *node, Context *ctx) {
    const char *target = current_continue_label();
 
@@ -364,6 +387,7 @@ static void compile_continue_stmt(ASTNode *node, Context *ctx) {
    emit(&es_code, "    jmp %s\n", target);
 }
 
+//! @brief Handle predeclare local decl item logic for compiler statement lowering.
 static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
@@ -431,6 +455,7 @@ static void predeclare_local_decl_item(ASTNode *node, Context *ctx) {
 
 
 
+//! @brief Handle predeclare statement list logic for compiler statement lowering.
 void predeclare_statement_list(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;
@@ -483,6 +508,7 @@ void predeclare_statement_list(ASTNode *node, Context *ctx) {
    }
 }
 
+//! @brief Lower local decl item from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_local_decl_item(ASTNode *node, Context *ctx) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
@@ -639,6 +665,7 @@ static void compile_local_decl_item(ASTNode *node, Context *ctx) {
 
 
 
+//! @brief Lower do stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_do_stmt(ASTNode *node, Context *ctx) {
    const char *start_label = next_label("do_start");
    const char *cond_label = next_label("do_cond");
@@ -675,6 +702,7 @@ static void compile_do_stmt(ASTNode *node, Context *ctx) {
    free((void *) end_label);
 }
 
+//! @brief Lower label stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_label_stmt(ASTNode *node, Context *ctx) {
    (void) ctx;
    emit(&es_code, "@user_%s:\n", node->children[0]->strval);
@@ -739,6 +767,7 @@ static void compile_label_stmt(ASTNode *node, Context *ctx) {
    }
 }
 
+//! @brief Lower goto stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_goto_stmt(ASTNode *node, Context *ctx) {
    (void) ctx;
    if (node->count > 0 && !is_empty(node->children[0])) {
@@ -746,6 +775,7 @@ static void compile_goto_stmt(ASTNode *node, Context *ctx) {
    }
 }
 
+//! @brief Lower switch stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    const char *named_loop = pending_loop_label_name;
    ASTNode *expr;
@@ -1033,6 +1063,7 @@ static void compile_switch_stmt(ASTNode *node, Context *ctx) {
    free((void *) end_label);
 }
 
+//! @brief Lower return stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_return_stmt(ASTNode *node, Context *ctx) {
    ContextEntry *ret = (ContextEntry *) set_get(ctx->vars, "$$");
    ASTNode *expr = (node->count > 0) ? node->children[0] : NULL;
@@ -1053,6 +1084,7 @@ static void compile_return_stmt(ASTNode *node, Context *ctx) {
 }
 
 
+//! @brief Lower asm stmt from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_asm_stmt(ASTNode *node, Context *ctx) {
    (void) ctx;
 
@@ -1070,6 +1102,7 @@ static void compile_asm_stmt(ASTNode *node, Context *ctx) {
 }
 
 
+//! @brief Lower statement list from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_statement_list(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;

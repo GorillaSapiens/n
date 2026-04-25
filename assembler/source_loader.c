@@ -58,6 +58,7 @@ typedef struct expand_ctx {
    int macro_depth;
 } expand_ctx_t;
 
+//! @brief Handle strlist init logic for assembler source/include loader.
 static void strlist_init(strlist_t *lst)
 {
    lst->items = NULL;
@@ -65,6 +66,7 @@ static void strlist_init(strlist_t *lst)
    lst->cap = 0;
 }
 
+//! @brief Release free storage owned by assembler source/include loader.
 static void strlist_free(strlist_t *lst)
 {
    int i;
@@ -78,6 +80,7 @@ static void strlist_free(strlist_t *lst)
    lst->cap = 0;
 }
 
+//! @brief Handle strlist push logic for assembler source/include loader.
 static void strlist_push(strlist_t *lst, const char *s)
 {
    if (lst->count == lst->cap) {
@@ -98,12 +101,14 @@ static void strlist_push(strlist_t *lst, const char *s)
    lst->items[lst->count++] = xstrdup(s);
 }
 
+//! @brief Handle macro table init logic for assembler source/include loader.
 static void macro_table_init(macro_table_t *tab)
 {
    tab->head = NULL;
    tab->next_expansion_id = 1;
 }
 
+//! @brief Release table free storage owned by assembler source/include loader.
 static void macro_table_free(macro_table_t *tab)
 {
    macro_def_t *m;
@@ -124,11 +129,13 @@ static void macro_table_free(macro_table_t *tab)
    tab->head = NULL;
 }
 
+//! @brief Handle def table init logic for assembler source/include loader.
 static void def_table_init(def_table_t *tab)
 {
    tab->head = NULL;
 }
 
+//! @brief Release table free storage owned by assembler source/include loader.
 static void def_table_free(def_table_t *tab)
 {
    def_alias_t *d;
@@ -145,6 +152,7 @@ static void def_table_free(def_table_t *tab)
    tab->head = NULL;
 }
 
+//! @brief Return def find data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static def_alias_t *def_find(def_table_t *tab, const char *name)
 {
    def_alias_t *d;
@@ -157,6 +165,7 @@ static def_alias_t *def_find(def_table_t *tab, const char *name)
    return NULL;
 }
 
+//! @brief Handle def add logic for assembler source/include loader.
 static int def_add(def_table_t *tab, const char *name, const char *replacement, const char *file, int line)
 {
    def_alias_t *d;
@@ -183,6 +192,7 @@ static int def_add(def_table_t *tab, const char *name, const char *replacement, 
    return 1;
 }
 
+//! @brief Return macro find data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static macro_def_t *macro_find(macro_table_t *tab, const char *name)
 {
    macro_def_t *m;
@@ -195,6 +205,7 @@ static macro_def_t *macro_find(macro_table_t *tab, const char *name)
    return NULL;
 }
 
+//! @brief Return macro create data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static macro_def_t *macro_create(const char *name, const char *file, int line)
 {
    macro_def_t *m;
@@ -212,12 +223,14 @@ static macro_def_t *macro_create(const char *name, const char *file, int line)
    return m;
 }
 
+//! @brief Handle macro add logic for assembler source/include loader.
 static void macro_add(macro_table_t *tab, macro_def_t *m)
 {
    m->next = tab->head;
    tab->head = m;
 }
 
+//! @brief Copy the directory component of a path into a bounded buffer.
 static void path_dirname(const char *path, char *out_dir, size_t out_sz)
 {
    const char *slash;
@@ -240,11 +253,13 @@ static void path_dirname(const char *path, char *out_dir, size_t out_sz)
    out_dir[len] = '\0';
 }
 
+//! @brief Return whether path is absolute in assembler source/include loader.
 static int path_is_absolute(const char *path)
 {
    return path[0] == '/';
 }
 
+//! @brief Handle path join logic for assembler source/include loader.
 static void path_join(const char *base_dir, const char *child, char *out_path, size_t out_sz)
 {
    if (path_is_absolute(child)) {
@@ -260,16 +275,19 @@ static void path_join(const char *base_dir, const char *child, char *out_path, s
 
 static strlist_t g_include_dirs = { NULL, 0, 0 };
 
+//! @brief Handle source loader add include dir logic for assembler source/include loader.
 void source_loader_add_include_dir(const char *dir)
 {
    strlist_push(&g_include_dirs, dir);
 }
 
+//! @brief Handle source loader clear include dirs logic for assembler source/include loader.
 void source_loader_clear_include_dirs(void)
 {
    strlist_free(&g_include_dirs);
 }
 
+//! @brief Compute include path and update assembler source/include loader state once prerequisite pass data is available.
 static int resolve_include_path(const char *base_dir, const char *include_name, char *resolved_path, size_t resolved_path_sz)
 {
    FILE *fp;
@@ -299,6 +317,7 @@ static int resolve_include_path(const char *base_dir, const char *include_name, 
    return 1;
 }
 
+//! @brief Return skip ws data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *skip_ws(const char *p)
 {
    while (*p == ' ' || *p == '\t' || *p == '\r')
@@ -306,22 +325,26 @@ static const char *skip_ws(const char *p)
    return p;
 }
 
+//! @brief Return whether ident start applies in assembler source/include loader.
 static int is_ident_start(int c)
 {
    return isalpha(c) || c == '_' || c == '@' || c == '?';
 }
 
+//! @brief Return whether ident char applies in assembler source/include loader.
 static int is_ident_char(int c)
 {
    return isalnum(c) || c == '_' || c == '@' || c == '?';
 }
 
+//! @brief Emit marker for assembler source/include loader diagnostics or output files.
 static int emit_marker(FILE *out_fp, const char *path, long line_no)
 {
    return fprintf(out_fp, "@@FILE %ld %s\n", line_no, path) > 0;
 }
 
 
+//! @brief Handle rtrim inplace logic for assembler source/include loader.
 static void rtrim_inplace(char *s)
 {
    size_t n;
@@ -331,6 +354,7 @@ static void rtrim_inplace(char *s)
       s[--n] = '\0';
 }
 
+//! @brief Parse def line into the normalized representation used by assembler source/include loader.
 static int parse_def_line(const char *line, char *name_out, size_t name_out_sz, char *repl_out, size_t repl_out_sz)
 {
    const char *p;
@@ -372,6 +396,7 @@ static int parse_def_line(const char *line, char *name_out, size_t name_out_sz, 
    return repl_out[0] != '\0';
 }
 
+//! @brief Handle rewrite with defs logic for assembler source/include loader.
 static int rewrite_with_defs(def_table_t *defs, const char *line, char *out, size_t out_sz)
 {
    size_t oi;
@@ -432,6 +457,7 @@ static int rewrite_with_defs(def_table_t *defs, const char *line, char *out, siz
    return 1;
 }
 
+//! @brief Parse addrsize keyword into the normalized representation used by assembler source/include loader.
 static int parse_addrsize_keyword(const char *text, size_t len)
 {
    if (len == 2 && !strncasecmp(text, "zp", 2))
@@ -441,6 +467,7 @@ static int parse_addrsize_keyword(const char *text, size_t len)
    return 0;
 }
 
+//! @brief Handle maybe emit addrsize directive logic for assembler source/include loader.
 static int maybe_emit_addrsize_directive(FILE *out_fp, const char *line)
 {
    const char *p;
@@ -554,6 +581,7 @@ static int maybe_emit_addrsize_directive(FILE *out_fp, const char *line)
    return emitted;
 }
 
+//! @brief Emit normalized line for assembler source/include loader diagnostics or output files.
 static int emit_normalized_line(FILE *out_fp, def_table_t *defs, const char *line)
 {
    int rc;
@@ -577,6 +605,7 @@ static int emit_normalized_line(FILE *out_fp, def_table_t *defs, const char *lin
    return 1;
 }
 
+//! @brief Parse include line into the normalized representation used by assembler source/include loader.
 static int parse_include_line(const char *line, char *included_path, size_t included_path_sz)
 {
    const char *p;
@@ -624,6 +653,7 @@ static int parse_include_line(const char *line, char *included_path, size_t incl
    return *p == '\0' || *p == '\n';
 }
 
+//! @brief Parse macro header into the normalized representation used by assembler source/include loader.
 static int parse_macro_header(const char *line,
                               char *name_out,
                               size_t name_out_sz,
@@ -702,6 +732,7 @@ static int parse_macro_header(const char *line,
    return 1;
 }
 
+//! @brief Return whether endm line applies in assembler source/include loader.
 static int is_endm_line(const char *line)
 {
    const char *p;
@@ -715,6 +746,7 @@ static int is_endm_line(const char *line)
    return *p == '\0' || *p == '\n' || *p == '\r' || *p == ';';
 }
 
+//! @brief Parse invocation into the normalized representation used by assembler source/include loader.
 static int parse_invocation(const char *line,
                             char *name_out,
                             size_t name_out_sz,
@@ -796,6 +828,7 @@ static int parse_invocation(const char *line,
    return 1;
 }
 
+//! @brief Return param lookup data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *param_lookup(const macro_def_t *m, const strlist_t *args, const char *name)
 {
    int i;
@@ -811,6 +844,7 @@ static const char *param_lookup(const macro_def_t *m, const strlist_t *args, con
    return NULL;
 }
 
+//! @brief Return rewrite macro line data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *rewrite_macro_line(const macro_def_t *m,
                                 const strlist_t *args,
                                 const char *line,
@@ -867,6 +901,7 @@ static int expand_text_lines(expand_ctx_t *ctx,
                              const strlist_t *lines,
                              FILE *out_fp);
 
+//! @brief Handle expand macro invocation logic for assembler source/include loader.
 static int expand_macro_invocation(expand_ctx_t *ctx,
                                    const macro_def_t *m,
                                    const strlist_t *args,
@@ -918,6 +953,7 @@ static int expand_macro_invocation(expand_ctx_t *ctx,
    return ok;
 }
 
+//! @brief Handle expand text lines logic for assembler source/include loader.
 static int expand_text_lines(expand_ctx_t *ctx,
                              const char *logical_file,
                              int logical_line,
@@ -959,6 +995,7 @@ static int expand_text_lines(expand_ctx_t *ctx,
    return 1;
 }
 
+//! @brief Read macro definition from the current input position and advance the reader on success.
 static int read_macro_definition(FILE *in_fp,
                                  expand_ctx_t *ctx,
                                  const char *cur_file,
@@ -997,6 +1034,7 @@ static int read_macro_definition(FILE *in_fp,
    return 0;
 }
 
+//! @brief Handle expand file recursive logic for assembler source/include loader.
 static int expand_file_recursive(expand_ctx_t *ctx,
                                  const char *path,
                                  FILE *out_fp,
@@ -1103,6 +1141,7 @@ static int expand_file_recursive(expand_ctx_t *ctx,
    return 1;
 }
 
+//! @brief Return source loader open expanded data used by assembler source/include loader; returned pointers alias existing storage unless explicitly allocated by the function name.
 FILE *source_loader_open_expanded(const char *root_path)
 {
    FILE *tmp_fp;

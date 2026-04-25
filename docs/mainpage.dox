@@ -10,6 +10,9 @@
 //! those tools because they are installed or used by end-to-end builds, but the
 //! public tool modules below are the primary entry points for maintainers.
 //!
+//! User guides:
+//! - @ref tool_usage
+//!
 //! Tool modules:
 //! - @ref compiler
 //! - @ref assembler

@@ -46,6 +46,7 @@ static int pending_global_init_max_size = 0;
 static char runtime_global_init_symbol_buf[64];
 static bool runtime_global_init_symbol_ready = false;
 
+//! @brief Return whether expr is ternary node in compiler initializer lowering.
 static bool expr_is_ternary_node(const ASTNode *expr) {
    if (!expr || strcmp(expr->name, "expr")) {
       return false;
@@ -56,6 +57,7 @@ static bool expr_is_ternary_node(const ASTNode *expr) {
    return !strcmp(expr->children[0]->name, "question_expr");
 }
 
+//! @brief Return expr ternary test data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *expr_ternary_test(ASTNode *expr) {
    ASTNode *question;
    if (!expr_is_ternary_node(expr)) {
@@ -65,6 +67,7 @@ static ASTNode *expr_ternary_test(ASTNode *expr) {
    return question->count > 0 ? question->children[0] : NULL;
 }
 
+//! @brief Return expr ternary true data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *expr_ternary_true(ASTNode *expr) {
    ASTNode *question;
    if (!expr_is_ternary_node(expr)) {
@@ -74,6 +77,7 @@ static ASTNode *expr_ternary_true(ASTNode *expr) {
    return question->count > 1 ? question->children[1] : NULL;
 }
 
+//! @brief Return expr ternary false data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *expr_ternary_false(ASTNode *expr) {
    ASTNode *question;
    if (!expr_is_ternary_node(expr)) {
@@ -82,6 +86,7 @@ static ASTNode *expr_ternary_false(ASTNode *expr) {
    question = expr->children[0];
    return question->count > 2 ? question->children[2] : NULL;
 }
+//! @brief Return whether type is aggregate in compiler initializer lowering.
 bool type_is_aggregate(const ASTNode *type) {
    const ASTNode *node;
    if (!type) {
@@ -91,6 +96,7 @@ bool type_is_aggregate(const ASTNode *type) {
    return node && (!strcmp(node->name, "struct_decl_stmt") || !strcmp(node->name, "union_decl_stmt"));
 }
 
+//! @brief Return whether initializer is list in compiler initializer lowering.
 bool initializer_is_list(const ASTNode *init) {
    if (!init || is_empty(init)) {
       return false;
@@ -98,6 +104,7 @@ bool initializer_is_list(const ASTNode *init) {
    return !strcmp(init->name, "expr_list") || !strcmp(init->name, "named_expr");
 }
 
+//! @brief Handle initializer item count logic for compiler initializer lowering.
 static int initializer_item_count(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return 0;
@@ -112,6 +119,7 @@ static int initializer_item_count(const ASTNode *node) {
    return 1;
 }
 
+//! @brief Handle initializer collect items logic for compiler initializer lowering.
 static void initializer_collect_items(const ASTNode *node, const ASTNode **items, int *index) {
    if (!node || is_empty(node)) {
       return;
@@ -125,6 +133,7 @@ static void initializer_collect_items(const ASTNode *node, const ASTNode **items
    items[(*index)++] = node;
 }
 
+//! @brief Return scalar braced initializer value data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *scalar_braced_initializer_value(const ASTNode *uinit, const ASTNode *type, const ASTNode *declarator) {
    const ASTNode *item = NULL;
    const ASTNode *items[1] = { NULL };
@@ -151,6 +160,7 @@ static const ASTNode *scalar_braced_initializer_value(const ASTNode *uinit, cons
    return item->children[1];
 }
 
+//! @brief Handle scalar storage size logic for compiler initializer lowering.
 static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, int total_size) {
    if (total_size > 0) {
       return total_size;
@@ -161,6 +171,7 @@ static int scalar_storage_size(const ASTNode *type, const ASTNode *declarator, i
    return get_size(type_name_from_node(type));
 }
 
+//! @brief Handle init const truthy logic for compiler initializer lowering.
 static bool init_const_truthy(const InitConstValue *value) {
    if (!value) {
       return false;
@@ -178,6 +189,7 @@ static bool init_const_truthy(const InitConstValue *value) {
    return false;
 }
 
+//! @brief Handle constant shift width bits logic for compiler initializer lowering.
 static int constant_shift_width_bits(ASTNode *expr) {
    int size = expr_value_size(expr, NULL);
 
@@ -190,6 +202,7 @@ static int constant_shift_width_bits(ASTNode *expr) {
    return size * 8;
 }
 
+//! @brief Handle diagnose constant shift count logic for compiler initializer lowering.
 void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits) {
    InitConstValue value = {0};
 
@@ -211,6 +224,7 @@ void diagnose_constant_shift_count(ASTNode *count_expr, int lhs_bits) {
    }
 }
 
+//! @brief Handle arithmetic right shift ll logic for compiler initializer lowering.
 static long long arithmetic_right_shift_ll(long long value, unsigned int count) {
    unsigned long long bits;
 
@@ -228,6 +242,7 @@ static long long arithmetic_right_shift_ll(long long value, unsigned int count) 
    return (long long) (~((~bits) >> count));
 }
 
+//! @brief Handle eval constant cast expr logic for compiler initializer lowering.
 static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out) {
    InitConstValue inner = {0};
    const ASTNode *target_type = cast_expr_target_type(expr);
@@ -308,6 +323,7 @@ static bool eval_constant_cast_expr(ASTNode *expr, InitConstValue *out) {
    return true;
 }
 
+//! @brief Handle eval constant initializer expr logic for compiler initializer lowering.
 bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    InitConstValue lhs = {0};
    InitConstValue rhs = {0};
@@ -649,6 +665,7 @@ bool eval_constant_initializer_expr(ASTNode *expr, InitConstValue *out) {
    return false;
 }
 
+//! @brief Handle encode integer initializer value logic for compiler initializer lowering.
 bool encode_integer_initializer_value(long long value, unsigned char *buf, int size, const ASTNode *type) {
    char tmp[128];
    unsigned long long mag;
@@ -674,6 +691,7 @@ bool encode_integer_initializer_value(long long value, unsigned char *buf, int s
    return true;
 }
 
+//! @brief Handle encode init const int value logic for compiler initializer lowering.
 bool encode_init_const_int_value(const InitConstValue *value, unsigned char *buf, int size, const ASTNode *type) {
    if (!value) {
       return false;
@@ -692,6 +710,7 @@ bool encode_init_const_int_value(const InitConstValue *value, unsigned char *buf
    return encode_integer_initializer_value(value->i, buf, size, type);
 }
 
+//! @brief Handle encode float initializer value logic for compiler initializer lowering.
 bool encode_float_initializer_value(double value, unsigned char *buf, int size, const ASTNode *type) {
    char tmp[256];
    const char *style;
@@ -712,6 +731,7 @@ bool encode_float_initializer_value(double value, unsigned char *buf, int size, 
    return true;
 }
 
+//! @brief Emit symbol address initializer for compiler initializer lowering diagnostics or output files.
 static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNode *type, const char *symbol, long long addend) {
    if (!es || !type || !symbol || size <= 0) {
       return false;
@@ -728,6 +748,7 @@ static bool emit_symbol_address_initializer(EmitSink *es, int size, const ASTNod
    return true;
 }
 
+//! @brief Emit initializer bytes line for compiler initializer lowering diagnostics or output files.
 void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int size) {
    emit(es, "\t.byte $%02x", bytes[0]);
    for (int i = 1; i < size; i++) {
@@ -736,6 +757,7 @@ void emit_initializer_bytes_line(EmitSink *es, const unsigned char *bytes, int s
    emit(es, "\n");
 }
 
+//! @brief Emit global initializer for compiler initializer lowering diagnostics or output files.
 bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size) {
    ASTNode *uexpr = (ASTNode *) unwrap_expr_node(expression);
    unsigned char *bytes;
@@ -773,6 +795,7 @@ bool emit_global_initializer(EmitSink *es, const ASTNode *type, const ASTNode *d
    return false;
 }
 
+//! @brief Emit sink append for compiler initializer lowering diagnostics or output files.
 void emit_sink_append(EmitSink *dst, const EmitSink *src) {
    if (!dst || !src) {
       return;
@@ -782,6 +805,7 @@ void emit_sink_append(EmitSink *dst, const EmitSink *src) {
    }
 }
 
+//! @brief Add pending global init to compiler initializer lowering state, growing storage or preserving uniqueness as needed.
 void remember_pending_global_init(const char *name, const char *symbol, const ASTNode *type, const ASTNode *declarator, ASTNode *expression, int size, bool is_zeropage, bool is_absolute_ref, const char *read_expr, const char *write_expr) {
    PendingGlobalInit *items;
    PendingGlobalInit *entry;
@@ -810,6 +834,7 @@ void remember_pending_global_init(const char *name, const char *symbol, const AS
    }
 }
 
+//! @brief Handle hash runtime init name logic for compiler initializer lowering.
 static unsigned long hash_runtime_init_name(const char *text) {
    unsigned long hash = 2166136261u;
 
@@ -825,6 +850,7 @@ static unsigned long hash_runtime_init_name(const char *text) {
    return hash;
 }
 
+//! @brief Return runtime global init symbol data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *runtime_global_init_symbol(void) {
    if (!runtime_global_init_symbol_ready) {
       unsigned long hash = hash_runtime_init_name(root_filename ? root_filename : "<stdin>");
@@ -834,6 +860,7 @@ static const char *runtime_global_init_symbol(void) {
    return runtime_global_init_symbol_buf;
 }
 
+//! @brief Emit runtime global init function for compiler initializer lowering diagnostics or output files.
 void emit_runtime_global_init_function(void) {
    Context ctx;
    const char *sym;
@@ -902,11 +929,13 @@ void emit_runtime_global_init_function(void) {
    emit(&es_code, ".endproc\n");
 }
 
+//! @brief Return aggregate initializer target name data used by compiler initializer lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *aggregate_initializer_target_name(const ASTNode *type) {
    const char *name = type ? type_name_from_node(type) : NULL;
    return name ? name : "aggregate";
 }
 
+//! @brief Lower initializer to frame pointer from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size) {
    const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
    int size = scalar_storage_size(type, declarator, total_size);
@@ -1021,6 +1050,7 @@ bool compile_initializer_to_fp(const ASTNode *init, Context *ctx, const ASTNode 
    return false;
 }
 
+//! @brief Handle build initializer bytes logic for compiler initializer lowering.
 static bool build_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *init, const ASTNode *type, const ASTNode *declarator, int total_size) {
    const ASTNode *uinit = unwrap_expr_node((ASTNode *) init);
    int size = scalar_storage_size(type, declarator, total_size);

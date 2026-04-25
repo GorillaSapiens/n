@@ -41,6 +41,7 @@ static int cast_expr_target_size(const ASTNode *expr);
 
 static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr);
 
+//! @brief Return lvalue base identifier node data used by compile expr slot; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
    if (!base) {
       return NULL;
@@ -57,6 +58,7 @@ static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
    return NULL;
 }
 
+//! @brief Return expr lvalue base identifier node data used by compile expr slot; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr || is_empty(expr)) {
@@ -71,6 +73,7 @@ static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
    return lvalue_base_identifier_node(expr->children[0]);
 }
 
+//! @brief Return expr bare identifier node data used by compile expr slot; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *expr_bare_identifier_node(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr || is_empty(expr)) {
@@ -89,6 +92,7 @@ static const ASTNode *expr_bare_identifier_node(ASTNode *expr) {
 }
 
 
+//! @brief Lower constant expression to slot from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    InitConstValue value = {0};
    unsigned char *bytes;
@@ -136,15 +140,18 @@ bool compile_constant_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *ds
 
 
 
+//! @brief Return whether declarator is not pointer in compile expr slot.
 static bool declarator_is_not_pointer(const ASTNode *declarator) {
    return declarator_pointer_depth(declarator) == 0;
 }
 
+//! @brief Return whether type node is plain void in compile expr slot.
 static bool type_node_is_plain_void(const ASTNode *type, const ASTNode *declarator) {
    const char *name = type_name_from_node(type);
    return name && !strcmp(name, "void") && declarator_is_not_pointer(declarator);
 }
 
+//! @brief Return whether expr is plain void cast in compile expr slot.
 static bool expr_is_plain_void_cast(ASTNode *expr) {
    const ASTNode *target_type;
    const ASTNode *target_decl;
@@ -158,6 +165,7 @@ static bool expr_is_plain_void_cast(ASTNode *expr) {
    return type_node_is_plain_void(target_type, target_decl);
 }
 
+//! @brief Handle cast expression target size logic for compile expr slot.
 static int cast_expr_target_size(const ASTNode *expr) {
    const ASTNode *type = cast_expr_target_type(expr);
    const ASTNode *declarator = cast_expr_target_declarator(expr);
@@ -174,6 +182,7 @@ static int cast_expr_target_size(const ASTNode *expr) {
    return size;
 }
 
+//! @brief Report unknown identifier node diagnostics with the location/context expected by compile expr slot callers.
 static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *fallback, const char *ident) {
    error_user("[%s:%d.%d] unknown identifier '%s'",
          idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
@@ -182,6 +191,7 @@ static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *
          ident ? ident : "<unknown>");
 }
 
+//! @brief Handle sizeof operand size logic for compile expr slot.
 static int sizeof_operand_size(const ASTNode *operand, Context *ctx) {
    operand = unwrap_expr_node(operand);
    if (!operand || is_empty(operand)) {
@@ -247,6 +257,7 @@ static int sizeof_operand_size(const ASTNode *operand, Context *ctx) {
 
 
 
+//! @brief Lower expr to slot from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 

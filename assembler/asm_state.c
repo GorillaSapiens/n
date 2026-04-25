@@ -10,11 +10,13 @@
 #include "asm_state.h"
 #include "util.h"
 
+//! @brief Emit loc for assembler symbol, scope, and segment state diagnostics or output files.
 static void print_loc(FILE *fp, const stmt_t *stmt)
 {
    fprintf(fp, "%s:%d", stmt->file ? stmt->file : "<input>", stmt->line);
 }
 
+//! @brief Handle asm error logic for assembler symbol, scope, and segment state.
 void asm_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt, ...)
 {
    va_list ap;
@@ -31,6 +33,7 @@ void asm_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt, ...)
    fprintf(stderr, "\n");
 }
 
+//! @brief Handle asm warning logic for assembler symbol, scope, and segment state.
 void asm_warning(const stmt_t *stmt, const char *fmt, ...)
 {
    va_list ap;
@@ -45,6 +48,7 @@ void asm_warning(const stmt_t *stmt, const char *fmt, ...)
    fprintf(stderr, "\n");
 }
 
+//! @brief Return unquote string data used by assembler symbol, scope, and segment state; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *unquote_string(const char *s)
 {
    size_t n;
@@ -67,6 +71,7 @@ static char *unquote_string(const char *s)
 
    return xstrdup(s);
 }
+//! @brief Release imports storage owned by assembler symbol, scope, and segment state.
 static void free_imports(import_name_t *head)
 {
    import_name_t *p;
@@ -79,6 +84,7 @@ static void free_imports(import_name_t *head)
    }
 }
 
+//! @brief Find import in assembler symbol, scope, and segment state tables without transferring ownership.
 static import_name_t *find_import(asm_context_t *ctx, const char *name)
 {
    import_name_t *p;
@@ -91,6 +97,7 @@ static import_name_t *find_import(asm_context_t *ctx, const char *name)
    return NULL;
 }
 
+//! @brief Find import const in assembler symbol, scope, and segment state tables without transferring ownership.
 static const import_name_t *find_import_const(const asm_context_t *ctx, const char *name)
 {
    const import_name_t *p;
@@ -103,12 +110,14 @@ static const import_name_t *find_import_const(const asm_context_t *ctx, const ch
    return NULL;
 }
 
+//! @brief Return whether import is zero-page in assembler symbol, scope, and segment state.
 int import_is_zp(const asm_context_t *ctx, const char *name)
 {
    const import_name_t *p = find_import_const(ctx, name);
    return p ? p->addr_size_zp : 0;
 }
 
+//! @brief Release weaks storage owned by assembler symbol, scope, and segment state.
 static void free_weaks(weak_name_t *head)
 {
    weak_name_t *p;
@@ -121,6 +130,7 @@ static void free_weaks(weak_name_t *head)
    }
 }
 
+//! @brief Find weak in assembler symbol, scope, and segment state tables without transferring ownership.
 static weak_name_t *find_weak(asm_context_t *ctx, const char *name)
 {
    weak_name_t *p;
@@ -133,6 +143,7 @@ static weak_name_t *find_weak(asm_context_t *ctx, const char *name)
    return NULL;
 }
 
+//! @brief Handle asm add weak logic for assembler symbol, scope, and segment state.
 void asm_add_weak(asm_context_t *ctx, const stmt_t *stmt, const char *name)
 {
    weak_name_t *p;
@@ -154,6 +165,7 @@ void asm_add_weak(asm_context_t *ctx, const stmt_t *stmt, const char *name)
    ctx->weaks = p;
 }
 
+//! @brief Return whether asm symbol is weak in assembler symbol, scope, and segment state.
 int asm_symbol_is_weak(const asm_context_t *ctx, const char *name)
 {
    const weak_name_t *p;
@@ -166,24 +178,28 @@ int asm_symbol_is_weak(const asm_context_t *ctx, const char *name)
    return 0;
 }
 
+//! @brief Handle directive name implies zero-page logic for assembler symbol, scope, and segment state.
 static int directive_name_implies_zp(const char *name)
 {
    return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp") ||
                    !strcmp(name, ".zpimport") || !strcmp(name, ".zpexport") || !strcmp(name, ".zpglobal"));
 }
 
+//! @brief Return whether directive is import family in assembler symbol, scope, and segment state.
 static int directive_is_import_family(const char *name)
 {
    return name && (!strcmp(name, ".import") || !strcmp(name, ".importzp") || !strcmp(name, ".global") || !strcmp(name, ".globalzp") ||
                    !strcmp(name, ".zpimport") || !strcmp(name, ".zpglobal"));
 }
 
+//! @brief Return whether directive is export family in assembler symbol, scope, and segment state.
 static int directive_is_export_family(const char *name)
 {
    return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp") ||
                    !strcmp(name, ".zpglobal") || !strcmp(name, ".zpexport"));
 }
 
+//! @brief Add import to assembler symbol, scope, and segment state state, growing storage or preserving uniqueness as needed.
 static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name, int addr_size_zp)
 {
    import_name_t *p;
@@ -209,6 +225,7 @@ static void add_import(asm_context_t *ctx, const stmt_t *stmt, const char *name,
    ctx->imports = p;
 }
 
+//! @brief Handle segment name matches logic for assembler symbol, scope, and segment state.
 static int segment_name_matches(const char *name, const char *base)
 {
    size_t n;
@@ -220,6 +237,7 @@ static int segment_name_matches(const char *name, const char *base)
    return strncasecmp(name, base, n) == 0 && (name[n] == '\0' || name[n] == '.');
 }
 
+//! @brief Handle segment name to o65 logic for assembler symbol, scope, and segment state.
 int segment_name_to_o65(const char *name)
 {
    if (!name || !strcasecmp(name, DEFAULT_SEGMENT_NAME) || segment_name_matches(name, "TEXT") || segment_name_matches(name, "CODE") || segment_name_matches(name, "RODATA"))
@@ -233,6 +251,7 @@ int segment_name_to_o65(const char *name)
    return O65_SEG_TEXT;
 }
 
+//! @brief Return segment find data used by assembler symbol, scope, and segment state; returned pointers alias existing storage unless explicitly allocated by the function name.
 asm_segment_t *segment_find(asm_context_t *ctx, const char *name)
 {
    asm_segment_t *seg;
@@ -245,6 +264,7 @@ asm_segment_t *segment_find(asm_context_t *ctx, const char *name)
    return NULL;
 }
 
+//! @brief Return segment get or create data used by assembler symbol, scope, and segment state; returned pointers alias existing storage unless explicitly allocated by the function name.
 static asm_segment_t *segment_get_or_create(asm_context_t *ctx, const char *name)
 {
    asm_segment_t *seg;
@@ -271,6 +291,7 @@ static asm_segment_t *segment_get_or_create(asm_context_t *ctx, const char *name
    return seg;
 }
 
+//! @brief Release segments storage owned by assembler symbol, scope, and segment state.
 static void free_segments(asm_segment_t *head)
 {
    asm_segment_t *seg;
@@ -283,6 +304,7 @@ static void free_segments(asm_segment_t *head)
    }
 }
 
+//! @brief Handle reset segment pcs logic for assembler symbol, scope, and segment state.
 void reset_segment_pcs(asm_context_t *ctx)
 {
    asm_segment_t *seg;
@@ -293,6 +315,7 @@ void reset_segment_pcs(asm_context_t *ctx)
    }
 }
 
+//! @brief Collect segment used sizes from existing assembler symbol, scope, and segment state state for a later pass.
 void snapshot_segment_used_sizes(asm_context_t *ctx)
 {
    asm_segment_t *seg;
@@ -301,6 +324,7 @@ void snapshot_segment_used_sizes(asm_context_t *ctx)
       seg->used_size = seg->pc;
 }
 
+//! @brief Handle ensure default segment logic for assembler symbol, scope, and segment state.
 void ensure_default_segment(asm_context_t *ctx)
 {
    asm_segment_t *seg;
@@ -313,11 +337,13 @@ void ensure_default_segment(asm_context_t *ctx)
 
 
 
+//! @brief Return whether local name applies in assembler symbol, scope, and segment state.
 static int is_local_name(const char *name)
 {
    return name && name[0] == '@';
 }
 
+//! @brief Create scoped name for assembler symbol, scope, and segment state. The returned storage is owned by the caller or the object that immediately records it.
 static char *make_scoped_name(const char *scope, const char *name)
 {
    char buf[4096];
@@ -326,6 +352,7 @@ static char *make_scoped_name(const char *scope, const char *name)
    return xstrdup(buf);
 }
 
+//! @brief Create file scoped name for assembler symbol, scope, and segment state. The returned storage is owned by the caller or the object that immediately records it.
 static char *make_file_scoped_name(const char *file, const char *name)
 {
    char buf[4096];
@@ -334,11 +361,13 @@ static char *make_file_scoped_name(const char *file, const char *name)
    return xstrdup(buf);
 }
 
+//! @brief Return whether global label name applies in assembler symbol, scope, and segment state.
 static int is_global_label_name(const char *name)
 {
    return name && !is_local_name(name);
 }
 
+//! @brief Return whether directive expr is ident in assembler symbol, scope, and segment state.
 static int directive_expr_is_ident(const expr_t *expr, const char **name_out)
 {
    if (!expr || expr->kind != EXPR_IDENT)
@@ -348,6 +377,7 @@ static int directive_expr_is_ident(const expr_t *expr, const char **name_out)
    return 1;
 }
 
+//! @brief Return proc decl name data used by assembler symbol, scope, and segment state; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *proc_decl_name(const stmt_t *stmt)
 {
    const char *name;
@@ -363,6 +393,7 @@ const char *proc_decl_name(const stmt_t *stmt)
    return name;
 }
 
+//! @brief Return whether exported name applies in assembler symbol, scope, and segment state.
 static int is_exported_name(const program_ir_t *prog, const char *file, const char *name)
 {
    const stmt_t *stmt;
@@ -386,6 +417,7 @@ static int is_exported_name(const program_ir_t *prog, const char *file, const ch
    return 0;
 }
 
+//! @brief Return symbol storage name data used by assembler symbol, scope, and segment state; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *symbol_storage_name(const program_ir_t *prog, const stmt_t *stmt, const char *name, char **owned_out)
 {
    *owned_out = NULL;
@@ -402,6 +434,7 @@ static const char *symbol_storage_name(const program_ir_t *prog, const stmt_t *s
    return *owned_out;
 }
 
+//! @brief Compute segments and update assembler symbol, scope, and segment state state once prerequisite pass data is available.
 static void assign_segments(program_ir_t *prog)
 {
    stmt_t *stmt;
@@ -433,6 +466,7 @@ static void assign_segments(program_ir_t *prog)
    free(current_segment);
 }
 
+//! @brief Compute scopes and update assembler symbol, scope, and segment state state once prerequisite pass data is available.
 static void assign_scopes(program_ir_t *prog)
 {
    typedef struct scope_stack {
@@ -523,6 +557,7 @@ static void assign_scopes(program_ir_t *prog)
    free(current_scope);
 }
 
+//! @brief Collect segment uses from existing assembler symbol, scope, and segment state state for a later pass.
 static void gather_segment_uses(asm_context_t *ctx)
 {
    stmt_t *stmt;
@@ -535,6 +570,7 @@ static void gather_segment_uses(asm_context_t *ctx)
    }
 }
 
+//! @brief Handle define or update abs symbol logic for assembler symbol, scope, and segment state.
 static void define_or_update_abs_symbol(symtab_t *tab, const char *name, long value)
 {
    symbol_t *sym;
@@ -547,6 +583,7 @@ static void define_or_update_abs_symbol(symtab_t *tab, const char *name, long va
       symtab_set_value_segment(sym, value, O65_SEG_ABS);
 }
 
+//! @brief Compute segment symbols and update assembler symbol, scope, and segment state state once prerequisite pass data is available.
 void publish_segment_symbols(asm_context_t *ctx)
 {
    asm_segment_t *seg;
@@ -567,6 +604,7 @@ void publish_segment_symbols(asm_context_t *ctx)
    }
 }
 
+//! @brief Collect segment defs from existing assembler symbol, scope, and segment state state for a later pass.
 void gather_segment_defs(asm_context_t *ctx)
 {
    stmt_t *stmt;
@@ -631,6 +669,7 @@ void gather_segment_defs(asm_context_t *ctx)
    }
 }
 
+//! @brief Validate segment defs invariants before later assembler stages depend on them.
 void validate_segment_defs(asm_context_t *ctx)
 {
    asm_segment_t *seg;
@@ -642,6 +681,7 @@ void validate_segment_defs(asm_context_t *ctx)
       }
    }
 }
+//! @brief Handle declare symbol or report logic for assembler symbol, scope, and segment state.
 int declare_symbol_or_report(asm_context_t *ctx, const char *name, const stmt_t *stmt)
 {
    symbol_t *sym;
@@ -668,6 +708,7 @@ int declare_symbol_or_report(asm_context_t *ctx, const char *name, const stmt_t 
    return 0;
 }
 
+//! @brief Find declared symbol in assembler symbol, scope, and segment state tables without transferring ownership.
 symbol_t *find_declared_symbol(symtab_t *tab, const program_ir_t *prog, const stmt_t *stmt, const char *name)
 {
    char *owned;
@@ -680,6 +721,7 @@ symbol_t *find_declared_symbol(symtab_t *tab, const program_ir_t *prog, const st
    return sym;
 }
 
+//! @brief Collect imports from existing assembler symbol, scope, and segment state state for a later pass.
 void gather_imports(asm_context_t *ctx)
 {
    stmt_t *stmt;
@@ -730,6 +772,7 @@ void gather_imports(asm_context_t *ctx)
    }
 }
 
+//! @brief Validate imports invariants before later assembler stages depend on them.
 void validate_imports(asm_context_t *ctx)
 {
    import_name_t *p;
@@ -748,6 +791,7 @@ void validate_imports(asm_context_t *ctx)
    }
 }
 
+//! @brief Handle asm prepare context state logic for assembler symbol, scope, and segment state.
 void asm_prepare_context_state(asm_context_t *ctx)
 {
    assign_segments(ctx->prog);
@@ -756,6 +800,7 @@ void asm_prepare_context_state(asm_context_t *ctx)
    ensure_default_segment(ctx);
 }
 
+//! @brief Handle asm free context state logic for assembler symbol, scope, and segment state.
 void asm_free_context_state(asm_context_t *ctx)
 {
    free_imports(ctx->imports);

@@ -18,6 +18,7 @@
 
 static Pair *mems = NULL;
 
+//! @brief Handle memname exists logic for memname.
 bool memname_exists(const char* name) {
    if (!mems) {
       mems = pair_create();
@@ -26,6 +27,7 @@ bool memname_exists(const char* name) {
    return pair_exists(mems, name);
 }
 
+//! @brief Add memname to memname state, growing storage or preserving uniqueness as needed.
 int register_memname(const char* name) {
    if (!mems) {
       mems = pair_create();
@@ -67,6 +69,7 @@ int register_memname(const char* name) {
    return 0;
 }
 
+//! @brief Handle attach memname logic for memname.
 void attach_memname(const char *name, ASTNode *node) {
    if (!mems) {
       mems = pair_create();
@@ -75,6 +78,7 @@ void attach_memname(const char *name, ASTNode *node) {
    pair_insert(mems, name, node);
 }
 
+//! @brief Return get memname node data used by memname; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *get_memname_node(const char *name) {
    if (!mems) {
       mems = pair_create();

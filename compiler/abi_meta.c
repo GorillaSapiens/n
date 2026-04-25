@@ -36,12 +36,14 @@ typedef struct {
    int next_id;
 } FingerprintCtx;
 
+//! @brief Handle sb init logic for abi meta.
 static void sb_init(StrBuf *sb) {
    sb->buf = NULL;
    sb->len = 0;
    sb->cap = 0;
 }
 
+//! @brief Handle sb reserve logic for abi meta.
 static void sb_reserve(StrBuf *sb, size_t add) {
    size_t need = sb->len + add + 1;
    char *next;
@@ -59,6 +61,7 @@ static void sb_reserve(StrBuf *sb, size_t add) {
    sb->buf = next;
 }
 
+//! @brief Handle sb append logic for abi meta.
 static void sb_append(StrBuf *sb, const char *text) {
    size_t n;
    if (!text)
@@ -70,12 +73,14 @@ static void sb_append(StrBuf *sb, const char *text) {
    sb->buf[sb->len] = '\0';
 }
 
+//! @brief Handle sb append ch logic for abi meta.
 static void sb_append_ch(StrBuf *sb, char ch) {
    sb_reserve(sb, 1);
    sb->buf[sb->len++] = ch;
    sb->buf[sb->len] = '\0';
 }
 
+//! @brief Handle sb appendf logic for abi meta.
 static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
    va_list ap;
    va_list ap2;
@@ -100,6 +105,7 @@ static void sb_appendf(StrBuf *sb, const char *fmt, ...) {
    }
 }
 
+//! @brief Return sb take data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *sb_take(StrBuf *sb) {
    char *ret;
    if (!sb->buf) {
@@ -115,10 +121,12 @@ static char *sb_take(StrBuf *sb) {
    return ret;
 }
 
+//! @brief Handle meta safe char logic for abi meta.
 static bool meta_safe_char(unsigned char ch) {
    return isalnum(ch) || ch == '_';
 }
 
+//! @brief Return meta encode data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *meta_encode(const char *text) {
    StrBuf sb;
    const unsigned char *p = (const unsigned char *)(text ? text : "");
@@ -137,6 +145,7 @@ static char *meta_encode(const char *text) {
    return sb_take(&sb);
 }
 
+//! @brief Handle fpctx find logic for abi meta.
 static int fpctx_find(FingerprintCtx *ctx, const char *name) {
    for (int i = 0; i < ctx->count; i++) {
       if (!strcmp(ctx->names[i], name))
@@ -145,6 +154,7 @@ static int fpctx_find(FingerprintCtx *ctx, const char *name) {
    return -1;
 }
 
+//! @brief Handle fpctx get id logic for abi meta.
 static int fpctx_get_id(FingerprintCtx *ctx, const char *name, bool *active_out, bool *is_new_out) {
    int idx = fpctx_find(ctx, name);
    if (idx >= 0) {
@@ -176,12 +186,14 @@ static int fpctx_get_id(FingerprintCtx *ctx, const char *name, bool *active_out,
    return ctx->ids[idx];
 }
 
+//! @brief Handle fpctx set active logic for abi meta.
 static void fpctx_set_active(FingerprintCtx *ctx, const char *name, bool active) {
    int idx = fpctx_find(ctx, name);
    if (idx >= 0)
       ctx->active[idx] = active ? 1 : 0;
 }
 
+//! @brief Return effective base type name data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *effective_base_type_name(const ASTNode *type) {
    const char *name;
    const char *backing;
@@ -193,6 +205,7 @@ static const char *effective_base_type_name(const ASTNode *type) {
    return backing ? backing : name;
 }
 
+//! @brief Return effective base type node data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *effective_base_type_node(const ASTNode *type) {
    const char *name = effective_base_type_name(type);
    return name ? get_typename_node(name) : NULL;
@@ -200,11 +213,13 @@ static const ASTNode *effective_base_type_node(const ASTNode *type) {
 
 static void append_type_fingerprint(StrBuf *fp, StrBuf *detail, const ASTNode *type, const ASTNode *declarator, FingerprintCtx *ctx);
 
+//! @brief Add storage mode to abi meta state, growing storage or preserving uniqueness as needed.
 static void append_storage_mode(StrBuf *fp, StrBuf *detail, const char *mode) {
    sb_appendf(fp, "mode=%s;", mode ? mode : "unknown");
    sb_appendf(detail, "%s ", mode ? mode : "unknown");
 }
 
+//! @brief Return parameter storage mode data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *parameter_storage_mode(const ASTNode *parameter) {
    const ASTNode *mods = parameter_decl_specifiers(parameter);
    const ASTNode *modifiers = (mods && mods->count > 0) ? mods->children[0] : NULL;
@@ -216,6 +231,7 @@ static const char *parameter_storage_mode(const ASTNode *parameter) {
    return "stack_value";
 }
 
+//! @brief Return global storage mode data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *global_storage_mode(const ASTNode *node, bool is_zeropage) {
    const ASTNode *modifiers = node && node->count > 0 ? node->children[0] : NULL;
    if (modifiers && has_modifier((ASTNode *)modifiers, "ref"))
@@ -223,6 +239,7 @@ static const char *global_storage_mode(const ASTNode *node, bool is_zeropage) {
    return is_zeropage ? "zeropage" : "memory";
 }
 
+//! @brief Return array bound text data used by abi meta; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *array_bound_text(const ASTNode *declarator) {
    const ASTNode *value_decl = declarator_value_declarator(declarator);
    int start = declarator_suffix_start_index(value_decl ? value_decl : declarator);
@@ -238,6 +255,7 @@ static const char *array_bound_text(const ASTNode *declarator) {
    return NULL;
 }
 
+//! @brief Add builtin pointer machine to abi meta state, growing storage or preserving uniqueness as needed.
 static void append_builtin_pointer_machine(StrBuf *fp, StrBuf *detail) {
    const ASTNode *node = required_typename_node("*");
    int size = type_size_from_node(node);
@@ -255,6 +273,7 @@ static void append_builtin_pointer_machine(StrBuf *fp, StrBuf *detail) {
    sb_append(detail, ")");
 }
 
+//! @brief Add base type fingerprint to abi meta state, growing storage or preserving uniqueness as needed.
 static void append_base_type_fingerprint(StrBuf *fp, StrBuf *detail, const ASTNode *type, FingerprintCtx *ctx) {
    const char *name = effective_base_type_name(type);
    const ASTNode *node = effective_base_type_node(type);
@@ -434,6 +453,7 @@ static void append_base_type_fingerprint(StrBuf *fp, StrBuf *detail, const ASTNo
    sb_appendf(detail, "named_type(%s,size=%d)", name, size);
 }
 
+//! @brief Add callable signature to abi meta state, growing storage or preserving uniqueness as needed.
 static void append_callable_signature(StrBuf *fp, StrBuf *detail, const ASTNode *base_type, const ASTNode *callable_decl, FingerprintCtx *ctx) {
    const ASTNode *params = declarator_parameter_list(callable_decl);
    const ASTNode *ret_decl = function_return_declarator_from_callable(callable_decl);
@@ -492,6 +512,7 @@ static void append_callable_signature(StrBuf *fp, StrBuf *detail, const ASTNode 
    sb_append(detail, "])");
 }
 
+//! @brief Add type fingerprint to abi meta state, growing storage or preserving uniqueness as needed.
 static void append_type_fingerprint(StrBuf *fp, StrBuf *detail, const ASTNode *type, const ASTNode *declarator, FingerprintCtx *ctx) {
    const ASTNode *next_decl;
    const char *bound;
@@ -534,6 +555,7 @@ static void append_type_fingerprint(StrBuf *fp, StrBuf *detail, const ASTNode *t
    append_base_type_fingerprint(fp, detail, type, ctx);
 }
 
+//! @brief Emit metadata symbol for abi meta diagnostics or output files.
 static void emit_metadata_symbol(const char *kind, const char *state, const char *symbol,
                                  const char *role, const char *fingerprint, const char *detail) {
    char *enc_symbol = meta_encode(symbol ? symbol : "");
@@ -569,6 +591,7 @@ static void emit_metadata_symbol(const char *kind, const char *state, const char
    free(name.buf);
 }
 
+//! @brief Emit type record for abi meta diagnostics or output files.
 static void emit_type_record(const char *kind, const char *state, const char *symbol,
                              const char *role, const char *mode, const ASTNode *type,
                              const ASTNode *declarator) {
@@ -590,6 +613,7 @@ static void emit_type_record(const char *kind, const char *state, const char *sy
    free(detail.buf);
 }
 
+//! @brief Emit function ABI metadata for abi meta diagnostics or output files.
 void emit_function_abi_metadata(const ASTNode *fn, const char *sym, bool is_definition) {
    const ASTNode *decl = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(decl);
@@ -630,6 +654,7 @@ void emit_function_abi_metadata(const ASTNode *fn, const char *sym, bool is_defi
    }
 }
 
+//! @brief Emit global ABI metadata for abi meta diagnostics or output files.
 void emit_global_abi_metadata(const ASTNode *node, const char *symname, bool is_definition, bool is_zeropage) {
    const ASTNode *type;
    const ASTNode *declarator;

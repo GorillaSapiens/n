@@ -37,10 +37,12 @@ static int ordinary_function_count = 0;
 static bool function_same_signature(const ASTNode *a, const ASTNode *b);
 static void append_type_declarator_text(char **buf, size_t *cap, size_t *len, const ASTNode *type, const ASTNode *declarator, bool is_ref);
 
+//! @brief Return whether operator function name applies in compiler overload resolver.
 bool is_operator_function_name(const char *name) {
    return name && !strncmp(name, "operator", 8);
 }
 
+//! @brief Return function modifiers node data used by compiler overload resolver; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *function_modifiers_node(const ASTNode *fn) {
    if (!fn) {
       return NULL;
@@ -54,14 +56,17 @@ static const ASTNode *function_modifiers_node(const ASTNode *fn) {
    return NULL;
 }
 
+//! @brief Return whether function has body in compiler overload resolver.
 bool function_has_body(const ASTNode *fn) {
    return fn && fn->count == 3;
 }
 
+//! @brief Return whether parameter is ellipsis in compiler overload resolver.
 bool parameter_is_ellipsis(const ASTNode *parameter) {
    return parameter && parameter->name && !strcmp(parameter->name, "ellipsis");
 }
 
+//! @brief Return whether parameter list is variadic in compiler overload resolver.
 bool parameter_list_is_variadic(const ASTNode *params) {
    if (!params || is_empty(params)) {
       return false;
@@ -76,11 +81,13 @@ bool parameter_list_is_variadic(const ASTNode *params) {
    return false;
 }
 
+//! @brief Return whether function is variadic in compiler overload resolver.
 bool function_is_variadic(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    return parameter_list_is_variadic(declarator_parameter_list(declarator));
 }
 
+//! @brief Extract fixed parameter stack bytes from params for compiler overload resolver.
 static int fixed_parameter_stack_bytes_from_params(const ASTNode *params) {
    int total = 0;
 
@@ -99,11 +106,13 @@ static int fixed_parameter_stack_bytes_from_params(const ASTNode *params) {
    return total;
 }
 
+//! @brief Handle function fixed parameter stack bytes logic for compiler overload resolver.
 int function_fixed_parameter_stack_bytes(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    return fixed_parameter_stack_bytes_from_params(declarator_parameter_list(declarator));
 }
 
+//! @brief Handle function fixed param count logic for compiler overload resolver.
 int function_fixed_param_count(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -125,6 +134,7 @@ int function_fixed_param_count(const ASTNode *fn) {
 }
 
 
+//! @brief Return whether integer type can represent type in compiler overload resolver.
 static bool integer_type_can_represent_type(const ASTNode *formal_type, const ASTNode *actual_type) {
    int formal_size;
    int actual_size;
@@ -155,6 +165,7 @@ static bool integer_type_can_represent_type(const ASTNode *formal_type, const AS
    return false;
 }
 
+//! @brief Handle integer promotion conversion cost logic for compiler overload resolver.
 static int integer_promotion_conversion_cost(const ASTNode *actual_type, const ASTNode *actual_decl,
                                              const ASTNode *formal_type, const ASTNode *formal_decl) {
    int cost = 0;
@@ -207,6 +218,7 @@ static int integer_promotion_conversion_cost(const ASTNode *actual_type, const A
    return cost;
 }
 
+//! @brief Handle implicit object pointer to void pointer allowed logic for compiler overload resolver.
 static bool implicit_object_pointer_to_void_pointer_allowed(const ASTNode *formal_type, const ASTNode *formal_decl,
                                                             const ASTNode *actual_type, const ASTNode *actual_decl) {
    const char *formal_name = type_name_from_node(formal_type);
@@ -229,6 +241,7 @@ static bool implicit_object_pointer_to_void_pointer_allowed(const ASTNode *forma
    return true;
 }
 
+//! @brief Handle parameter argument conversion cost logic for compiler overload resolver.
 static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNode *pdecl, bool pref,
                                               const ASTNode *atype, const ASTNode *adecl, bool arg_lvalue, const ASTNode *arg_expr) {
    const char *pname;
@@ -313,6 +326,7 @@ static int parameter_argument_conversion_cost(const ASTNode *ptype, const ASTNod
    return -1;
 }
 
+//! @brief Handle function same declaration logic for compiler overload resolver.
 static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
    const ASTNode *atype;
    const ASTNode *btype;
@@ -352,6 +366,7 @@ static bool function_same_declaration(const ASTNode *a, const ASTNode *b) {
    return function_same_signature(a, b);
 }
 
+//! @brief Handle function signature match cost logic for compiler overload resolver.
 static int function_signature_match_cost(const ASTNode *fn, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -408,6 +423,7 @@ static int function_signature_match_cost(const ASTNode *fn, int arg_count, const
 }
 
 
+//! @brief Handle function same signature logic for compiler overload resolver.
 static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
    if (!a || !b) {
       return false;
@@ -466,6 +482,7 @@ static bool function_same_signature(const ASTNode *a, const ASTNode *b) {
    return true;
 }
 
+//! @brief Add operator overload to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void remember_operator_overload(const ASTNode *node, const char *name) {
    for (int i = 0; i < operator_overload_count; i++) {
       const ASTNode *value = operator_overloads[i].node;
@@ -506,6 +523,7 @@ static void remember_operator_overload(const ASTNode *node, const char *name) {
    operator_overload_count++;
 }
 
+//! @brief Add mangled text to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 void append_mangled_text(char *buf, size_t bufsize, const char *text) {
    size_t len = strlen(buf);
    if (!text) {
@@ -528,6 +546,7 @@ void append_mangled_text(char *buf, size_t bufsize, const char *text) {
    buf[len] = 0;
 }
 
+//! @brief Add callable signature mangle to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void append_callable_signature_mangle(char *buf, size_t bufsize, const ASTNode *declarator) {
    const ASTNode *params = declarator_parameter_list(declarator);
    bool saw_param = false;
@@ -565,6 +584,7 @@ static void append_callable_signature_mangle(char *buf, size_t bufsize, const AS
 
 
 
+//! @brief Handle assembler user symbol needs escape logic for compiler overload resolver.
 static bool assembler_user_symbol_needs_escape(const char *name) {
    static const char *const reserved[] = {
       "a", "x", "y",
@@ -588,6 +608,7 @@ static bool assembler_user_symbol_needs_escape(const char *name) {
    return false;
 }
 
+//! @brief Handle format user asm symbol logic for compiler overload resolver.
 bool format_user_asm_symbol(const char *name, char *buf, size_t bufsize) {
    if (!name || !buf || bufsize == 0) return false;
    if (assembler_user_symbol_needs_escape(name)) {
@@ -599,6 +620,7 @@ bool format_user_asm_symbol(const char *name, char *buf, size_t bufsize) {
    return true;
 }
 
+//! @brief Handle modifier list node like logic for compiler overload resolver.
 static bool modifier_list_node_like(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return false;
@@ -611,6 +633,7 @@ static bool modifier_list_node_like(const ASTNode *node) {
    return true;
 }
 
+//! @brief Return function modifier node data used by compiler overload resolver; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *function_modifier_node(const ASTNode *fn) {
    ASTNode *mods;
 
@@ -628,11 +651,13 @@ static ASTNode *function_modifier_node(const ASTNode *fn) {
    return NULL;
 }
 
+//! @brief Return whether function has extern nonstatic storage in compiler overload resolver.
 static bool function_has_extern_nonstatic_storage(const ASTNode *fn) {
    ASTNode *mods = function_modifier_node(fn);
    return mods && has_modifier(mods, "extern") && !has_modifier(mods, "static");
 }
 
+//! @brief Handle function symbol name logic for compiler overload resolver.
 bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *buf, size_t bufsize) {
    const ASTNode *declarator = function_declarator_node(fn);
    const char *name = fallback_name;
@@ -671,6 +696,7 @@ bool function_symbol_name(const ASTNode *fn, const char *fallback_name, char *bu
    }
 }
 
+//! @brief Find operator overload in compiler overload resolver tables without transferring ownership.
 const ASTNode *lookup_operator_overload(const char *name, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *best = NULL;
    int best_cost = INT_MAX;
@@ -700,6 +726,7 @@ const ASTNode *lookup_operator_overload(const char *name, int arg_count, const A
    return best;
 }
 
+//! @brief Return whether ordinary function name is overloaded in compiler overload resolver.
 bool ordinary_function_name_is_overloaded(const char *name) {
    int count = 0;
 
@@ -721,6 +748,7 @@ bool ordinary_function_name_is_overloaded(const char *name) {
 }
 
 
+//! @brief Add format text to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void append_format_text(char **buf, size_t *cap, size_t *len, const char *fmt, ...) {
    va_list args;
    va_list args_copy;
@@ -762,6 +790,7 @@ static void append_format_text(char **buf, size_t *cap, size_t *len, const char 
    }
 }
 
+//! @brief Add array suffix text to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void append_array_suffix_text(char **buf, size_t *cap, size_t *len, const ASTNode *declarator) {
    const ASTNode *value_decl = declarator_value_declarator(declarator);
    int start;
@@ -779,6 +808,7 @@ static void append_array_suffix_text(char **buf, size_t *cap, size_t *len, const
    }
 }
 
+//! @brief Add parameter list text to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void append_parameter_list_text(char **buf, size_t *cap, size_t *len, const ASTNode *params) {
    bool saw_any = false;
 
@@ -810,6 +840,7 @@ static void append_parameter_list_text(char **buf, size_t *cap, size_t *len, con
    }
 }
 
+//! @brief Add type declarator text to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 static void append_type_declarator_text(char **buf, size_t *cap, size_t *len, const ASTNode *type, const ASTNode *declarator, bool is_ref) {
    const char *type_name = type_name_from_node(type);
 
@@ -852,6 +883,7 @@ static void append_type_declarator_text(char **buf, size_t *cap, size_t *len, co
    append_array_suffix_text(buf, cap, len, declarator);
 }
 
+//! @brief Return describe call argument list data used by compiler overload resolver; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *describe_call_argument_list(int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls) {
    char *buf = NULL;
    size_t cap = 0;
@@ -876,6 +908,7 @@ static char *describe_call_argument_list(int arg_count, const ASTNode **arg_type
    return buf;
 }
 
+//! @brief Return describe same name overloads data used by compiler overload resolver; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *describe_same_name_overloads(const char *name) {
    char *buf = NULL;
    size_t cap = 0;
@@ -918,6 +951,7 @@ static char *describe_same_name_overloads(const char *name) {
    return buf;
 }
 
+//! @brief Handle parameter lists same signature logic for compiler overload resolver.
 static bool parameter_lists_same_signature(const ASTNode *lhs_params, const ASTNode *rhs_params) {
    int li = 0;
    int ri = 0;
@@ -973,6 +1007,7 @@ static bool parameter_lists_same_signature(const ASTNode *lhs_params, const ASTN
    return true;
 }
 
+//! @brief Handle function designator match cost logic for compiler overload resolver.
 static int function_designator_match_cost(const ASTNode *fn, const ASTNode *expected_type, const ASTNode *expected_decl) {
    const ASTNode *fn_decl;
    const ASTNode *fn_ret_type;
@@ -1008,6 +1043,7 @@ static int function_designator_match_cost(const ASTNode *fn, const ASTNode *expe
    return 0;
 }
 
+//! @brief Find ordinary function overload in compiler overload resolver tables without transferring ownership.
 static const ASTNode *lookup_ordinary_function_overload(const char *name, const ASTNode *call_expr, int arg_count, const ASTNode **arg_types, const ASTNode **arg_decls, const bool *arg_lvalues, const ASTNode **arg_exprs) {
    const ASTNode *best = NULL;
    int best_cost = INT_MAX;
@@ -1062,6 +1098,7 @@ static const ASTNode *lookup_ordinary_function_overload(const char *name, const 
    return best;
 }
 
+//! @brief Compute function designator target and update compiler overload resolver state once prerequisite pass data is available.
 const ASTNode *resolve_function_designator_target(const char *name, const ASTNode *expected_type, const ASTNode *expected_decl) {
    const ASTNode *best = NULL;
    const ASTNode *first = NULL;
@@ -1114,6 +1151,7 @@ const ASTNode *resolve_function_designator_target(const char *name, const ASTNod
    return NULL;
 }
 
+//! @brief Compute function call target and update compiler overload resolver state once prerequisite pass data is available.
 const ASTNode *resolve_function_call_target(const char *name, ASTNode *call_expr, ASTNode *args, Context *ctx) {
    int arg_count = (args && !is_empty(args)) ? args->count : 0;
    const ASTNode **arg_types = NULL;
@@ -1156,6 +1194,7 @@ const ASTNode *resolve_function_call_target(const char *name, ASTNode *call_expr
    return ret;
 }
 
+//! @brief Compute operator overload expr and update compiler overload resolver state once prerequisite pass data is available.
 const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx) {
    const char *op = NULL;
    const char *name = NULL;
@@ -1198,6 +1237,7 @@ const ASTNode *resolve_operator_overload_expr(ASTNode *expr, Context *ctx) {
    return lookup_operator_overload(name, arg_count, arg_types, arg_decls, arg_lvalues, (const ASTNode **) expr->children);
 }
 
+//! @brief Compute incdec overload expr and update compiler overload resolver state once prerequisite pass data is available.
 const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) {
    bool inc;
    const ASTNode *arg_type;
@@ -1217,6 +1257,7 @@ const ASTNode *resolve_incdec_overload_expr(ASTNode *expr, Context *ctx) {
    return lookup_operator_overload(inc ? "operator++" : "operator--", 1, &arg_type, &arg_decl, &arg_lvalue, (const ASTNode **) &expr->children[0]);
 }
 
+//! @brief Compute truthiness overload and update compiler overload resolver state once prerequisite pass data is available.
 const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
    const ASTNode *arg_type;
    const ASTNode *arg_decl;
@@ -1233,6 +1274,7 @@ const ASTNode *resolve_truthiness_overload(ASTNode *expr, Context *ctx) {
    return lookup_operator_overload("operator{}", 1, &arg_type, &arg_decl, &arg_lvalue, (const ASTNode **) &expr->children[0]);
 }
 
+//! @brief Add function to compiler overload resolver state, growing storage or preserving uniqueness as needed.
 void remember_function(const ASTNode *node, const char *name) {
    bool name_present = false;
 

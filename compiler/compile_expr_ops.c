@@ -40,6 +40,7 @@
 
 static ASTNode *make_synthetic_incdec_operand(ASTNode *origin);
 static int expr_byte_index(const ASTNode *type, int size, int i);
+//! @brief Handle weak builtin operator symbol name logic for compiler operator lowering.
 static bool weak_builtin_operator_symbol_name(const char *opname, int arg_count,
                                               const ASTNode **arg_types,
                                               const ASTNode **arg_decls,
@@ -66,6 +67,7 @@ static bool weak_builtin_operator_symbol_name(const char *opname, int arg_count,
    }
 }
 
+//! @brief Lower weak builtin operator call to slot from AST/semantic state into generated assembly or linker-visible metadata.
 static bool compile_weak_builtin_operator_call_to_slot(const char *symbol,
                                                        const ASTNode *ret_type,
                                                        const ASTNode *ret_decl,
@@ -163,6 +165,7 @@ static bool compile_weak_builtin_operator_call_to_slot(const char *symbol,
    }
    return true;
 }
+//! @brief Create synthetic incdec operand for compiler operator lowering. The returned storage is owned by the caller or the object that immediately records it.
 static ASTNode *make_synthetic_incdec_operand(ASTNode *origin) {
    ASTNode *operand;
 
@@ -187,6 +190,7 @@ static ASTNode *make_synthetic_incdec_operand(ASTNode *origin) {
    return operand;
 }
 
+//! @brief Parse incdec lvalue expr into the normalized representation used by compiler operator lowering.
 bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
    const char *op;
 
@@ -223,6 +227,7 @@ bool classify_incdec_lvalue_expr(ASTNode *expr, bool *inc, bool *pre) {
    return false;
 }
 
+//! @brief Create incdec delta bytes for compiler operator lowering.
 static bool make_incdec_delta_bytes(const ASTNode *type, const ASTNode *declarator, int size, unsigned char *bytes) {
    int step = 1;
    char step_buf[64];
@@ -249,6 +254,7 @@ static bool make_incdec_delta_bytes(const ASTNode *type, const ASTNode *declarat
    return true;
 }
 
+//! @brief Emit copy frame pointer to frame pointer for compiler operator lowering diagnostics or output files.
 void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    bool dst_direct;
    bool src_direct;
@@ -275,6 +281,7 @@ void emit_copy_fp_to_fp(int dst_offset, int src_offset, int size) {
    }
 }
 
+//! @brief Handle expr byte index logic for compiler operator lowering.
 static int expr_byte_index(const ASTNode *type, int size, int i) {
    if (has_flag(type_name_from_node(type), "$endian:big")) {
       return size - 1 - i;
@@ -282,6 +289,7 @@ static int expr_byte_index(const ASTNode *type, int size, int i) {
    return i;
 }
 
+//! @brief Emit add immediate to frame pointer for compiler operator lowering diagnostics or output files.
 void emit_add_immediate_to_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
    bool direct = offset >= 0 && offset + size <= 256;
 
@@ -299,6 +307,7 @@ void emit_add_immediate_to_fp(const ASTNode *type, int offset, const unsigned ch
    }
 }
 
+//! @brief Extract emit sub immediate from frame pointer for compiler operator lowering.
 static void emit_sub_immediate_from_fp(const ASTNode *type, int offset, const unsigned char *bytes, int size) {
    bool direct = offset >= 0 && offset + size <= 256;
 
@@ -316,6 +325,7 @@ static void emit_sub_immediate_from_fp(const ASTNode *type, int offset, const un
    }
 }
 
+//! @brief Emit add frame pointer to frame pointer for compiler operator lowering diagnostics or output files.
 void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
    bool helper_is_generic = false;
    const char *helper = int_addsub_helper_name(type, size, false, &helper_is_generic);
@@ -351,6 +361,7 @@ void emit_add_fp_to_fp(const ASTNode *type, int dst_offset, int src_offset, int 
    }
 }
 
+//! @brief Extract emit sub frame pointer from frame pointer for compiler operator lowering.
 void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_offset, int size) {
    bool helper_is_generic = false;
    const char *helper = int_addsub_helper_name(type, size, true, &helper_is_generic);
@@ -386,6 +397,7 @@ void emit_sub_fp_from_fp(const ASTNode *type, int dst_offset, int src_offset, in
    }
 }
 
+//! @brief Lower expr operator to slot from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_expr_operator_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    if (!strcmp(expr->name, "lvalue") && expr->count > 0 && expr->count >= 3 && expr->children[2] &&
        expr->children[2]->kind == AST_IDENTIFIER &&

@@ -35,6 +35,7 @@
 #include "xray.h"
 #include "lextern.h"
 
+//! @brief Handle expr eligible for weak builtin operator logic for compile expr.
 bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
                                                     const char **opname_out,
                                                     const ASTNode **ret_type_out,
@@ -60,6 +61,7 @@ bool expr_eligible_for_weak_builtin_operator(ASTNode *expr, Context *ctx,
     * which is enforced separately at the call site. */
    return false;
 }
+//! @brief Create synthetic call expr for compile expr. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTNode *args[], int argc) {
    ASTNode *call;
    ASTNode *arglist;
@@ -101,6 +103,7 @@ ASTNode *make_synthetic_call_expr(ASTNode *origin, const char *callee_name, ASTN
    call->children[1] = arglist;
    return call;
 }
+//! @brief Return next label data used by compile expr; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *next_label(const char *prefix) {
    char buf[64];
    snprintf(buf, sizeof(buf), "@%s_%d", prefix, label_counter++);

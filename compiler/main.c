@@ -23,6 +23,7 @@ static char *arg0;
 
 static void opt_help(char *);
 
+//! @brief Handle opt xray logic for main.
 static void opt_xray(char *n) {
    int i = lookup_xray(n);
    set_xray(i);
@@ -30,20 +31,24 @@ static void opt_xray(char *n) {
 
 static char **inclist = NULL;
 static int inclist_cnt = 0;
+//! @brief Handle opt include logic for main.
 static void opt_include(char *n) {
    inclist = (char **) realloc(inclist, sizeof(char *) * (inclist_cnt + 1));
    inclist[inclist_cnt++] = strdup(n);
 }
 
 static const char *outfile = NULL;
+//! @brief Handle opt output logic for main.
 static void opt_output(char *n) {
    outfile = n;
 }
 
+//! @brief Handle opt ignore logic for main.
 static void opt_ignore(char *unused) {
    (void) unused;
 }
 
+//! @brief Find includes in main tables without transferring ownership.
 const char *search_includes(const char *filename) {
    static char *ret = NULL;
 
@@ -99,6 +104,7 @@ static struct option_def options[] = {
 
 #define NOPTS (sizeof(options) / sizeof(options[0]))
 
+//! @brief Handle opt help logic for main.
 static void opt_help(char *unused) {
    (void) unused; // unused parameter
    printf("Usage: %s <flags> <filename>\n", arg0);
@@ -189,6 +195,7 @@ static struct option_def *find_option(const char *arg, const char **inline_arg, 
 }
 
 #define return "DON'T USE return, MUST USE exit !!!" // please don't break xray !!!
+//! @brief Entry point for the compiler command; parses arguments, runs the requested pipeline, and returns process status.
 int main(int argc, char** argv) {
    int ret;
    const char *input = NULL;

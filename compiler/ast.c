@@ -13,6 +13,7 @@
 
 ASTNode *root = NULL;
 
+//! @brief Create node for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_node(const char *name, ...) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = name;
@@ -30,6 +31,7 @@ ASTNode *make_node(const char *name, ...) {
    return ret;
 }
 
+//! @brief Add child to compiler AST builder state, growing storage or preserving uniqueness as needed.
 ASTNode *append_child(ASTNode *parent, ASTNode *child) {
    size_t newsize = sizeof(ASTNode) + sizeof(ASTNode *) * (parent->count + 1);
    parent = realloc(parent, newsize);
@@ -38,6 +40,7 @@ ASTNode *append_child(ASTNode *parent, ASTNode *child) {
 }
 
 // NB: this is a shallow copy
+//! @brief Add children from to compiler AST builder state, growing storage or preserving uniqueness as needed.
 ASTNode *append_children_from(ASTNode *parent, ASTNode *other) {
    for (int i = 0; i < other->count; i++) {
       parent = append_child(parent, other->children[i]);
@@ -45,6 +48,7 @@ ASTNode *append_children_from(ASTNode *parent, ASTNode *other) {
    return parent;
 }
 
+//! @brief Return prepend child data used by compiler AST builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *prepend_child(ASTNode *parent, ASTNode *child) {
    size_t newsize = sizeof(ASTNode) + sizeof(ASTNode *) * (parent->count + 1);
    parent = realloc(parent, newsize);
@@ -59,6 +63,7 @@ ASTNode *prepend_child(ASTNode *parent, ASTNode *child) {
 }
 
 // NB: this is a shallow copy
+//! @brief Return prepend children from data used by compiler AST builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *prepend_children_from(ASTNode *parent, ASTNode *other) {
    for (int i = 0; i < other->count; i++) {
       parent = prepend_child(parent, other->children[other->count - i - 1]);
@@ -66,6 +71,7 @@ ASTNode *prepend_children_from(ASTNode *parent, ASTNode *other) {
    return parent;
 }
 
+//! @brief Create integer leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_integer_leaf(const char *intval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "integer_literal";
@@ -78,12 +84,14 @@ ASTNode *make_integer_leaf(const char *intval) {
    return ret;
 }
 
+//! @brief Create integer leaf with type for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_integer_leaf_with_type(const char *intval, ASTNode *typename) {
    ASTNode *ret = make_integer_leaf(intval);
    ret = append_child(ret, typename);
    return ret;
 }
 
+//! @brief Return increment integer leaf data used by compiler AST builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *increment_integer_leaf(ASTNode *node) {
    unsigned long n = strtoul(node->strval, NULL, 0);
    n++;
@@ -93,6 +101,7 @@ ASTNode *increment_integer_leaf(ASTNode *node) {
    return node;
 }
 
+//! @brief Create string leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_string_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "str";
@@ -105,6 +114,7 @@ ASTNode *make_string_leaf(const char *strval) {
    return ret;
 }
 
+//! @brief Create asm leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_asm_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "asm";
@@ -117,6 +127,7 @@ ASTNode *make_asm_leaf(const char *strval) {
    return ret;
 }
 
+//! @brief Create identifier leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_identifier_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "identifier";
@@ -129,6 +140,7 @@ ASTNode *make_identifier_leaf(const char *strval) {
    return ret;
 }
 
+//! @brief Create typename leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_typename_leaf(const char *strval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "typename";
@@ -141,6 +153,7 @@ ASTNode *make_typename_leaf(const char *strval) {
    return ret;
 }
 
+//! @brief Create float leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_float_leaf(const char *dval) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "float_literal";
@@ -153,12 +166,14 @@ ASTNode *make_float_leaf(const char *dval) {
    return ret;
 }
 
+//! @brief Create float leaf with type for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_float_leaf_with_type(const char *intval, ASTNode *typename) {
    ASTNode *ret = make_float_leaf(intval);
    ret = append_child(ret, typename);
    return ret;
 }
 
+//! @brief Create empty leaf for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_empty_leaf(void) {
    ASTNode *ret = calloc(1, sizeof(struct ASTNode));
    ret->name = "empty";
@@ -171,6 +186,7 @@ ASTNode *make_empty_leaf(void) {
    return ret;
 }
 
+//! @brief Create negative for compiler AST builder. The returned storage is owned by the caller or the object that immediately records it.
 char *make_negative(const char *p) {
    char *q = (char *) malloc(sizeof(char) * (strlen(p) + 2));
    sprintf(q, "-%s", p);
@@ -178,6 +194,7 @@ char *make_negative(const char *p) {
    return q;
 }
 
+//! @brief Emit AST flat for compiler AST builder diagnostics or output files.
 void dump_ast_flat(const ASTNode *node,
                    const char *prefix,
                    int is_last,
@@ -228,12 +245,14 @@ void dump_ast_flat(const ASTNode *node,
     }
 }
 
+//! @brief Parse dump node into the normalized representation used by compiler AST builder.
 void parse_dump_node(const ASTNode *node) {
    if (node) {
       dump_ast_flat(node, "", 1, NULL);
    }
 }
 
+//! @brief Parse dump into the normalized representation used by compiler AST builder.
 void parse_dump(void) {
    parse_dump_node(root);
 }

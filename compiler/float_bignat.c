@@ -9,12 +9,14 @@
 #include "messages.h"
 #include "float_bignat.h"
 
+//! @brief Handle bn init logic for compiler big-natural arithmetic.
 void bn_init(BigNat *bn) {
    bn->words = NULL;
    bn->len = 0;
    bn->cap = 0;
 }
 
+//! @brief Release free storage owned by compiler big-natural arithmetic.
 void bn_free(BigNat *bn) {
    if (!bn) {
       return;
@@ -25,12 +27,14 @@ void bn_free(BigNat *bn) {
    bn->cap = 0;
 }
 
+//! @brief Handle bn normalize logic for compiler big-natural arithmetic.
 static void bn_normalize(BigNat *bn) {
    while (bn->len > 0 && bn->words[bn->len - 1] == 0) {
       bn->len--;
    }
 }
 
+//! @brief Handle bn reserve logic for compiler big-natural arithmetic.
 static void bn_reserve(BigNat *bn, int need) {
    int new_cap;
    uint32_t *tmp;
@@ -60,6 +64,7 @@ static void bn_reserve(BigNat *bn, int need) {
    bn->cap = new_cap;
 }
 
+//! @brief Handle bn set zero logic for compiler big-natural arithmetic.
 void bn_set_zero(BigNat *bn) {
    if (!bn) {
       return;
@@ -67,6 +72,7 @@ void bn_set_zero(BigNat *bn) {
    bn->len = 0;
 }
 
+//! @brief Extract bn from 32-bit for compiler big-natural arithmetic.
 void bn_from_u32(BigNat *bn, uint32_t value) {
    bn_set_zero(bn);
    if (value != 0) {
@@ -76,10 +82,12 @@ void bn_from_u32(BigNat *bn, uint32_t value) {
    }
 }
 
+//! @brief Return whether bn is zero in compiler big-natural arithmetic.
 bool bn_is_zero(const BigNat *bn) {
    return !bn || bn->len == 0;
 }
 
+//! @brief Handle bn copy logic for compiler big-natural arithmetic.
 void bn_copy(BigNat *dst, const BigNat *src) {
    if (!dst || !src) {
       return;
@@ -94,6 +102,7 @@ void bn_copy(BigNat *dst, const BigNat *src) {
    dst->len = src->len;
 }
 
+//! @brief Handle bn mul small logic for compiler big-natural arithmetic.
 void bn_mul_small(BigNat *bn, uint32_t mul) {
    int i;
    uint64_t carry = 0;
@@ -117,6 +126,7 @@ void bn_mul_small(BigNat *bn, uint32_t mul) {
    }
 }
 
+//! @brief Handle bn add small logic for compiler big-natural arithmetic.
 void bn_add_small(BigNat *bn, uint32_t add) {
    int i;
    uint64_t carry;
@@ -142,6 +152,7 @@ void bn_add_small(BigNat *bn, uint32_t add) {
    }
 }
 
+//! @brief Handle bn mod small logic for compiler big-natural arithmetic.
 uint32_t bn_mod_small(const BigNat *bn, uint32_t div) {
    int i;
    uint64_t rem = 0;
@@ -156,6 +167,7 @@ uint32_t bn_mod_small(const BigNat *bn, uint32_t div) {
    return (uint32_t) rem;
 }
 
+//! @brief Handle bn div small logic for compiler big-natural arithmetic.
 uint32_t bn_div_small(BigNat *bn, uint32_t div) {
    int i;
    uint64_t rem = 0;
@@ -173,6 +185,7 @@ uint32_t bn_div_small(BigNat *bn, uint32_t div) {
    return (uint32_t) rem;
 }
 
+//! @brief Handle bn mul pow5 logic for compiler big-natural arithmetic.
 void bn_mul_pow5(BigNat *bn, long long exp) {
    long long i;
    for (i = 0; i < exp; i++) {
@@ -180,6 +193,7 @@ void bn_mul_pow5(BigNat *bn, long long exp) {
    }
 }
 
+//! @brief Handle bn shift left bits logic for compiler big-natural arithmetic.
 void bn_shift_left_bits(BigNat *bn, long long shift) {
    int word_shift;
    int bit_shift;
@@ -219,6 +233,7 @@ void bn_shift_left_bits(BigNat *bn, long long shift) {
    }
 }
 
+//! @brief Handle bn shift right one logic for compiler big-natural arithmetic.
 void bn_shift_right_one(BigNat *bn) {
    int i;
    uint32_t carry = 0;
@@ -235,6 +250,7 @@ void bn_shift_right_one(BigNat *bn) {
    bn_normalize(bn);
 }
 
+//! @brief Handle bn bit length logic for compiler big-natural arithmetic.
 int bn_bit_length(const BigNat *bn) {
    uint32_t top;
    int bits = 0;
@@ -251,6 +267,7 @@ int bn_bit_length(const BigNat *bn) {
    return (bn->len - 1) * FLOAT_BIGNAT_WORD_BITS + bits;
 }
 
+//! @brief Handle bn cmp logic for compiler big-natural arithmetic.
 int bn_cmp(const BigNat *a, const BigNat *b) {
    int i;
 
@@ -265,6 +282,7 @@ int bn_cmp(const BigNat *a, const BigNat *b) {
    return 0;
 }
 
+//! @brief Handle bn cmp shifted logic for compiler big-natural arithmetic.
 int bn_cmp_shifted(const BigNat *a, const BigNat *b, int shift_bits) {
    BigNat tmp;
    int cmp;
@@ -277,6 +295,7 @@ int bn_cmp_shifted(const BigNat *a, const BigNat *b, int shift_bits) {
    return cmp;
 }
 
+//! @brief Handle bn sub inplace logic for compiler big-natural arithmetic.
 void bn_sub_inplace(BigNat *a, const BigNat *b) {
    int i;
    uint64_t borrow = 0;
@@ -306,6 +325,7 @@ void bn_sub_inplace(BigNat *a, const BigNat *b) {
    bn_normalize(a);
 }
 
+//! @brief Handle bn set bit logic for compiler big-natural arithmetic.
 void bn_set_bit(BigNat *bn, long long bit_index) {
    int word_index;
    int bit_in_word;
@@ -327,6 +347,7 @@ void bn_set_bit(BigNat *bn, long long bit_index) {
    bn->words[word_index] |= (uint32_t) (1u << bit_in_word);
 }
 
+//! @brief Handle bn test bit logic for compiler big-natural arithmetic.
 int bn_test_bit(const BigNat *bn, int bit_index) {
    int word_index;
    int bit_in_word;
@@ -343,6 +364,7 @@ int bn_test_bit(const BigNat *bn, int bit_index) {
    return (int) ((bn->words[word_index] >> bit_in_word) & 1u);
 }
 
+//! @brief Handle bn divmod logic for compiler big-natural arithmetic.
 void bn_divmod(const BigNat *numerator, const BigNat *denominator, BigNat *quotient, BigNat *remainder) {
    BigNat shifted;
    int shift;
@@ -374,10 +396,12 @@ void bn_divmod(const BigNat *numerator, const BigNat *denominator, BigNat *quoti
    bn_free(&shifted);
 }
 
+//! @brief Return whether bn is odd in compiler big-natural arithmetic.
 bool bn_is_odd(const BigNat *bn) {
    return bn && bn->len > 0 && (bn->words[0] & 1u);
 }
 
+//! @brief Handle bn round ratio shift logic for compiler big-natural arithmetic.
 void bn_round_ratio_shift(BigNat *out, const BigNat *numerator, const BigNat *denominator, long long shift) {
    BigNat num;
    BigNat den;

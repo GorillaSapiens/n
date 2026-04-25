@@ -19,6 +19,7 @@ typedef struct {
    char *detail;
 } abi_record_t;
 
+//! @brief Create dup for linker ABI metadata checker. The returned storage is owned by the caller or the object that immediately records it.
 static char *substr_dup(const char *start, size_t len)
 {
    char *s = (char *)xmalloc(len + 1);
@@ -27,11 +28,13 @@ static char *substr_dup(const char *start, size_t len)
    return s;
 }
 
+//! @brief Return whether ABI metadata has prefix in linker ABI metadata checker.
 int abi_metadata_has_prefix(const char *name)
 {
    return name && strncmp(name, ABI_META_PREFIX, sizeof(ABI_META_PREFIX) - 1) == 0;
 }
 
+//! @brief Handle hexval logic for linker ABI metadata checker.
 static int hexval(int ch)
 {
    if (ch >= '0' && ch <= '9')
@@ -43,6 +46,7 @@ static int hexval(int ch)
    return -1;
 }
 
+//! @brief Return meta decode data used by linker ABI metadata checker; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *meta_decode(const char *text)
 {
    size_t n = text ? strlen(text) : 0;
@@ -67,6 +71,7 @@ static char *meta_decode(const char *text)
    return out;
 }
 
+//! @brief Parse metadata fields into the normalized representation used by linker ABI metadata checker.
 static int split_metadata_fields(const char *name, char **fields, int want)
 {
    const char *p = name + sizeof(ABI_META_PREFIX) - 1;
@@ -87,6 +92,7 @@ static int split_metadata_fields(const char *name, char **fields, int want)
    return count == want;
 }
 
+//! @brief Parse ABI record into the normalized representation used by linker ABI metadata checker.
 static int parse_abi_record(const symbol_t *sym, const char *origin, abi_record_t *out)
 {
    char *fields[6] = {0};
@@ -118,6 +124,7 @@ static int parse_abi_record(const symbol_t *sym, const char *origin, abi_record_
    return 1;
 }
 
+//! @brief Release ABI record storage owned by linker ABI metadata checker.
 static void free_abi_record(abi_record_t *rec)
 {
    free(rec->kind);
@@ -128,6 +135,7 @@ static void free_abi_record(abi_record_t *rec)
    free(rec->detail);
 }
 
+//! @brief Collect object records from existing linker ABI metadata checker state for a later pass.
 static void collect_object_records(const object_file_t *obj, abi_record_t **records, size_t *count)
 {
    size_t i;
@@ -140,11 +148,13 @@ static void collect_object_records(const object_file_t *obj, abi_record_t **reco
    }
 }
 
+//! @brief Handle same group logic for linker ABI metadata checker.
 static int same_group(const abi_record_t *a, const abi_record_t *b)
 {
    return strcmp(a->kind, b->kind) == 0 && strcmp(a->symbol, b->symbol) == 0 && strcmp(a->role, b->role) == 0;
 }
 
+//! @brief Return role display data used by linker ABI metadata checker; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *role_display(const char *role)
 {
    static char buf[64];
@@ -167,6 +177,7 @@ static const char *role_display(const char *role)
    return role;
 }
 
+//! @brief Handle report mismatch logic for linker ABI metadata checker.
 static void report_mismatch(const abi_record_t *records, size_t count, size_t first)
 {
    size_t i;
@@ -183,6 +194,7 @@ static void report_mismatch(const abi_record_t *records, size_t count, size_t fi
    }
 }
 
+//! @brief Validate ABI metadata invariants before later linker stages depend on them.
 void validate_abi_metadata(const input_set_t *in)
 {
    abi_record_t *records = NULL;

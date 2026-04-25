@@ -15,11 +15,13 @@ void ihex_image_init(ihex_image_t *img)
    img->max_addr = 0;
 }
 
+//! @brief Handle Intel HEX addr ok logic for ihex.
 static int ihex_addr_ok(long addr)
 {
    return addr >= 0 && addr < IHEX_MAX_ADDR;
 }
 
+//! @brief Handle Intel HEX write byte logic for ihex.
 int ihex_write_byte(ihex_image_t *img, long addr, unsigned char value)
 {
    if (!ihex_addr_ok(addr))
@@ -42,6 +44,7 @@ int ihex_write_byte(ihex_image_t *img, long addr, unsigned char value)
    return 1;
 }
 
+//! @brief Handle Intel HEX write word logic for ihex.
 int ihex_write_word(ihex_image_t *img, long addr, unsigned short value)
 {
    if (!ihex_write_byte(img, addr, (unsigned char)(value & 0xFF)))
@@ -51,6 +54,7 @@ int ihex_write_word(ihex_image_t *img, long addr, unsigned short value)
    return 1;
 }
 
+//! @brief Handle Intel HEX emit record logic for ihex.
 static void ihex_emit_record(FILE *fp,
                              unsigned char count,
                              unsigned short addr,
@@ -77,6 +81,7 @@ static void ihex_emit_record(FILE *fp,
    fprintf(fp, "%02X\n", cksum);
 }
 
+//! @brief Handle Intel HEX dump logic for ihex.
 int ihex_dump(FILE *fp, const ihex_image_t *img)
 {
    unsigned int addr;

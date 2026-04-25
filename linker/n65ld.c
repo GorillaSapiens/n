@@ -16,6 +16,7 @@
 #include "n65ld_input.h"
 #include "n65ld_abi.h"
 
+//! @brief Print the linker command-line usage text.
 static void usage(FILE *fp)
 {
    fprintf(fp,
@@ -35,6 +36,7 @@ static void usage(FILE *fp)
       "  n65ld [layout.cfg] input1.o65 [input2.o65 ... inputN.a65] output.hex [output.map]\n");
 }
 
+//! @brief Return whether a string ends with the requested suffix.
 static int ends_with(const char *s, const char *suffix)
 {
    size_t slen = strlen(s);
@@ -44,6 +46,7 @@ static int ends_with(const char *s, const char *suffix)
    return strcmp(s + slen - tlen, suffix) == 0;
 }
 
+//! @brief Handle str ieq logic for linker layout and image writer.
 static int str_ieq(const char *a, const char *b)
 {
    while (*a && *b) {
@@ -56,6 +59,7 @@ static int str_ieq(const char *a, const char *b)
 }
 
 
+//! @brief Duplicate a string for tool-owned storage, terminating with a diagnostic on failure.
 char *xstrdup(const char *s)
 {
    size_t n = strlen(s) + 1;
@@ -68,16 +72,19 @@ char *xstrdup(const char *s)
    return p;
 }
 
+//! @brief Return whether symbol backed metadata has prefix in linker layout and image writer.
 static int symbol_backed_metadata_has_prefix(const char *name)
 {
    return name && strncmp(name, SYMBOL_BACKED_META_PREFIX, sizeof(SYMBOL_BACKED_META_PREFIX) - 1) == 0;
 }
 
+//! @brief Return whether reserved metadata has prefix in linker layout and image writer.
 static int reserved_metadata_has_prefix(const char *name)
 {
    return symbol_backed_metadata_has_prefix(name) || abi_metadata_has_prefix(name);
 }
 
+//! @brief Handle symbol backed metadata parse function logic for linker layout and image writer.
 static int symbol_backed_metadata_parse_function(const char *name, const char **sym_out)
 {
    const char *p;
@@ -97,6 +104,7 @@ static int symbol_backed_metadata_parse_function(const char *name, const char **
    return 1;
 }
 
+//! @brief Handle symbol backed metadata parse edge logic for linker layout and image writer.
 static int symbol_backed_metadata_parse_edge(const char *name, char **caller_out, char **callee_out)
 {
    const char *p;
@@ -125,6 +133,7 @@ static int symbol_backed_metadata_parse_edge(const char *name, char **caller_out
    return 1;
 }
 
+//! @brief Allocate memory for tool data structures, terminating with a diagnostic on failure.
 void *xmalloc(size_t size)
 {
    void *p = malloc(size ? size : 1);
@@ -135,6 +144,7 @@ void *xmalloc(size_t size)
    return p;
 }
 
+//! @brief Create weak name for linker layout and image writer. The returned storage is owned by the caller or the object that immediately records it.
 char *make_weak_name(const char *name)
 {
    size_t n = strlen(name);
@@ -144,6 +154,7 @@ char *make_weak_name(const char *name)
    return out;
 }
 
+//! @brief Allocate zeroed memory for tool data structures, terminating with a diagnostic on failure.
 void *xcalloc(size_t count, size_t size)
 {
    void *p = calloc(count ? count : 1, size ? size : 1);
@@ -154,6 +165,7 @@ void *xcalloc(size_t count, size_t size)
    return p;
 }
 
+//! @brief Resize tool-owned memory, terminating with a diagnostic on failure.
 void *xrealloc(void *ptr, size_t size)
 {
    void *p = realloc(ptr, size ? size : 1);
@@ -164,6 +176,7 @@ void *xrealloc(void *ptr, size_t size)
    return p;
 }
 
+//! @brief Parse number into the normalized representation used by linker layout and image writer.
 static parse_result_t parse_number(const char *s)
 {
    parse_result_t r;
@@ -191,6 +204,7 @@ static parse_result_t parse_number(const char *s)
    return r;
 }
 
+//! @brief Find memory in linker layout and image writer tables without transferring ownership.
 static const memory_region_t *find_memory(const linker_config_t *cfg, const char *name)
 {
    size_t i;
@@ -201,6 +215,7 @@ static const memory_region_t *find_memory(const linker_config_t *cfg, const char
    return NULL;
 }
 
+//! @brief Find segment rule in linker layout and image writer tables without transferring ownership.
 static const segment_rule_t *find_segment_rule(const linker_config_t *cfg, const char *name)
 {
    size_t i;
@@ -211,6 +226,7 @@ static const segment_rule_t *find_segment_rule(const linker_config_t *cfg, const
    return NULL;
 }
 
+//! @brief Handle init default config logic for linker layout and image writer.
 static void init_default_config(linker_config_t *cfg)
 {
    memset(cfg, 0, sizeof(*cfg));
@@ -272,6 +288,7 @@ static void init_default_config(linker_config_t *cfg)
    cfg->seg_count = 5;
 }
 
+//! @brief Trim leading and trailing whitespace in place and return the first non-space byte.
 static char *trim(char *s)
 {
    char *e;
@@ -285,6 +302,7 @@ static char *trim(char *s)
    return s;
 }
 
+//! @brief Parse memory property into the normalized representation used by linker layout and image writer.
 static void parse_memory_property(memory_region_t *mem, const char *key, const char *value)
 {
    parse_result_t n;
@@ -309,6 +327,7 @@ static void parse_memory_property(memory_region_t *mem, const char *key, const c
    }
 }
 
+//! @brief Parse segment property into the normalized representation used by linker layout and image writer.
 static void parse_segment_property(segment_rule_t *seg, const char *key, const char *value)
 {
    value = trim((char *)value);
@@ -323,6 +342,7 @@ static void parse_segment_property(segment_rule_t *seg, const char *key, const c
    }
 }
 
+//! @brief Parse configuration file into the normalized representation used by linker layout and image writer.
 static void parse_cfg_file(linker_config_t *cfg, const char *path)
 {
    FILE *fp = fopen(path, "r");
@@ -419,11 +439,13 @@ static void parse_cfg_file(linker_config_t *cfg, const char *path)
 
 
 
+//! @brief Return whether symbol is init function in linker layout and image writer.
 static int symbol_is_init_function(const char *name)
 {
    return strcmp(name, "__init") == 0 || strncmp(name, "__init_", 7) == 0;
 }
 
+//! @brief Handle call graph find or add node logic for linker layout and image writer.
 static int call_graph_find_or_add_node(call_graph_node_t **nodes, size_t *count, const char *name)
 {
    size_t i;
@@ -439,6 +461,7 @@ static int call_graph_find_or_add_node(call_graph_node_t **nodes, size_t *count,
    return (int)(*count)++;
 }
 
+//! @brief Handle call graph add edge logic for linker layout and image writer.
 static void call_graph_add_edge(call_graph_edge_t **edges, size_t *count, int from, int to)
 {
    size_t i;
@@ -454,6 +477,7 @@ static void call_graph_add_edge(call_graph_edge_t **edges, size_t *count, int fr
    (*count)++;
 }
 
+//! @brief Extract call graph collect from object for linker layout and image writer.
 static void call_graph_collect_from_object(const object_file_t *obj,
                                            call_graph_node_t **nodes, size_t *node_count,
                                            call_graph_edge_t **edges, size_t *edge_count)
@@ -483,6 +507,7 @@ static void call_graph_collect_from_object(const object_file_t *obj,
    }
 }
 
+//! @brief Handle call graph tarjan visit logic for linker layout and image writer.
 static void call_graph_tarjan_visit(int v,
                                     const call_graph_edge_t *edges, size_t edge_count,
                                     int *index_counter,
@@ -529,6 +554,7 @@ static void call_graph_tarjan_visit(int v,
    }
 }
 
+//! @brief Return display function symbol data used by linker layout and image writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *display_function_symbol(const char *name)
 {
    static char buf[512];
@@ -549,6 +575,7 @@ static const char *display_function_symbol(const char *name)
    return name;
 }
 
+//! @brief Validate symbol backed call graph invariants before later linker stages depend on them.
 static void enforce_symbol_backed_call_graph(const input_set_t *in)
 {
    call_graph_node_t *nodes = NULL;
@@ -638,6 +665,7 @@ cleanup:
    free(component_has_cycle);
 }
 
+//! @brief Add global to linker layout and image writer state, growing storage or preserving uniqueness as needed.
 static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_t segid, const char *source)
 {
    size_t i;
@@ -657,6 +685,7 @@ static void add_global(layout_t *layout, const char *name, uint16_t addr, uint8_
    layout->global_count++;
 }
 
+//! @brief Add generated symbols to linker layout and image writer state, growing storage or preserving uniqueness as needed.
 static void add_generated_symbols(layout_t *layout)
 {
    add_global(layout, "__copy_table", layout->copy_table_addr, O65_SEG_ABS, "<linker>");
@@ -666,6 +695,7 @@ static void add_generated_symbols(layout_t *layout)
    add_global(layout, "__stack_top", layout->stack_top, O65_SEG_ABS, "<linker>");
 }
 
+//! @brief Find global addr in linker layout and image writer tables without transferring ownership.
 static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
 {
    size_t i;
@@ -690,6 +720,7 @@ static uint16_t lookup_global_addr(const layout_t *layout, const char *name)
    exit(1);
 }
 
+//! @brief Collect init functions in input from existing linker layout and image writer state for a later pass.
 static size_t count_init_functions_in_input(const input_set_t *in)
 {
    size_t i, j;
@@ -706,6 +737,7 @@ static size_t count_init_functions_in_input(const input_set_t *in)
    return count;
 }
 
+//! @brief Handle segment name matches prefix logic for linker layout and image writer.
 static int segment_name_matches_prefix(const char *name, const char *prefix)
 {
    size_t n;
@@ -717,6 +749,7 @@ static int segment_name_matches_prefix(const char *name, const char *prefix)
    return strncasecmp(name, prefix, n) == 0 && (name[n] == '\0' || name[n] == '.');
 }
 
+//! @brief Return segment name suffix data used by linker layout and image writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *segment_name_suffix(const char *name)
 {
    const char *dot;
@@ -727,6 +760,7 @@ static const char *segment_name_suffix(const char *name)
    return (dot && dot[1]) ? dot + 1 : NULL;
 }
 
+//! @brief Return rule run region name data used by linker layout and image writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *rule_run_region_name(const segment_rule_t *rule)
 {
    if (!rule)
@@ -734,6 +768,7 @@ static const char *rule_run_region_name(const segment_rule_t *rule)
    return rule->run_name[0] ? rule->run_name : rule->load_name;
 }
 
+//! @brief Return ensure cursor data used by linker layout and image writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static memory_cursor_t *ensure_cursor(layout_t *layout, const linker_config_t *cfg, const char *mem_name)
 {
    size_t i;
@@ -759,6 +794,7 @@ static memory_cursor_t *ensure_cursor(layout_t *layout, const linker_config_t *c
    return &layout->cursors[layout->cursor_count++];
 }
 
+//! @brief Extract alloc from region for linker layout and image writer.
 static uint16_t alloc_from_region(layout_t *layout, const linker_config_t *cfg, const char *mem_name,
    uint16_t size, const char *what, const char *origin)
 {
@@ -775,6 +811,7 @@ static uint16_t alloc_from_region(layout_t *layout, const linker_config_t *cfg, 
    return (uint16_t)addr;
 }
 
+//! @brief Add copy record to linker layout and image writer state, growing storage or preserving uniqueness as needed.
 static void add_copy_record(layout_t *layout, const char *name, uint16_t load_addr, uint16_t run_addr, uint16_t size)
 {
    if (size == 0)
@@ -788,6 +825,7 @@ static void add_copy_record(layout_t *layout, const char *name, uint16_t load_ad
    layout->copy_record_count++;
 }
 
+//! @brief Add zero record to linker layout and image writer state, growing storage or preserving uniqueness as needed.
 static void add_zero_record(layout_t *layout, const char *name, uint16_t run_addr, uint16_t size)
 {
    if (size == 0)
@@ -800,6 +838,7 @@ static void add_zero_record(layout_t *layout, const char *name, uint16_t run_add
    layout->zero_record_count++;
 }
 
+//! @brief Find layout for value in linker layout and image writer tables without transferring ownership.
 static const object_layout_t *find_layout_for_value(const object_file_t *obj, uint8_t segid, uint16_t packed_value)
 {
    const object_layout_t *fallback = NULL;
@@ -821,6 +860,7 @@ static const object_layout_t *find_layout_for_value(const object_file_t *obj, ui
    return fallback;
 }
 
+//! @brief Handle object runtime addr for value logic for linker layout and image writer.
 static uint16_t object_runtime_addr_for_value(const object_file_t *obj, uint8_t segid, uint16_t packed_value)
 {
    const object_layout_t *lay;
@@ -839,6 +879,7 @@ static uint16_t object_runtime_addr_for_value(const object_file_t *obj, uint8_t 
    return (uint16_t)(base + (packed_value - lay->packed_base));
 }
 
+//! @brief Handle object layout load addr logic for linker layout and image writer.
 static uint16_t object_layout_load_addr(const object_file_t *obj, const object_layout_t *lay)
 {
    switch (lay->image_segid) {
@@ -853,6 +894,7 @@ static uint16_t object_layout_load_addr(const object_file_t *obj, const object_l
    }
 }
 
+//! @brief Compute objects and update linker layout and image writer state once prerequisite pass data is available.
 static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t *layout)
 {
    const segment_rule_t *code = find_segment_rule(cfg, "CODE");
@@ -959,6 +1001,7 @@ static void layout_objects(const linker_config_t *cfg, input_set_t *in, layout_t
    }
 }
 
+//! @brief Handle patch 8-bit logic for linker layout and image writer.
 static void patch_u8(uint8_t *buf, size_t len, uint32_t off, uint8_t v, const char *origin)
 {
    if (off >= len) {
@@ -968,6 +1011,7 @@ static void patch_u8(uint8_t *buf, size_t len, uint32_t off, uint8_t v, const ch
    buf[off] = v;
 }
 
+//! @brief Handle patch 16-bit logic for linker layout and image writer.
 static void patch_u16(uint8_t *buf, size_t len, uint32_t off, uint16_t v, const char *origin)
 {
    if (off + 1 >= len) {
@@ -978,6 +1022,7 @@ static void patch_u16(uint8_t *buf, size_t len, uint32_t off, uint16_t v, const 
    buf[off + 1] = (uint8_t)((v >> 8) & 0xFFu);
 }
 
+//! @brief Handle apply segment relocs logic for linker layout and image writer.
 static void apply_segment_relocs(object_file_t *obj, o65_segment_t *seg, const layout_t *layout, const char *seg_name)
 {
    size_t i;
@@ -1035,6 +1080,7 @@ static void apply_segment_relocs(object_file_t *obj, o65_segment_t *seg, const l
    }
 }
 
+//! @brief Compute all and update linker layout and image writer state once prerequisite pass data is available.
 static void resolve_all(input_set_t *in, const layout_t *layout)
 {
    size_t i;
@@ -1044,6 +1090,7 @@ static void resolve_all(input_set_t *in, const layout_t *layout)
    }
 }
 
+//! @brief Handle image write logic for linker layout and image writer.
 static void image_write(uint8_t *image, uint8_t *used, uint16_t addr, const uint8_t *src, size_t len, const char *who)
 {
    size_t i;
@@ -1058,6 +1105,7 @@ static void image_write(uint8_t *image, uint8_t *used, uint16_t addr, const uint
    }
 }
 
+//! @brief Handle build init table image logic for linker layout and image writer.
 static void build_init_table_image(const input_set_t *in, const layout_t *layout, uint8_t *table)
 {
    size_t i, j;
@@ -1079,6 +1127,7 @@ static void build_init_table_image(const input_set_t *in, const layout_t *layout
    }
 }
 
+//! @brief Handle build copy table image logic for linker layout and image writer.
 static void build_copy_table_image(const layout_t *layout, uint8_t *table)
 {
    size_t i;
@@ -1096,6 +1145,7 @@ static void build_copy_table_image(const layout_t *layout, uint8_t *table)
    }
 }
 
+//! @brief Handle build zero table image logic for linker layout and image writer.
 static void build_zero_table_image(const layout_t *layout, uint8_t *table)
 {
    size_t i;
@@ -1111,6 +1161,7 @@ static void build_zero_table_image(const layout_t *layout, uint8_t *table)
    }
 }
 
+//! @brief Handle build rom image logic for linker layout and image writer.
 static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const layout_t *layout, uint8_t *image, uint8_t *used)
 {
    const memory_region_t *rom = find_memory(cfg, "ROM");
@@ -1164,6 +1215,7 @@ static void build_rom_image(const linker_config_t *cfg, input_set_t *in, const l
    used[0xFFFA] = used[0xFFFB] = used[0xFFFC] = used[0xFFFD] = used[0xFFFE] = used[0xFFFF] = 1;
 }
 
+//! @brief Handle hex checksum logic for linker layout and image writer.
 static uint8_t hex_checksum(const uint8_t *bytes, size_t n)
 {
    uint32_t sum = 0;
@@ -1173,6 +1225,7 @@ static uint8_t hex_checksum(const uint8_t *bytes, size_t n)
    return (uint8_t)((~sum + 1) & 0xFFu);
 }
 
+//! @brief Emit hex record for linker layout and image writer diagnostics or output files.
 static void emit_hex_record(FILE *fp, uint16_t addr, const uint8_t *data, uint8_t len, uint8_t type)
 {
    uint8_t hdr[4];
@@ -1192,6 +1245,7 @@ static void emit_hex_record(FILE *fp, uint16_t addr, const uint8_t *data, uint8_
    }
 }
 
+//! @brief Write intel hex using the on-disk format expected by linker layout and image writer.
 static void write_intel_hex(const char *path, const uint8_t *image, const uint8_t *used)
 {
    FILE *fp = fopen(path, "w");
@@ -1218,6 +1272,7 @@ static void write_intel_hex(const char *path, const uint8_t *image, const uint8_
    fclose(fp);
 }
 
+//! @brief Write map file using the on-disk format expected by linker layout and image writer.
 static void write_map_file(const char *path, const linker_config_t *cfg, const input_set_t *in, const layout_t *layout)
 {
    FILE *fp;
@@ -1271,6 +1326,7 @@ static void write_map_file(const char *path, const linker_config_t *cfg, const i
    fclose(fp);
 }
 
+//! @brief Entry point for the linker command; parses arguments, runs the requested pipeline, and returns process status.
 int main(int argc, char **argv)
 {
    int argi;

@@ -18,6 +18,7 @@
 
 static Pair *xforms = NULL;
 
+//! @brief Add xform to compiler string transform table state, growing storage or preserving uniqueness as needed.
 int register_xform(const char *name, ASTNode *node) {
    if (!xforms) {
       xforms = pair_create();
@@ -59,6 +60,7 @@ int register_xform(const char *name, ASTNode *node) {
    return 0;
 }
 
+//! @brief Handle xform exists logic for compiler string transform table.
 bool xform_exists(const char *name) {
    if (!xforms) {
       xforms = pair_create();
@@ -67,6 +69,7 @@ bool xform_exists(const char *name) {
    return pair_exists(xforms, name);
 }
 
+//! @brief Handle str append logic for compiler string transform table.
 static void str_append(char **sp, int *lp, unsigned char byte) {
    *sp = (char *) realloc(*sp, *lp + 2);
    (*sp)[*lp] = byte;
@@ -77,6 +80,7 @@ static void str_append(char **sp, int *lp, unsigned char byte) {
 static ASTNode *context = NULL;
 static ASTNode *working = NULL;
 
+//! @brief Handle describe utf8 bytes logic for compiler string transform table.
 static void describe_utf8_bytes(char *buf, size_t buflen, const char *s) {
    size_t used = 0;
    const unsigned char *us = (const unsigned char *) s;
@@ -101,6 +105,7 @@ static void describe_utf8_bytes(char *buf, size_t buflen, const char *s) {
    }
 }
 
+//! @brief Report invalid utf8 diagnostics with the location/context expected by compiler string transform table callers.
 static void error_invalid_utf8(const char *start, const char *s, const char *name) {
    char bytes[32];
    describe_utf8_bytes(bytes, sizeof(bytes), s);
@@ -109,6 +114,7 @@ static void error_invalid_utf8(const char *start, const char *s, const char *nam
       (int) (s - start), name[0] ? name : "", bytes);
 }
 
+//! @brief Handle str append helper logic for compiler string transform table.
 static void str_append_helper(char **sp, int *lp, const char *match) {
    for (int i = 0; i < context->count; i++) {
       ASTNode *item = context->children[i];
@@ -138,12 +144,14 @@ static void str_append_helper(char **sp, int *lp, const char *match) {
    }
 }
 
+//! @brief Handle str append codepoint logic for compiler string transform table.
 static void str_append_codepoint(char **sp, int *lp, int codepoint) {
    char buf[16];
    sprintf(buf, "'\\u%04x'", codepoint);
    str_append_helper(sp, lp, buf);
 }
 
+//! @brief Handle str append utf8 logic for compiler string transform table.
 static void str_append_utf8(char **sp, int *lp, int codepoint) {
    char buf[16];
 
@@ -174,12 +182,14 @@ static void str_append_utf8(char **sp, int *lp, int codepoint) {
    }
 }
 
+//! @brief Handle str append esc logic for compiler string transform table.
 static void str_append_esc(char **sp, int *lp, char c) {
    char buf[16];
    sprintf(buf, "'\\%c'", c);
    str_append_helper(sp, lp, buf);
 }
 
+//! @brief Parse utf8 into the normalized representation used by compiler string transform table.
 static int decode_utf8(const char *s, int *codepoint) {
     *codepoint = 0;
     const unsigned char *us = (const unsigned char *)s;
@@ -214,6 +224,7 @@ static int decode_utf8(const char *s, int *codepoint) {
     return 0;
 }
 
+//! @brief Handle fromhex logic for compiler string transform table.
 static int fromhex(int len, const char *p) {
    int ret = 0;
    const char *op = p;
@@ -236,6 +247,7 @@ static int fromhex(int len, const char *p) {
    return ret;
 }
 
+//! @brief Run the xform stage of the compiler tool pipeline.
 ASTNode *do_xform(ASTNode *node, const char *name) {
    const char *s = node->strval;
    char *ret = NULL;
@@ -306,6 +318,7 @@ ASTNode *do_xform(ASTNode *node, const char *name) {
    return node;
 }
 
+//! @brief Return get xform node data used by compiler string transform table; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *get_xform_node(const char *name) {
    if (!xforms) {
       xforms = pair_create();

@@ -23,6 +23,7 @@
 #include "xray.h"
 #include "lextern.h"
 
+//! @brief Return whether expr is ternary node in compiler type system.
 static bool expr_is_ternary_node(const ASTNode *expr) {
    expr = unwrap_expr_node(expr);
 
@@ -33,6 +34,7 @@ static bool expr_is_ternary_node(const ASTNode *expr) {
    return !strcmp(expr->name, "?:") && expr->count == 3;
 }
 
+//! @brief Return expr ternary true data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *expr_ternary_true(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr_is_ternary_node(expr)) {
@@ -41,6 +43,7 @@ static ASTNode *expr_ternary_true(ASTNode *expr) {
    return expr->children[1];
 }
 
+//! @brief Return expr ternary false data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *expr_ternary_false(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr_is_ternary_node(expr)) {
@@ -49,6 +52,7 @@ static ASTNode *expr_ternary_false(ASTNode *expr) {
    return expr->children[2];
 }
 
+//! @brief Extract type name from node for compiler type system.
 const char *type_name_from_node(const ASTNode *type) {
    if (!type) {
       return NULL;
@@ -62,6 +66,7 @@ const char *type_name_from_node(const ASTNode *type) {
    return NULL;
 }
 
+//! @brief Return required typename node data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *required_typename_node(const char *name) {
    const ASTNode *node;
 
@@ -77,15 +82,18 @@ const ASTNode *required_typename_node(const char *name) {
    return node;
 }
 
+//! @brief Return bool type node data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *bool_type_node(void) {
    return required_typename_node("bool");
 }
 
+//! @brief Return whether type is bool in compiler type system.
 bool type_is_bool(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    return name && !strcmp(name, "bool");
 }
 
+//! @brief Parse integer style flag text into the normalized representation used by compiler type system.
 const char *parse_integer_style_flag_text(const char *text) {
    if (!text || strncmp(text, "$integer:", 9) || !text[9]) {
       return NULL;
@@ -93,6 +101,7 @@ const char *parse_integer_style_flag_text(const char *text) {
    return text + 9;
 }
 
+//! @brief Return whether type has integer style in compiler type system.
 bool type_has_integer_style(const ASTNode *type, const char *style) {
    const char *name = type_name_from_node(type);
    char buf[64];
@@ -105,6 +114,7 @@ bool type_has_integer_style(const ASTNode *type, const char *style) {
    return has_flag(name, buf);
 }
 
+//! @brief Return whether type is signed integer in compiler type system.
 bool type_is_signed_integer(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    const ASTNode *node;
@@ -128,20 +138,24 @@ bool type_is_signed_integer(const ASTNode *type) {
    return false;
 }
 
+//! @brief Return whether type is unsigned integer in compiler type system.
 bool type_is_unsigned_integer(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    return name && strcmp(name, "*") && type_has_integer_style(type, "unsigned");
 }
 
+//! @brief Return whether type is promotable integer in compiler type system.
 bool type_is_promotable_integer(const ASTNode *type) {
    return type_is_signed_integer(type) || type_is_unsigned_integer(type);
 }
 
+//! @brief Return whether type has exactops in compiler type system.
 bool type_has_exactops(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    return name && has_flag(name, "$exactops");
 }
 
+//! @brief Handle same named value type logic for compiler type system.
 bool same_named_value_type(const ASTNode *lhs_type, const ASTNode *lhs_decl,
                                   const ASTNode *rhs_type, const ASTNode *rhs_decl) {
    const char *lhs_name = type_name_from_node(lhs_type);
@@ -157,6 +171,7 @@ bool same_named_value_type(const ASTNode *lhs_type, const ASTNode *lhs_decl,
    return true;
 }
 
+//! @brief Return expr same type exactops type data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *expr_same_type_exactops_type(ASTNode *expr, Context *ctx) {
    const ASTNode *lhs_type = NULL;
    const ASTNode *lhs_decl = NULL;
@@ -196,6 +211,7 @@ const ASTNode *expr_same_type_exactops_type(ASTNode *expr, Context *ctx) {
    return NULL;
 }
 
+//! @brief Handle mixed exactops value types logic for compiler type system.
 bool mixed_exactops_value_types(const ASTNode *lhs_type, const ASTNode *lhs_decl,
                                        const ASTNode *rhs_type, const ASTNode *rhs_decl,
                                        const ASTNode **exact_type_out, const ASTNode **other_type_out) {
@@ -235,6 +251,7 @@ bool mixed_exactops_value_types(const ASTNode *lhs_type, const ASTNode *lhs_decl
    return true;
 }
 
+//! @brief Handle expr mixed exactops type logic for compiler type system.
 bool expr_mixed_exactops_type(ASTNode *expr, Context *ctx,
                                      const ASTNode **exact_type_out,
                                      const ASTNode **other_type_out) {
@@ -264,6 +281,7 @@ bool expr_mixed_exactops_type(ASTNode *expr, Context *ctx,
    return mixed_exactops_value_types(lhs_type, lhs_decl, rhs_type, rhs_decl, exact_type_out, other_type_out);
 }
 
+//! @brief Handle require no mixed exactops operator expr logic for compiler type system.
 void require_no_mixed_exactops_operator_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *exact_type = NULL;
    const ASTNode *other_type = NULL;
@@ -287,6 +305,7 @@ void require_no_mixed_exactops_operator_expr(ASTNode *expr, Context *ctx) {
               expr->file, expr->line, expr->column, exact_name, expr->name, other_name);
 }
 
+//! @brief Handle require exactops operator expr logic for compiler type system.
 void require_exactops_operator_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *type = NULL;
    const char *name;
@@ -312,6 +331,7 @@ void require_exactops_operator_expr(ASTNode *expr, Context *ctx) {
               expr->file, expr->line, expr->column, name, opname);
 }
 
+//! @brief Handle require exactops truthiness expr logic for compiler type system.
 void require_exactops_truthiness_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *type;
    const ASTNode *decl;
@@ -340,6 +360,7 @@ void require_exactops_truthiness_expr(ASTNode *expr, Context *ctx) {
               expr->file, expr->line, expr->column, name);
 }
 
+//! @brief Return type endian name data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *type_endian_name(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    if (!name) {
@@ -354,10 +375,12 @@ const char *type_endian_name(const ASTNode *type) {
    return NULL;
 }
 
+//! @brief Return whether type is big endian in compiler type system.
 bool type_is_big_endian(const ASTNode *type) {
    return type && has_flag(type_name_from_node(type), "$endian:big");
 }
 
+//! @brief Handle endian mem index for significance logic for compiler type system.
 int endian_mem_index_for_significance(int size, bool big_endian, int significance_index) {
    if (significance_index < 0) {
       return 0;
@@ -368,6 +391,7 @@ int endian_mem_index_for_significance(int size, bool big_endian, int significanc
    return big_endian ? (size - 1 - significance_index) : significance_index;
 }
 
+//! @brief Return whether expr is literal node in compiler type system.
 bool expr_is_literal_node(const ASTNode *expr) {
    expr = unwrap_expr_node(expr);
    if (!expr) {
@@ -379,6 +403,7 @@ bool expr_is_literal_node(const ASTNode *expr) {
    return expr_is_integer_constant_expr(expr, NULL);
 }
 
+//! @brief Handle ordinary integer endian conflict logic for compiler type system.
 bool ordinary_integer_endian_conflict(const ASTNode *lhs_type, const ASTNode *rhs_type) {
    int lhs_size;
    int rhs_size;
@@ -403,6 +428,7 @@ bool ordinary_integer_endian_conflict(const ASTNode *lhs_type, const ASTNode *rh
    return lhs_endian && rhs_endian && strcmp(lhs_endian, rhs_endian);
 }
 
+//! @brief Compute integer type by shape and update compiler type system state once prerequisite pass data is available.
 static const ASTNode *select_integer_type_by_shape(int required_size, bool require_signed,
                                                    const char *preferred_endian,
                                                    const ASTNode *prefer_a,
@@ -455,6 +481,7 @@ static const ASTNode *select_integer_type_by_shape(int required_size, bool requi
    return best;
 }
 
+//! @brief Return promoted integer type for binary data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, const ASTNode *rhs_type, ASTNode *origin) {
    bool lhs_signed;
    bool rhs_signed;
@@ -519,6 +546,7 @@ const ASTNode *promoted_integer_type_for_binary(const ASTNode *lhs_type, const A
    return best;
 }
 
+//! @brief Return binary integer work type data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *binary_integer_work_type(ASTNode *lhs_expr, ASTNode *rhs_expr, Context *ctx, ASTNode *origin) {
    const ASTNode *lhs_type;
    const ASTNode *rhs_type;
@@ -556,6 +584,7 @@ const ASTNode *binary_integer_work_type(ASTNode *lhs_expr, ASTNode *rhs_expr, Co
    return promoted_integer_type_for_binary(lhs_type, rhs_type, origin);
 }
 
+//! @brief Return compound integer work type data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *compound_integer_work_type(const ASTNode *lhs_type, const ASTNode *lhs_decl, ASTNode *rhs_expr, Context *ctx, ASTNode *origin) {
    const ASTNode *rhs_type;
    const ASTNode *rhs_decl;
@@ -580,6 +609,7 @@ const ASTNode *compound_integer_work_type(const ASTNode *lhs_type, const ASTNode
    return promoted_integer_type_for_binary(lhs_type, rhs_type, origin);
 }
 
+//! @brief Handle require no mixed signed integer binary expr logic for compiler type system.
 void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *lhs_type;
    const ASTNode *rhs_type;
@@ -630,6 +660,7 @@ void require_no_mixed_signed_integer_binary_expr(ASTNode *expr, Context *ctx) {
    }
 }
 
+//! @brief Handle require no mixed endian integer binary expr logic for compiler type system.
 void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx) {
    const ASTNode *lhs_type;
    const ASTNode *rhs_type;
@@ -681,6 +712,7 @@ void require_no_mixed_endian_integer_binary_expr(ASTNode *expr, Context *ctx) {
    }
 }
 
+//! @brief Handle require no mixed endian pointer index expr logic for compiler type system.
 void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode *idx_expr, Context *ctx, const char *op) {
    const ASTNode *idx_type;
    const ASTNode *ptr_type;
@@ -711,6 +743,7 @@ void require_no_mixed_endian_pointer_index_expr(ASTNode *origin, ASTNode *idx_ex
               origin->file, origin->line, origin->column, op ? op : "?", idx_endian, ptr_endian);
 }
 
+//! @brief Compute endian variant type and update compiler type system state once prerequisite pass data is available.
 const ASTNode *select_endian_variant_type(const ASTNode *src_type, const char *target_endian) {
    int src_size;
    bool src_exactops;
@@ -769,6 +802,7 @@ const ASTNode *select_endian_variant_type(const ASTNode *src_type, const char *t
    return NULL;
 }
 
+//! @brief Return flag cast target type data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx) {
    ASTNode *operand;
    ASTNode *flag;
@@ -864,6 +898,7 @@ const ASTNode *flag_cast_target_type(ASTNode *expr, Context *ctx) {
    }
 }
 
+//! @brief Return flag cast target declarator data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *flag_cast_target_declarator(ASTNode *expr, Context *ctx) {
    ASTNode *operand;
 
@@ -878,6 +913,7 @@ const ASTNode *flag_cast_target_declarator(ASTNode *expr, Context *ctx) {
    return expr_value_declarator(operand, ctx);
 }
 
+//! @brief Handle flag cast target size logic for compiler type system.
 int flag_cast_target_size(ASTNode *expr, Context *ctx) {
    const ASTNode *type = flag_cast_target_type(expr, ctx);
    const ASTNode *decl = flag_cast_target_declarator(expr, ctx);
@@ -893,6 +929,7 @@ int flag_cast_target_size(ASTNode *expr, Context *ctx) {
    return size;
 }
 
+//! @brief Return literal annotation type data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *literal_annotation_type(const ASTNode *expr) {
    if (!expr) {
       return NULL;
@@ -903,6 +940,7 @@ const ASTNode *literal_annotation_type(const ASTNode *expr) {
    return NULL;
 }
 
+//! @brief Handle integer literal min size logic for compiler type system.
 int integer_literal_min_size(const ASTNode *expr) {
    unsigned long long value;
    int size = 1;
@@ -924,6 +962,7 @@ int integer_literal_min_size(const ASTNode *expr) {
    return size;
 }
 
+//! @brief Return whether expr is integer constant expr in compiler type system.
 bool expr_is_integer_constant_expr(const ASTNode *expr, long long *value_out) {
    InitConstValue value = {0};
 
@@ -946,11 +985,13 @@ bool expr_is_integer_constant_expr(const ASTNode *expr, long long *value_out) {
    return true;
 }
 
+//! @brief Return whether expr is untyped integer literal in compiler type system.
 bool expr_is_untyped_integer_literal(const ASTNode *expr) {
    expr = unwrap_expr_node(expr);
    return expr && expr->kind == AST_INTEGER && !literal_annotation_type(expr);
 }
 
+//! @brief Return whether integer literal is zero expr in compiler type system.
 bool integer_literal_is_zero_expr(const ASTNode *expr) {
    char *end = NULL;
    unsigned long long value;
@@ -964,6 +1005,7 @@ bool integer_literal_is_zero_expr(const ASTNode *expr) {
    return end && end != expr->strval && *end == 0 && value == 0;
 }
 
+//! @brief Handle integer literal fits plain integer type logic for compiler type system.
 bool integer_literal_fits_plain_integer_type(const ASTNode *expr, const ASTNode *formal_type, const ASTNode *formal_decl) {
    unsigned long long value;
    unsigned long long max_value;
@@ -1010,6 +1052,7 @@ bool integer_literal_fits_plain_integer_type(const ASTNode *expr, const ASTNode 
 
 // for parameterless flags (e.g. "$signed")
 // also for complete flags (e.g. "$endian:little")
+//! @brief Return enum backing type name data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *enum_backing_type_name(const char *type) {
    if (!type || !enumbackings || !pair_exists(enumbackings, type)) {
       return NULL;
@@ -1017,6 +1060,7 @@ const char *enum_backing_type_name(const char *type) {
    return pair_get(enumbackings, type);
 }
 
+//! @brief Return whether flag applies in compiler type system.
 bool has_flag(const char *type, const char *flag) {
    const ASTNode *node;
    const char *backing;
@@ -1044,6 +1088,7 @@ bool has_flag(const char *type, const char *flag) {
    return false;
 }
 
+//! @brief Return whether flag prefix applies in compiler type system.
 bool has_flag_prefix(const char *type, const char *prefix) {
    const ASTNode *node;
    const char *backing;
@@ -1078,6 +1123,7 @@ bool has_flag_prefix(const char *type, const char *prefix) {
    return false;
 }
 
+//! @brief Parse float style flag text into the normalized representation used by compiler type system.
 const char *parse_float_style_flag_text(const char *text) {
    if (!text || strncmp(text, "$float:", 7) || !text[7]) {
       return NULL;
@@ -1085,11 +1131,13 @@ const char *parse_float_style_flag_text(const char *text) {
    return text + 7;
 }
 
+//! @brief Return whether type is float like in compiler type system.
 bool type_is_float_like(const ASTNode *type) {
    const char *name = type_name_from_node(type);
    return name && has_flag_prefix(name, "$float:");
 }
 
+//! @brief Return type float style data used by compiler type system; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *type_float_style(const ASTNode *type) {
    const ASTNode *node;
    const ASTNode *flags;
@@ -1118,6 +1166,7 @@ const char *type_float_style(const ASTNode *type) {
    return NULL;
 }
 
+//! @brief Handle type float expbits logic for compiler type system.
 int type_float_expbits(const ASTNode *type) {
    const char *style;
    int size;
@@ -1135,6 +1184,7 @@ int type_float_expbits(const ASTNode *type) {
    return float_style_expbits_for_size(style, size);
 }
 
+//! @brief Return whether modifier applies in compiler type system.
 bool has_modifier(ASTNode *node, const char *modifier) {
    if (!node || is_empty(node)) {
       return false;
@@ -1148,6 +1198,7 @@ bool has_modifier(ASTNode *node, const char *modifier) {
    return false;
 }
 
+//! @brief Handle declaration const applies to object logic for compiler type system.
 bool declaration_const_applies_to_object(const ASTNode *modifiers, const ASTNode *declarator) {
    if (!has_modifier((ASTNode *) modifiers, "const")) {
       return false;
@@ -1156,6 +1207,7 @@ bool declaration_const_applies_to_object(const ASTNode *modifiers, const ASTNode
    return declarator_pointer_depth(declarator) <= 0;
 }
 
+//! @brief Parse flag u64 into the normalized representation used by compiler type system.
 static bool parse_flag_u64(const ASTNode *flags, const char *prefix, unsigned long long *out) {
    size_t prefix_len;
 
@@ -1185,6 +1237,7 @@ static bool parse_flag_u64(const ASTNode *flags, const char *prefix, unsigned lo
    return false;
 }
 
+//! @brief Find mem modifier name in compiler type system tables without transferring ownership.
 const char *find_mem_modifier_name(const ASTNode *modifiers) {
    const char *found = NULL;
 
@@ -1212,6 +1265,7 @@ const char *find_mem_modifier_name(const ASTNode *modifiers) {
    return found;
 }
 
+//! @brief Find mem modifier node in compiler type system tables without transferring ownership.
 const ASTNode *find_mem_modifier_node(const ASTNode *modifiers) {
    const char *name = find_mem_modifier_name(modifiers);
 
@@ -1221,6 +1275,7 @@ const ASTNode *find_mem_modifier_node(const ASTNode *modifiers) {
    return get_memname_node(name);
 }
 
+//! @brief Return whether mem decl is zeropage in compiler type system.
 bool mem_decl_is_zeropage(const ASTNode *mem_decl) {
    const ASTNode *flags;
    unsigned long long start = 0;
@@ -1254,18 +1309,22 @@ bool mem_decl_is_zeropage(const ASTNode *mem_decl) {
    return false;
 }
 
+//! @brief Handle modifiers imply zeropage logic for compiler type system.
 bool modifiers_imply_zeropage(const ASTNode *modifiers) {
    return mem_decl_is_zeropage(find_mem_modifier_node(modifiers));
 }
 
+//! @brief Handle modifiers imply mem storage logic for compiler type system.
 bool modifiers_imply_mem_storage(const ASTNode *modifiers) {
    return find_mem_modifier_name(modifiers) != NULL;
 }
 
+//! @brief Handle modifiers imply named nonzeropage logic for compiler type system.
 bool modifiers_imply_named_nonzeropage(const ASTNode *modifiers) {
    return modifiers_imply_mem_storage(modifiers) && !modifiers_imply_zeropage(modifiers);
 }
 
+//! @brief Handle build named storage segment logic for compiler type system.
 void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modifiers, const char *base_segment) {
    const char *memname = find_mem_modifier_name(modifiers);
 
@@ -1281,6 +1340,7 @@ void build_named_storage_segment(char *buf, size_t bufsize, const ASTNode *modif
    }
 }
 
+//! @brief Handle get size logic for compiler type system.
 int get_size(const char *type) {
    const ASTNode *node;
    const char *backing;
@@ -1327,6 +1387,7 @@ int get_size(const char *type) {
 }
 
 
+//! @brief Extract type size from node for compiler type system.
 int type_size_from_node(const ASTNode *type) {
    const char *name = type_name_from_node(type);
 
@@ -1337,6 +1398,7 @@ int type_size_from_node(const ASTNode *type) {
    return get_size(name);
 }
 
+//! @brief Handle declarator value size logic for compiler type system.
 int declarator_value_size(const ASTNode *type, const ASTNode *declarator) {
    int size;
    int mult = 1;
@@ -1360,6 +1422,7 @@ int declarator_value_size(const ASTNode *type, const ASTNode *declarator) {
    return size * mult;
 }
 
+//! @brief Handle expr value size logic for compiler type system.
 int expr_value_size(ASTNode *expr, Context *ctx) {
    const ASTNode *type;
    const ASTNode *declarator;

@@ -7,6 +7,7 @@
 #include <string.h>
 #include "util.h"
 
+//! @brief Duplicate a string for tool-owned storage, terminating with a diagnostic on failure.
 char *xstrdup(const char *s)
 {
    size_t n;

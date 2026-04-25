@@ -102,6 +102,7 @@ enum {
    RELOC_PART_WORD
 };
 
+//! @brief Handle writer error logic for assembler o65 object writer.
 static void writer_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt, ...)
 {
    va_list ap;
@@ -114,6 +115,7 @@ static void writer_error(asm_context_t *ctx, const stmt_t *stmt, const char *fmt
    fprintf(stderr, "\n");
 }
 
+//! @brief Handle str ieq logic for assembler o65 object writer.
 static int str_ieq(const char *a, const char *b)
 {
    unsigned char ca;
@@ -132,6 +134,7 @@ static int str_ieq(const char *a, const char *b)
    return *a == '\0' && *b == '\0';
 }
 
+//! @brief Handle segment name matches logic for assembler o65 object writer.
 static int segment_name_matches(const char *name, const char *base)
 {
    size_t n;
@@ -143,6 +146,7 @@ static int segment_name_matches(const char *name, const char *base)
    return strncasecmp(name, base, n) == 0 && (name[n] == '\0' || name[n] == '.');
 }
 
+//! @brief Handle segment name to o65 logic for assembler o65 object writer.
 static int segment_name_to_o65(const char *name)
 {
    if (!name || str_ieq(name, "__default__") || segment_name_matches(name, "TEXT") || segment_name_matches(name, "CODE") || segment_name_matches(name, "RODATA"))
@@ -157,18 +161,21 @@ static int segment_name_to_o65(const char *name)
 }
 
 
+//! @brief Handle directive name implies zero-page logic for assembler o65 object writer.
 static int directive_name_implies_zp(const char *name)
 {
    return name && (!strcmp(name, ".importzp") || !strcmp(name, ".exportzp") || !strcmp(name, ".globalzp") ||
                    !strcmp(name, ".zpimport") || !strcmp(name, ".zpexport") || !strcmp(name, ".zpglobal"));
 }
 
+//! @brief Return whether directive is export family in assembler o65 object writer.
 static int directive_is_export_family(const char *name)
 {
    return name && (!strcmp(name, ".global") || !strcmp(name, ".globalzp") || !strcmp(name, ".export") || !strcmp(name, ".exportzp") ||
                    !strcmp(name, ".zpglobal") || !strcmp(name, ".zpexport"));
 }
 
+//! @brief Handle stmt emits load image bytes logic for assembler o65 object writer.
 static int stmt_emits_load_image_bytes(const stmt_t *stmt)
 {
    if (!stmt)
@@ -188,6 +195,7 @@ static int stmt_emits_load_image_bytes(const stmt_t *stmt)
    }
 }
 
+//! @brief Handle segment needs load image logic for assembler o65 object writer.
 static int segment_needs_load_image(const asm_context_t *ctx, const char *name)
 {
    const stmt_t *stmt;
@@ -205,6 +213,7 @@ static int segment_needs_load_image(const asm_context_t *ctx, const char *name)
    return 0;
 }
 
+//! @brief Find source segment in assembler o65 object writer tables without transferring ownership.
 static const asm_segment_t *find_source_segment(const asm_context_t *ctx, const char *name)
 {
    const asm_segment_t *seg;
@@ -218,6 +227,7 @@ static const asm_segment_t *find_source_segment(const asm_context_t *ctx, const 
    return NULL;
 }
 
+//! @brief Find layout in assembler o65 object writer tables without transferring ownership.
 static o65_segment_layout_t *find_layout(o65_writer_t *wr, const char *name)
 {
    o65_segment_layout_t *layout;
@@ -231,6 +241,7 @@ static o65_segment_layout_t *find_layout(o65_writer_t *wr, const char *name)
    return NULL;
 }
 
+//! @brief Find layout const in assembler o65 object writer tables without transferring ownership.
 static const o65_segment_layout_t *find_layout_const(const o65_writer_t *wr, const char *name)
 {
    const o65_segment_layout_t *layout;
@@ -244,6 +255,7 @@ static const o65_segment_layout_t *find_layout_const(const o65_writer_t *wr, con
    return NULL;
 }
 
+//! @brief Add layout to assembler o65 object writer state, growing storage or preserving uniqueness as needed.
 static int register_layout(o65_writer_t *wr, const char *name)
 {
    const asm_segment_t *seg;
@@ -306,6 +318,7 @@ static int register_layout(o65_writer_t *wr, const char *name)
    return 1;
 }
 
+//! @brief Handle build layouts logic for assembler o65 object writer.
 static int build_layouts(o65_writer_t *wr)
 {
    const stmt_t *stmt;
@@ -328,6 +341,7 @@ static int build_layouts(o65_writer_t *wr)
    return 1;
 }
 
+//! @brief Handle packed stmt offset logic for assembler o65 object writer.
 static long packed_stmt_offset(o65_writer_t *wr, const stmt_t *stmt)
 {
    const o65_segment_layout_t *layout;
@@ -340,6 +354,7 @@ static long packed_stmt_offset(o65_writer_t *wr, const stmt_t *stmt)
    return (long)layout->packed_base + (stmt->address - layout->source_base);
 }
 
+//! @brief Handle packed stmt image offset logic for assembler o65 object writer.
 static long packed_stmt_image_offset(o65_writer_t *wr, const stmt_t *stmt)
 {
    const o65_segment_layout_t *layout;
@@ -352,6 +367,7 @@ static long packed_stmt_image_offset(o65_writer_t *wr, const stmt_t *stmt)
    return (long)layout->image_base + (stmt->address - layout->source_base);
 }
 
+//! @brief Handle packed symbol value logic for assembler o65 object writer.
 static long packed_symbol_value(const o65_writer_t *wr, const symbol_t *sym)
 {
    const o65_segment_layout_t *layout;
@@ -366,6 +382,7 @@ static long packed_symbol_value(const o65_writer_t *wr, const symbol_t *sym)
    return (long)layout->packed_base + (sym->value - layout->source_base);
 }
 
+//! @brief Find scoped symbol in assembler o65 object writer tables without transferring ownership.
 static const symbol_t *find_scoped_symbol(const symtab_t *symtab,
                                           const char *scope,
                                           const char *file_scope,
@@ -392,6 +409,7 @@ static const symbol_t *find_scoped_symbol(const symtab_t *symtab,
    return symtab_find_const(symtab, ident);
 }
 
+//! @brief Return writer buf for segid data used by assembler o65 object writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static o65_segment_buf_t *writer_buf_for_segid(o65_writer_t *wr, int segid)
 {
    if (segid == O65_SEG_TEXT)
@@ -403,6 +421,7 @@ static o65_segment_buf_t *writer_buf_for_segid(o65_writer_t *wr, int segid)
    return NULL;
 }
 
+//! @brief Handle ensure capacity logic for assembler o65 object writer.
 static int ensure_capacity(o65_segment_buf_t *buf, size_t need)
 {
    unsigned char *p;
@@ -425,6 +444,7 @@ static int ensure_capacity(o65_segment_buf_t *buf, size_t need)
    return 1;
 }
 
+//! @brief Handle buf write byte logic for assembler o65 object writer.
 static int buf_write_byte(o65_segment_buf_t *buf, long offset, unsigned char v)
 {
    size_t need;
@@ -442,12 +462,14 @@ static int buf_write_byte(o65_segment_buf_t *buf, long offset, unsigned char v)
    return 1;
 }
 
+//! @brief Handle buf write word logic for assembler o65 object writer.
 static int buf_write_word(o65_segment_buf_t *buf, long offset, unsigned short v)
 {
    return buf_write_byte(buf, offset, (unsigned char)(v & 0xFF)) &&
           buf_write_byte(buf, offset + 1, (unsigned char)((v >> 8) & 0xFF));
 }
 
+//! @brief Add reloc to assembler o65 object writer state, growing storage or preserving uniqueness as needed.
 static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, unsigned char segid, unsigned short undef_index,
                      int has_aux_low, unsigned char aux_low)
 {
@@ -472,6 +494,7 @@ static int add_reloc(o65_segment_buf_t *buf, long offset, unsigned char type, un
    return 1;
 }
 
+//! @brief Find undef in assembler o65 object writer tables without transferring ownership.
 static o65_undef_t *find_undef(o65_writer_t *wr, const char *name)
 {
    o65_undef_t *u;
@@ -481,6 +504,7 @@ static o65_undef_t *find_undef(o65_writer_t *wr, const char *name)
    }
    return NULL;
 }
+//! @brief Create weak export name for assembler o65 object writer. The returned storage is owned by the caller or the object that immediately records it.
 static char *make_weak_export_name(const char *name)
 {
    size_t n = strlen(name);
@@ -494,6 +518,7 @@ static char *make_weak_export_name(const char *name)
    return out;
 }
 
+//! @brief Find export in assembler o65 object writer tables without transferring ownership.
 static o65_export_t *find_export(o65_writer_t *wr, const char *name)
 {
    o65_export_t *e;
@@ -505,6 +530,7 @@ static o65_export_t *find_export(o65_writer_t *wr, const char *name)
 }
 
 
+//! @brief Handle intern undef logic for assembler o65 object writer.
 static unsigned short intern_undef(o65_writer_t *wr, const char *name)
 {
    o65_undef_t *u;
@@ -539,6 +565,7 @@ static unsigned short intern_undef(o65_writer_t *wr, const char *name)
    return idx;
 }
 
+//! @brief Return whether imported applies in assembler o65 object writer.
 static int is_imported(const asm_context_t *ctx, const char *name)
 {
    const import_name_t *p;
@@ -549,6 +576,7 @@ static int is_imported(const asm_context_t *ctx, const char *name)
    return 0;
 }
 
+//! @brief Handle analyze expr logic for assembler o65 object writer.
 static int analyze_expr(o65_writer_t *wr,
                         const stmt_t *stmt,
                         const expr_t *expr,
@@ -691,6 +719,7 @@ static int analyze_expr(o65_writer_t *wr,
    return 0;
 }
 
+//! @brief Handle maybe add expression reloc logic for assembler o65 object writer.
 static int maybe_add_expr_reloc(o65_writer_t *wr,
                                 const stmt_t *stmt,
                                 o65_segment_buf_t *buf,
@@ -737,6 +766,7 @@ static int maybe_add_expr_reloc(o65_writer_t *wr,
    return 1;
 }
 
+//! @brief Parse escaped string into the normalized representation used by assembler o65 object writer.
 static int decode_escaped_string(const char *quoted,
                                  unsigned char *out,
                                  int out_cap,
@@ -779,6 +809,7 @@ static int decode_escaped_string(const char *quoted,
    return 1;
 }
 
+//! @brief Add exports to assembler o65 object writer state, growing storage or preserving uniqueness as needed.
 static void add_exports(o65_writer_t *wr)
 {
    const stmt_t *stmt;
@@ -828,6 +859,7 @@ static void add_exports(o65_writer_t *wr)
    }
 }
 
+//! @brief Write segment stmt using the on-disk format expected by assembler o65 object writer.
 static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
 {
    int segid;
@@ -1040,18 +1072,22 @@ static int write_segment_stmt(o65_writer_t *wr, const stmt_t *stmt)
    return 1;
 }
 
+//! @brief Write 8-bit using the on-disk format expected by assembler o65 object writer.
 static int write_u8(FILE *fp, unsigned char v) { return fputc(v, fp) != EOF; }
+//! @brief Write 16-bit using the on-disk format expected by assembler o65 object writer.
 static int write_u16(FILE *fp, unsigned short v)
 {
    return write_u8(fp, (unsigned char)(v & 0xFF)) && write_u8(fp, (unsigned char)((v >> 8) & 0xFF));
 }
 
+//! @brief Write C string using the on-disk format expected by assembler o65 object writer.
 static int write_cstr(FILE *fp, const char *s)
 {
    size_t n = strlen(s) + 1;
    return fwrite(s, 1, n, fp) == n;
 }
 
+//! @brief Write reloc table using the on-disk format expected by assembler o65 object writer.
 static int write_reloc_table(FILE *fp, const o65_reloc_t *r)
 {
    long prev = -1;
@@ -1074,6 +1110,7 @@ static int write_reloc_table(FILE *fp, const o65_reloc_t *r)
    return write_u8(fp, 0);
 }
 
+//! @brief Write undefs using the on-disk format expected by assembler o65 object writer.
 static int write_undefs(FILE *fp, const o65_undef_t *u)
 {
    unsigned short count = 0;
@@ -1089,6 +1126,7 @@ static int write_undefs(FILE *fp, const o65_undef_t *u)
    return 1;
 }
 
+//! @brief Write exports using the on-disk format expected by assembler o65 object writer.
 static int write_exports(FILE *fp, const o65_export_t *e)
 {
    unsigned int count = 0;
@@ -1112,6 +1150,7 @@ static int write_exports(FILE *fp, const o65_export_t *e)
    return 1;
 }
 
+//! @brief Write layouts using the on-disk format expected by assembler o65 object writer.
 static int write_layouts(FILE *fp, const o65_segment_layout_t *layout)
 {
    unsigned int count = 0;
@@ -1137,6 +1176,7 @@ static int write_layouts(FILE *fp, const o65_segment_layout_t *layout)
    return 1;
 }
 
+//! @brief Release layouts storage owned by assembler o65 object writer.
 static void free_layouts(o65_segment_layout_t *layout)
 {
    while (layout) {
@@ -1147,6 +1187,7 @@ static void free_layouts(o65_segment_layout_t *layout)
    }
 }
 
+//! @brief Release relocs storage owned by assembler o65 object writer.
 static void free_relocs(o65_reloc_t *r)
 {
    while (r) {
@@ -1156,6 +1197,7 @@ static void free_relocs(o65_reloc_t *r)
    }
 }
 
+//! @brief Release undefs storage owned by assembler o65 object writer.
 static void free_undefs(o65_undef_t *u)
 {
    while (u) {
@@ -1166,6 +1208,7 @@ static void free_undefs(o65_undef_t *u)
    }
 }
 
+//! @brief Release exports storage owned by assembler o65 object writer.
 static void free_exports(o65_export_t *e)
 {
    while (e) {
@@ -1176,6 +1219,7 @@ static void free_exports(o65_export_t *e)
    }
 }
 
+//! @brief Handle o65 write object file logic for assembler o65 object writer.
 int o65_write_object_file(FILE *fp, asm_context_t *ctx)
 {
    o65_writer_t wr;

@@ -18,6 +18,7 @@
 
 static Pair *types = NULL;
 
+//! @brief Handle typename exists logic for typename.
 bool typename_exists(const char* name) {
    if (!types) {
       types = pair_create();
@@ -26,6 +27,7 @@ bool typename_exists(const char* name) {
    return pair_exists(types, name);
 }
 
+//! @brief Add typename to typename state, growing storage or preserving uniqueness as needed.
 int register_typename(const char* name) {
    if (!types) {
       types = pair_create();
@@ -67,6 +69,7 @@ int register_typename(const char* name) {
    return 0;
 }
 
+//! @brief Handle attach typename logic for typename.
 void attach_typename(const char *name, ASTNode *node) {
    if (!types) {
       types = pair_create();
@@ -75,6 +78,7 @@ void attach_typename(const char *name, ASTNode *node) {
    pair_insert(types, name, node);
 }
 
+//! @brief Return get typename node data used by typename; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *get_typename_node(const char *name) {
    if (!types) {
       types = pair_create();
@@ -83,6 +87,7 @@ ASTNode *get_typename_node(const char *name) {
    return pair_get(types, name);
 }
 
+//! @brief Return typename find null data used by typename; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *typename_find_null(void) {
    if (!types) {
       types = pair_create();

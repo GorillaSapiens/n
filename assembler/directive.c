@@ -8,6 +8,7 @@
 #include "directive.h"
 #include "util.h"
 
+//! @brief Return expr list node make data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_list_node_t *expr_list_node_make(expr_t *expr)
 {
    expr_list_node_t *node;
@@ -22,6 +23,7 @@ expr_list_node_t *expr_list_node_make(expr_t *expr)
    return node;
 }
 
+//! @brief Return expr list append data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_list_node_t *expr_list_append(expr_list_node_t *list, expr_t *expr)
 {
    expr_list_node_t *node;
@@ -40,6 +42,7 @@ expr_list_node_t *expr_list_append(expr_list_node_t *list, expr_t *expr)
    return list;
 }
 
+//! @brief Return directive alloc data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 static directive_info_t *directive_alloc(char *name, directive_arg_kind_t kind)
 {
    directive_info_t *dir;
@@ -55,11 +58,13 @@ static directive_info_t *directive_alloc(char *name, directive_arg_kind_t kind)
    return dir;
 }
 
+//! @brief Return directive make empty data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 directive_info_t *directive_make_empty(char *name)
 {
    return directive_alloc(name, DIRARG_NONE);
 }
 
+//! @brief Return directive make exprs data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 directive_info_t *directive_make_exprs(char *name, expr_list_node_t *exprs)
 {
    directive_info_t *dir;
@@ -69,6 +74,7 @@ directive_info_t *directive_make_exprs(char *name, expr_list_node_t *exprs)
    return dir;
 }
 
+//! @brief Return directive make string data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 directive_info_t *directive_make_string(char *name, char *string)
 {
    directive_info_t *dir;
@@ -78,6 +84,7 @@ directive_info_t *directive_make_string(char *name, char *string)
    return dir;
 }
 
+//! @brief Return directive make string exprs data used by directive; returned pointers alias existing storage unless explicitly allocated by the function name.
 directive_info_t *directive_make_string_exprs(char *name, char *string, expr_list_node_t *exprs)
 {
    directive_info_t *dir;
@@ -88,6 +95,7 @@ directive_info_t *directive_make_string_exprs(char *name, char *string, expr_lis
    return dir;
 }
 
+//! @brief Release list free storage owned by directive.
 static void expr_list_free(expr_list_node_t *list)
 {
    expr_list_node_t *next;
@@ -100,6 +108,7 @@ static void expr_list_free(expr_list_node_t *list)
    }
 }
 
+//! @brief Release free storage owned by directive.
 void directive_free(directive_info_t *dir)
 {
    if (!dir)
@@ -111,6 +120,7 @@ void directive_free(directive_info_t *dir)
    free(dir);
 }
 
+//! @brief Handle directive print logic for directive.
 void directive_print(const directive_info_t *dir)
 {
    const expr_list_node_t *node;

@@ -16,6 +16,7 @@
 #include "messages.h"
 #include "xray.h"
 
+//! @brief Parse node to double into the normalized representation used by expropt.
 static double parse_node_to_double(ASTNode *node) {
    if (node && node->kind == AST_INTEGER) {
       return parse_int(node->strval);
@@ -25,6 +26,7 @@ static double parse_node_to_double(ASTNode *node) {
    }
 }
 
+//! @brief Return whether int applies in expropt.
 static bool is_int(ASTNode *node) {
    if (node && node->kind == AST_INTEGER) {
       if (node->count == 0) { // backtick casting is done on the processor
@@ -34,6 +36,7 @@ static bool is_int(ASTNode *node) {
    return false;
 }
 
+//! @brief Return whether float or int applies in expropt.
 static bool is_float_or_int(ASTNode *node) {
    if (node && (node->kind == AST_INTEGER || node->kind == AST_FLOAT)) {
       if (node->count == 0) { // backtick casting is done on the processor
@@ -43,6 +46,7 @@ static bool is_float_or_int(ASTNode *node) {
    return false;
 }
 
+//! @brief Return whether lone expr applies in expropt.
 static bool is_lone_expr(ASTNode *node) {
    if (!strcmp(node->name, "expr")) {
       if (node->count == 1) {
@@ -54,6 +58,7 @@ static bool is_lone_expr(ASTNode *node) {
    return false;
 }
 
+//! @brief Return whether binary op applies in expropt.
 static bool is_binary_op(ASTNode *node) {
    if (node->name[1] == 0 && NULL != strchr("+-*/%", node->name[0])) {
       if (node->count == 2) {
@@ -74,6 +79,7 @@ static bool is_binary_op(ASTNode *node) {
    return false;
 }
 
+//! @brief Return whether unary op applies in expropt.
 static bool is_unary_op(ASTNode *node) {
    if (node->name[1] == 0 && NULL != strchr("+-", node->name[0])) {
       if (node->count == 1) {
@@ -89,6 +95,7 @@ static bool is_unary_op(ASTNode *node) {
    return false;
 }
 
+//! @brief Handle node truthy logic for expropt.
 static bool node_truthy(ASTNode *node, bool *truthy) {
    if (!truthy) {
       return false;
@@ -111,6 +118,7 @@ static bool node_truthy(ASTNode *node, bool *truthy) {
    return false;
 }
 
+//! @brief Handle handle binary plus logic for expropt.
 static void handle_binary_plus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -132,10 +140,12 @@ static void handle_binary_plus(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle handle unary plus logic for expropt.
 static void handle_unary_plus(ASTNode **noderef) {
    *noderef = (*noderef)->children[0];
 }
 
+//! @brief Handle handle binary minus logic for expropt.
 static void handle_binary_minus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -157,6 +167,7 @@ static void handle_binary_minus(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle handle unary minus logic for expropt.
 static void handle_unary_minus(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -175,6 +186,7 @@ static void handle_unary_minus(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle handle binary times logic for expropt.
 static void handle_binary_times(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -196,6 +208,7 @@ static void handle_binary_times(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle handle binary divide logic for expropt.
 static void handle_binary_divide(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -220,6 +233,7 @@ static void handle_binary_divide(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle handle binary modulo logic for expropt.
 static void handle_binary_modulo(ASTNode **noderef) {
    ASTNode *node = *noderef;
    char buf[256];
@@ -241,6 +255,7 @@ static void handle_binary_modulo(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle expropt logic for expropt.
 static void expropt(ASTNode **noderef) {
    if (noderef == NULL) {
       return;
@@ -348,6 +363,7 @@ static void expropt(ASTNode **noderef) {
    }
 }
 
+//! @brief Handle astcount logic for expropt.
 static int astcount(ASTNode *node) {
    int ret = 0;
 
@@ -362,6 +378,7 @@ static int astcount(ASTNode *node) {
    return ret;
 }
 
+//! @brief Run the expropt stage of the compiler tool pipeline.
 void do_expropt(void) {
    int before, after;
    int pre, post, passes = 0;

@@ -13,6 +13,7 @@
 #include "messages.h"
 #include "typename.h"
 
+//! @brief Return whether expr is ternary node in compile expr info.
 bool expr_is_ternary_node(const ASTNode *expr) {
    expr = unwrap_expr_node(expr);
 
@@ -33,6 +34,7 @@ bool expr_is_ternary_node(const ASTNode *expr) {
    return false;
 }
 
+//! @brief Return expr ternary test data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *expr_ternary_test(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
@@ -43,6 +45,7 @@ ASTNode *expr_ternary_test(ASTNode *expr) {
    return (!strcmp(expr->name, "?:")) ? expr->children[0] : expr->children[1];
 }
 
+//! @brief Return expr ternary true data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *expr_ternary_true(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
@@ -53,6 +56,7 @@ ASTNode *expr_ternary_true(ASTNode *expr) {
    return (!strcmp(expr->name, "?:")) ? expr->children[1] : expr->children[2];
 }
 
+//! @brief Return expr ternary false data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *expr_ternary_false(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
@@ -63,6 +67,7 @@ ASTNode *expr_ternary_false(ASTNode *expr) {
    return (!strcmp(expr->name, "?:")) ? expr->children[2] : expr->children[3];
 }
 
+//! @brief Return cast expression target type data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *cast_expr_target_type(const ASTNode *expr) {
    const ASTNode *cast_type;
    const ASTNode *specifiers;
@@ -85,6 +90,7 @@ const ASTNode *cast_expr_target_type(const ASTNode *expr) {
    return specifiers->children[1];
 }
 
+//! @brief Return cast expression target declarator data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *cast_expr_target_declarator(const ASTNode *expr) {
    const ASTNode *cast_type;
 
@@ -101,6 +107,7 @@ const ASTNode *cast_expr_target_declarator(const ASTNode *expr) {
    return cast_type->children[1];
 }
 
+//! @brief Return whether identifier spelling applies in compile expr info.
 bool is_identifier_spelling(const char *s) {
    int i;
 
@@ -118,6 +125,7 @@ bool is_identifier_spelling(const char *s) {
    return true;
 }
 
+//! @brief Return expr bare identifier name data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *expr_bare_identifier_name(ASTNode *expr) {
    ASTNode *base;
 
@@ -143,6 +151,7 @@ const char *expr_bare_identifier_name(ASTNode *expr) {
    return base->children[0]->strval;
 }
 
+//! @brief Return expr value type data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    const ASTNode *lhs_type;
    const ASTNode *rhs_type;
@@ -333,6 +342,7 @@ const ASTNode *expr_value_type(ASTNode *expr, Context *ctx) {
    return NULL;
 }
 
+//! @brief Return expr value declarator data used by compile expr info; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *expr_value_declarator(ASTNode *expr, Context *ctx) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 

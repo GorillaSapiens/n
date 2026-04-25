@@ -19,6 +19,7 @@
 
 static Pair *enums = NULL;
 
+//! @brief Handle enumname exists logic for enumname.
 bool enumname_exists(const char* name) {
    if (!enums) {
       enums = pair_create();
@@ -27,6 +28,7 @@ bool enumname_exists(const char* name) {
    return pair_exists(enums, name);
 }
 
+//! @brief Return clone enum value literal data used by enumname; returned pointers alias existing storage unless explicitly allocated by the function name.
 static ASTNode *clone_enum_value_literal(const ASTNode *enum_value, ASTNode *type_override) {
    const ASTNode *value;
    ASTNode *type = type_override;
@@ -49,6 +51,7 @@ static ASTNode *clone_enum_value_literal(const ASTNode *enum_value, ASTNode *typ
    return make_integer_leaf_with_type(strdup(value->strval), type);
 }
 
+//! @brief Add enumnames to enumname state, growing storage or preserving uniqueness as needed.
 int register_enumnames(ASTNode *ast) {
    long long next_value = 0;
    bool have_range = false;
@@ -138,6 +141,7 @@ int register_enumnames(ASTNode *ast) {
    return 0;
 }
 
+//! @brief Return get enumname node data used by enumname; returned pointers alias existing storage unless explicitly allocated by the function name.
 ASTNode *get_enumname_node(const char *name) {
    if (!enums) {
       enums = pair_create();
@@ -146,16 +150,19 @@ ASTNode *get_enumname_node(const char *name) {
    return pair_get(enums, name);
 }
 
+//! @brief Create enumname expr for enumname. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_enumname_expr(const char *name) {
    ASTNode *node = get_enumname_node(name);
    return clone_enum_value_literal(node, NULL);
 }
 
+//! @brief Create enumname expression with type for enumname. The returned storage is owned by the caller or the object that immediately records it.
 ASTNode *make_enumname_expr_with_type(const char *name, ASTNode *type) {
    ASTNode *node = get_enumname_node(name);
    return clone_enum_value_literal(node, type);
 }
 
+//! @brief Return enumname find null data used by enumname; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *enumname_find_null(void) {
    if (!enums) {
       enums = pair_create();

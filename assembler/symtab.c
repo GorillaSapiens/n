@@ -8,11 +8,13 @@
 #include "symtab.h"
 #include "util.h"
 
+//! @brief Handle symtab init logic for symtab.
 void symtab_init(symtab_t *tab)
 {
    tab->head = NULL;
 }
 
+//! @brief Release free storage owned by symtab.
 void symtab_free(symtab_t *tab)
 {
    symbol_t *sym;
@@ -31,6 +33,7 @@ void symtab_free(symtab_t *tab)
    tab->head = NULL;
 }
 
+//! @brief Return symtab find data used by symtab; returned pointers alias existing storage unless explicitly allocated by the function name.
 symbol_t *symtab_find(symtab_t *tab, const char *name)
 {
    symbol_t *sym;
@@ -43,6 +46,7 @@ symbol_t *symtab_find(symtab_t *tab, const char *name)
    return NULL;
 }
 
+//! @brief Return symtab find const data used by symtab; returned pointers alias existing storage unless explicitly allocated by the function name.
 const symbol_t *symtab_find_const(const symtab_t *tab, const char *name)
 {
    const symbol_t *sym;
@@ -55,6 +59,7 @@ const symbol_t *symtab_find_const(const symtab_t *tab, const char *name)
    return NULL;
 }
 
+//! @brief Return symtab declare data used by symtab; returned pointers alias existing storage unless explicitly allocated by the function name.
 symbol_t *symtab_declare(symtab_t *tab,
                          const char *name,
                          const char *def_file,
@@ -82,11 +87,13 @@ symbol_t *symtab_declare(symtab_t *tab,
    return sym;
 }
 
+//! @brief Handle symtab set value logic for symtab.
 void symtab_set_value(symbol_t *sym, long value)
 {
    symtab_set_value_segment(sym, value, 1);
 }
 
+//! @brief Handle symtab set value segment logic for symtab.
 void symtab_set_value_segment(symbol_t *sym, long value, int segment_id)
 {
    if (!sym)
@@ -95,6 +102,7 @@ void symtab_set_value_segment(symbol_t *sym, long value, int segment_id)
    symtab_set_value_segment_named(sym, value, segment_id, NULL);
 }
 
+//! @brief Handle symtab set value segment named logic for symtab.
 void symtab_set_value_segment_named(symbol_t *sym, long value, int segment_id, const char *segment_name)
 {
    if (!sym)
@@ -107,6 +115,7 @@ void symtab_set_value_segment_named(symbol_t *sym, long value, int segment_id, c
    sym->segment_id = segment_id;
 }
 
+//! @brief Return symtab reference data used by symtab; returned pointers alias existing storage unless explicitly allocated by the function name.
 symbol_t *symtab_reference(symtab_t *tab, const char *name)
 {
    symbol_t *sym;

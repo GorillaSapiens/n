@@ -42,6 +42,7 @@ Set *abi_metadata_symbols = NULL;
 Set *string_literals = NULL;
 int label_counter = 0;
 
+//! @brief Lower compile from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile(ASTNode *program) {
 
    if (!program) {
@@ -139,6 +140,7 @@ static void compile(ASTNode *program) {
    }
 }
 
+//! @brief Run the compile stage of the compiler tool pipeline.
 void do_compile(FILE *out) {
 
    typesizes = pair_create();

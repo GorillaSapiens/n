@@ -9,6 +9,7 @@
 #include "ir.h"
 #include "util.h"
 
+//! @brief Create upper for assembler IR builder. The returned storage is owned by the caller or the object that immediately records it.
 static char *dup_upper(const char *s, size_t n)
 {
    size_t i;
@@ -27,6 +28,7 @@ static char *dup_upper(const char *s, size_t n)
    return p;
 }
 
+//! @brief Parse mode spec into the normalized representation used by assembler IR builder.
 static mode_spec_t parse_mode_spec(const char *suffix)
 {
    if (!suffix || !*suffix)
@@ -54,6 +56,7 @@ static mode_spec_t parse_mode_spec(const char *suffix)
    return MODE_SPEC_NONE;
 }
 
+//! @brief Return mode spec suffix data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *mode_spec_suffix(mode_spec_t spec)
 {
    switch (spec) {
@@ -72,6 +75,7 @@ const char *mode_spec_suffix(mode_spec_t spec)
    return "";
 }
 
+//! @brief Parse opcode text into the normalized representation used by assembler IR builder.
 static void split_opcode_text(const char *opcode_text, char **opcode_out, mode_spec_t *spec_out)
 {
    const char *dot;
@@ -89,12 +93,14 @@ static void split_opcode_text(const char *opcode_text, char **opcode_out, mode_s
    *spec_out = parse_mode_spec(dot);
 }
 
+//! @brief Handle program IR init logic for assembler IR builder.
 void program_ir_init(program_ir_t *prog)
 {
    prog->head = NULL;
    prog->tail = NULL;
 }
 
+//! @brief Handle program IR append logic for assembler IR builder.
 void program_ir_append(program_ir_t *prog, stmt_t *stmt)
 {
    stmt->next = NULL;
@@ -108,6 +114,7 @@ void program_ir_append(program_ir_t *prog, stmt_t *stmt)
    }
 }
 
+//! @brief Release free storage owned by assembler IR builder.
 static void stmt_free(stmt_t *stmt)
 {
    if (!stmt)
@@ -140,6 +147,7 @@ static void stmt_free(stmt_t *stmt)
    free(stmt);
 }
 
+//! @brief Release IR free storage owned by assembler IR builder.
 void program_ir_free(program_ir_t *prog)
 {
    stmt_t *stmt;
@@ -156,6 +164,7 @@ void program_ir_free(program_ir_t *prog)
    prog->tail = NULL;
 }
 
+//! @brief Return stmt make label data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 stmt_t *stmt_make_label(const char *file, int line, char *label)
 {
    stmt_t *stmt;
@@ -176,6 +185,7 @@ stmt_t *stmt_make_label(const char *file, int line, char *label)
    return stmt;
 }
 
+//! @brief Return stmt make insn data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_text, addr_mode_t mode, expr_t *expr, int has_operand)
 {
    stmt_t *stmt;
@@ -202,6 +212,7 @@ stmt_t *stmt_make_insn(const char *file, int line, char *label, char *opcode_tex
    return stmt;
 }
 
+//! @brief Return stmt make dir data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t *dir)
 {
    stmt_t *stmt;
@@ -223,6 +234,7 @@ stmt_t *stmt_make_dir(const char *file, int line, char *label, directive_info_t 
    return stmt;
 }
 
+//! @brief Return stmt make const data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 stmt_t *stmt_make_const(const char *file, int line, char *name, expr_t *expr)
 {
    stmt_t *stmt;
@@ -245,6 +257,7 @@ stmt_t *stmt_make_const(const char *file, int line, char *name, expr_t *expr)
    return stmt;
 }
 
+//! @brief Return addr mode name data used by assembler IR builder; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *addr_mode_name(addr_mode_t mode)
 {
    switch (mode) {
@@ -264,6 +277,7 @@ static const char *addr_mode_name(addr_mode_t mode)
    return "unknown";
 }
 
+//! @brief Handle stmt print logic for assembler IR builder.
 void stmt_print(const stmt_t *stmt)
 {
    if (!stmt)
@@ -309,6 +323,7 @@ void stmt_print(const stmt_t *stmt)
    printf("\n");
 }
 
+//! @brief Handle program IR print logic for assembler IR builder.
 void program_ir_print(const program_ir_t *prog)
 {
    const stmt_t *stmt;

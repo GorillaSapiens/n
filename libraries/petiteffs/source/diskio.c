@@ -13,6 +13,7 @@
 /* Initialize Disk Drive                                                 */
 /*-----------------------------------------------------------------------*/
 
+//! @brief Handle disk initialize logic for Petit FatFs disk shim.
 DSTATUS disk_initialize (void)
 {
 	DSTATUS stat;
@@ -28,6 +29,7 @@ DSTATUS disk_initialize (void)
 /* Read Partial Sector                                                   */
 /*-----------------------------------------------------------------------*/
 
+//! @brief Handle disk readp logic for Petit FatFs disk shim.
 DRESULT disk_readp (
 	BYTE* buff,		/* Pointer to the destination object */
 	DWORD sector,	/* Sector number (LBA) */
@@ -48,6 +50,7 @@ DRESULT disk_readp (
 /* Write Partial Sector                                                  */
 /*-----------------------------------------------------------------------*/
 
+//! @brief Handle disk writep logic for Petit FatFs disk shim.
 DRESULT disk_writep (
 	BYTE* buff,		/* Pointer to the data to be written, NULL:Initiate/Finalize write operation */
 	DWORD sc		/* Sector number (LBA) or Number of bytes to send */

@@ -20,6 +20,7 @@ typedef struct MD5Seen {
 
 static MD5Seen *root = NULL;
 
+//! @brief Perform the md5seen step used for include-content identity tracking.
 bool md5seen(const char *filename, FILE *f) {
    uint8_t md5[16];
    md5File(f, md5);

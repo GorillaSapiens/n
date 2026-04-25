@@ -32,11 +32,13 @@
 #include "xray.h"
 #include "lextern.h"
 
+//! @brief Return context lookup data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 ContextEntry *ctx_lookup(Context *ctx, const char *name) {
    return ctx ? (ContextEntry *) set_get(ctx->vars, name) : NULL;
 }
 
 
+//! @brief Return global decl lookup data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *global_decl_lookup(const char *name) {
    const void *value;
    if (!globals || !name) {
@@ -49,6 +51,7 @@ const ASTNode *global_decl_lookup(const char *name) {
    return (const ASTNode *) value;
 }
 
+//! @brief Return decl subitem declarator data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    if (!node) {
       return NULL;
@@ -59,6 +62,7 @@ static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    return node->children[0];
 }
 
+//! @brief Return decl subitem address spec data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    if (!node || strcmp(node->name, "decl_subitem") || node->count <= 1) {
       return NULL;
@@ -66,6 +70,7 @@ static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    return node->children[1];
 }
 
+//! @brief Return decl node declarator data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 const ASTNode *decl_node_declarator(const ASTNode *node) {
    if (!node || node->count <= 2) {
       return NULL;
@@ -73,6 +78,7 @@ const ASTNode *decl_node_declarator(const ASTNode *node) {
    return decl_subitem_declarator(node->children[2]);
 }
 
+//! @brief Return decl node address spec data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    if (!node || node->count <= 2) {
       return NULL;
@@ -80,6 +86,7 @@ static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    return decl_subitem_address_spec(node->children[2]);
 }
 
+//! @brief Return address spec read expr data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_read_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -90,6 +97,7 @@ static const char *address_spec_read_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return address spec write expr data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_write_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -100,18 +108,22 @@ static const char *address_spec_write_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return whether entry has read address in compiler code-generation support.
 bool entry_has_read_address(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref && entry->read_expr && *entry->read_expr;
 }
 
+//! @brief Return whether entry has write address in compiler code-generation support.
 bool entry_has_write_address(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref && entry->write_expr && *entry->write_expr;
 }
 
+//! @brief Return whether entry is absolute ref in compiler code-generation support.
 bool entry_is_absolute_ref(const ContextEntry *entry) {
    return entry && entry->is_absolute_ref;
 }
 
+//! @brief Extract init context entry from global decl for compiler code-generation support.
 bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, const ASTNode *g) {
    const ASTNode *modifiers;
    const ASTNode *type;
@@ -146,6 +158,7 @@ bool init_context_entry_from_global_decl(ContextEntry *entry, const char *name, 
    return true;
 }
 
+//! @brief Handle entry symbol name logic for compiler code-generation support.
 bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_t bufsize) {
    if (!entry || !entry->name || !buf || bufsize < 8) {
       return false;
@@ -164,6 +177,7 @@ bool entry_symbol_name(Context *ctx, const ContextEntry *entry, char *buf, size_
    return false;
 }
 
+//! @brief Emit copy frame pointer to symbol offset for compiler code-generation support diagnostics or output files.
 void emit_copy_fp_to_symbol_offset(const char *symbol, int symbol_offset, int src_offset, int size) {
    bool src_direct = src_offset >= 0 && src_offset + size <= 256;
    if (!src_direct) {
@@ -177,10 +191,12 @@ void emit_copy_fp_to_symbol_offset(const char *symbol, int symbol_offset, int sr
    }
 }
 
+//! @brief Emit copy frame pointer to symbol for compiler code-generation support diagnostics or output files.
 void emit_copy_fp_to_symbol(const char *symbol, int src_offset, int size) {
    emit_copy_fp_to_symbol_offset(symbol, 0, src_offset, size);
 }
 
+//! @brief Extract emit load a from expr address for compiler code-generation support.
 void emit_load_a_from_expr_address(const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
@@ -193,6 +209,7 @@ void emit_load_a_from_expr_address(const char *expr, int addend) {
    }
 }
 
+//! @brief Emit store a to expression address for compiler code-generation support diagnostics or output files.
 void emit_store_a_to_expr_address(const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
@@ -205,11 +222,13 @@ void emit_store_a_to_expr_address(const char *expr, int addend) {
    }
 }
 
+//! @brief Handle absolute ref supports direct access logic for compiler code-generation support.
 static bool absolute_ref_supports_direct_access(const LValueRef *lv) {
    return lv && lv->is_absolute_ref && !lv->is_bitfield && !lv->indirect && !lv->needs_runtime_address;
 }
 
 
+//! @brief Emit copy lvalue to symbol for compiler code-generation support diagnostics or output files.
 bool emit_copy_lvalue_to_symbol(Context *ctx, const char *symbol, int symbol_offset, const LValueRef *src, int size) {
    int copy_size = size < src->size ? size : src->size;
 
@@ -252,6 +271,7 @@ bool emit_copy_lvalue_to_symbol(Context *ctx, const char *symbol, int symbol_off
 
 
 
+//! @brief Emit runtime fill ptr1 for compiler code-generation support diagnostics or output files.
 void emit_runtime_fill_ptr1(int count, unsigned char value) {
    const char *helper;
 
@@ -270,6 +290,7 @@ void emit_runtime_fill_ptr1(int count, unsigned char value) {
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Return runtime copy convert helper name data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_type, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
@@ -282,6 +303,7 @@ const char *runtime_copy_convert_helper_name(int dst_size, const ASTNode *dst_ty
                     : (src_big_endian ? "copyzxNbe" : "copyzxNle");
 }
 
+//! @brief Emit runtime copy ptr0 to ptr1 for compiler code-generation support diagnostics or output files.
 void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_size) {
    if (!helper || src_size <= 0 || dst_size <= 0) {
       return;
@@ -299,6 +321,7 @@ void emit_runtime_copy_ptr0_to_ptr1(const char *helper, int src_size, int dst_si
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Emit fill frame pointer bytes for compiler code-generation support diagnostics or output files.
 void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char value) {
    if (count <= 0) {
       return;
@@ -308,6 +331,7 @@ void emit_fill_fp_bytes(int dst_offset, int start, int count, unsigned char valu
    emit_runtime_fill_ptr1(count, value);
 }
 
+//! @brief Extract emit sign fill from masked a for compiler code-generation support.
 static void emit_sign_fill_from_masked_a(void) {
    const char *zero_label = next_label("signext_zero");
    const char *done_label = next_label("signext_done");
@@ -320,6 +344,7 @@ static void emit_sign_fill_from_masked_a(void) {
    emit(&es_code, "%s:\n", done_label);
 }
 
+//! @brief Emit copy frame pointer to frame pointer convert for compiler code-generation support diagnostics or output files.
 void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
@@ -400,6 +425,7 @@ void emit_copy_fp_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst
    }
 }
 
+//! @brief Emit copy symbol to frame pointer convert offset for compiler code-generation support diagnostics or output files.
 void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_offset, int src_size, const ASTNode *src_type) {
    bool src_big_endian = type_is_big_endian(src_type);
    bool dst_big_endian = type_is_big_endian(dst_type);
@@ -446,10 +472,12 @@ void emit_copy_symbol_to_fp_convert_offset(int dst_offset, int dst_size, const A
    }
 }
 
+//! @brief Emit copy symbol to frame pointer convert for compiler code-generation support diagnostics or output files.
 void emit_copy_symbol_to_fp_convert(int dst_offset, int dst_size, const ASTNode *dst_type, const char *symbol, int src_size, const ASTNode *src_type) {
    emit_copy_symbol_to_fp_convert_offset(dst_offset, dst_size, dst_type, symbol, 0, src_size, src_type);
 }
 
+//! @brief Add runtime import to compiler code-generation support state, growing storage or preserving uniqueness as needed.
 void remember_runtime_import(const char *name) {
    if (!runtime_imports) {
       runtime_imports = new_set();
@@ -460,6 +488,7 @@ void remember_runtime_import(const char *name) {
    }
 }
 
+//! @brief Add symbol import to compiler code-generation support state, growing storage or preserving uniqueness as needed.
 void remember_symbol_import(const char *name) {
    if (!imported_symbols) {
       imported_symbols = new_set();
@@ -470,6 +499,7 @@ void remember_symbol_import(const char *name) {
    }
 }
 
+//! @brief Add symbol import mode to compiler code-generation support state, growing storage or preserving uniqueness as needed.
 void remember_symbol_import_mode(const char *name, bool is_zeropage) {
    char key[320];
 
@@ -491,6 +521,7 @@ void remember_symbol_import_mode(const char *name, bool is_zeropage) {
 
 
 
+//! @brief Handle context push logic for compiler code-generation support.
 void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -518,6 +549,7 @@ void ctx_push(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
+//! @brief Handle context resize last push logic for compiler code-generation support.
 void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    int base_size;
@@ -535,6 +567,7 @@ void ctx_resize_last_push(Context *ctx, const ASTNode *type, const ASTNode *decl
 }
 
 
+//! @brief Handle context static logic for compiler code-generation support.
 void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -561,6 +594,7 @@ void ctx_static(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
+//! @brief Handle context zeropage logic for compiler code-generation support.
 void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -593,6 +627,7 @@ void ctx_zeropage(Context *ctx, const ASTNode *type, const char *name) {
 
 
 
+//! @brief Emit prepare frame pointer ptr for compiler code-generation support diagnostics or output files.
 void emit_prepare_fp_ptr(int ptrno, int offset) {
    static const char *plus_helpers[] = { "fp2ptr0p", "fp2ptr1p", "fp2ptr2p", "fp2ptr3p" };
    static const char *minus_helpers[] = { "fp2ptr0m", "fp2ptr1m", "fp2ptr2m", "fp2ptr3m" };
@@ -611,6 +646,7 @@ void emit_prepare_fp_ptr(int ptrno, int offset) {
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Emit load address to ptr for compiler code-generation support diagnostics or output files.
 void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    lda #<(%s + %d)\n", symbol, addend);
    emit(&es_code, "    sta ptr%d\n", ptrno);
@@ -618,6 +654,7 @@ void emit_load_address_to_ptr(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+//! @brief Return assembler address expr data used by compiler code-generation support; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size) {
    const char *p = expr;
    bool neg = false;
@@ -650,6 +687,7 @@ const char *assembler_address_expr(const char *expr, char *buf, size_t buf_size)
    return expr;
 }
 
+//! @brief Emit load expression address to ptr for compiler code-generation support diagnostics or output files.
 void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
    char expr_buf[256];
    const char *asm_expr = assembler_address_expr(expr, expr_buf, sizeof(expr_buf));
@@ -660,6 +698,7 @@ void emit_load_expr_address_to_ptr(int ptrno, const char *expr, int addend) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+//! @brief Extract emit load ptr from symbol for compiler code-generation support.
 void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    ldy #0\n");
    emit(&es_code, "    lda %s + %d,y\n", symbol, addend);
@@ -669,6 +708,7 @@ void emit_load_ptr_from_symbol(int ptrno, const char *symbol, int addend) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+//! @brief Emit deref ptr for compiler code-generation support diagnostics or output files.
 void emit_deref_ptr(int ptrno) {
    emit(&es_code, "    ldy #0\n");
    emit(&es_code, "    lda (ptr%d),y\n", ptrno);
@@ -682,6 +722,7 @@ void emit_deref_ptr(int ptrno) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+//! @brief Emit add frame pointer to ptr for compiler code-generation support diagnostics or output files.
 void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size) {
    bool direct = src_offset >= 0 && src_offset + src_size <= 256;
    int src_ptr = ptrno == 0 ? 1 : 0;
@@ -705,6 +746,7 @@ void emit_add_fp_to_ptr(int ptrno, int src_offset, int src_size) {
    }
 }
 
+//! @brief Emit store immediate to frame pointer for compiler code-generation support diagnostics or output files.
 void emit_store_immediate_to_fp(int offset, const unsigned char *bytes, int size) {
    if (offset >= 0 && offset + size <= 256) {
       for (int i = 0; i < size; i++) {

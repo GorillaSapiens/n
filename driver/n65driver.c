@@ -79,6 +79,7 @@ typedef struct {
 
 static const char *arg0;
 
+//! @brief Report die diagnostics with the location/context expected by driver pipeline callers.
 static void die(const char *fmt, ...)
 {
    va_list ap;
@@ -90,6 +91,7 @@ static void die(const char *fmt, ...)
    exit(1);
 }
 
+//! @brief Allocate memory for tool data structures, terminating with a diagnostic on failure.
 static void *xmalloc(size_t n)
 {
    void *p = malloc(n ? n : 1);
@@ -98,6 +100,7 @@ static void *xmalloc(size_t n)
    return p;
 }
 
+//! @brief Resize tool-owned memory, terminating with a diagnostic on failure.
 static void *xrealloc(void *p, size_t n)
 {
    void *q = realloc(p, n ? n : 1);
@@ -106,6 +109,7 @@ static void *xrealloc(void *p, size_t n)
    return q;
 }
 
+//! @brief Duplicate a string for tool-owned storage, terminating with a diagnostic on failure.
 static char *xstrdup(const char *s)
 {
    char *p = strdup(s);
@@ -114,6 +118,7 @@ static char *xstrdup(const char *s)
    return p;
 }
 
+//! @brief Handle strvec push owned logic for driver pipeline.
 static void strvec_push_owned(strvec_t *v, char *s)
 {
    if (v->count == v->cap) {
@@ -123,11 +128,13 @@ static void strvec_push_owned(strvec_t *v, char *s)
    v->items[v->count++] = s;
 }
 
+//! @brief Handle strvec push logic for driver pipeline.
 static void strvec_push(strvec_t *v, const char *s)
 {
    strvec_push_owned(v, xstrdup(s));
 }
 
+//! @brief Handle inputvec push logic for driver pipeline.
 static void inputvec_push(inputvec_t *v, const char *path, input_kind_t kind)
 {
    if (v->count == v->cap) {
@@ -139,6 +146,7 @@ static void inputvec_push(inputvec_t *v, const char *path, input_kind_t kind)
    v->count++;
 }
 
+//! @brief Return the final path component; the pointer aliases the input path.
 static const char *path_basename(const char *path)
 {
    const char *slash = strrchr(path, '/');
@@ -152,6 +160,7 @@ static const char *path_basename(const char *path)
    return base;
 }
 
+//! @brief Copy the directory component of a path into a bounded buffer.
 static void path_dirname(const char *path, char *out, size_t out_sz)
 {
    const char *base = path_basename(path);
@@ -173,6 +182,7 @@ static void path_dirname(const char *path, char *out, size_t out_sz)
    out[len] = '\0';
 }
 
+//! @brief Return the extension component of a path, or an empty suffix if there is none.
 static const char *path_extension(const char *path)
 {
    const char *base = path_basename(path);
@@ -180,6 +190,7 @@ static const char *path_extension(const char *path)
    return dot ? dot : "";
 }
 
+//! @brief Copy the filename stem into a bounded buffer without its final extension.
 static void path_stem(const char *path, char *out, size_t out_sz)
 {
    const char *base = path_basename(path);
@@ -193,6 +204,7 @@ static void path_stem(const char *path, char *out, size_t out_sz)
    out[len] = '\0';
 }
 
+//! @brief Copy a C string into a bounded buffer and preserve NUL termination.
 static void copy_cstr(char *out, size_t out_sz, const char *src)
 {
    size_t len = strlen(src);
@@ -203,6 +215,7 @@ static void copy_cstr(char *out, size_t out_sz, const char *src)
    memcpy(out, src, len + 1);
 }
 
+//! @brief Handle join path2 logic for driver pipeline.
 static void join_path2(char *out, size_t out_sz, const char *a, const char *b)
 {
    size_t alen = strlen(a);
@@ -216,6 +229,7 @@ static void join_path2(char *out, size_t out_sz, const char *a, const char *b)
    memcpy(out + alen + 1, b, blen + 1);
 }
 
+//! @brief Handle join path3 logic for driver pipeline.
 static void join_path3(char *out, size_t out_sz, const char *a, const char *b, const char *c)
 {
    size_t alen = strlen(a);
@@ -232,11 +246,13 @@ static void join_path3(char *out, size_t out_sz, const char *a, const char *b, c
    memcpy(out + alen + 1 + blen + 1, c, clen + 1);
 }
 
+//! @brief Return whether path is accessible in driver pipeline.
 static bool path_is_accessible(const char *path, int mode)
 {
    return access(path, mode) == 0;
 }
 
+//! @brief Create suffixed path for driver pipeline.
 static void make_suffixed_path(const char *path, const char *suffix, char *out, size_t out_sz)
 {
    char dir[PATH_MAX];
@@ -268,6 +284,7 @@ static void make_suffixed_path(const char *path, const char *suffix, char *out, 
    memcpy(out + dir_len + 1 + stem_len, suffix, suffix_len + 1);
 }
 
+//! @brief Return whether a string ends with the requested suffix.
 static bool ends_with(const char *s, const char *suffix)
 {
    size_t slen = strlen(s);
@@ -277,6 +294,7 @@ static bool ends_with(const char *s, const char *suffix)
    return strcmp(s + slen - tlen, suffix) == 0;
 }
 
+//! @brief Parse input into the normalized representation used by driver pipeline.
 static input_kind_t classify_input(const char *path)
 {
    if (ends_with(path, ".n"))
@@ -291,6 +309,7 @@ static input_kind_t classify_input(const char *path)
    return INPUT_N;
 }
 
+//! @brief Print the driver command-line usage text.
 static void usage(FILE *fp)
 {
    fprintf(fp,
@@ -328,6 +347,7 @@ static void usage(FILE *fp)
       arg0);
 }
 
+//! @brief Add split commas to driver pipeline state, growing storage or preserving uniqueness as needed.
 static void append_split_commas(strvec_t *v, const char *spec)
 {
    char *copy = xstrdup(spec);
@@ -345,6 +365,7 @@ static void append_split_commas(strvec_t *v, const char *spec)
    free(copy);
 }
 
+//! @brief Handle get self path logic for driver pipeline.
 static void get_self_path(char *out, size_t out_sz, const char *argv0)
 {
    ssize_t n;
@@ -369,6 +390,7 @@ static void get_self_path(char *out, size_t out_sz, const char *argv0)
    copy_cstr(out, out_sz, argv0);
 }
 
+//! @brief Handle build repo tree path logic for driver pipeline.
 static void build_repo_tree_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *tool)
 {
    char self_dir[PATH_MAX];
@@ -378,6 +400,7 @@ static void build_repo_tree_path(char *out, size_t out_sz, const char *self_path
    join_path3(out, out_sz, repo_dir, subdir, tool);
 }
 
+//! @brief Handle build installed tool path logic for driver pipeline.
 static void build_installed_tool_path(char *out, size_t out_sz, const char *self_path, const char *tool)
 {
    char self_dir[PATH_MAX];
@@ -385,6 +408,7 @@ static void build_installed_tool_path(char *out, size_t out_sz, const char *self
    join_path2(out, out_sz, self_dir, tool);
 }
 
+//! @brief Handle build installed prefix path logic for driver pipeline.
 static void build_installed_prefix_path(char *out, size_t out_sz, const char *self_path, const char *subdir, const char *name)
 {
    char self_dir[PATH_MAX];
@@ -394,6 +418,7 @@ static void build_installed_prefix_path(char *out, size_t out_sz, const char *se
    join_path3(out, out_sz, prefix_dir, subdir, name);
 }
 
+//! @brief Compute tool paths and update driver pipeline state once prerequisite pass data is available.
 static void resolve_tool_paths(const char *self_path,
    char *cc_path, size_t cc_sz,
    char *as_path, size_t as_sz,
@@ -471,11 +496,13 @@ static void resolve_tool_paths(const char *self_path,
    die("could not locate companion tools/runtime next to %s or in the source tree", self_path);
 }
 
+//! @brief Handle temp store init logic for driver pipeline.
 static void temp_store_init(temp_store_t *ts)
 {
    memset(ts, 0, sizeof(*ts));
 }
 
+//! @brief Handle temp store make dir logic for driver pipeline.
 static void temp_store_make_dir(temp_store_t *ts)
 {
    if (ts->made_tempdir)
@@ -486,6 +513,7 @@ static void temp_store_make_dir(temp_store_t *ts)
    ts->made_tempdir = true;
 }
 
+//! @brief Handle temp store add logic for driver pipeline.
 static void temp_store_add(temp_store_t *ts, const char *path, bool keep)
 {
    if (ts->count == ts->cap) {
@@ -497,6 +525,7 @@ static void temp_store_add(temp_store_t *ts, const char *path, bool keep)
    ts->count++;
 }
 
+//! @brief Return temp store make file data used by driver pipeline; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *temp_store_make_file(temp_store_t *ts, const char *stem, const char *suffix)
 {
    static unsigned long counter;
@@ -536,6 +565,7 @@ static const char *temp_store_make_file(temp_store_t *ts, const char *stem, cons
    return ts->items[ts->count - 1].path;
 }
 
+//! @brief Handle temp store cleanup logic for driver pipeline.
 static void temp_store_cleanup(temp_store_t *ts)
 {
    size_t i;
@@ -547,6 +577,7 @@ static void temp_store_cleanup(temp_store_t *ts)
       rmdir(ts->tempdir);
 }
 
+//! @brief Emit cmd for driver pipeline diagnostics or output files.
 static void print_cmd(char *const *argv)
 {
    size_t i;
@@ -558,6 +589,7 @@ static void print_cmd(char *const *argv)
    putchar('\n');
 }
 
+//! @brief Run the argument vector stage of the driver tool pipeline.
 static int run_argv(char *const *argv, bool verbose, bool dry_run)
 {
    pid_t pid;
@@ -586,6 +618,7 @@ static int run_argv(char *const *argv, bool verbose, bool dry_run)
    return 1;
 }
 
+//! @brief Extract argument vector from vec for driver pipeline.
 static void argv_from_vec(strvec_t *src, char ***outv)
 {
    size_t i;
@@ -596,6 +629,7 @@ static void argv_from_vec(strvec_t *src, char ***outv)
    *outv = argv;
 }
 
+//! @brief Run the vec or die stage of the driver tool pipeline.
 static void run_vec_or_die(strvec_t *cmd, bool verbose, bool dry_run)
 {
    char **argv;
@@ -607,6 +641,7 @@ static void run_vec_or_die(strvec_t *cmd, bool verbose, bool dry_run)
       exit(rc ? rc : 1);
 }
 
+//! @brief Parse args into the normalized representation used by driver pipeline.
 static void parse_args(int argc, char **argv, driver_options_t *opt,
    const char *cc_path, const char *as_path, const char *ld_path,
    const char *ar_path, const char *sim_path)
@@ -758,6 +793,7 @@ static void parse_args(int argc, char **argv, driver_options_t *opt,
       die("-o with -c or -S requires exactly one input file");
 }
 
+//! @brief Add include flags to driver pipeline state, growing storage or preserving uniqueness as needed.
 static void add_include_flags(strvec_t *cmd, const strvec_t *dirs)
 {
    size_t i;
@@ -767,6 +803,7 @@ static void add_include_flags(strvec_t *cmd, const strvec_t *dirs)
    }
 }
 
+//! @brief Return derive output path data used by driver pipeline; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *derive_output_path(const input_t *in, const char *suffix, const char *override, char *buf, size_t buf_sz)
 {
    if (override)
@@ -775,6 +812,7 @@ static const char *derive_output_path(const input_t *in, const char *suffix, con
    return buf;
 }
 
+//! @brief Run the cc stage of the driver tool pipeline.
 static void run_cc(const char *cc_path, const driver_options_t *opt, const char *input, const char *output)
 {
    strvec_t cmd = {0};
@@ -798,6 +836,7 @@ static void run_cc(const char *cc_path, const driver_options_t *opt, const char 
    run_vec_or_die(&cmd, opt->verbose, opt->dry_run);
 }
 
+//! @brief Run the as stage of the driver tool pipeline.
 static void run_as(const char *as_path, const driver_options_t *opt, const char *nlib_inc, const char *input, const char *output)
 {
    strvec_t cmd = {0};
@@ -813,6 +852,7 @@ static void run_as(const char *as_path, const driver_options_t *opt, const char 
    run_vec_or_die(&cmd, opt->verbose, opt->dry_run);
 }
 
+//! @brief Find library in driver pipeline tables without transferring ownership.
 static const char *find_library(const driver_options_t *opt, const char *name, char *buf, size_t buf_sz)
 {
    size_t i;
@@ -828,6 +868,7 @@ static const char *find_library(const driver_options_t *opt, const char *name, c
    return NULL;
 }
 
+//! @brief Run the ld stage of the driver tool pipeline.
 static void run_ld(const char *ld_path, const driver_options_t *opt, const strvec_t *link_inputs, const char *default_nlib)
 {
    strvec_t cmd = {0};
@@ -857,6 +898,7 @@ static void run_ld(const char *ld_path, const driver_options_t *opt, const strve
    run_vec_or_die(&cmd, opt->verbose, opt->dry_run);
 }
 
+//! @brief Entry point for the driver command; parses arguments, runs the requested pipeline, and returns process status.
 int main(int argc, char **argv)
 {
    driver_options_t opt;

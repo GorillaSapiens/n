@@ -14,6 +14,7 @@ static unsigned char coverage_map[] = {
 
 static unsigned char visited[sizeof(coverage_map)] = { 0 };
 
+//! @brief Handle coverage report logic for coverage.
 void coverage_report(void) {
    int missing = 0;
    bool begin = false;
@@ -39,6 +40,7 @@ void coverage_report(void) {
    }
 }
 
+//! @brief Handle cover logic for coverage.
 void cover(int n) {
    visited[n / 8] |= 1 << (n % 8);
 }

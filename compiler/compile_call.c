@@ -20,6 +20,7 @@
 #include "integer.h"
 #include "messages.h"
 
+//! @brief Lower indirect call expression to slot from AST/semantic state into generated assembly or linker-visible metadata.
 static bool compile_indirect_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst,
                                                ASTNode *callee, ASTNode *args,
                                                const ASTNode *ret_type,
@@ -235,6 +236,7 @@ fail:
    return false;
 }
 
+//! @brief Lower call expression to slot from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_call_expr_to_slot(ASTNode *expr, Context *ctx, ContextEntry *dst) {
    if (!expr || strcmp(expr->name, "()") || expr->count < 1) {
       return false;

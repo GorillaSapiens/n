@@ -17,6 +17,7 @@
 #include "messages.h"
 #include "set.h"
 
+//! @brief Parse string literal bytes into the normalized representation used by compile literal.
 static unsigned char *decode_string_literal_bytes(const char *text, int *out_len) {
    size_t raw_len;
    unsigned char *buf;
@@ -40,6 +41,7 @@ static unsigned char *decode_string_literal_bytes(const char *text, int *out_len
    return buf;
 }
 
+//! @brief Return whether string literal is char constant in compile literal.
 bool string_literal_is_char_constant(const char *text) {
    size_t len;
 
@@ -50,6 +52,7 @@ bool string_literal_is_char_constant(const char *text) {
    return len >= 2 && text[0] == '\'' && text[len - 1] == '\'';
 }
 
+//! @brief Parse char constant value into the normalized representation used by compile literal.
 bool decode_char_constant_value(const char *text, long long *value_out) {
    unsigned char *bytes;
    char *raw;
@@ -77,6 +80,7 @@ bool decode_char_constant_value(const char *text, long long *value_out) {
    return ok;
 }
 
+//! @brief Emit data literal object for compile literal diagnostics or output files.
 static const char *emit_data_literal_object(const unsigned char *bytes, int size) {
    char *label;
 
@@ -98,6 +102,7 @@ static const char *emit_data_literal_object(const unsigned char *bytes, int size
    return label;
 }
 
+//! @brief Emit data string object for compile literal diagnostics or output files.
 static const char *emit_data_string_object(const char *text) {
    unsigned char *bytes;
    unsigned char *buf;
@@ -122,6 +127,7 @@ static const char *emit_data_string_object(const char *text) {
    return label;
 }
 
+//! @brief Add string literal to compile literal state, growing storage or preserving uniqueness as needed.
 const char *remember_string_literal(const char *text) {
    const char *existing;
    char *label;
@@ -161,6 +167,7 @@ const char *remember_string_literal(const char *text) {
    return label;
 }
 
+//! @brief Return whether pointer initializer uses backing object in compile literal.
 bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr) {
    const ASTNode *uexpr = unwrap_expr_node((ASTNode *) expr);
 
@@ -193,6 +200,7 @@ bool pointer_initializer_uses_backing_object(const ASTNode *type, const ASTNode 
    return false;
 }
 
+//! @brief Emit pointer initializer backing object for compile literal diagnostics or output files.
 const char *emit_pointer_initializer_backing_object(const ASTNode *type, const ASTNode *declarator, const ASTNode *expr) {
    const ASTNode *uexpr = unwrap_expr_node((ASTNode *) expr);
 
@@ -265,6 +273,7 @@ const char *emit_pointer_initializer_backing_object(const ASTNode *type, const A
    return NULL;
 }
 
+//! @brief Emit store label address to frame pointer for compile literal diagnostics or output files.
 void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *label) {
    if (!label || dst_size <= 0) {
       return;
@@ -282,6 +291,7 @@ void emit_store_label_address_to_fp(int dst_offset, int dst_size, const char *la
    }
 }
 
+//! @brief Emit string initializer to frame pointer for compile literal diagnostics or output files.
 bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *declarator, int base_offset, int total_size, const char *text) {
    int elem_count, elem_size, copy_len;
    (void) total_size;
@@ -314,6 +324,7 @@ bool emit_string_initializer_to_fp(const ASTNode *type, const ASTNode *declarato
    return false;
 }
 
+//! @brief Emit string initializer bytes for compile literal diagnostics or output files.
 bool emit_string_initializer_bytes(unsigned char *buf, int buf_size, int base_offset, const ASTNode *type, const ASTNode *declarator, int total_size, const char *text) {
    int elem_count, elem_size, copy_len, bytes_len = 0;
    unsigned char *bytes;

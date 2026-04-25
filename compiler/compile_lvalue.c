@@ -22,10 +22,12 @@
 #include "xray.h"
 #include "lextern.h"
 
+//! @brief Handle absolute ref supports direct access logic for compiler lvalue lowering.
 static bool absolute_ref_supports_direct_access(const LValueRef *lv) {
    return lv && lv->is_absolute_ref && !lv->is_bitfield && !lv->indirect && !lv->needs_runtime_address;
 }
 
+//! @brief Find aggregate member info in compiler lvalue lowering tables without transferring ownership.
 bool find_aggregate_member_info(const ASTNode *type, const char *member, AggregateMemberInfo *out) {
    const ASTNode *agg;
    int bit_cursor = 0;
@@ -100,6 +102,7 @@ bool find_aggregate_member_info(const ASTNode *type, const char *member, Aggrega
    return false;
 }
 
+//! @brief Find aggregate member in compiler lvalue lowering tables without transferring ownership.
 bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNode **member_type, const ASTNode **member_declarator, int *member_offset) {
    AggregateMemberInfo info = {0};
    if (!find_aggregate_member_info(type, member, &info)) {
@@ -111,6 +114,7 @@ bool find_aggregate_member(const ASTNode *type, const char *member, const ASTNod
    return true;
 }
 
+//! @brief Extract emit load ptr from fpvar for compiler lvalue lowering.
 void emit_load_ptr_from_fpvar(int ptrno, int src_offset) {
    bool direct = src_offset >= 0 && src_offset + 2 <= 256;
    if (!direct) {
@@ -123,6 +127,7 @@ void emit_load_ptr_from_fpvar(int ptrno, int src_offset) {
    }
 }
 
+//! @brief Emit add immediate to ptr for compiler lvalue lowering diagnostics or output files.
 static void emit_add_immediate_to_ptr(int ptrno, int adjust) {
    if (adjust == 0) {
       return;
@@ -136,6 +141,7 @@ static void emit_add_immediate_to_ptr(int ptrno, int adjust) {
    emit(&es_code, "    sta ptr%d+1\n", ptrno);
 }
 
+//! @brief Emit store ptr to frame pointer for compiler lvalue lowering diagnostics or output files.
 void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
    bool direct = dst_offset >= 0 && dst_offset + size <= 256;
 
@@ -159,6 +165,7 @@ void emit_store_ptr_to_fp(int dst_offset, int ptrno, int size) {
    }
 }
 
+//! @brief Compute ref argument lvalue and update compiler lvalue lowering state once prerequisite pass data is available.
 bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out) {
    ContextEntry *entry;
    expr = (ASTNode *) unwrap_expr_node(expr);
@@ -213,6 +220,7 @@ bool resolve_ref_argument_lvalue(Context *ctx, ASTNode *expr, LValueRef *out) {
    return true;
 }
 
+//! @brief Lower ref argument to slot from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_offset, int dst_size) {
    LValueRef lv;
    if (!resolve_ref_argument_lvalue(ctx, expr, &lv)) {
@@ -225,6 +233,7 @@ bool compile_ref_argument_to_slot(ASTNode *expr, Context *ctx, int dst_offset, i
    return true;
 }
 
+//! @brief Emit load count lowbyte frame pointer to arg1 for compiler lvalue lowering diagnostics or output files.
 static void emit_load_count_lowbyte_fp_to_arg1(int src_offset, const ASTNode *src_type, int src_size) {
    bool direct;
    int mem_index;
@@ -246,6 +255,7 @@ static void emit_load_count_lowbyte_fp_to_arg1(int src_offset, const ASTNode *sr
    emit(&es_code, "    sta arg1\n");
 }
 
+//! @brief Emit runtime binary frame pointer frame pointer for compiler lvalue lowering diagnostics or output files.
 void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size) {
    emit_prepare_fp_ptr(0, lhs_offset);
    emit_prepare_fp_ptr(1, rhs_offset);
@@ -256,6 +266,7 @@ void emit_runtime_binary_fp_fp(const char *helper, int dst_offset, int lhs_offse
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Emit runtime fixed binary frame pointer frame pointer for compiler lvalue lowering diagnostics or output files.
 void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset) {
    emit_prepare_fp_ptr(0, lhs_offset);
    emit_prepare_fp_ptr(1, rhs_offset);
@@ -264,6 +275,7 @@ void emit_runtime_fixed_binary_fp_fp(const char *helper, int dst_offset, int lhs
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Return int addsub helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract, bool *is_generic_out) {
    bool big_endian = type_is_big_endian(type);
 
@@ -284,18 +296,22 @@ const char *int_addsub_helper_name(const ASTNode *type, int size, bool subtract,
    }
 }
 
+//! @brief Return int mul helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_mul_helper_name(const ASTNode *type) {
    return type_is_big_endian(type) ? "mulNbe" : "mulNle";
 }
 
+//! @brief Handle int mul result offset logic for compiler lvalue lowering.
 int int_mul_result_offset(const ASTNode *type, int product_offset, int size) {
    return type_is_big_endian(type) ? (product_offset + size) : product_offset;
 }
 
+//! @brief Return int div helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_div_helper_name(const ASTNode *type) {
    return type_is_big_endian(type) ? "divNbe" : "divNle";
 }
 
+//! @brief Return int shift helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_shift_helper_name(const ASTNode *type, bool left_shift) {
    if (left_shift) {
       return type_is_big_endian(type) ? "lslNbe" : "lslNle";
@@ -305,10 +321,12 @@ const char *int_shift_helper_name(const ASTNode *type, bool left_shift) {
       : (type_is_big_endian(type) ? "lsrNbe" : "lsrNle");
 }
 
+//! @brief Return int comp2 helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_comp2_helper_name(const ASTNode *type) {
    return type_is_big_endian(type) ? "comp2Nbe" : "comp2Nle";
 }
 
+//! @brief Return int compare helper name data used by compiler lvalue lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *int_compare_helper_name(const ASTNode *type, const char *op) {
    bool big_endian = type_is_big_endian(type);
    bool is_signed = type_is_signed_integer(type);
@@ -327,6 +345,7 @@ const char *int_compare_helper_name(const ASTNode *type, const char *op) {
    return NULL;
 }
 
+//! @brief Emit runtime float binary frame pointer frame pointer for compiler lvalue lowering diagnostics or output files.
 void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs_offset, int rhs_offset, int size, int expbits) {
    emit_prepare_fp_ptr(0, lhs_offset);
    emit_prepare_fp_ptr(1, rhs_offset);
@@ -339,6 +358,7 @@ void emit_runtime_float_binary_fp_fp(const char *helper, int dst_offset, int lhs
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Emit runtime float compare for compiler lvalue lowering diagnostics or output files.
 void emit_runtime_float_compare(int lhs_offset, int rhs_offset, int size, int expbits) {
    emit_prepare_fp_ptr(0, lhs_offset);
    emit_prepare_fp_ptr(1, rhs_offset);
@@ -350,6 +370,7 @@ void emit_runtime_float_compare(int lhs_offset, int rhs_offset, int size, int ex
    emit(&es_code, "    jsr _fcmp\n");
 }
 
+//! @brief Emit runtime shift frame pointer for compiler lvalue lowering diagnostics or output files.
 void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_offset, int count_offset,
                                   const ASTNode *count_type, int count_size, int size) {
    emit_prepare_fp_ptr(0, value_offset);
@@ -361,6 +382,7 @@ void emit_runtime_shift_fp(const char *helper, int value_offset, int scratch_off
    emit(&es_code, "    jsr _%s\n", helper);
 }
 
+//! @brief Emit prepare lvalue ptr suffixes for compiler lvalue lowering diagnostics or output files.
 static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffixes, const ASTNode **type_io, const ASTNode **decl_io) {
    if (!suffixes || is_empty(suffixes)) {
       return true;
@@ -476,6 +498,7 @@ static bool emit_prepare_lvalue_ptr_suffixes(Context *ctx, const ASTNode *suffix
    return true;
 }
 
+//! @brief Emit prepare lvalue ptr for compiler lvalue lowering diagnostics or output files.
 bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode mode) {
    ContextEntry base_entry;
    char sym[256];
@@ -592,6 +615,7 @@ bool emit_prepare_lvalue_ptr(Context *ctx, const LValueRef *lv, LValueAccessMode
    return emit_prepare_lvalue_ptr_suffixes(ctx, lv->suffixes, &type, &decl);
 }
 
+//! @brief Emit copy bitfield lvalue to frame pointer for compiler lvalue lowering diagnostics or output files.
 static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
    int copy_size = size < src->size ? size : src->size;
    bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
@@ -728,6 +752,7 @@ static bool emit_copy_bitfield_lvalue_to_fp(Context *ctx, int dst_offset, const 
    return true;
 }
 
+//! @brief Emit copy frame pointer to bitfield lvalue for compiler lvalue lowering diagnostics or output files.
 static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
    int copy_size = size < dst->size ? size : dst->size;
    bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
@@ -801,6 +826,7 @@ static bool emit_copy_fp_to_bitfield_lvalue(Context *ctx, const LValueRef *dst, 
    return true;
 }
 
+//! @brief Emit copy lvalue to frame pointer for compiler lvalue lowering diagnostics or output files.
 bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, int size) {
    int copy_size = size < src->size ? size : src->size;
    bool dst_direct = dst_offset >= 0 && dst_offset + copy_size <= 256;
@@ -856,6 +882,7 @@ bool emit_copy_lvalue_to_fp(Context *ctx, int dst_offset, const LValueRef *src, 
    return true;
 }
 
+//! @brief Emit copy frame pointer to lvalue for compiler lvalue lowering diagnostics or output files.
 bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, int size) {
    int copy_size = size < dst->size ? size : dst->size;
    bool src_direct = src_offset >= 0 && src_offset + copy_size <= 256;
@@ -910,6 +937,7 @@ bool emit_copy_fp_to_lvalue(Context *ctx, const LValueRef *dst, int src_offset, 
    }
    return true;
 }
+//! @brief Compute lvalue suffixes and update compiler lvalue lowering state once prerequisite pass data is available.
 static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValueRef *out) {
    if (!suffixes || is_empty(suffixes)) {
       return true;
@@ -1001,6 +1029,7 @@ static bool resolve_lvalue_suffixes(Context *ctx, const ASTNode *suffixes, LValu
    }
    return true;
 }
+//! @brief Find lvalue entry in compiler lvalue lowering tables without transferring ownership.
 static ContextEntry *lookup_lvalue_entry(Context *ctx, const char *name, ContextEntry *scratch) {
    ContextEntry *entry;
    const ASTNode *g;
@@ -1022,6 +1051,7 @@ static ContextEntry *lookup_lvalue_entry(Context *ctx, const char *name, Context
    return NULL;
 }
 
+//! @brief Extract init lvalue from entry for compiler lvalue lowering.
 static void init_lvalue_from_entry(LValueRef *out, const ContextEntry *entry, const char *fallback_name) {
    out->name = entry->name ? entry->name : fallback_name;
    out->type = entry->type;
@@ -1042,6 +1072,7 @@ static void init_lvalue_from_entry(LValueRef *out, const ContextEntry *entry, co
    out->indirect = entry->is_ref;
 }
 
+//! @brief Compute lvalue base and update compiler lvalue lowering state once prerequisite pass data is available.
 static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
    ContextEntry scratch;
    ContextEntry *entry;
@@ -1090,6 +1121,7 @@ static bool resolve_lvalue_base(Context *ctx, ASTNode *base, LValueRef *out) {
    return false;
 }
 
+//! @brief Compute lvalue and update compiler lvalue lowering state once prerequisite pass data is available.
 bool resolve_lvalue(Context *ctx, ASTNode *node, LValueRef *out) {
    ASTNode *base;
 

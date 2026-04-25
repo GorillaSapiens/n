@@ -14,6 +14,7 @@
 #include "xray.h"
 
 
+//! @brief Parse escaped string into the normalized representation used by assembler pass and relaxation engine.
 static int decode_escaped_string(const char *quoted,
                                  unsigned char *out,
                                  int out_cap,
@@ -77,6 +78,7 @@ static int decode_escaped_string(const char *quoted,
 }
 
 
+//! @brief Return whether branch opcode applies in assembler pass and relaxation engine.
 static int is_branch_opcode(const char *opcode)
 {
    return !strcmp(opcode, "BCC") ||
@@ -89,6 +91,7 @@ static int is_branch_opcode(const char *opcode)
           !strcmp(opcode, "BVS");
 }
 
+//! @brief Return whether accum shorthand opcode applies in assembler pass and relaxation engine.
 static int is_accum_shorthand_opcode(const char *opcode)
 {
    return !strcmp(opcode, "ASL") ||
@@ -97,6 +100,7 @@ static int is_accum_shorthand_opcode(const char *opcode)
           !strcmp(opcode, "ROR");
 }
 
+//! @brief Compute mode and update assembler pass and relaxation engine state once prerequisite pass data is available.
 static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
 {
    unsigned char raw_opcode;
@@ -114,6 +118,7 @@ static addr_mode_t normalize_mode(const char *opcode, addr_mode_t mode)
    return mode;
 }
 
+//! @brief Handle spec to emit mode logic for assembler pass and relaxation engine.
 static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
 {
    switch (spec) {
@@ -160,6 +165,7 @@ static int spec_to_emit_mode(mode_spec_t spec, emit_mode_t *out_mode)
    return 0;
 }
 
+//! @brief Handle parsed mode accepts spec logic for assembler pass and relaxation engine.
 static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
 {
    parsed_mode = normalize_mode("", parsed_mode);
@@ -196,21 +202,25 @@ static int parsed_mode_accepts_spec(addr_mode_t parsed_mode, mode_spec_t spec)
    return 0;
 }
 
+//! @brief Return whether expr is 8-bit value in assembler pass and relaxation engine.
 static int expr_is_u8_value(long value)
 {
    return value >= 0 && value <= 0xFF;
 }
 
+//! @brief Return whether expr is s8 or 8-bit value in assembler pass and relaxation engine.
 static int expr_is_s8_or_u8_value(long value)
 {
    return value >= -128 && value <= 0xFF;
 }
 
+//! @brief Return whether insn is long branch candidate in assembler pass and relaxation engine.
 static int insn_is_long_branch_candidate(const insn_info_t *insn, emit_mode_t mode)
 {
    return mode == EM_REL && opcode_is_conditional_branch(insn->opcode);
 }
 
+//! @brief Return whether insn can relax long branch in assembler pass and relaxation engine.
 static int insn_can_relax_long_branch(const stmt_t *stmt, const asm_context_t *ctx)
 {
    long value;
@@ -229,6 +239,7 @@ static int insn_can_relax_long_branch(const stmt_t *stmt, const asm_context_t *c
    return disp >= -128 && disp <= 127;
 }
 
+//! @brief Handle choose initial emit mode logic for assembler pass and relaxation engine.
 static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mode, const char **why)
 {
    addr_mode_t mode;
@@ -343,11 +354,13 @@ static int choose_initial_emit_mode(const insn_info_t *insn, emit_mode_t *out_mo
    return 0;
 }
 
+//! @brief Extract insn size from mode for assembler pass and relaxation engine.
 static int insn_size_from_mode(emit_mode_t mode)
 {
    return emit_mode_size(mode);
 }
 
+//! @brief Handle eval or report logic for assembler pass and relaxation engine.
 static int eval_or_report(asm_context_t *ctx,
                           const expr_t *expr,
                           const symtab_t *symbols,
@@ -375,6 +388,7 @@ static int eval_or_report(asm_context_t *ctx,
    return 1;
 }
 
+//! @brief Handle segment advance logic for assembler pass and relaxation engine.
 static void segment_advance(asm_context_t *ctx, asm_segment_t *seg, const stmt_t *stmt, long amount)
 {
    if (amount < 0) {
@@ -405,6 +419,7 @@ typedef struct asm_pass_stats {
    int error_count;
 } asm_pass_stats_t;
 
+//! @brief Collect pass stats from existing assembler pass and relaxation engine state for a later pass.
 static void collect_pass_stats(const asm_context_t *ctx, asm_pass_stats_t *stats)
 {
    const stmt_t *stmt;
@@ -458,6 +473,7 @@ static void collect_pass_stats(const asm_context_t *ctx, asm_pass_stats_t *stats
    stats->error_count = ctx->error_count;
 }
 
+//! @brief Emit pass sizes for assembler pass and relaxation engine diagnostics or output files.
 static void print_pass_sizes(const asm_pass_stats_t *stats)
 {
    printf("   bytes: %d\n", stats->total_bytes);
@@ -472,6 +488,7 @@ static void print_pass_sizes(const asm_pass_stats_t *stats)
    printf("   errors: %d\n", stats->error_count);
 }
 
+//! @brief Emit change line for assembler pass and relaxation engine diagnostics or output files.
 static void print_change_line(const char *label, int before, int after)
 {
    int delta;
@@ -483,6 +500,7 @@ static void print_change_line(const char *label, int before, int after)
    printf("   %s: %d -> %d (%+d)\n", label, before, after, delta);
 }
 
+//! @brief Emit pass changes for assembler pass and relaxation engine diagnostics or output files.
 static void print_pass_changes(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
 {
    print_change_line("bytes", before->total_bytes, after->total_bytes);
@@ -497,6 +515,7 @@ static void print_pass_changes(const asm_pass_stats_t *before, const asm_pass_st
    print_change_line("errors", before->error_count, after->error_count);
 }
 
+//! @brief Handle trace pass begin logic for assembler pass and relaxation engine.
 static void trace_pass_begin(int pass_index)
 {
    if (!assembler_get_xray(ASM_XRAY_PASSES))
@@ -505,11 +524,13 @@ static void trace_pass_begin(int pass_index)
    printf("pass %03d: begin\n", pass_index);
 }
 
+//! @brief Handle pass stats differ logic for assembler pass and relaxation engine.
 static int pass_stats_differ(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
 {
    return memcmp(before, after, sizeof(*before)) != 0;
 }
 
+//! @brief Handle trace pass initial sizes logic for assembler pass and relaxation engine.
 static void trace_pass_initial_sizes(const asm_pass_stats_t *stats)
 {
    if (!assembler_get_xray(ASM_XRAY_PASSES))
@@ -518,6 +539,7 @@ static void trace_pass_initial_sizes(const asm_pass_stats_t *stats)
    print_pass_sizes(stats);
 }
 
+//! @brief Handle trace pass changes logic for assembler pass and relaxation engine.
 static void trace_pass_changes(const asm_pass_stats_t *before, const asm_pass_stats_t *after)
 {
    if (!assembler_get_xray(ASM_XRAY_PASSES))
@@ -526,6 +548,7 @@ static void trace_pass_changes(const asm_pass_stats_t *before, const asm_pass_st
    print_pass_changes(before, after);
 }
 
+//! @brief Handle trace pass stable logic for assembler pass and relaxation engine.
 static void trace_pass_stable(int pass_index, const asm_pass_stats_t *stats)
 {
    if (!assembler_get_xray(ASM_XRAY_PASSES))
@@ -535,6 +558,7 @@ static void trace_pass_stable(int pass_index, const asm_pass_stats_t *stats)
    print_pass_sizes(stats);
 }
 
+//! @brief Handle asm context init logic for assembler pass and relaxation engine.
 void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *listing, int object_mode_o65)
 {
    stmt_t *stmt;
@@ -571,6 +595,7 @@ void asm_context_init(asm_context_t *ctx, program_ir_t *prog, listing_writer_t *
    }
 }
 
+//! @brief Release context free storage owned by assembler pass and relaxation engine.
 void asm_context_free(asm_context_t *ctx)
 {
    symtab_free(&ctx->symbols);
@@ -578,6 +603,7 @@ void asm_context_free(asm_context_t *ctx)
 }
 
 
+//! @brief Compute constants and update assembler pass and relaxation engine state once prerequisite pass data is available.
 static int resolve_constants(asm_context_t *ctx)
 {
    int iter;
@@ -628,6 +654,7 @@ static int resolve_constants(asm_context_t *ctx)
    return 0;
 }
 
+//! @brief Handle asm pass1 logic for assembler pass and relaxation engine.
 int asm_pass1(asm_context_t *ctx, int pass_index)
 {
    stmt_t *stmt;
@@ -826,6 +853,7 @@ int asm_pass1(asm_context_t *ctx, int pass_index)
 }
 
 
+//! @brief Return whether expr is imported zero-page reference in assembler pass and relaxation engine.
 static int expr_is_imported_zp_reference(const asm_context_t *ctx, const expr_t *expr)
 {
    if (!expr || expr->kind != EXPR_IDENT)
@@ -834,6 +862,7 @@ static int expr_is_imported_zp_reference(const asm_context_t *ctx, const expr_t 
    return import_is_zp(ctx, expr->u.ident);
 }
 
+//! @brief Return whether relax to zero-page family applies in assembler pass and relaxation engine.
 static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_mode, emit_mode_t *relaxed_mode)
 {
    unsigned char dummy;
@@ -870,6 +899,7 @@ static int can_relax_to_zp_family(const insn_info_t *insn, emit_mode_t current_m
    return 0;
 }
 
+//! @brief Handle asm relax logic for assembler pass and relaxation engine.
 int asm_relax(asm_context_t *ctx)
 {
    int iter;
@@ -961,6 +991,7 @@ int asm_relax(asm_context_t *ctx)
    return ctx->error_count ? 1 : 0;
 }
 
+//! @brief Emit byte for assembler pass and relaxation engine diagnostics or output files.
 static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, const stmt_t *stmt)
 {
    if (!ihex_write_byte(&ctx->image, addr, b)) {
@@ -971,6 +1002,7 @@ static int emit_byte(asm_context_t *ctx, long addr, unsigned char b, const stmt_
    return 1;
 }
 
+//! @brief Emit word for assembler pass and relaxation engine diagnostics or output files.
 static int emit_word(asm_context_t *ctx, long addr, unsigned short w, const stmt_t *stmt)
 {
    if (!ihex_write_word(&ctx->image, addr, w)) {
@@ -982,6 +1014,7 @@ static int emit_word(asm_context_t *ctx, long addr, unsigned short w, const stmt
 }
 
 /* returns 0 success, -1 statement error */
+//! @brief Handle directive emit pass2 logic for assembler pass and relaxation engine.
 static int directive_emit_pass2(asm_context_t *ctx,
                                 const stmt_t *stmt,
                                 const directive_info_t *dir)
@@ -1149,6 +1182,7 @@ static int directive_emit_pass2(asm_context_t *ctx,
 }
 
 /* returns 0 success, -1 statement error */
+//! @brief Handle insn emit pass2 logic for assembler pass and relaxation engine.
 static int insn_emit_pass2(asm_context_t *ctx,
                            const stmt_t *stmt,
                            const insn_info_t *insn)
@@ -1302,6 +1336,7 @@ static int insn_emit_pass2(asm_context_t *ctx,
    return 0;
 }
 
+//! @brief Compare segment ptrs records for deterministic ordering.
 static int cmp_segment_ptrs(const void *a, const void *b)
 {
    const asm_segment_t *sa;
@@ -1317,6 +1352,7 @@ static int cmp_segment_ptrs(const void *a, const void *b)
    return strcmp(sa->name, sb->name);
 }
 
+//! @brief Compare symbol ptrs records for deterministic ordering.
 static int cmp_symbol_ptrs(const void *a, const void *b)
 {
    const symbol_t *sa;
@@ -1338,6 +1374,7 @@ static int cmp_symbol_ptrs(const void *a, const void *b)
    return strcmp(sa->name, sb->name);
 }
 
+//! @brief Handle asm write map file logic for assembler pass and relaxation engine.
 int asm_write_map_file(FILE *fp, const asm_context_t *ctx)
 {
    const asm_segment_t *seg;
@@ -1425,6 +1462,7 @@ int asm_write_map_file(FILE *fp, const asm_context_t *ctx)
    return 1;
 }
 
+//! @brief Handle asm pass2 logic for assembler pass and relaxation engine.
 int asm_pass2(asm_context_t *ctx)
 {
    stmt_t *stmt;

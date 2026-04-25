@@ -23,6 +23,7 @@ typedef struct {
 #include "pair.h"
 
 // --- Hash function ---
+//! @brief Hash a string key for the small fixed-size compiler map.
 static unsigned int hash(const char *key) {
     unsigned int h = 0;
     while (*key)
@@ -31,12 +32,14 @@ static unsigned int hash(const char *key) {
 }
 
 // --- Create pair ---
+//! @brief Return pair create data used by pair; returned pointers alias existing storage unless explicitly allocated by the function name.
 Pair *pair_create(void) {
     Pair *pair = calloc(1, sizeof(Pair));
     return pair;
 }
 
 // --- Insert or update ---
+//! @brief Handle pair insert logic for pair.
 void pair_insert(Pair *pair, const char *key, void *value) {
     unsigned int idx = hash(key);
     Entry *node = pair->buckets[idx];
@@ -57,6 +60,7 @@ void pair_insert(Pair *pair, const char *key, void *value) {
 }
 
 // --- Lookup ---
+//! @brief Handle pair exists logic for pair.
 bool pair_exists(Pair *pair, const char *key) {
     unsigned int idx = hash(key);
     Entry *node = pair->buckets[idx];
@@ -69,6 +73,7 @@ bool pair_exists(Pair *pair, const char *key) {
 }
 
 // --- Lookup ---
+//! @brief Return pair get data used by pair; returned pointers alias existing storage unless explicitly allocated by the function name.
 void *pair_get(Pair *pair, const char *key) {
     unsigned int idx = hash(key);
     Entry *node = pair->buckets[idx];
@@ -81,6 +86,7 @@ void *pair_get(Pair *pair, const char *key) {
 }
 
 // --- Delete key ---
+//! @brief Handle pair delete logic for pair.
 void pair_delete(Pair *pair, const char *key) {
     unsigned int idx = hash(key);
     Entry **ptr = &pair->buckets[idx];
@@ -97,6 +103,7 @@ void pair_delete(Pair *pair, const char *key) {
 }
 
 // --- Free pair ---
+//! @brief Handle pair destroy logic for pair.
 void pair_destroy(Pair *pair) {
     for (int i = 0; i < TABLE_SIZE; i++) {
         Entry *node = pair->buckets[i];
@@ -110,6 +117,7 @@ void pair_destroy(Pair *pair) {
     free(pair);
 }
 
+//! @brief Return pair null value data used by pair; returned pointers alias existing storage unless explicitly allocated by the function name.
 const char *pair_null_value(Pair *pair) {
    for (int i = 0; i < TABLE_SIZE; i++) {
       for (Entry *entry = pair->buckets[i]; entry; entry = entry->next) {

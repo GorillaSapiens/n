@@ -19,6 +19,7 @@ static int message_line = 0;
 static int message_column = 0;
 static char *message_near = NULL;
 
+//! @brief Create near for compiler diagnostic layer. The returned storage is owned by the caller or the object that immediately records it.
 static char *dup_near(const char *near) {
    size_t len;
 
@@ -34,6 +35,7 @@ static char *dup_near(const char *near) {
    return strndup(near, len);
 }
 
+//! @brief Handle message set location logic for compiler diagnostic layer.
 void message_set_location(const char *filename, int line, int column, const char *near) {
    free(message_near);
    message_filename = filename;
@@ -42,6 +44,7 @@ void message_set_location(const char *filename, int line, int column, const char
    message_near = dup_near(near);
 }
 
+//! @brief Handle message clear location logic for compiler diagnostic layer.
 void message_clear_location(void) {
    free(message_near);
    message_near = NULL;
@@ -50,6 +53,7 @@ void message_clear_location(void) {
    message_column = 0;
 }
 
+//! @brief Handle message logic for compiler diagnostic layer.
 void message(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
@@ -58,6 +62,7 @@ void message(const char *fmt, ...) {
    va_end(args);
 }
 
+//! @brief Handle debug logic for compiler diagnostic layer.
 void debug(const char *fmt, ...) {
    if (get_xray(XRAY_DEBUG)) {
       va_list args;
@@ -69,6 +74,7 @@ void debug(const char *fmt, ...) {
    }
 }
 
+//! @brief Return display filename data used by compiler diagnostic layer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *display_filename(const char *filename) {
    const char *slash;
    const char *bslash;
@@ -92,6 +98,7 @@ static const char *display_filename(const char *filename) {
    return base;
 }
 
+//! @brief Handle format location header logic for compiler diagnostic layer.
 static void format_location_header(const char *preamble,
                                    const char *filename,
                                    int line,
@@ -109,6 +116,7 @@ static void format_location_header(const char *preamble,
    }
 }
 
+//! @brief Handle verror impl logic for compiler diagnostic layer.
 static void noreturn verror_impl(const char *fmt, va_list args) {
    if (message_filename && message_line > 0) {
       format_location_header("Error", message_filename, message_line, message_column, message_near);
@@ -125,6 +133,7 @@ static void noreturn verror_impl(const char *fmt, va_list args) {
    exit(-1);
 }
 
+//! @brief Report user diagnostics with the location/context expected by compiler diagnostic layer callers.
 void error_user(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
@@ -132,6 +141,7 @@ void error_user(const char *fmt, ...) {
    va_end(args);
 }
 
+//! @brief Report unimplemented diagnostics with the location/context expected by compiler diagnostic layer callers.
 void error_unimplemented(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
@@ -139,6 +149,7 @@ void error_unimplemented(const char *fmt, ...) {
    va_end(args);
 }
 
+//! @brief Report unreachable diagnostics with the location/context expected by compiler diagnostic layer callers.
 void error_unreachable(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
@@ -146,6 +157,7 @@ void error_unreachable(const char *fmt, ...) {
    va_end(args);
 }
 
+//! @brief Handle warning logic for compiler diagnostic layer.
 void warning(const char *fmt, ...) {
    va_list args;
    va_start(args, fmt);
@@ -155,6 +167,7 @@ void warning(const char *fmt, ...) {
    va_end(args);
 }
 
+//! @brief Handle isident logic for compiler diagnostic layer.
 static bool isident(const char *p) {
    return (*p >= 'A' && *p <= 'Z') ||
           (*p >= 'a' && *p <= 'z') ||
@@ -162,6 +175,7 @@ static bool isident(const char *p) {
           (*p == '_');
 }
 
+//! @brief Handle replace in place logic for compiler diagnostic layer.
 static void replace_in_place(char *s, const char *l, const char *r) {
     size_t len_l = strlen(l);
     size_t len_r = strlen(r);
@@ -183,12 +197,14 @@ static const char *replacements[] = {
 #include "delexer.h"
 };
 
+//! @brief Run the replacements stage of the compiler tool pipeline.
 static void do_replacements(char *s) {
    for (size_t i = 0; i < sizeof(replacements) / sizeof(replacements[0]); i += 2) {
       replace_in_place(s, replacements[i], replacements[i+1]);
    }
 }
 
+//! @brief Handle yymessage logic for compiler diagnostic layer.
 static void yymessage(const char *preamble, const char *fmt, va_list args) {
    va_list args_copy;
    int size;
@@ -234,6 +250,7 @@ static void yymessage(const char *preamble, const char *fmt, va_list args) {
    free(str);
 }
 
+//! @brief Handle yyerror logic for compiler diagnostic layer.
 void yyerror(const char *fmt, ...) {
    va_list ap;
    va_start(ap, fmt);
@@ -242,6 +259,7 @@ void yyerror(const char *fmt, ...) {
    exit(-1);
 }
 
+//! @brief Handle yywarn logic for compiler diagnostic layer.
 void yywarn(const char *fmt, ...) {
    va_list ap;
    va_start(ap, fmt);

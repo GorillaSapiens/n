@@ -37,6 +37,7 @@
 
 static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr);
 
+//! @brief Return lvalue base identifier node data used by compiler short-circuit/control-flow expression lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
    if (!base) {
       return NULL;
@@ -53,6 +54,7 @@ static const ASTNode *lvalue_base_identifier_node(ASTNode *base) {
    return NULL;
 }
 
+//! @brief Return expr lvalue base identifier node data used by compiler short-circuit/control-flow expression lowering; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
    expr = (ASTNode *) unwrap_expr_node(expr);
    if (!expr || is_empty(expr)) {
@@ -67,15 +69,18 @@ static const ASTNode *expr_lvalue_base_identifier_node(ASTNode *expr) {
    return lvalue_base_identifier_node(expr->children[0]);
 }
 
+//! @brief Return whether declarator is not pointer in compiler short-circuit/control-flow expression lowering.
 static bool declarator_is_not_pointer(const ASTNode *declarator) {
    return declarator_pointer_depth(declarator) == 0;
 }
 
+//! @brief Return whether type node is plain void in compiler short-circuit/control-flow expression lowering.
 static bool type_node_is_plain_void(const ASTNode *type, const ASTNode *declarator) {
    const char *name = type_name_from_node(type);
    return name && !strcmp(name, "void") && declarator_is_not_pointer(declarator);
 }
 
+//! @brief Return whether expr is plain void cast in compiler short-circuit/control-flow expression lowering.
 static bool expr_is_plain_void_cast(ASTNode *expr) {
    const ASTNode *target_type;
    const ASTNode *target_decl;
@@ -89,6 +94,7 @@ static bool expr_is_plain_void_cast(ASTNode *expr) {
    return type_node_is_plain_void(target_type, target_decl);
 }
 
+//! @brief Report unknown identifier node diagnostics with the location/context expected by compiler short-circuit/control-flow expression lowering callers.
 static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *fallback, const char *ident) {
    error_user("[%s:%d.%d] unknown identifier '%s'",
          idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
@@ -97,6 +103,7 @@ static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *
          ident ? ident : "<unknown>");
 }
 
+//! @brief Report unresolved assignment target diagnostics with the location/context expected by compiler short-circuit/control-flow expression lowering callers.
 static void error_unresolved_assignment_target(Context *ctx, ASTNode *target, ASTNode *fallback) {
    const ASTNode *idnode = expr_lvalue_base_identifier_node(target);
    const char *ident = idnode ? idnode->strval : NULL;
@@ -110,6 +117,7 @@ static void error_unresolved_assignment_target(Context *ctx, ASTNode *target, AS
          target ? target->column : (fallback ? fallback->column : 0));
 }
 
+//! @brief Lower truthy expression branch false from AST/semantic state into generated assembly or linker-visible metadata.
 static bool compile_truthy_expr_branch_false(ASTNode *expr, Context *ctx,
                                              const ASTNode *type,
                                              const ASTNode *declarator,
@@ -168,6 +176,7 @@ static bool compile_truthy_expr_branch_false(ASTNode *expr, Context *ctx,
    return true;
 }
 
+//! @brief Lower condition branch false from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *false_label) {
    expr = (ASTNode *) unwrap_expr_node(expr);
 
@@ -455,6 +464,7 @@ bool compile_condition_branch_false(ASTNode *expr, Context *ctx, const char *fal
    }
 }
 
+//! @brief Lower expr from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_expr(ASTNode *node, Context *ctx) {
    if (!node || is_empty(node)) {
       return;

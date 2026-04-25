@@ -9,6 +9,7 @@
 #include "expr.h"
 #include "directive.h"
 
+//! @brief Emit expr list for assembler listing writer diagnostics or output files.
 static void render_expr_list(FILE *fp, const expr_list_node_t *node)
 {
    int first;
@@ -23,6 +24,7 @@ static void render_expr_list(FILE *fp, const expr_list_node_t *node)
    }
 }
 
+//! @brief Emit stmt text for assembler listing writer diagnostics or output files.
 static void render_stmt_text(FILE *fp, const stmt_t *stmt)
 {
    if (stmt->label)
@@ -101,12 +103,14 @@ static void render_stmt_text(FILE *fp, const stmt_t *stmt)
    }
 }
 
+//! @brief Handle listing open logic for assembler listing writer.
 int listing_open(listing_writer_t *lst, const char *path)
 {
    lst->fp = fopen(path, "w");
    return lst->fp != NULL;
 }
 
+//! @brief Handle listing close logic for assembler listing writer.
 void listing_close(listing_writer_t *lst)
 {
    if (lst->fp) {
@@ -115,6 +119,7 @@ void listing_close(listing_writer_t *lst)
    }
 }
 
+//! @brief Handle listing write record logic for assembler listing writer.
 void listing_write_record(listing_writer_t *lst,
                           const stmt_t *stmt,
                           long addr,
@@ -142,6 +147,7 @@ void listing_write_record(listing_writer_t *lst,
    fprintf(lst->fp, "\n");
 }
 
+//! @brief Handle listing write no bytes logic for assembler listing writer.
 void listing_write_no_bytes(listing_writer_t *lst, const stmt_t *stmt)
 {
    if (!lst || !lst->fp || !stmt)

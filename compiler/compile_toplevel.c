@@ -31,6 +31,7 @@
 #include "xray.h"
 #include "lextern.h"
 
+//! @brief Return decl subitem declarator data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    if (!node) {
       return NULL;
@@ -41,6 +42,7 @@ static const ASTNode *decl_subitem_declarator(const ASTNode *node) {
    return node->children[0];
 }
 
+//! @brief Return decl subitem address spec data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    if (!node || strcmp(node->name, "decl_subitem") || node->count <= 1) {
       return NULL;
@@ -48,6 +50,7 @@ static const ASTNode *decl_subitem_address_spec(const ASTNode *node) {
    return node->children[1];
 }
 
+//! @brief Return decl node declarator data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_node_declarator(const ASTNode *node) {
    if (!node || node->count < 3) {
       return NULL;
@@ -55,6 +58,7 @@ static const ASTNode *decl_node_declarator(const ASTNode *node) {
    return decl_subitem_declarator(node->children[2]);
 }
 
+//! @brief Return decl node address spec data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    if (!node || node->count < 3) {
       return NULL;
@@ -62,6 +66,7 @@ static const ASTNode *decl_node_address_spec(const ASTNode *node) {
    return decl_subitem_address_spec(node->children[2]);
 }
 
+//! @brief Return address spec read expr data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_read_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -72,6 +77,7 @@ static const char *address_spec_read_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return address spec write expr data used by compile toplevel; returned pointers alias existing storage unless explicitly allocated by the function name.
 static const char *address_spec_write_expr(const ASTNode *node) {
    if (!node || is_empty(node)) {
       return NULL;
@@ -82,14 +88,17 @@ static const char *address_spec_write_expr(const ASTNode *node) {
    return node->strval;
 }
 
+//! @brief Return whether address spec has read in compile toplevel.
 static bool address_spec_has_read(const ASTNode *node) {
    return address_spec_read_expr(node) != NULL;
 }
 
+//! @brief Return whether address spec has write in compile toplevel.
 static bool address_spec_has_write(const ASTNode *node) {
    return address_spec_write_expr(node) != NULL;
 }
 
+//! @brief Report address spec without ref diagnostics with the location/context expected by compile toplevel callers.
 static void warn_address_spec_without_ref(const ASTNode *node, const char *name) {
    if (!node) {
       error_unreachable("internal error: !node in %s %s:%d\n",
@@ -100,6 +109,7 @@ static void warn_address_spec_without_ref(const ASTNode *node, const char *name)
       node->file, node->line, node->column, name ? name : "?");
 }
 
+//! @brief Lower function decl from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_function_decl(ASTNode *node) {
    ASTNode *modifiers  = node->children[0]->children[0];
    ASTNode *declarator = node->children[1];
@@ -172,10 +182,12 @@ void compile_function_decl(ASTNode *node) {
    current_call_graph_node = saved_call_graph_node;
 }
 
+//! @brief Lower mem decl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_mem_decl_stmt(ASTNode *node) {
    attach_memname(node->children[0]->strval, node);
 }
 
+//! @brief Lower type decl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_type_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
@@ -321,6 +333,7 @@ void compile_type_decl_stmt(ASTNode *node) {
    }
 }
 
+//! @brief Return whether enum candidate is integer type in compile toplevel.
 static bool enum_candidate_is_integer_type(const ASTNode *node) {
    if (!node || strcmp(node->name, "type_decl_stmt")) {
       return false;
@@ -329,6 +342,7 @@ static bool enum_candidate_is_integer_type(const ASTNode *node) {
    return type_is_promotable_integer(node) && !type_is_bool(node);
 }
 
+//! @brief Return whether enum candidate can hold range in compile toplevel.
 static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_value, unsigned long long max_value, bool have_negative) {
    int size;
    int bits;
@@ -377,6 +391,7 @@ static bool enum_candidate_can_hold_range(const ASTNode *node, long long min_val
    return max_value <= unsigned_max;
 }
 
+//! @brief Find best enum backing type in compile toplevel tables without transferring ownership.
 static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
    long long min_value = 0;
    unsigned long long max_value = 0;
@@ -443,6 +458,7 @@ static const ASTNode *find_best_enum_backing_type(ASTNode *node) {
    return best;
 }
 
+//! @brief Lower enum decl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_enum_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    const ASTNode *backing = find_best_enum_backing_type(node);
@@ -458,12 +474,14 @@ void compile_enum_decl_stmt(ASTNode *node) {
    }
 }
 
+//! @brief Lower struct decl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_struct_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
 
 }
 
+//! @brief Lower union decl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_union_decl_stmt(ASTNode *node) {
    const char *key = node->children[0]->strval;
    attach_typename(key, node);
@@ -471,6 +489,7 @@ void compile_union_decl_stmt(ASTNode *node) {
 }
 
 
+//! @brief Lower global decl item from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_global_decl_item(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *type       = node->children[1];
@@ -626,6 +645,7 @@ void compile_global_decl_item(ASTNode *node) {
 }
 
 
+//! @brief Handle predeclare top level functions logic for compile toplevel.
 void predeclare_top_level_functions(ASTNode *program) {
    if (!functions) {
       functions = new_set();
@@ -654,6 +674,7 @@ void predeclare_top_level_functions(ASTNode *program) {
    }
 }
 
+//! @brief Lower function signature from AST/semantic state into generated assembly or linker-visible metadata.
 static void compile_function_signature(ASTNode *node) {
    ASTNode *modifiers  = node->children[0];
    ASTNode *declarator = node->children[2];
@@ -675,6 +696,7 @@ static void compile_function_signature(ASTNode *node) {
 }
 
 
+//! @brief Lower defdecl stmt from AST/semantic state into generated assembly or linker-visible metadata.
 void compile_defdecl_stmt(ASTNode *node) {
    if (node->count == 1 && !strcmp(node->children[0]->name, "decl_list")) {
       ASTNode *list = node->children[0];
@@ -699,6 +721,7 @@ void compile_defdecl_stmt(ASTNode *node) {
    error_unreachable("[%s:%d.%d] unsupported defdecl_stmt shape", node->file, node->line, node->column);
 }
 
+//! @brief Validate struct union undefined invariants before later compiler stages depend on them.
 void check_struct_union_undefined(ASTNode *program) {
    // undefined struct/union is always an error
    const char *undefined = typename_find_null();
@@ -727,6 +750,7 @@ void check_struct_union_undefined(ASTNode *program) {
    }
 }
 
+//! @brief Handle crosscheck helper logic for compile toplevel.
 static bool crosscheck_helper(Pair *markers, const char *name) {
    const char *childname;
    ASTNode *child;
@@ -762,6 +786,7 @@ problem:
    return true;
 }
 
+//! @brief Handle crosscheck struct union nesting logic for compile toplevel.
 void crosscheck_struct_union_nesting(ASTNode *program) {
    Pair *markers = pair_create();
 
@@ -789,6 +814,7 @@ void crosscheck_struct_union_nesting(ASTNode *program) {
    pair_destroy(markers);
 }
 
+//! @brief Handle calculate struct union sizes logic for compile toplevel.
 void calculate_struct_union_sizes(ASTNode *program) {
    // everybody uses pointers, let's just do that now...
 

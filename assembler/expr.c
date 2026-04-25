@@ -9,6 +9,7 @@
 #include "symtab.h"
 #include "util.h"
 
+//! @brief Return expr alloc data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 static expr_t *expr_alloc(expr_kind_t kind)
 {
    expr_t *e;
@@ -23,6 +24,7 @@ static expr_t *expr_alloc(expr_kind_t kind)
    return e;
 }
 
+//! @brief Return expr make number data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_number(long value)
 {
    expr_t *e;
@@ -32,6 +34,7 @@ expr_t *expr_make_number(long value)
    return e;
 }
 
+//! @brief Return expr make ident data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_ident(const char *name)
 {
    expr_t *e;
@@ -41,6 +44,7 @@ expr_t *expr_make_ident(const char *name)
    return e;
 }
 
+//! @brief Return expr make char data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_char(int value)
 {
    expr_t *e;
@@ -50,11 +54,13 @@ expr_t *expr_make_char(int value)
    return e;
 }
 
+//! @brief Return expr make program counter data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_pc(void)
 {
    return expr_alloc(EXPR_PC);
 }
 
+//! @brief Return expr make unary data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_unary(expr_unary_op_t op, expr_t *child)
 {
    expr_t *e;
@@ -65,6 +71,7 @@ expr_t *expr_make_unary(expr_unary_op_t op, expr_t *child)
    return e;
 }
 
+//! @brief Return expr make binary data used by assembler expression evaluator; returned pointers alias existing storage unless explicitly allocated by the function name.
 expr_t *expr_make_binary(expr_binary_op_t op, expr_t *left, expr_t *right)
 {
    expr_t *e;
@@ -76,6 +83,7 @@ expr_t *expr_make_binary(expr_binary_op_t op, expr_t *left, expr_t *right)
    return e;
 }
 
+//! @brief Release free storage owned by assembler expression evaluator.
 void expr_free(expr_t *expr)
 {
    if (!expr)
@@ -102,6 +110,7 @@ void expr_free(expr_t *expr)
    free(expr);
 }
 
+//! @brief Handle expr fprint inner logic for assembler expression evaluator.
 static void expr_fprint_inner(FILE *fp, const expr_t *expr)
 {
    if (!expr) {
@@ -171,16 +180,19 @@ static void expr_fprint_inner(FILE *fp, const expr_t *expr)
    }
 }
 
+//! @brief Handle expr print logic for assembler expression evaluator.
 void expr_print(const expr_t *expr)
 {
    expr_fprint_inner(stdout, expr);
 }
 
+//! @brief Handle expr fprint logic for assembler expression evaluator.
 void expr_fprint(FILE *fp, const expr_t *expr)
 {
    expr_fprint_inner(fp, expr);
 }
 
+//! @brief Parse number token into the normalized representation used by assembler expression evaluator.
 long parse_number_token(const char *text)
 {
    char *end;
@@ -202,6 +214,7 @@ long parse_number_token(const char *text)
    return strtol(text, &end, base);
 }
 
+//! @brief Parse charconst token into the normalized representation used by assembler expression evaluator.
 int parse_charconst_token(const char *text)
 {
    if (!text || text[0] != '\'')
@@ -241,6 +254,7 @@ int parse_charconst_token(const char *text)
    return (unsigned char)*text;
 }
 
+//! @brief Find scoped ident in assembler expression evaluator tables without transferring ownership.
 static const symbol_t *find_scoped_ident(const symtab_t *symtab,
                                          const char *scope,
                                          const char *file_scope,
@@ -267,6 +281,7 @@ static const symbol_t *find_scoped_ident(const symtab_t *symtab,
    return symtab_find_const(symtab, ident);
 }
 
+//! @brief Handle expr eval logic for assembler expression evaluator.
 expr_eval_status_t expr_eval(const expr_t *expr,
                              const symtab_t *symtab,
                              const char *scope,
@@ -361,6 +376,7 @@ expr_eval_status_t expr_eval(const expr_t *expr,
    return EXPR_EVAL_UNRESOLVED;
 }
 
+//! @brief Return whether expr is byte value in assembler expression evaluator.
 int expr_is_byte_value(long value)
 {
    return value >= 0 && value <= 0xFF;

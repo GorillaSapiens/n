@@ -22,6 +22,7 @@ typedef struct
    bool verbose;
 } ar_options_t;
 
+//! @brief Print the archiver command-line usage text.
 static void usage(FILE *fp)
 {
    fprintf(fp,
@@ -45,6 +46,7 @@ static void usage(FILE *fp)
       "  n65ar -x archive.a65\n");
 }
 
+//! @brief Return the archive member basename; the pointer aliases the input path.
 static const char *base_name(const char *path)
 {
    const char *slash;
@@ -64,6 +66,7 @@ static const char *base_name(const char *path)
    return base;
 }
 
+//! @brief Return whether a string ends with the requested suffix.
 static bool ends_with(const char *s, const char *suffix)
 {
    size_t slen;
@@ -78,6 +81,7 @@ static bool ends_with(const char *s, const char *suffix)
    return strcmp(s + slen - tlen, suffix) == 0;
 }
 
+//! @brief Write a 16-bit little-endian integer field to a stream.
 static int write_u16_le(FILE *fp, uint16_t value)
 {
    unsigned char b[2];
@@ -88,6 +92,7 @@ static int write_u16_le(FILE *fp, uint16_t value)
    return fwrite(b, 1, sizeof(b), fp) == sizeof(b) ? 1 : 0;
 }
 
+//! @brief Write a 32-bit little-endian integer field to a stream.
 static int write_u32_le(FILE *fp, uint32_t value)
 {
    unsigned char b[4];
@@ -100,6 +105,7 @@ static int write_u32_le(FILE *fp, uint32_t value)
    return fwrite(b, 1, sizeof(b), fp) == sizeof(b) ? 1 : 0;
 }
 
+//! @brief Read a 16-bit little-endian integer field from a stream.
 static int read_u16_le(FILE *fp, uint16_t *value)
 {
    unsigned char b[2];
@@ -111,6 +117,7 @@ static int read_u16_le(FILE *fp, uint16_t *value)
    return 1;
 }
 
+//! @brief Read a 32-bit little-endian integer field from a stream.
 static int read_u32_le(FILE *fp, uint32_t *value)
 {
    unsigned char b[4];
@@ -125,6 +132,7 @@ static int read_u32_le(FILE *fp, uint32_t *value)
    return 1;
 }
 
+//! @brief Copy an exact byte count between streams and fail on short read or write error.
 static int copy_n_bytes(FILE *in, FILE *out, uint32_t size)
 {
    unsigned char buffer[COPY_BUFFER_SIZE];
@@ -153,6 +161,7 @@ static int copy_n_bytes(FILE *in, FILE *out, uint32_t size)
    return 1;
 }
 
+//! @brief Consume an exact byte count from a stream and fail on short input.
 static int skip_n_bytes(FILE *fp, uint32_t size)
 {
    unsigned char buffer[COPY_BUFFER_SIZE];
@@ -176,6 +185,7 @@ static int skip_n_bytes(FILE *fp, uint32_t size)
    return 1;
 }
 
+//! @brief Return a stream length while restoring the original seek position.
 static long file_size(FILE *fp)
 {
    long cur;
@@ -198,6 +208,7 @@ static long file_size(FILE *fp)
    return end;
 }
 
+//! @brief Load archive for read for archive reader/writer and initialize the caller-visible state.
 static int open_archive_for_read(const char *archive_name, FILE **out_fp)
 {
    FILE *archive;
@@ -225,11 +236,13 @@ static int open_archive_for_read(const char *archive_name, FILE **out_fp)
    return 1;
 }
 
+//! @brief Return whether member name is valid in archive reader/writer.
 static bool member_name_is_valid(const char *name)
 {
    return strchr(name, '/') == NULL && strchr(name, '\\') == NULL && name[0] != '\0';
 }
 
+//! @brief Extract append member from file for archive reader/writer.
 static int append_member_from_file(FILE *archive, const char *input_name)
 {
    const char *stored_name;
@@ -290,6 +303,7 @@ static int append_member_from_file(FILE *archive, const char *input_name)
    return 1;
 }
 
+//! @brief Write archive header using the on-disk format expected by archive reader/writer.
 static int write_archive_header(FILE *archive, const char *archive_name)
 {
    if (fwrite(NAR_MAGIC, 1, NAR_MAGIC_SIZE, archive) != NAR_MAGIC_SIZE) {
@@ -300,6 +314,7 @@ static int write_archive_header(FILE *archive, const char *archive_name)
    return 1;
 }
 
+//! @brief Handle peek archive eof logic for archive reader/writer.
 static int peek_archive_eof(FILE *archive, const char *archive_name, int *at_eof_out)
 {
    int ch;
@@ -325,6 +340,7 @@ static int peek_archive_eof(FILE *archive, const char *archive_name, int *at_eof
    return 1;
 }
 
+//! @brief Read member header from the current input position and advance the reader on success.
 static int read_member_header(FILE *archive,
                               const char *archive_name,
                               uint16_t *name_len_out,
@@ -373,6 +389,7 @@ static int read_member_header(FILE *archive,
    return 1;
 }
 
+//! @brief Write member record using the on-disk format expected by archive reader/writer.
 static int write_member_record(FILE *out, FILE *in, const char *member_name, uint32_t size)
 {
    size_t name_len;
@@ -388,6 +405,7 @@ static int write_member_record(FILE *out, FILE *in, const char *member_name, uin
    return copy_n_bytes(in, out, size);
 }
 
+//! @brief Return temp archive name data used by archive reader/writer; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *temp_archive_name(const char *archive_name)
 {
    size_t len;
@@ -403,6 +421,7 @@ static char *temp_archive_name(const char *archive_name)
    return tmp_name;
 }
 
+//! @brief Handle member name index logic for archive reader/writer.
 static int member_name_index(const char *member_name, int count, char **names)
 {
    int i;
@@ -415,6 +434,7 @@ static int member_name_index(const char *member_name, int count, char **names)
    return -1;
 }
 
+//! @brief Add archive to archive reader/writer state, growing storage or preserving uniqueness as needed.
 static int append_archive(const char *archive_name, int input_count, char **inputs, bool quiet_create, bool verbose)
 {
    FILE *old_archive;
@@ -524,6 +544,7 @@ cleanup:
    return status;
 }
 
+//! @brief Handle replace archive logic for archive reader/writer.
 static int replace_archive(const char *archive_name, int input_count, char **inputs, bool quiet_create, bool verbose)
 {
    FILE *old_archive;
@@ -658,6 +679,7 @@ cleanup:
    return status;
 }
 
+//! @brief Handle extract archive logic for archive reader/writer.
 static int extract_archive(const char *archive_name, int requested_count, char **requested_names, bool verbose)
 {
    FILE *archive;
@@ -722,6 +744,7 @@ static int extract_archive(const char *archive_name, int requested_count, char *
    return 0;
 }
 
+//! @brief Handle list archive logic for archive reader/writer.
 static int list_archive(const char *archive_name, int requested_count, char **requested_names, bool verbose)
 {
    FILE *archive;
@@ -759,6 +782,7 @@ static int list_archive(const char *archive_name, int requested_count, char **re
    return 0;
 }
 
+//! @brief Parse legacy mode into the normalized representation used by archive reader/writer.
 static int parse_legacy_mode(int argc, char **argv)
 {
    if (strcmp(argv[1], "-c") == 0) {
@@ -788,6 +812,7 @@ static int parse_legacy_mode(int argc, char **argv)
    return -1;
 }
 
+//! @brief Parse mode string into the normalized representation used by archive reader/writer.
 static int parse_mode_string(const char *arg, ar_options_t *opts)
 {
    const char *p;
@@ -838,6 +863,7 @@ static int parse_mode_string(const char *arg, ar_options_t *opts)
    return have_op ? 1 : 0;
 }
 
+//! @brief Entry point for the archiver command; parses arguments, runs the requested pipeline, and returns process status.
 int main(int argc, char **argv)
 {
    ar_options_t opts;

@@ -69,6 +69,7 @@ static int call_graph_edge_count = 0;
 int current_call_graph_node = -1;
 const ASTNode *current_call_graph_function = NULL;
 
+//! @brief Handle function parameter symbol name logic for compiler function lowering.
 bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter, int index,
                                            char *buf, size_t bufsize, bool *is_zeropage_out) {
    const ASTNode *ptype;
@@ -120,6 +121,7 @@ bool function_parameter_symbol_name(const ASTNode *fn, const ASTNode *parameter,
    return entry_symbol_name(&callee_ctx, &pentry, buf, bufsize);
 }
 
+//! @brief Handle context shove logic for compiler function lowering.
 static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    if (entry != NULL) {
@@ -147,6 +149,7 @@ static void ctx_shove(Context *ctx, const ASTNode *type, const char *name) {
    set_add(ctx->vars, strdup(name), entry);
 }
 
+//! @brief Handle context resize last shove logic for compiler function lowering.
 static void ctx_resize_last_shove(Context *ctx, const ASTNode *type, const ASTNode *declarator, const char *name) {
    ContextEntry *entry = (ContextEntry *) set_get(ctx->vars, name);
    int base_size;
@@ -164,10 +167,12 @@ static void ctx_resize_last_shove(Context *ctx, const ASTNode *type, const ASTNo
    ctx->params -= (value_size - base_size);
 }
 
+//! @brief Handle variadic hidden name reserved logic for compiler function lowering.
 static bool variadic_hidden_name_reserved(const char *name) {
    return name && (!strcmp(name, VARIADIC_HIDDEN_ARGS_NAME) || !strcmp(name, VARIADIC_HIDDEN_BYTES_NAME));
 }
 
+//! @brief Validate nonreserved variadic name invariants before later compiler stages depend on them.
 void validate_nonreserved_variadic_name(const char *name, const ASTNode *node) {
    if (!node || !variadic_hidden_name_reserved(name)) {
       return;
@@ -175,6 +180,7 @@ void validate_nonreserved_variadic_name(const char *name, const ASTNode *node) {
    error_user("[%s:%d.%d] '%s' is a reserved implementation name", node->file, node->line, node->column, name);
 }
 
+//! @brief Validate function nonreserved variadic names invariants before later compiler stages depend on them.
 void validate_function_nonreserved_variadic_names(const ASTNode *fn) {
    const ASTNode *declarator;
    const ASTNode *params;
@@ -197,10 +203,12 @@ void validate_function_nonreserved_variadic_names(const ASTNode *fn) {
    }
 }
 
+//! @brief Handle builtin variadic call name logic for compiler function lowering.
 bool builtin_variadic_call_name(const char *name) {
    return name && (!strcmp(name, BUILTIN_VA_START_NAME) || !strcmp(name, BUILTIN_VA_ARG_NAME) || !strcmp(name, BUILTIN_VA_END_NAME));
 }
 
+//! @brief Handle get builtin va list layout logic for compiler function lowering.
 static bool get_builtin_va_list_layout(VaListLayout *out) {
    const ASTNode *type = NULL;
    AggregateMemberInfo info;
@@ -257,6 +265,7 @@ static bool get_builtin_va_list_layout(VaListLayout *out) {
    return true;
 }
 
+//! @brief Add variadic hidden locals to compiler function lowering state, growing storage or preserving uniqueness as needed.
 static void add_variadic_hidden_locals(Context *ctx) {
    ContextEntry *entry;
    ASTNode *ptr_decl;
@@ -276,6 +285,7 @@ static void add_variadic_hidden_locals(Context *ctx) {
    ctx_push(ctx, required_typename_node("*"), VARIADIC_HIDDEN_BYTES_NAME);
 }
 
+//! @brief Handle build function context logic for compiler function lowering.
 void build_function_context(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -338,6 +348,7 @@ void build_function_context(const ASTNode *node, Context *ctx) {
    }
 }
 
+//! @brief Return whether function has static parameters in compiler function lowering.
 bool function_has_static_parameters(const ASTNode *fn) {
    const ASTNode *declarator = function_declarator_node(fn);
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -356,6 +367,7 @@ bool function_has_static_parameters(const ASTNode *fn) {
    return false;
 }
 
+//! @brief Handle call graph node index for function logic for compiler function lowering.
 int call_graph_node_index_for_function(const ASTNode *fn) {
    char sym[256];
 
@@ -383,6 +395,7 @@ int call_graph_node_index_for_function(const ASTNode *fn) {
    return call_graph_node_count++;
 }
 
+//! @brief Handle symbol backed metadata function name logic for compiler function lowering.
 static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, const char *sym) {
    if (!buf || bufsize == 0 || !sym || !*sym) {
       return false;
@@ -393,6 +406,7 @@ static bool symbol_backed_metadata_function_name(char *buf, size_t bufsize, cons
    return true;
 }
 
+//! @brief Handle symbol backed metadata edge name logic for compiler function lowering.
 static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const char *caller_sym, const char *callee_sym) {
    if (!buf || bufsize == 0 || !caller_sym || !*caller_sym || !callee_sym || !*callee_sym) {
       return false;
@@ -403,6 +417,7 @@ static bool symbol_backed_metadata_edge_name(char *buf, size_t bufsize, const ch
    return true;
 }
 
+//! @brief Add call graph edge to compiler function lowering state, growing storage or preserving uniqueness as needed.
 void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee) {
    int from = call_graph_node_index_for_function(caller);
    int to = call_graph_node_index_for_function(callee);
@@ -426,6 +441,7 @@ void record_call_graph_edge(const ASTNode *caller, const ASTNode *callee) {
    call_graph_edge_count++;
 }
 
+//! @brief Handle call graph tarjan visit logic for compiler function lowering.
 static void call_graph_tarjan_visit(int v, int *index_counter, int *stack, int *stack_top,
                                     int *indices, int *lowlink, unsigned char *onstack,
                                     int *component, int *component_sizes, int *component_count) {
@@ -466,6 +482,7 @@ static void call_graph_tarjan_visit(int v, int *index_counter, int *stack, int *
    }
 }
 
+//! @brief Handle analyze static parameter call graph logic for compiler function lowering.
 void analyze_static_parameter_call_graph(void) {
    int n = call_graph_node_count;
    int *indices;
@@ -547,6 +564,7 @@ void analyze_static_parameter_call_graph(void) {
    free(component_has_cycle);
 }
 
+//! @brief Emit symbol backed call graph metadata for compiler function lowering diagnostics or output files.
 void emit_symbol_backed_call_graph_metadata(void) {
    char meta[768];
 
@@ -579,6 +597,7 @@ void emit_symbol_backed_call_graph_metadata(void) {
    }
 }
 
+//! @brief Emit function parameter storage for compiler function lowering diagnostics or output files.
 void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -622,6 +641,7 @@ void emit_function_parameter_storage(const ASTNode *node, Context *ctx) {
    }
 }
 
+//! @brief Emit function parameter exports for compiler function lowering diagnostics or output files.
 void emit_function_parameter_exports(const ASTNode *node) {
    const ASTNode *declarator = node->children[1];
    const ASTNode *params = declarator_parameter_list(declarator);
@@ -647,6 +667,7 @@ void emit_function_parameter_exports(const ASTNode *node) {
    }
 }
 
+//! @brief Emit variadic hidden local setup for compiler function lowering diagnostics or output files.
 void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx) {
    ContextEntry *args_entry;
    ContextEntry *bytes_entry;
@@ -678,6 +699,7 @@ void emit_variadic_hidden_local_setup(const ASTNode *node, Context *ctx) {
                               hidden_len_offset, len_size, required_typename_node("*"));
 }
 
+//! @brief Lower builtin va start expr from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_builtin_va_start_expr(ASTNode *expr, Context *ctx) {
    ASTNode *args;
    LValueRef ap_lv;
@@ -729,6 +751,7 @@ bool compile_builtin_va_start_expr(ASTNode *expr, Context *ctx) {
    return true;
 }
 
+//! @brief Lower builtin va arg expr from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_builtin_va_arg_expr(ASTNode *expr, Context *ctx) {
    ASTNode *args;
    LValueRef ap_lv;
@@ -802,6 +825,7 @@ bool compile_builtin_va_arg_expr(ASTNode *expr, Context *ctx) {
    return true;
 }
 
+//! @brief Lower builtin va end expr from AST/semantic state into generated assembly or linker-visible metadata.
 bool compile_builtin_va_end_expr(ASTNode *expr, Context *ctx) {
    ASTNode *args;
    LValueRef ap_lv;

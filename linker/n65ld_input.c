@@ -9,6 +9,7 @@
 #include "n65ld_internal.h"
 #include "n65ld_input.h"
 
+//! @brief Read entire file from the current input position and advance the reader on success.
 static uint8_t *read_entire_file(const char *path, size_t *size_out)
 {
    FILE *fp = fopen(path, "rb");
@@ -48,6 +49,7 @@ static uint8_t *read_entire_file(const char *path, size_t *size_out)
    return buf;
 }
 
+//! @brief Handle reader init logic for linker object/archive loader.
 static void reader_init(reader_t *r, const uint8_t *data, size_t size, const char *label)
 {
    r->data = data;
@@ -56,12 +58,14 @@ static void reader_init(reader_t *r, const uint8_t *data, size_t size, const cha
    r->label = label;
 }
 
+//! @brief Handle reader fail logic for linker object/archive loader.
 static void reader_fail(const reader_t *r, const char *msg)
 {
    fprintf(stderr, "n65ld: %s at offset 0x%zx in '%s'\n", msg, r->pos, r->label);
    exit(1);
 }
 
+//! @brief Read 8-bit from the current input position and advance the reader on success.
 static uint8_t rd_u8(reader_t *r)
 {
    if (r->pos + 1 > r->size)
@@ -69,6 +73,7 @@ static uint8_t rd_u8(reader_t *r)
    return r->data[r->pos++];
 }
 
+//! @brief Read 16-bit from the current input position and advance the reader on success.
 static uint16_t rd_u16(reader_t *r)
 {
    uint16_t lo = rd_u8(r);
@@ -76,6 +81,7 @@ static uint16_t rd_u16(reader_t *r)
    return (uint16_t)(lo | (hi << 8));
 }
 
+//! @brief Read bytes from the current input position and advance the reader on success.
 static void rd_bytes(reader_t *r, uint8_t *dst, size_t n)
 {
    if (r->pos + n > r->size)
@@ -84,6 +90,7 @@ static void rd_bytes(reader_t *r, uint8_t *dst, size_t n)
    r->pos += n;
 }
 
+//! @brief Read C string from the current input position and advance the reader on success.
 static char *rd_cstr(reader_t *r)
 {
    size_t start = r->pos;
@@ -101,6 +108,7 @@ static char *rd_cstr(reader_t *r)
    }
 }
 
+//! @brief Parse reloc table old into the normalized representation used by linker object/archive loader.
 static int parse_reloc_table_old(reader_t *r, reloc_t **out, size_t *count_out)
 {
    reloc_t *items = NULL;
@@ -135,6 +143,7 @@ static int parse_reloc_table_old(reader_t *r, reloc_t **out, size_t *count_out)
    return 1;
 }
 
+//! @brief Parse exports into the normalized representation used by linker object/archive loader.
 static int parse_exports(reader_t *r, symbol_t **out, size_t *count_out)
 {
    size_t i;
@@ -150,6 +159,7 @@ static int parse_exports(reader_t *r, symbol_t **out, size_t *count_out)
    return 1;
 }
 
+//! @brief Release partial layouts storage owned by linker object/archive loader.
 static void free_partial_layouts(object_layout_t *items, size_t count)
 {
    size_t i;
@@ -158,6 +168,7 @@ static void free_partial_layouts(object_layout_t *items, size_t count)
    free(items);
 }
 
+//! @brief Parse C string bytes into the normalized representation used by linker object/archive loader.
 static int scan_cstr_bytes(const uint8_t *data, size_t size, size_t *pos, char **out)
 {
    size_t start = *pos;
@@ -176,6 +187,7 @@ static int scan_cstr_bytes(const uint8_t *data, size_t size, size_t *pos, char *
    return 1;
 }
 
+//! @brief Parse layouts with mode into the normalized representation used by linker object/archive loader.
 static int parse_layouts_with_mode(const uint8_t *data, size_t size, size_t start, int v2,
    object_layout_t **out, size_t *count_out, size_t *end_out)
 {
@@ -220,6 +232,7 @@ static int parse_layouts_with_mode(const uint8_t *data, size_t size, size_t star
    return 1;
 }
 
+//! @brief Parse layouts any into the normalized representation used by linker object/archive loader.
 static int parse_layouts_any(reader_t *r, object_layout_t **out, size_t *count_out)
 {
    size_t end_pos = 0;
@@ -240,6 +253,7 @@ static int parse_layouts_any(reader_t *r, object_layout_t **out, size_t *count_o
    return 0;
 }
 
+//! @brief Parse undefs into the normalized representation used by linker object/archive loader.
 static int parse_undefs(reader_t *r, char ***out, size_t *count_out)
 {
    size_t i;
@@ -252,6 +266,7 @@ static int parse_undefs(reader_t *r, char ***out, size_t *count_out)
    return 1;
 }
 
+//! @brief Release exports array storage owned by linker object/archive loader.
 static void free_exports_array(symbol_t *items, size_t count)
 {
    size_t i;
@@ -260,6 +275,7 @@ static void free_exports_array(symbol_t *items, size_t count)
    free(items);
 }
 
+//! @brief Release layout array storage owned by linker object/archive loader.
 static void free_layout_array(object_layout_t *items, size_t count)
 {
    size_t i;
@@ -268,6 +284,7 @@ static void free_layout_array(object_layout_t *items, size_t count)
    free(items);
 }
 
+//! @brief Handle try parse tail logic for linker object/archive loader.
 static int try_parse_tail(const uint8_t *tail, size_t tail_size,
    reloc_t **text_relocs, size_t *text_reloc_count,
    reloc_t **data_relocs, size_t *data_reloc_count,
@@ -314,6 +331,7 @@ static int try_parse_tail(const uint8_t *tail, size_t tail_size,
    return 0;
 }
 
+//! @brief Compute default layouts and update linker object/archive loader state once prerequisite pass data is available.
 static void synthesize_default_layouts(object_file_t *obj)
 {
    size_t count = 0;
@@ -374,6 +392,7 @@ static void synthesize_default_layouts(object_file_t *obj)
    obj->layout_count = count;
 }
 
+//! @brief Extract parse o65 object from memory for linker object/archive loader.
 static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data, size_t size, const char *label)
 {
    reader_t r;
@@ -453,6 +472,7 @@ static void parse_o65_object_from_memory(object_file_t *obj, const uint8_t *data
    synthesize_default_layouts(obj);
 }
 
+//! @brief Load archive for linker object/archive loader and initialize the caller-visible state.
 void load_archive(const char *path, archive_file_t *archive)
 {
    reader_t r;
@@ -509,6 +529,7 @@ void load_archive(const char *path, archive_file_t *archive)
    free(buf);
 }
 
+//! @brief Load object for linker object/archive loader and initialize the caller-visible state.
 void load_object(const char *path, object_file_t *obj)
 {
    size_t size;
@@ -517,6 +538,7 @@ void load_object(const char *path, object_file_t *obj)
    free(buf);
 }
 
+//! @brief Handle object exports symbol logic for linker object/archive loader.
 static int object_exports_symbol(const object_file_t *obj, const char *name)
 {
    size_t i;
@@ -527,6 +549,7 @@ static int object_exports_symbol(const object_file_t *obj, const char *name)
    return 0;
 }
 
+//! @brief Handle object exports symbol or weak logic for linker object/archive loader.
 static int object_exports_symbol_or_weak(const object_file_t *obj, const char *name)
 {
    char *weak = make_weak_name(name);
@@ -535,6 +558,7 @@ static int object_exports_symbol_or_weak(const object_file_t *obj, const char *n
    return found;
 }
 
+//! @brief Handle symbol in list logic for linker object/archive loader.
 static int symbol_in_list(char **items, size_t count, const char *name)
 {
    size_t i;
@@ -545,6 +569,7 @@ static int symbol_in_list(char **items, size_t count, const char *name)
    return 0;
 }
 
+//! @brief Add unique string to linker object/archive loader state, growing storage or preserving uniqueness as needed.
 static void add_unique_string(char ***items, size_t *count, const char *name)
 {
    if (!symbol_in_list(*items, *count, name)) {
@@ -553,6 +578,7 @@ static void add_unique_string(char ***items, size_t *count, const char *name)
    }
 }
 
+//! @brief Handle selected objects export symbol logic for linker object/archive loader.
 static int selected_objects_export_symbol(const input_set_t *in, const char *name)
 {
    size_t i;
@@ -563,6 +589,7 @@ static int selected_objects_export_symbol(const input_set_t *in, const char *nam
    return 0;
 }
 
+//! @brief Collect needed symbols from existing linker object/archive loader state for a later pass.
 static void collect_needed_symbols(const input_set_t *in, char ***out, size_t *count_out)
 {
    char **needed = NULL;
@@ -582,6 +609,7 @@ static void collect_needed_symbols(const input_set_t *in, char ***out, size_t *c
    *count_out = needed_count;
 }
 
+//! @brief Find provider in archive in linker object/archive loader tables without transferring ownership.
 static object_file_t *find_provider_in_archive(archive_file_t *arc, const char *symbol_name)
 {
    size_t m;
@@ -595,6 +623,7 @@ static object_file_t *find_provider_in_archive(archive_file_t *arc, const char *
    return NULL;
 }
 
+//! @brief Find provider in object in linker object/archive loader tables without transferring ownership.
 static object_file_t *find_provider_in_object(object_file_t *obj, const char *symbol_name)
 {
    if (obj->selected)
@@ -602,6 +631,7 @@ static object_file_t *find_provider_in_object(object_file_t *obj, const char *sy
    return object_exports_symbol(obj, symbol_name) ? obj : NULL;
 }
 
+//! @brief Find best provider in linker object/archive loader tables without transferring ownership.
 static object_file_t *find_best_provider(input_set_t *in, const char *name)
 {
    size_t i;
@@ -636,6 +666,7 @@ static object_file_t *find_best_provider(input_set_t *in, const char *name)
    return NULL;
 }
 
+//! @brief Handle include object logic for linker object/archive loader.
 static void include_object(input_set_t *in, object_file_t *obj)
 {
    if (obj->selected)
@@ -648,6 +679,7 @@ static void include_object(input_set_t *in, object_file_t *obj)
    in->objects[in->object_count++] = *obj;
 }
 
+//! @brief Compute needed objects and update linker object/archive loader state once prerequisite pass data is available.
 void select_needed_objects(input_set_t *in)
 {
    int progress;
@@ -676,6 +708,7 @@ void select_needed_objects(input_set_t *in)
    } while (progress);
 }
 
+//! @brief Report unused cmdline objects diagnostics with the location/context expected by linker object/archive loader callers.
 void warn_unused_cmdline_objects(const input_set_t *in)
 {
    size_t i;
@@ -699,6 +732,7 @@ void warn_unused_cmdline_objects(const input_set_t *in)
    }
 }
 
+//! @brief Release object storage owned by linker object/archive loader.
 void free_object(object_file_t *obj)
 {
    size_t i;

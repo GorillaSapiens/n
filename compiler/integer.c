@@ -9,6 +9,7 @@
 #include "messages.h"
 #include "xray.h"
 
+//! @brief Handle c2n logic for compiler integer constants.
 static int c2n(char c) {
    if (c >= '0' && c <= '9') {
       return c - '0';
@@ -22,6 +23,7 @@ static int c2n(char c) {
    return -1;
 }
 
+//! @brief Create little-endian helper for compiler integer constants.
 static int make_le_helper(const char *p, const char *op, int bpc,
                           unsigned char *target, int size) {
    int i;
@@ -54,21 +56,25 @@ static int make_le_helper(const char *p, const char *op, int bpc,
    return max;
 }
 
+//! @brief Create little-endian binary for compiler integer constants.
 static int make_le_binary(const char *p, const char *op,
                           unsigned char *target, int size) {
    return make_le_helper(p, op, 1, target, size);
 }
 
+//! @brief Create little-endian hex for compiler integer constants.
 static int make_le_hex(const char *p, const char *op,
                        unsigned char *target, int size) {
    return make_le_helper(p, op, 4, target, size);
 }
 
+//! @brief Create little-endian octal for compiler integer constants.
 static int make_le_octal(const char *p, const char *op,
                          unsigned char *target, int size) {
    return make_le_helper(p, op, 3, target, size);
 }
 
+//! @brief Create little-endian decimal for compiler integer constants.
 static int make_le_decimal(const char *p, unsigned char *target, int size) {
    int i;
    int max = 1;
@@ -101,6 +107,7 @@ static int make_le_decimal(const char *p, unsigned char *target, int size) {
    return max;
 }
 
+//! @brief Create little-endian int for compiler integer constants.
 int make_le_int(const char *p, unsigned char *target, int size) {
 
    memset(target, 0, size);
@@ -130,6 +137,7 @@ int make_le_int(const char *p, unsigned char *target, int size) {
    return ret;
 }
 
+//! @brief Handle negate little-endian int logic for compiler integer constants.
 void negate_le_int(unsigned char *target, int size) {
    int carry = 1;
    for (int i = 0; i < size; i++) {
@@ -139,6 +147,7 @@ void negate_le_int(unsigned char *target, int size) {
    }
 }
 
+//! @brief Create big-endian int for compiler integer constants.
 int make_be_int(const char *p, unsigned char *target, int size) {
    int ret = make_le_int(p, target, size);
    int tmp;
@@ -150,6 +159,7 @@ int make_be_int(const char *p, unsigned char *target, int size) {
    return ret;
 }
 
+//! @brief Handle negate big-endian int logic for compiler integer constants.
 void negate_be_int(unsigned char *target, int size) {
    int carry = 1;
    for (int i = size - 1; i >= 0; i--) {
@@ -165,6 +175,7 @@ void negate_be_int(unsigned char *target, int size) {
 // little- or big-endian packing based on the host
 // representation so parse_int() and make_{le,be}_int()
 // share exactly the same integer-literal decoding path.
+//! @brief Parse int into the normalized representation used by compiler integer constants.
 long long parse_int(const char *p) {
    long long ret = 1;
    bool negate = false;

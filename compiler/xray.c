@@ -30,6 +30,7 @@ static struct {
    { XRAY_PEEPHOLE,    "peephole",    "dump peephole optimizer stats" },
 };
 
+//! @brief Handle xray exit logic for xray.
 void xray_exit(int n, const char *file, int line) {
    if (get_xray(0)) {
       n = ~n;
@@ -38,6 +39,7 @@ void xray_exit(int n, const char *file, int line) {
    exit(n);
 }
 
+//! @brief Find xray in xray tables without transferring ownership.
 int lookup_xray(const char *name) {
    if (!strcmp(name, "list")) {
       // special code to list defined xrays
@@ -59,6 +61,7 @@ int lookup_xray(const char *name) {
    return -1;
 }
 
+//! @brief Handle set xray logic for xray.
 void set_xray(int n) {
    if (n < 0 || n >= MAX_XRAY) {
       error_unreachable("xray %d out of bounds", n);
@@ -66,6 +69,7 @@ void set_xray(int n) {
    xrays[n / (8 * sizeof(unsigned int))] |= 1 << (n % (8 * sizeof(unsigned int)));
 }
 
+//! @brief Handle get xray logic for xray.
 int get_xray(int n) {
    if (n < 0 || n >= MAX_XRAY) {
       error_unreachable("xray %d out of bounds", n);

@@ -47,6 +47,7 @@ typedef struct
    char *o65_path;
 } options_t;
 
+//! @brief Print the assembler command-line usage text.
 static void usage(const char *argv0)
 {
    fprintf(stderr,
@@ -78,6 +79,7 @@ static void usage(const char *argv0)
       "   %s -X passes --hex=prog.hex prog.s\n",
       argv0, argv0, argv0, argv0, argv0, argv0);
 }
+//! @brief Create output path for main. The returned storage is owned by the caller or the object that immediately records it.
 static char *make_output_path(const char *input_path, const char *ext)
 {
    const char *slash;
@@ -130,6 +132,7 @@ static char *make_output_path(const char *input_path, const char *ext)
    return out;
 }
 
+//! @brief Return join path2 data used by main; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *join_path2(const char *dir, const char *name)
 {
    size_t dir_len;
@@ -158,6 +161,7 @@ static char *join_path2(const char *dir, const char *name)
    return out;
 }
 
+//! @brief Return dirname copy data used by main; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *dirname_copy(const char *path)
 {
    const char *slash;
@@ -191,6 +195,7 @@ static char *dirname_copy(const char *path)
    return out;
 }
 
+//! @brief Add include dir to main state, growing storage or preserving uniqueness as needed.
 static void add_include_dir(options_t *opt, const char *dir)
 {
    char **new_dirs;
@@ -205,6 +210,7 @@ static void add_include_dir(options_t *opt, const char *dir)
    opt->include_dirs[opt->include_dir_count++] = xstrdup(dir);
 }
 
+//! @brief Add opcode configuration to main state, growing storage or preserving uniqueness as needed.
 static void add_opcode_cfg(options_t *opt, const char *path)
 {
    char **new_cfgs;
@@ -219,6 +225,7 @@ static void add_opcode_cfg(options_t *opt, const char *path)
    opt->opcode_cfgs[opt->opcode_cfg_count++] = xstrdup(path);
 }
 
+//! @brief Return whether a filesystem path exists.
 static int file_exists(const char *path)
 {
    FILE *fp = fopen(path, "r");
@@ -229,6 +236,7 @@ static int file_exists(const char *path)
 }
 
 
+//! @brief Find configuration next to program in path in main tables without transferring ownership.
 static char *find_cfg_next_to_program_in_path(const char *argv0, const char *cfg_name)
 {
    const char *path_env;
@@ -275,6 +283,7 @@ static char *find_cfg_next_to_program_in_path(const char *argv0, const char *cfg
    return NULL;
 }
 
+//! @brief Find bundled configuration path in main tables without transferring ownership.
 static char *find_bundled_cfg_path(const char *argv0, const char *cfg_name)
 {
    char *dir;
@@ -304,6 +313,7 @@ static char *find_bundled_cfg_path(const char *argv0, const char *cfg_name)
    return NULL;
 }
 
+//! @brief Load opcode configs for main and initialize the caller-visible state.
 static bool load_opcode_configs(const char *argv0, const options_t *opt)
 {
    char *default_cfg;
@@ -345,11 +355,13 @@ static bool load_opcode_configs(const char *argv0, const options_t *opt)
    return true;
 }
 
+//! @brief Handle opt xray logic for main.
 static void opt_xray(const char *name)
 {
    assembler_set_xray(assembler_lookup_xray(name));
 }
 
+//! @brief Parse args into the normalized representation used by main.
 static bool parse_args(int argc, char **argv, options_t *opt)
 {
    int ch;
@@ -497,6 +509,7 @@ static bool parse_args(int argc, char **argv, options_t *opt)
    return true;
 }
 
+//! @brief Release options storage owned by main.
 static void free_options(options_t *opt)
 {
    int i;
@@ -515,6 +528,7 @@ static void free_options(options_t *opt)
    free(opt->o65_path);
 }
 
+//! @brief Entry point for the assembler command; parses arguments, runs the requested pipeline, and returns process status.
 int main(int argc, char **argv)
 {
    options_t opt;

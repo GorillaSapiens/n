@@ -18,6 +18,7 @@ typedef struct opcode_entry {
 
 static opcode_entry_t *g_opcodes;
 
+//! @brief Handle hex nibble logic for assembler opcode table.
 static int hex_nibble(int ch)
 {
    if (ch >= '0' && ch <= '9')
@@ -29,6 +30,7 @@ static int hex_nibble(int ch)
    return -1;
 }
 
+//! @brief Handle ascii tolower logic for assembler opcode table.
 static int ascii_tolower(int ch)
 {
    if (ch >= 'A' && ch <= 'Z')
@@ -36,6 +38,7 @@ static int ascii_tolower(int ch)
    return ch;
 }
 
+//! @brief Handle ascii toupper logic for assembler opcode table.
 static int ascii_toupper(int ch)
 {
    if (ch >= 'a' && ch <= 'z')
@@ -43,6 +46,7 @@ static int ascii_toupper(int ch)
    return ch;
 }
 
+//! @brief Handle ascii strcasecmp logic for assembler opcode table.
 static int ascii_strcasecmp(const char *a, const char *b)
 {
    while (*a && *b) {
@@ -57,6 +61,7 @@ static int ascii_strcasecmp(const char *a, const char *b)
    return ascii_tolower((unsigned char)*a) - ascii_tolower((unsigned char)*b);
 }
 
+//! @brief Return upper copy n data used by assembler opcode table; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *upper_copy_n(const char *s, size_t n)
 {
    char *out;
@@ -74,6 +79,7 @@ static char *upper_copy_n(const char *s, size_t n)
    return out;
 }
 
+//! @brief Find entry in assembler opcode table tables without transferring ownership.
 static opcode_entry_t *find_entry(const char *mnemonic, emit_mode_t mode)
 {
    opcode_entry_t *e;
@@ -86,6 +92,7 @@ static opcode_entry_t *find_entry(const char *mnemonic, emit_mode_t mode)
    return NULL;
 }
 
+//! @brief Handle opcode add mapping logic for assembler opcode table.
 static void opcode_add_mapping(const char *mnemonic, emit_mode_t mode, unsigned char opcode)
 {
    opcode_entry_t *e;
@@ -109,6 +116,7 @@ static void opcode_add_mapping(const char *mnemonic, emit_mode_t mode, unsigned 
    g_opcodes = e;
 }
 
+//! @brief Parse emit mode name into the normalized representation used by assembler opcode table.
 static int parse_emit_mode_name(const char *text, emit_mode_t *mode_out)
 {
    struct mode_name {
@@ -159,6 +167,7 @@ static int parse_emit_mode_name(const char *text, emit_mode_t *mode_out)
    return 0;
 }
 
+//! @brief Parse opcode byte into the normalized representation used by assembler opcode table.
 static int parse_opcode_byte(const char *text, unsigned char *opcode_out)
 {
    const char *p;
@@ -182,6 +191,7 @@ static int parse_opcode_byte(const char *text, unsigned char *opcode_out)
    return 1;
 }
 
+//! @brief Return trim left data used by assembler opcode table; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *trim_left(char *s)
 {
    while (*s == ' ' || *s == '\t' || *s == '\r' || *s == '\n')
@@ -189,6 +199,7 @@ static char *trim_left(char *s)
    return s;
 }
 
+//! @brief Handle trim right logic for assembler opcode table.
 static void trim_right(char *s)
 {
    size_t n = strlen(s);
@@ -202,12 +213,14 @@ static void trim_right(char *s)
    }
 }
 
+//! @brief Handle opcode registry reset logic for assembler opcode table.
 void opcode_registry_reset(void)
 {
    opcode_registry_free();
    g_opcodes = NULL;
 }
 
+//! @brief Release registry free storage owned by assembler opcode table.
 void opcode_registry_free(void)
 {
    opcode_entry_t *e = g_opcodes;
@@ -220,6 +233,7 @@ void opcode_registry_free(void)
    g_opcodes = NULL;
 }
 
+//! @brief Handle opcode load config file logic for assembler opcode table.
 int opcode_load_config_file(const char *path)
 {
    FILE *fp;
@@ -290,6 +304,7 @@ int opcode_load_config_file(const char *path)
    return 1;
 }
 
+//! @brief Handle opcode parse raw byte logic for assembler opcode table.
 int opcode_parse_raw_byte(const char *mnemonic, unsigned char *opcode_out)
 {
    int hi;
@@ -312,17 +327,20 @@ int opcode_parse_raw_byte(const char *mnemonic, unsigned char *opcode_out)
    return 1;
 }
 
+//! @brief Return whether opcode raw is conditional branch in assembler opcode table.
 int opcode_raw_is_conditional_branch(unsigned char opcode)
 {
    return opcode == 0x10 || opcode == 0x30 || opcode == 0x50 || opcode == 0x70 ||
           opcode == 0x90 || opcode == 0xB0 || opcode == 0xD0 || opcode == 0xF0;
 }
 
+//! @brief Return whether opcode raw is accumulator shorthand in assembler opcode table.
 int opcode_raw_is_accumulator_shorthand(unsigned char opcode)
 {
    return opcode == 0x0A || opcode == 0x2A || opcode == 0x4A || opcode == 0x6A;
 }
 
+//! @brief Handle opcode mnemonic known logic for assembler opcode table.
 int opcode_mnemonic_known(const char *mnemonic)
 {
    opcode_entry_t *e;
@@ -339,6 +357,7 @@ int opcode_mnemonic_known(const char *mnemonic)
    return 0;
 }
 
+//! @brief Return whether opcode token is mnemonic in assembler opcode table.
 int opcode_token_is_mnemonic(const char *token)
 {
    const char *dot;
@@ -359,11 +378,13 @@ int opcode_token_is_mnemonic(const char *token)
    return result;
 }
 
+//! @brief Return whether opcode has mode in assembler opcode table.
 int opcode_has_mode(const char *mnemonic, emit_mode_t mode)
 {
    return find_entry(mnemonic, mode) != NULL;
 }
 
+//! @brief Handle opcode lookup logic for assembler opcode table.
 int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_out)
 {
    opcode_entry_t *e;
@@ -379,6 +400,7 @@ int opcode_lookup(const char *mnemonic, emit_mode_t mode, unsigned char *opcode_
    return 1;
 }
 
+//! @brief Return whether opcode is conditional branch in assembler opcode table.
 int opcode_is_conditional_branch(const char *mnemonic)
 {
    return !strcmp(mnemonic, "BCC") || !strcmp(mnemonic, "BCS") ||
@@ -387,6 +409,7 @@ int opcode_is_conditional_branch(const char *mnemonic)
           !strcmp(mnemonic, "BVC") || !strcmp(mnemonic, "BVS");
 }
 
+//! @brief Handle opcode invert branch logic for assembler opcode table.
 int opcode_invert_branch(const char *mnemonic, unsigned char *opcode_out)
 {
    if (!strcmp(mnemonic, "BCC")) { *opcode_out = 0xB0; return 1; }
@@ -400,6 +423,7 @@ int opcode_invert_branch(const char *mnemonic, unsigned char *opcode_out)
    return 0;
 }
 
+//! @brief Emit mode size for assembler opcode table diagnostics or output files.
 int emit_mode_size(emit_mode_t mode)
 {
    switch (mode) {

@@ -39,6 +39,7 @@ typedef struct {
    int pass_branch_next;
 } PeepholeStats;
 
+//! @brief Return xstrndup local data used by compiler assembly emitter; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *xstrndup_local(const char *s, size_t n) {
    char *ret = (char *) malloc(n + 1);
    memcpy(ret, s, n);
@@ -46,6 +47,7 @@ static char *xstrndup_local(const char *s, size_t n) {
    return ret;
 }
 
+//! @brief Return whether compiler zero-page operand applies in compiler assembly emitter.
 static bool is_compiler_zp_operand(const char *operand) {
    if (!operand || !*operand)
       return false;
@@ -64,6 +66,7 @@ static bool is_compiler_zp_operand(const char *operand) {
           !strcmp(operand, "ptr2+1");
 }
 
+//! @brief Return whether operand is safe load value in compiler assembly emitter.
 static bool operand_is_safe_load_value(const char *operand) {
    if (!operand || !*operand)
       return false;
@@ -72,6 +75,7 @@ static bool operand_is_safe_load_value(const char *operand) {
    return is_compiler_zp_operand(operand);
 }
 
+//! @brief Handle instruction size for logic for compiler assembly emitter.
 static int instruction_size_for(const char *mnemonic, const char *operand) {
    if (!mnemonic || !*mnemonic)
       return 0;
@@ -104,6 +108,7 @@ static int instruction_size_for(const char *mnemonic, const char *operand) {
    return 3;
 }
 
+//! @brief Emit sink join for compiler assembly emitter diagnostics or output files.
 static char *emit_sink_join(EmitSink *es) {
    size_t total = 0;
    char *buf;
@@ -123,6 +128,7 @@ static char *emit_sink_join(EmitSink *es) {
    return buf;
 }
 
+//! @brief Release emit sink pieces storage owned by compiler assembly emitter.
 static void free_emit_sink_pieces(EmitSink *es) {
    EmitPiece *next;
    for (EmitPiece *ep = es->head; ep; ep = next) {
@@ -133,6 +139,7 @@ static void free_emit_sink_pieces(EmitSink *es) {
    es->head = es->tail = NULL;
 }
 
+//! @brief Parse lines into the normalized representation used by compiler assembly emitter.
 static int split_lines(char *text, char ***out_lines) {
    char **lines = NULL;
    int count = 0;
@@ -154,6 +161,7 @@ static int split_lines(char *text, char ***out_lines) {
    return count;
 }
 
+//! @brief Return trim in place data used by compiler assembly emitter; returned pointers alias existing storage unless explicitly allocated by the function name.
 static char *trim_in_place(char *s) {
    char *end;
    while (*s && isspace((unsigned char) *s))
@@ -164,6 +172,7 @@ static char *trim_in_place(char *s) {
    return s;
 }
 
+//! @brief Parse line into the normalized representation used by compiler assembly emitter.
 static void parse_line(PeepholeLine *line) {
    char *p;
    char *comment;
@@ -227,6 +236,7 @@ static void parse_line(PeepholeLine *line) {
    line->size = instruction_size_for(line->mnemonic, line->operand);
 }
 
+//! @brief Release lines storage owned by compiler assembly emitter.
 static void free_lines(PeepholeLine *lines, int count) {
    for (int i = 0; i < count; i++) {
       free(lines[i].text);
@@ -237,6 +247,7 @@ static void free_lines(PeepholeLine *lines, int count) {
    free(lines);
 }
 
+//! @brief Handle next kept nonblank index logic for compiler assembly emitter.
 static int next_kept_nonblank_index(PeepholeLine *lines, int count, int index) {
    for (int i = index + 1; i < count; i++) {
       if (!lines[i].keep)
@@ -248,29 +259,34 @@ static int next_kept_nonblank_index(PeepholeLine *lines, int count, int index) {
    return -1;
 }
 
+//! @brief Handle reset reg state logic for compiler assembly emitter.
 static void reset_reg_state(char **a, char **x, char **y) {
    free(*a); *a = NULL;
    free(*x); *x = NULL;
    free(*y); *y = NULL;
 }
 
+//! @brief Handle set reg state logic for compiler assembly emitter.
 static void set_reg_state(char **slot, const char *value) {
    free(*slot);
    *slot = value ? strdup(value) : NULL;
 }
 
+//! @brief Handle log rewrite logic for compiler assembly emitter.
 static void log_rewrite(const char *kind, int index, const PeepholeLine *line, int saved) {
    if (get_xray(XRAY_DEBUG)) {
       debug("peephole:%s line=%d saved=%d :: %s", kind, index + 1, saved, line->trim ? line->trim : "");
    }
 }
 
+//! @brief Handle same text logic for compiler assembly emitter.
 static bool same_text(const char *a, const char *b) {
    if (!a || !b)
       return false;
    return !strcmp(a, b);
 }
 
+//! @brief Run the peephole pass stage of the compiler tool pipeline.
 static int run_peephole_pass(PeepholeLine *lines, int count, PeepholeStats *stats) {
    char *reg_a = NULL;
    char *reg_x = NULL;
@@ -393,6 +409,7 @@ static int run_peephole_pass(PeepholeLine *lines, int count, PeepholeStats *stat
    return changed;
 }
 
+//! @brief Collect instruction bytes from existing compiler assembly emitter state for a later pass.
 static int count_instruction_bytes(PeepholeLine *lines, int count) {
    int total = 0;
    for (int i = 0; i < count; i++) {
@@ -402,6 +419,7 @@ static int count_instruction_bytes(PeepholeLine *lines, int count) {
    return total;
 }
 
+//! @brief Collect instructions from existing compiler assembly emitter state for a later pass.
 static int count_instructions(PeepholeLine *lines, int count) {
    int total = 0;
    for (int i = 0; i < count; i++) {
@@ -411,6 +429,7 @@ static int count_instructions(PeepholeLine *lines, int count) {
    return total;
 }
 
+//! @brief Emit peephole stats for compiler assembly emitter diagnostics or output files.
 static void print_peephole_stats(int pass_index, const char *phase, PeepholeLine *lines, int count, const PeepholeStats *stats) {
    if (!get_xray(XRAY_PEEPHOLE))
       return;
@@ -428,6 +447,7 @@ static void print_peephole_stats(int pass_index, const char *phase, PeepholeLine
          stats->pass_branch_next);
 }
 
+//! @brief Emit peephole optimize for compiler assembly emitter diagnostics or output files.
 void emit_peephole_optimize(EmitSink *es) {
    char *joined;
    char **raw_lines = NULL;
@@ -489,6 +509,7 @@ void emit_peephole_optimize(EmitSink *es) {
    free_lines(lines, count);
 }
 
+//! @brief Emit emit for compiler assembly emitter diagnostics or output files.
 void emit(EmitSink *es, const char *fmt, ...) {
    int len;
    va_list args;
@@ -514,6 +535,7 @@ void emit(EmitSink *es, const char *fmt, ...) {
    }
 }
 
+//! @brief Emit print for compiler assembly emitter diagnostics or output files.
 void emit_print(EmitSink *es, FILE *out) {
    if (!out) {
       out = stdout;

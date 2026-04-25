@@ -21,6 +21,7 @@ struct Set {
 };
 
 #if 0
+//! @brief Emit dump for set diagnostics or output files.
 static void dump(Set *s) {
    printf("=== %p %d %p\n", s, s->size, s->entries);
    for (int i = 0; i < s->size; i++) {
@@ -29,18 +30,21 @@ static void dump(Set *s) {
 }
 #endif
 
+//! @brief Compare entry by key records for deterministic ordering.
 static int compare_entry_by_key(const void *a, const void *b) {
     const Entry *ea = (const Entry *)a;
     const Entry *eb = (const Entry *)b;
     return strcmp(ea->key, eb->key);
 }
 
+//! @brief Find entry by key in set tables without transferring ownership.
 static int search_entry_by_key(const void *a, const void *b) {
     const char *key = (const char *)a;
     const Entry *entry = (const Entry *)b;
     return strcmp(key, entry->key);
 }
 
+//! @brief Create set for set. The returned storage is owned by the caller or the object that immediately records it.
 Set *new_set(void) {
    Set *set = (Set *) malloc(sizeof(Set));
    if (!set) {
@@ -53,11 +57,13 @@ Set *new_set(void) {
    return set;
 }
 
+//! @brief Handle del set logic for set.
 void del_set(Set *set) {
    free(set->entries);
    free(set);
 }
 
+//! @brief Handle set add logic for set.
 int set_add(Set *set, const char *key, const void *value) {
    if (set_get(set, key) != NULL) {
       return -1;
@@ -74,11 +80,13 @@ int set_add(Set *set, const char *key, const void *value) {
    return 0;
 }
 
+//! @brief Return set get data used by set; returned pointers alias existing storage unless explicitly allocated by the function name.
 const void *set_get(Set *set, const char *key) {
    Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), search_entry_by_key);
    return (found == NULL) ? NULL : found->value;
 }
 
+//! @brief Handle set rm logic for set.
 void set_rm(Set *set, const char *key) {
    Entry *found = bsearch(key, set->entries, set->size, sizeof(Entry), search_entry_by_key);
    if (found) {
