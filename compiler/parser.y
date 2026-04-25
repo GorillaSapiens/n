@@ -81,6 +81,7 @@ static ASTNode *make_ellipsis_marker(void) {
 %token DEC
 %token DEFAULT
 %token DIV_ASSIGN
+%token DOLLAR_DOLLAR
 %token DO
 %token ELLIPSIS
 %token ELSE
@@ -417,6 +418,7 @@ pointer:
 
 direct_declarator:
     IDENTIFIER                               { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
+  | DOLLAR_DOLLAR                            { COVER; $$ = MAKE_NODE(make_identifier_leaf(strdup("$$"))); }
   | OPERATOR                                 { COVER; $$ = MAKE_NODE(make_identifier_leaf($1)); }
   | '(' declarator ')'                       { COVER; $$ = MAKE_NODE($2); }
   | direct_declarator '[' INTEGER ']'        { COVER; $$ = append_child($1, make_integer_leaf($3)); }
@@ -660,6 +662,7 @@ postfix_lvalue_core:
 
 lvalue_primary:
     IDENTIFIER                              { COVER; $$ = MAKE_NAMED_NODE("lvalue", MAKE_NAMED_NODE("lvalue_base", make_identifier_leaf($1)), make_empty_leaf()); }
+  | DOLLAR_DOLLAR                           { COVER; $$ = MAKE_NAMED_NODE("lvalue", MAKE_NAMED_NODE("lvalue_base", make_identifier_leaf(strdup("$$"))), make_empty_leaf()); }
   | '(' lvalue ')'                          { COVER; $$ = $2; }
   ;
 

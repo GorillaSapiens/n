@@ -51,7 +51,7 @@ typedef struct VaListLayout {
    int offset_size;
 } VaListLayout;
 
-static bool variadic_hidden_name_reserved(const char *name);
+static bool implementation_name_reserved(const char *name);
 static bool get_builtin_va_list_layout(VaListLayout *out);
 static void add_variadic_hidden_locals(Context *ctx);
 static void ctx_shove(Context *ctx, const ASTNode *type, const char *name);
@@ -167,15 +167,22 @@ static void ctx_resize_last_shove(Context *ctx, const ASTNode *type, const ASTNo
    ctx->params -= (value_size - base_size);
 }
 
-//! @brief Handle variadic hidden name reserved logic for compiler function lowering.
-static bool variadic_hidden_name_reserved(const char *name) {
-   return name && (!strcmp(name, VARIADIC_HIDDEN_ARGS_NAME) || !strcmp(name, VARIADIC_HIDDEN_BYTES_NAME));
+//! @brief Handle implementation-reserved name logic for compiler function lowering.
+static bool implementation_name_reserved(const char *name) {
+   return name && (!strcmp(name, VARIADIC_HIDDEN_ARGS_NAME) ||
+                   !strcmp(name, VARIADIC_HIDDEN_BYTES_NAME) ||
+                   !strcmp(name, "$$"));
 }
 
-//! @brief Validate nonreserved variadic name invariants before later compiler stages depend on them.
+//! @brief Validate nonreserved implementation-name invariants before later compiler stages depend on them.
 void validate_nonreserved_variadic_name(const char *name, const ASTNode *node) {
-   if (!node || !variadic_hidden_name_reserved(name)) {
+   if (!node || !implementation_name_reserved(name)) {
       return;
+   }
+   if (name && !strcmp(name, "$$")) {
+      error_user("[%s:%d.%d] '$$' is reserved for the current function's return slot; do not declare it. "
+                 "Inside a non-void function body, assign to '$$' directly, then use 'return;' to leave the function.",
+                 node->file, node->line, node->column);
    }
    error_user("[%s:%d.%d] '%s' is a reserved implementation name", node->file, node->line, node->column, name);
 }

@@ -155,6 +155,7 @@ empty_cov: ;
 
    a := sizeof(a);
    a := sizeof(int *);
+   a := sizeof(int $$);
 
    float fc := 1.5;
    float fd := 2.5;
@@ -171,12 +172,18 @@ empty_cov: ;
 
    useless();
    useless(1, 2, 3);
+   a := return_slot_cov();
 
    return;
 }
 
 int globalint0;
 int globalint1 := 5;
+
+int return_slot_cov(void) {
+   $$ := 7;
+   return;
+}
 
 int operator*(int l, int r);
 

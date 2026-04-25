@@ -184,11 +184,17 @@ static int cast_expr_target_size(const ASTNode *expr) {
 
 //! @brief Report unknown identifier node diagnostics with the location/context expected by compile expr slot callers.
 static void error_unknown_identifier_node(const ASTNode *idnode, const ASTNode *fallback, const char *ident) {
-   error_user("[%s:%d.%d] unknown identifier '%s'",
-         idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>"),
-         idnode ? idnode->line : (fallback ? fallback->line : 0),
-         idnode ? idnode->column : (fallback ? fallback->column : 0),
-         ident ? ident : "<unknown>");
+   const char *file = idnode && idnode->file ? idnode->file : (fallback && fallback->file ? fallback->file : "<unknown>");
+   int line = idnode ? idnode->line : (fallback ? fallback->line : 0);
+   int column = idnode ? idnode->column : (fallback ? fallback->column : 0);
+
+   if (ident && !strcmp(ident, "$$")) {
+      error_user("[%s:%d.%d] '$$' is the current function's return slot, so it is only valid inside a function that returns a value. "
+                 "Use it in a non-void function body, for example '$$.field := value; return;', or use 'return <expr>;' to have the compiler write the slot for you.",
+                 file, line, column);
+   }
+
+   error_user("[%s:%d.%d] unknown identifier '%s'", file, line, column, ident ? ident : "<unknown>");
 }
 
 //! @brief Handle sizeof operand size logic for compile expr slot.

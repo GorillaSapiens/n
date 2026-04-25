@@ -1427,6 +1427,7 @@ operator(\{\}|==|!=|<=|>=|<<|>>|\+\+|--|[-+|^&<>\*/%~]) {
 "-="            return SUB_ASSIGN;
 "^="            return XOR_ASSIGN;
 "..."           return ELLIPSIS;
+"$$"            return DOLLAR_DOLLAR;
 
 {FLAG} {
    yylval.str = strdup(yytext);

@@ -107,6 +107,11 @@ int takes_voidp(char *out, void *v) {
    return 0;
 }
 
+int return_slot_blanket(void) {
+   $$ := 7;
+   return;
+}
+
 
 int array[12];
 int (*fnptrs)()[12];
@@ -143,6 +148,8 @@ empty_label: ;
 
    ia := sizeof(ia);
    ia := sizeof(int *);
+   ia := sizeof(int $$);
+   ia := return_slot_blanket();
 
    uint_cov ucov;
    ucov := ($unsigned)ia;

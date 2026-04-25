@@ -596,6 +596,28 @@ Strings can initialize pointer values and byte arrays where appropriate. String 
 
 Automatic local arrays reserve their full declared size.
 
+
+### Explicit return slot: `$$`
+
+Inside a function that returns a value, `$$` names the current function's caller-allocated return slot. It behaves like a real lvalue for the return object, so code may assign to it directly, read it back, use compound assignment on it, and select aggregate members from it. This is useful for large or structured return values because the callee can fill the return object in place and then use a bare `return;`.
+
+Example:
+
+```n
+struct Pair {
+   int foo;
+   int bar;
+};
+
+Pair make_pair(void) {
+   $$.foo := 5;
+   $$.bar := 6;
+   return;
+}
+```
+
+The spelling `return expr;` still works and still writes `expr` into the same return slot for you. The `$$` name is reserved; it cannot be declared as a global, local, function, or parameter name, and it is invalid in `void` functions or outside a function body.
+
 ### Array returns
 
 Functions can return arrays. The compiler now sizes:
