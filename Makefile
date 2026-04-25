@@ -37,6 +37,7 @@ clean:
 	@$(MAKE) --no-print-directory -C ./driver clean
 
 docs:
+	mkdir -p doxygen
 	$(DOXYGEN) Doxyfile
 
 install: tools install-core

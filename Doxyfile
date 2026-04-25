@@ -1,7 +1,7 @@
 # Doxygen configuration for the n65 toolchain source tree.
 PROJECT_NAME           = "n65 Toolchain"
 PROJECT_BRIEF          = "Compiler, assembler, linker, archiver, and driver for n65"
-OUTPUT_DIRECTORY       = build/doxygen
+OUTPUT_DIRECTORY       = doxygen
 CREATE_SUBDIRS         = NO
 
 INPUT                  = README.md \
