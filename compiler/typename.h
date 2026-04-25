@@ -1,5 +1,6 @@
 //! @file compiler/typename.h
 //! @brief Declares type-name registry for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_TYPENAME_H_
 #define _INCLUDE_TYPENAME_H_

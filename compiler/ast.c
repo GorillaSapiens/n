@@ -1,5 +1,6 @@
 //! @file compiler/ast.c
 //! @brief Implements abstract syntax tree support for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

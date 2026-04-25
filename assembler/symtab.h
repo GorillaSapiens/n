@@ -1,9 +1,11 @@
 //! @file assembler/symtab.h
 //! @brief Declares assembler symbol table for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef SYMTAB_H
 #define SYMTAB_H
 
+//! Assembler symbol entry with definition location and optional segment metadata.
 typedef struct symbol {
    char *name;
    long value;
@@ -15,6 +17,7 @@ typedef struct symbol {
    struct symbol *next;
 } symbol_t;
 
+//! Simple linked-list symbol table used by assembler passes.
 typedef struct symtab {
    symbol_t *head;
 } symtab_t;

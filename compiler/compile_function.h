@@ -1,5 +1,6 @@
 //! @file compiler/compile_function.h
 //! @brief Declares function and variadic ABI lowering for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_FUNCTION_H_
 #define _INCLUDE_COMPILE_FUNCTION_H_

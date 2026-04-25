@@ -1,5 +1,6 @@
 //! @file assembler/asm_pass.h
 //! @brief Declares assembly pass orchestration for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef ASM_PASS_H
 #define ASM_PASS_H
@@ -10,6 +11,7 @@
 #include "ihex.h"
 #include "listing.h"
 
+//! Imported symbol requested by object-mode assembly.
 typedef struct import_name {
    char *name;
    const char *file;
@@ -25,6 +27,7 @@ typedef struct weak_name {
    struct weak_name *next;
 } weak_name_t;
 
+//! Assembler segment placement and program-counter state.
 typedef struct asm_segment {
    char *name;
    long base;
@@ -36,6 +39,7 @@ typedef struct asm_segment {
    struct asm_segment *next;
 } asm_segment_t;
 
+//! Mutable state shared across assembler relaxation and emission passes.
 typedef struct asm_context {
    program_ir_t *prog;
    symtab_t symbols;

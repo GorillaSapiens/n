@@ -18,6 +18,7 @@ BINDIR ?= /usr/local/bin
 DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+DOXYGEN ?= doxygen
 INSTALL_DATA ?= $(INSTALL) -m 0644
 TEST   = test
 
@@ -96,6 +97,9 @@ delexer.h: lexer.l delexer.pl
 coverage_map.h: parser.y coverage.pl
 	./coverage.pl > coverage_map.h
 
+docs:
+	$(MAKE) --no-print-directory -C .. docs
+
 install: $(TARGET)
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
 	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
@@ -109,3 +113,5 @@ clean:
 
 -include $(DEP)
 
+
+.PHONY: docs

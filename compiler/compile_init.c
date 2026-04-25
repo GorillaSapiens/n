@@ -1,5 +1,6 @@
 //! @file compiler/compile_init.c
 //! @brief Implements initializer lowering for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

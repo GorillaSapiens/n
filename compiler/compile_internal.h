@@ -1,5 +1,6 @@
 //! @file compiler/compile_internal.h
 //! @brief Declares internal compiler interfaces for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_INTERNAL_H_
 #define _INCLUDE_COMPILE_INTERNAL_H_

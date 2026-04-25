@@ -1,5 +1,6 @@
 //! @file assembler/o65.c
 //! @brief Implements o65 object file emission for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

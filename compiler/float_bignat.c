@@ -1,5 +1,6 @@
 //! @file compiler/float_bignat.c
 //! @brief Implements big natural integer arithmetic for floats for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdlib.h>
 #include <string.h>

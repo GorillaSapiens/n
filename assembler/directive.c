@@ -1,5 +1,6 @@
 //! @file assembler/directive.c
 //! @brief Implements assembler directive handling for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

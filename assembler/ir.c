@@ -1,5 +1,6 @@
 //! @file assembler/ir.c
 //! @brief Implements assembler intermediate representation for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

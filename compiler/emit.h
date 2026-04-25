@@ -1,25 +1,26 @@
 //! @file compiler/emit.h
 //! @brief Declares assembly emission buffers for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_EMIT_H_
 #define _INCLUDE_EMIT_H_
 
 #include <stdio.h>
 
-// piece created by calling emit()
+//! One chunk in an emission sink; allocated by emit() and linked in output order.
 struct EmitPiece;
 typedef struct EmitPiece {
    const char *txt;
    struct EmitPiece *next;
 } EmitPiece;
 
-// linked list of pieces
+//! Append-only stream of emitted assembly text.
 typedef struct EmitSink {
    EmitPiece *head;
    EmitPiece *tail;
 } EmitSink;
 
-// static initializer
+//! Static initializer for an empty EmitSink.
 #define EMIT_INIT { NULL, NULL }
 
 // add text to an EmitSink

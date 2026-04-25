@@ -1,5 +1,10 @@
+//! @file libraries/nlib/nlib.h
+//! @brief Declares the n65 runtime support entry points visible to compiled programs.
+//! @ingroup runtime
+
 // this C header is used to compile the tests.c file
 
+//! Compiler/runtime zero-page stack pointer.
 extern void* nl_sp;
 #pragma zpsym ("nl_sp");
 extern void* nl_fp;
@@ -29,6 +34,7 @@ extern unsigned char nl_tmp2;
 extern unsigned char nl_tmp3;
 #pragma zpsym ("nl_tmp3");
 
+//! Arithmetic, comparison, shift, stack, copy, and pointer helper entry points emitted by n65cc.
 void add16(void);
 void add24(void);
 void add32(void);

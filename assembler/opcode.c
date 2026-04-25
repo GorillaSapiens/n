@@ -1,5 +1,6 @@
 //! @file assembler/opcode.c
 //! @brief Implements 6502 opcode tables and lookup for the n65 assembler.
+//! @ingroup assembler
 
 #include <ctype.h>
 #include <stdio.h>

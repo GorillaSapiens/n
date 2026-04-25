@@ -8,6 +8,7 @@ INSTALL_PROGRAM ?= $(INSTALL) -m 0755
 
 OBJS = n65ld.o n65ld_input.o n65ld_abi.o
 DEPS = $(OBJS:.o=.d)
+DOXYGEN ?= doxygen
 
 all: n65ld
 
@@ -16,6 +17,9 @@ n65ld: $(OBJS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+docs:
+	$(MAKE) --no-print-directory -C .. docs
 
 install: n65ld
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
@@ -32,3 +36,5 @@ clean:
 	rm -f n65ld $(OBJS) $(DEPS)
 
 -include $(DEPS)
+
+.PHONY: docs

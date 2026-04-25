@@ -1,5 +1,6 @@
 //! @file compiler/compile_lvalue.h
 //! @brief Declares lvalue resolution and storage access for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_LVALUE_H_
 #define _INCLUDE_COMPILE_LVALUE_H_

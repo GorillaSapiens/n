@@ -7,6 +7,7 @@ INCLUDEDIR ?= /usr/local/include/n
 DATADIR ?= /usr/local/share/n
 INSTALL ?= install
 INSTALL_DATA ?= $(INSTALL) -m 0644
+DOXYGEN ?= doxygen
 
 all:
 	rm -rf wrk nlib.a
@@ -16,6 +17,9 @@ all:
 	cp *.s wrk
 	for each in `ls wrk/*.s`; do stem=`basename $$each .s`; echo ===== $$each ; $(ASM) -o wrk/$$stem.o65 $$each; done
 	$(AR) rcs nlib.a65 wrk/*.o65
+
+docs:
+	$(MAKE) --no-print-directory -C ../.. docs
 
 install: all
 	$(INSTALL) -d $(DESTDIR)$(LIBDIR)
@@ -44,3 +48,5 @@ uninstall:
 
 clean:
 	rm -f *.o *.bin tests nlib.a65 wrk/*
+
+.PHONY: docs

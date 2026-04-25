@@ -1,5 +1,6 @@
 //! @file compiler/coverage.c
 //! @brief Implements grammar coverage instrumentation for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

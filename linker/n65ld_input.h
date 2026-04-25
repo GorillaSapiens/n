@@ -1,5 +1,6 @@
 //! @file linker/n65ld_input.h
 //! @brief Declares linker input loading for the n65 linker.
+//! @ingroup linker
 
 #ifndef N65LD_INPUT_H
 #define N65LD_INPUT_H

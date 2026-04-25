@@ -1,5 +1,6 @@
 //! @file assembler/directive.h
 //! @brief Declares assembler directive handling for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef DIRECTIVE_H
 #define DIRECTIVE_H
@@ -8,11 +9,13 @@
 
 typedef struct expr_list_node expr_list_node_t;
 
+//! Singly-linked list of directive expression operands.
 struct expr_list_node {
    expr_t *expr;
    expr_list_node_t *next;
 };
 
+//! Shape of the argument payload carried by a parsed directive.
 typedef enum directive_arg_kind {
    DIRARG_NONE = 0,
    DIRARG_EXPR_LIST,
@@ -20,6 +23,7 @@ typedef enum directive_arg_kind {
    DIRARG_STRING_AND_EXPR_LIST
 } directive_arg_kind_t;
 
+//! Parsed assembler directive and its owned argument data.
 typedef struct directive_info {
    char *name;
    directive_arg_kind_t kind;

@@ -1,5 +1,6 @@
 //! @file compiler/compile_overload.h
 //! @brief Declares operator overload resolution for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_OVERLOAD_H_
 #define _INCLUDE_COMPILE_OVERLOAD_H_

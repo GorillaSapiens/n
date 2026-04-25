@@ -1,5 +1,6 @@
 //! @file assembler/listing.c
 //! @brief Implements assembly listing generation for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

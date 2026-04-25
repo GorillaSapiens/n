@@ -1,11 +1,13 @@
 //! @file assembler/expr.h
 //! @brief Declares assembler expression parsing and evaluation for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef EXPR_H
 #define EXPR_H
 
 #include <stdio.h>
 
+//! Node kind for assembler expressions.
 typedef enum expr_kind {
    EXPR_NUMBER = 0,
    EXPR_IDENT,
@@ -28,6 +30,7 @@ typedef enum expr_binary_op {
    EXPR_BOP_DIV
 } expr_binary_op_t;
 
+//! Result of evaluating an expression against the current symbol table and PC.
 typedef enum expr_eval_status {
    EXPR_EVAL_OK = 0,
    EXPR_EVAL_UNRESOLVED,
@@ -39,6 +42,7 @@ typedef struct symtab symtab_t;
 
 typedef struct expr expr_t;
 
+//! Expression tree node; owned recursively by the caller until expr_free().
 struct expr {
    expr_kind_t kind;
 

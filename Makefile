@@ -7,6 +7,7 @@ DATADIR ?= $(PREFIX)/share/n
 PACKAGE_PREFIX ?= /usr/local
 PACKAGE_STAGING ?= $(CURDIR)/pkgroot
 INSTALLCHECK_STAGING ?= $(CURDIR)/.installcheck-root
+DOXYGEN ?= doxygen
 
 all: test
 
@@ -34,6 +35,9 @@ clean:
 	@$(MAKE) --no-print-directory -C ./compiler clean
 	@$(MAKE) --no-print-directory -C ./simulator clean
 	@$(MAKE) --no-print-directory -C ./driver clean
+
+docs:
+	$(DOXYGEN) Doxyfile
 
 install: tools install-core
 
@@ -122,4 +126,4 @@ e2e: tools
 test: tools
 	@$(MAKE) --no-print-directory -C ./test test
 
-.PHONY: all generated_float_archive_fixtures tools install install-core install-data uninstall uninstall-data package installcheck tarball unit sieve e2e test
+.PHONY: all generated_float_archive_fixtures tools install install-core install-data uninstall uninstall-data package installcheck tarball unit sieve e2e test docs

@@ -18,6 +18,7 @@ BINDIR ?= /usr/local/bin
 DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+DOXYGEN ?= doxygen
 INSTALL_DATA ?= $(INSTALL) -m 0644
 
 GENSRC = parser.tab.c lex.yy.c
@@ -64,6 +65,9 @@ tarball:
 tidy:
 	rm -f $(TARGET) nid $(OBJ) $(DEP) *.o *.d *.gz
 	
+docs:
+	$(MAKE) --no-print-directory -C .. docs
+
 install: $(TARGET)
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
 	$(INSTALL_PROGRAM) $(TARGET) $(DESTDIR)$(BINDIR)/$(TARGET)
@@ -80,3 +84,5 @@ clean: tidy
 
 -include $(DEP)
 
+
+.PHONY: docs

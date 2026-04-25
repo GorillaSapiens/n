@@ -6,11 +6,15 @@ BINDIR ?= /usr/local/bin
 DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+DOXYGEN ?= doxygen
 
 all: n65ar
 
 n65ar: n65ar.c
 	$(CC) $(CFLAGS) $(WARNINGS) -o $@ n65ar.c
+
+docs:
+	$(MAKE) --no-print-directory -C .. docs
 
 install: n65ar
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
@@ -21,3 +25,5 @@ uninstall:
 
 clean:
 	rm -f n65ar
+
+.PHONY: docs

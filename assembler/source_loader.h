@@ -1,5 +1,6 @@
 //! @file assembler/source_loader.h
 //! @brief Declares assembler source loading for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef SOURCE_LOADER_H
 #define SOURCE_LOADER_H

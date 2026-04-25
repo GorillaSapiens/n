@@ -1,5 +1,6 @@
 //! @file compiler/compile_support.h
 //! @brief Declares shared compiler support routines for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_SUPPORT_H_
 #define _INCLUDE_COMPILE_SUPPORT_H_

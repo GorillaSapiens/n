@@ -1,5 +1,6 @@
 //! @file compiler/compile_expr_flow.h
 //! @brief Declares control-flow expression lowering for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_EXPR_FLOW_H_
 #define _INCLUDE_COMPILE_EXPR_FLOW_H_

@@ -1,5 +1,6 @@
 //! @file assembler/listing.h
 //! @brief Declares assembly listing generation for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef LISTING_H
 #define LISTING_H
@@ -7,6 +8,7 @@
 #include <stdio.h>
 #include "ir.h"
 
+//! Listing writer state; owns the output stream while it is open.
 typedef struct listing_writer {
    FILE *fp;
 } listing_writer_t;

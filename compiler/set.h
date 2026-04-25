@@ -1,10 +1,12 @@
 //! @file compiler/set.h
 //! @brief Declares string-keyed set/map collection for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_SET_H_
 #define _INCLUDE_SET_H_
 
 // required typedefs
+//! Opaque string-keyed collection used by compiler registries.
 struct Set;
 typedef struct Set Set;
 

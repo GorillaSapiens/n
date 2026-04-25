@@ -1,9 +1,11 @@
 //! @file assembler/opcode.h
 //! @brief Declares 6502 opcode tables and lookup for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef OPCODE_H
 #define OPCODE_H
 
+//! Final 6502 addressing form used to choose an opcode byte and instruction size.
 typedef enum emit_mode {
    EM_IMPLIED = 0,
    EM_ACCUMULATOR,

@@ -1,5 +1,6 @@
 //! @file linker/n65ld_input.c
 //! @brief Implements linker input loading for the n65 linker.
+//! @ingroup linker
 
 #include <stdio.h>
 #include <stdlib.h>

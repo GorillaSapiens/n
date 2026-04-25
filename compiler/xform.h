@@ -1,5 +1,6 @@
 //! @file compiler/xform.h
 //! @brief Declares AST transformation passes for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_XFORM_H_
 #define _INCLUDE_XFORM_H_

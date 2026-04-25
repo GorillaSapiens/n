@@ -1,5 +1,6 @@
 //! @file linker/n65ld_internal.h
 //! @brief Declares linker internal interfaces for the n65 linker.
+//! @ingroup linker
 
 #ifndef N65LD_INTERNAL_H
 #define N65LD_INTERNAL_H
@@ -7,7 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+//! Compile-time element count for fixed arrays.
 #define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))
+//! Archive magic shared with n65ar.
 #define NAR_MAGIC "NAR65\0\1"
 #define NAR_MAGIC_SIZE 7
 
@@ -29,6 +32,7 @@
 #define MAX_NAME 128
 #define MAX_PATH 512
 
+//! Memory region parsed from a linker configuration file.
 typedef struct {
    uint16_t start;
    uint16_t size;
@@ -37,6 +41,7 @@ typedef struct {
    char name[MAX_NAME];
 } memory_region_t;
 
+//! Segment placement rule parsed from a linker configuration file.
 typedef struct {
    char name[MAX_NAME];
    char load_name[MAX_NAME];
@@ -45,6 +50,7 @@ typedef struct {
    int define_yes;
 } segment_rule_t;
 
+//! Complete in-memory linker configuration.
 typedef struct {
    memory_region_t mem[16];
    size_t mem_count;
@@ -52,6 +58,7 @@ typedef struct {
    size_t seg_count;
 } linker_config_t;
 
+//! Exported or imported o65 symbol record.
 typedef struct {
    char *name;
    uint8_t segid;
@@ -78,6 +85,7 @@ typedef struct {
    int has_aux_low;
 } reloc_t;
 
+//! One loadable o65 segment plus relocations against it.
 typedef struct {
    uint8_t *data;
    size_t length;
@@ -88,6 +96,7 @@ typedef struct {
 
 typedef struct archive_member_s archive_member_t;
 
+//! Decoded o65 object plus placement state selected by the linker.
 typedef struct {
    char origin[MAX_PATH];
    uint16_t mode;
@@ -126,6 +135,7 @@ typedef struct {
    size_t member_count;
 } archive_file_t;
 
+//! Keeps original command-line ordering across object files and archives.
 typedef enum {
    INPUT_REF_OBJECT = 1,
    INPUT_REF_ARCHIVE = 2
@@ -136,6 +146,7 @@ typedef struct {
    size_t index;
 } input_ref_t;
 
+//! All linker inputs after loading archives and command-line objects.
 typedef struct {
    object_file_t *objects;
    size_t object_count;
@@ -183,6 +194,7 @@ typedef struct {
    uint16_t size;
 } zero_record_t;
 
+//! Final placement, copy/zero tables, stack range, and global symbols.
 typedef struct {
    uint16_t code_load_cur;
    uint16_t data_load_cur;

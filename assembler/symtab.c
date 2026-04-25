@@ -1,5 +1,6 @@
 //! @file assembler/symtab.c
 //! @brief Implements assembler symbol table for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

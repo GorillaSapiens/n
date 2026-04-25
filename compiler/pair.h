@@ -1,11 +1,13 @@
 //! @file compiler/pair.h
 //! @brief Declares pointer pair collection for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_PAIR_H_
 #define _INCLUDE_PAIR_H_
 
 #include <stdbool.h>
 
+//! Opaque pointer map handle; the concrete representation is private to pair.c.
 #ifndef _INSIDE_PAIR_C_
 typedef void *Pair;
 #endif

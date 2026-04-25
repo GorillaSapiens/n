@@ -1,5 +1,6 @@
 //! @file linker/n65ld.c
 //! @brief Implements linker command-line entry point for the n65 linker.
+//! @ingroup linker
 
 #include <ctype.h>
 #include <errno.h>

@@ -1,5 +1,6 @@
 //! @file compiler/float_bignat.h
 //! @brief Declares big natural integer arithmetic for floats for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_FLOAT_BIGNAT_H_
 #define _INCLUDE_FLOAT_BIGNAT_H_
@@ -7,8 +8,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+//! Number of bits stored in each BigNat word.
 #define FLOAT_BIGNAT_WORD_BITS 32
 
+//! Heap-backed unsigned big integer used during exact float literal conversion.
 typedef struct BigNat {
    uint32_t *words;
    int len;

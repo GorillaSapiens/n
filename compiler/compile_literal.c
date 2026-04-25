@@ -1,5 +1,6 @@
 //! @file compiler/compile_literal.c
 //! @brief Implements literal lowering for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

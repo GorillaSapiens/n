@@ -1,5 +1,6 @@
 //! @file compiler/compile.h
 //! @brief Declares compiler front-end orchestration for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_H_
 #define _INCLUDE_COMPILE_H_

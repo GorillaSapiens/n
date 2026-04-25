@@ -1,5 +1,6 @@
 //! @file assembler/ir.h
 //! @brief Declares assembler intermediate representation for the n65 assembler.
+//! @ingroup assembler
 
 #ifndef IR_H
 #define IR_H
@@ -9,6 +10,7 @@
 #include "directive.h"
 #include "opcode.h"
 
+//! Optional addressing-mode suffix requested in source, such as `.z` or `.a`.
 typedef enum mode_spec {
    MODE_SPEC_NONE = 0,
    MODE_SPEC_Z,
@@ -22,6 +24,7 @@ typedef enum mode_spec {
    MODE_SPEC_IY
 } mode_spec_t;
 
+//! Kinds of top-level assembler statements stored in the IR.
 typedef enum stmt_kind {
    STMT_INSN = 0,
    STMT_DIR,
@@ -29,6 +32,7 @@ typedef enum stmt_kind {
    STMT_CONST
 } stmt_kind_t;
 
+//! Operand and opcode information for an instruction statement.
 typedef struct insn_info {
    char *opcode;
    mode_spec_t spec;
@@ -63,6 +67,7 @@ struct stmt {
    stmt_t *next;
 };
 
+//! Ordered list of parsed assembly statements.
 typedef struct program_ir {
    stmt_t *head;
    stmt_t *tail;

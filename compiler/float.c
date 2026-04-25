@@ -1,5 +1,6 @@
 //! @file compiler/float.c
 //! @brief Implements floating-point literal conversion for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

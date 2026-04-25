@@ -1,5 +1,6 @@
 //! @file compiler/md5.c
 //! @brief Implements MD5 hashing for the n65 compiler.
+//! @ingroup compiler
 
 /*
  * Derived from the RSA Data Security, Inc. MD5 Message-Digest Algorithm

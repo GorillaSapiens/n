@@ -1,5 +1,6 @@
 //! @file linker/n65ld_abi.h
 //! @brief Declares link-time ABI metadata validation for the n65 linker.
+//! @ingroup linker
 
 #ifndef N65LD_ABI_H
 #define N65LD_ABI_H

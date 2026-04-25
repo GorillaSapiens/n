@@ -1,5 +1,6 @@
 //! @file compiler/compile_declarator.h
 //! @brief Declares declarator analysis for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_DECLARATOR_H_
 #define _INCLUDE_COMPILE_DECLARATOR_H_

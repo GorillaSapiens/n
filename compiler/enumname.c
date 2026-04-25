@@ -1,5 +1,6 @@
 //! @file compiler/enumname.c
 //! @brief Implements enum declaration support for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -1,5 +1,6 @@
 //! @file compiler/compile_overload.c
 //! @brief Implements operator overload resolution for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

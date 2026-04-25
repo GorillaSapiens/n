@@ -1,5 +1,6 @@
 //! @file compiler/compile_type.h
 //! @brief Declares type declaration and layout handling for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_TYPE_H_
 #define _INCLUDE_COMPILE_TYPE_H_

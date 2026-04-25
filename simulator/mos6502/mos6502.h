@@ -1,3 +1,7 @@
+//! @file simulator/mos6502/mos6502.h
+//! @brief Declares the embedded MOS 6502 CPU emulator interface used by n65sim.
+//! @ingroup simulator
+
 //============================================================================
 // Name        : mos6502
 // Author      : Gianluca Ghettini
@@ -10,6 +14,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+//! Callback-driven MOS 6502 emulator used by the n65 simulator frontend.
 class mos6502
 {
    private:
@@ -195,6 +200,7 @@ class mos6502
       inline uint8_t StackPop();
 
    public:
+      //! Select whether Run() stops by instruction count or CPU cycle count.
       enum CycleMethod {
          INST_COUNT,
          CYCLE_COUNT,

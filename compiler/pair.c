@@ -1,5 +1,6 @@
 //! @file compiler/pair.c
 //! @brief Implements pointer pair collection for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

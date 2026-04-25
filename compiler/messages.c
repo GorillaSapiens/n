@@ -1,5 +1,6 @@
 //! @file compiler/messages.c
 //! @brief Implements compiler diagnostics for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdarg.h>

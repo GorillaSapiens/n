@@ -1,3 +1,7 @@
+//! @file libraries/petiteffs/source/diskio.c
+//! @brief Provides the Petit FatFs disk I/O porting skeleton shipped with the runtime sources.
+//! @ingroup runtime
+
 /*-----------------------------------------------------------------------*/
 /* Low level disk I/O module skeleton for Petit FatFs (C)ChaN, 2014      */
 /*-----------------------------------------------------------------------*/

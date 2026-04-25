@@ -1,11 +1,13 @@
 //! @file compiler/ast.h
 //! @brief Declares abstract syntax tree support for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_AST_H_
 #define _INCLUDE_AST_H_
 
 #include <stdbool.h>
 
+//! Kinds of leaves and parser-created AST nodes tracked by the compiler.
 enum ASTKind {
     AST_GENERIC = 0,
     AST_IDENTIFIER,
@@ -17,6 +19,7 @@ enum ASTKind {
     AST_EMPTY
 };
 
+//! Variable-width AST node; child pointers are stored inline after the fixed header.
 typedef struct ASTNode {
    const char *name;
    const char *file;
@@ -32,6 +35,7 @@ typedef struct ASTNode {
    struct ASTNode *children[];
 } ASTNode;
 
+//! True when an AST node is the explicit empty placeholder used by the grammar.
 #define is_empty(x) ((x)->kind == AST_EMPTY)
 
 ASTNode *make_node(const char *name, ...);
@@ -62,6 +66,7 @@ void dump_ast_flat(const ASTNode *node,
 void parse_dump(void);
 void parse_dump_node(const ASTNode *node);
 
+//! Parser-owned root node for the most recently parsed translation unit.
 extern ASTNode *root;
 
 #define MAKE_NODE(...)              make_node(yysymbol_name(yyr1[yyn]), __VA_ARGS__, NULL)

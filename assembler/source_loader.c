@@ -1,5 +1,6 @@
 //! @file assembler/source_loader.c
 //! @brief Implements assembler source loading for the n65 assembler.
+//! @ingroup assembler
 
 #include <stdio.h>
 #include <stdlib.h>

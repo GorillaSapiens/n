@@ -5,11 +5,15 @@ BINDIR ?= /usr/local/bin
 DESTDIR ?=
 INSTALL ?= install
 INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+DOXYGEN ?= doxygen
 
 all: n65driver
 
 n65driver: n65driver.c
 	$(CC) $(CFLAGS) n65driver.c -o n65driver
+
+docs:
+	$(MAKE) --no-print-directory -C .. docs
 
 install: n65driver
 	$(INSTALL) -d $(DESTDIR)$(BINDIR)
@@ -20,3 +24,5 @@ uninstall:
 
 clean:
 	rm -f n65driver
+
+.PHONY: docs

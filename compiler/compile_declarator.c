@@ -1,5 +1,6 @@
 //! @file compiler/compile_declarator.c
 //! @brief Implements declarator analysis for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>

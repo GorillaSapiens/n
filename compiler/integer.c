@@ -1,5 +1,6 @@
 //! @file compiler/integer.c
 //! @brief Implements integer literal conversion for the n65 compiler.
+//! @ingroup compiler
 
 #include <string.h>
 #include <strings.h>

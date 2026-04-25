@@ -1,5 +1,6 @@
 //! @file compiler/compile_stmt.h
 //! @brief Declares statement lowering for the n65 compiler.
+//! @ingroup compiler
 
 #ifndef _INCLUDE_COMPILE_STMT_H_
 #define _INCLUDE_COMPILE_STMT_H_

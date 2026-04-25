@@ -1,5 +1,6 @@
 //! @file compiler/emit.c
 //! @brief Implements assembly emission buffers for the n65 compiler.
+//! @ingroup compiler
 
 #include <stdio.h>
 #include <stdlib.h>
